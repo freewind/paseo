@@ -87,6 +87,8 @@ export interface WorkspaceHeaderWorkspaceActions {
   onOpenSetupTab: () => void;
   onRename?: () => void;
   onArchive?: () => void;
+  isArchiving?: boolean;
+  archiveLabel?: string;
 }
 
 function WorkspaceHeaderWorkspaceActionItems({
@@ -100,6 +102,8 @@ function WorkspaceHeaderWorkspaceActionItems({
   onOpenSetupTab,
   onRename,
   onArchive,
+  isArchiving,
+  archiveLabel,
 }: WorkspaceHeaderWorkspaceActions) {
   const { t } = useTranslation();
   const closeMenu = useDropdownMenuClose();
@@ -162,6 +166,9 @@ function WorkspaceHeaderWorkspaceActionItems({
         <DropdownMenuItem
           testID="workspace-header-archive"
           leading={MENU_ARCHIVE_ICON}
+          disabled={isArchiving}
+          status={isArchiving ? "pending" : "idle"}
+          pendingLabel={archiveLabel}
           onSelect={onArchive}
         >
           {t("sidebar.workspace.actions.archive")}
