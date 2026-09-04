@@ -14,6 +14,10 @@ const diagramFences: Partial<Record<string, ComponentType<MarkdownFenceRendererP
   mermaid: MermaidFence,
 };
 
+/** Diff blocks in chat can be long; cap the DiffViewer height so a huge patch
+ * scrolls inside the message instead of blowing it out vertically. */
+const CHAT_DIFF_MAX_HEIGHT = 480;
+
 export function MarkdownFenceBlock({
   code,
   info,
@@ -23,7 +27,7 @@ export function MarkdownFenceBlock({
 }: MarkdownFenceBlockProps) {
   const language = getMarkdownFenceLanguage(info);
   if (isDiffFenceLanguage(language)) {
-    return <DiffViewer diffLines={parseUnifiedDiff(code)} />;
+    return <DiffViewer diffLines={parseUnifiedDiff(code)} maxHeight={CHAT_DIFF_MAX_HEIGHT} />;
   }
   const DiagramFence = language ? diagramFences[language] : undefined;
   if (DiagramFence) {
