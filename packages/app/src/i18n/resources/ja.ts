@@ -1999,6 +1999,10 @@ export const ja: TranslationResources = {
         success: "ブラウザーデータを消去しました。",
         error: "ブラウザーデータを消去できませんでした。",
       },
+      showVoiceButton: {
+        label: "音声ボタンを表示",
+        description: "コンポーザー入力に音声ボタンを表示します",
+      },
       defaultSend: {
         label: "デフォルトの送信",
         descriptions: {

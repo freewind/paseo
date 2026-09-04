@@ -2014,6 +2014,10 @@ export const ptBR: TranslationResources = {
         success: "Dados do navegador limpos.",
         error: "Não foi possível limpar os dados do navegador.",
       },
+      showVoiceButton: {
+        label: "Mostrar botão de voz",
+        description: "Mostrar o botão de voz na entrada do compositor",
+      },
       defaultSend: {
         label: "Envio padrão",
         descriptions: {

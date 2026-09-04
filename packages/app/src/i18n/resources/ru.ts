@@ -2013,6 +2013,10 @@ export const ru: TranslationResources = {
         success: "Данные браузера очищены.",
         error: "Не удалось очистить данные браузера.",
       },
+      showVoiceButton: {
+        label: "Показывать кнопку голоса",
+        description: "Показывать кнопку голоса в поле ввода композера",
+      },
       defaultSend: {
         label: "Отправка по умолчанию",
         descriptions: {

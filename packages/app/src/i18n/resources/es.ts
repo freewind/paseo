@@ -2029,6 +2029,10 @@ export const es: TranslationResources = {
         success: "Datos del navegador borrados.",
         error: "No se pudieron borrar los datos del navegador.",
       },
+      showVoiceButton: {
+        label: "Mostrar botón de voz",
+        description: "Mostrar el botón de voz en la entrada del compositor",
+      },
       defaultSend: {
         label: "Envío predeterminado",
         descriptions: {

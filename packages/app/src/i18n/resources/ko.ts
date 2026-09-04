@@ -1991,6 +1991,10 @@ export const ko: TranslationResources = {
         success: "브라우저 데이터가 삭제되었습니다.",
         error: "브라우저 데이터를 삭제할 수 없습니다.",
       },
+      showVoiceButton: {
+        label: "음성 버튼 표시",
+        description: "입력기에 음성 버튼을 표시합니다",
+      },
       defaultSend: {
         label: "기본 전송",
         descriptions: {

@@ -2033,6 +2033,10 @@ export const fr: TranslationResources = {
         success: "Données du navigateur effacées.",
         error: "Impossible d'effacer les données du navigateur.",
       },
+      showVoiceButton: {
+        label: "Afficher le bouton vocal",
+        description: "Afficher le bouton vocal dans la saisie du compositeur",
+      },
       defaultSend: {
         label: "Envoi par défaut",
         descriptions: {

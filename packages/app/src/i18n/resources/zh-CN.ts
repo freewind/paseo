@@ -1959,6 +1959,10 @@ export const zhCN: TranslationResources = {
         success: "浏览器数据已清除。",
         error: "无法清除浏览器数据。",
       },
+      showVoiceButton: {
+        label: "显示语音按钮",
+        description: "在输入区显示语音按钮",
+      },
       defaultSend: {
         label: "默认发送",
         descriptions: {
