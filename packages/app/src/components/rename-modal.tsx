@@ -51,6 +51,7 @@ export function AdaptiveRenameModal({
     inputRef.current?.replaceText("");
     setDraft("");
     setError(null);
+    inputRef.current?.focus();
   }, []);
 
   useEffect(() => {
