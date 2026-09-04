@@ -2041,6 +2041,11 @@ export const fr: TranslationResources = {
         label: "Lire les réponses à voix haute",
         description: "Lire à voix haute les réponses de l'agent lorsqu'elles se terminent",
       },
+      ttsEngine: {
+        label: "Voix de lecture",
+        description: "Choisissez la voix de lecture des réponses",
+        default: "Par défaut du système",
+      },
       playTurnCompleteSound: {
         label: "Jouer un son à la fin",
         description: "Jouer un son lorsqu'un agent termine un tour",

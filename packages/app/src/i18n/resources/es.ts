@@ -2037,6 +2037,11 @@ export const es: TranslationResources = {
         label: "Leer respuestas en voz alta",
         description: "Leer en voz alta las respuestas del agente cuando terminan",
       },
+      ttsEngine: {
+        label: "Voz de lectura",
+        description: "Elige la voz para leer las respuestas en voz alta",
+        default: "Predeterminado del sistema",
+      },
       playTurnCompleteSound: {
         label: "Reproducir sonido al terminar",
         description: "Reproducir un sonido cuando el agente termina un turno",

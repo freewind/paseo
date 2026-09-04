@@ -1999,6 +1999,11 @@ export const ko: TranslationResources = {
         label: "답변을 소리 내어 읽기",
         description: "에이전트 답변이 끝나면 소리 내어 읽습니다",
       },
+      ttsEngine: {
+        label: "읽기 음성",
+        description: "답변을 소리 내어 읽을 음성을 선택합니다",
+        default: "시스템 기본",
+      },
       playTurnCompleteSound: {
         label: "완료 시 소리 재생",
         description: "에이전트가 턴을 완료할 때 소리를 재생합니다",
