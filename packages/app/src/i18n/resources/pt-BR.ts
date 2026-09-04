@@ -2018,6 +2018,10 @@ export const ptBR: TranslationResources = {
         label: "Mostrar botão de voz",
         description: "Mostrar o botão de voz na entrada do compositor",
       },
+      playTurnCompleteSound: {
+        label: "Tocar som ao terminar",
+        description: "Tocar um som quando o agente termina uma rodada",
+      },
       defaultSend: {
         label: "Envio padrão",
         descriptions: {

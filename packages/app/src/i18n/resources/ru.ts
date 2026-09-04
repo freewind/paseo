@@ -2017,6 +2017,10 @@ export const ru: TranslationResources = {
         label: "Показывать кнопку голоса",
         description: "Показывать кнопку голоса в поле ввода композера",
       },
+      playTurnCompleteSound: {
+        label: "Воспроизводить звук при завершении",
+        description: "Воспроизводить звук, когда агент завершает ход",
+      },
       defaultSend: {
         label: "Отправка по умолчанию",
         descriptions: {

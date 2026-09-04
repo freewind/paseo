@@ -2037,6 +2037,10 @@ export const fr: TranslationResources = {
         label: "Afficher le bouton vocal",
         description: "Afficher le bouton vocal dans la saisie du compositeur",
       },
+      playTurnCompleteSound: {
+        label: "Jouer un son à la fin",
+        description: "Jouer un son lorsqu'un agent termine un tour",
+      },
       defaultSend: {
         label: "Envoi par défaut",
         descriptions: {

@@ -2003,6 +2003,10 @@ export const ja: TranslationResources = {
         label: "音声ボタンを表示",
         description: "コンポーザー入力に音声ボタンを表示します",
       },
+      playTurnCompleteSound: {
+        label: "完了時にサウンドを再生",
+        description: "エージェントがターンを完了したときにサウンドを再生します",
+      },
       defaultSend: {
         label: "デフォルトの送信",
         descriptions: {

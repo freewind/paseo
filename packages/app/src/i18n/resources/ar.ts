@@ -1985,6 +1985,10 @@ export const ar: TranslationResources = {
         label: "إظهار زر الصوت",
         description: "إظهار زر الصوت في منطقة إدخال الرسائل",
       },
+      playTurnCompleteSound: {
+        label: "تشغيل صوت عند اكتمال العمل",
+        description: "تشغيل صوت عند اكتمال الوكيل لعمله",
+      },
       defaultSend: {
         label: "إرسال افتراضي",
         descriptions: {

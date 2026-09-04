@@ -1963,6 +1963,10 @@ export const zhCN: TranslationResources = {
         label: "显示语音按钮",
         description: "在输入区显示语音按钮",
       },
+      playTurnCompleteSound: {
+        label: "Agent 完成时播放提示音",
+        description: "Agent 完成一个 turn 时播放提示音",
+      },
       defaultSend: {
         label: "默认发送",
         descriptions: {

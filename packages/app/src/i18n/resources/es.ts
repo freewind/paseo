@@ -2033,6 +2033,10 @@ export const es: TranslationResources = {
         label: "Mostrar botón de voz",
         description: "Mostrar el botón de voz en la entrada del compositor",
       },
+      playTurnCompleteSound: {
+        label: "Reproducir sonido al terminar",
+        description: "Reproducir un sonido cuando el agente termina un turno",
+      },
       defaultSend: {
         label: "Envío predeterminado",
         descriptions: {

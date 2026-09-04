@@ -283,6 +283,7 @@ interface GeneralSectionProps {
   handleLanguageChange: (language: AppLanguage) => void;
   handleTerminalScrollbackLinesChange: (lines: number) => void;
   handleShowVoiceButtonChange: (showVoiceButton: boolean) => void;
+  handlePlayTurnCompleteSoundChange: (playTurnCompleteSound: boolean) => void;
 }
 
 interface ServiceUrlBehaviorMenuItemProps {
@@ -358,6 +359,7 @@ function GeneralSection({
   handleLanguageChange,
   handleTerminalScrollbackLinesChange,
   handleShowVoiceButtonChange,
+  handlePlayTurnCompleteSoundChange,
 }: GeneralSectionProps) {
   const { t, i18n } = useTranslation();
   const activeLocale = getActiveLocale(i18n.language);
@@ -470,6 +472,22 @@ function GeneralSection({
             onValueChange={handleShowVoiceButtonChange}
             accessibilityLabel={t("settings.general.showVoiceButton.label")}
             testID="settings-show-voice-button-switch"
+          />
+        </View>
+        <View style={[settingsStyles.row, settingsStyles.rowBorder]}>
+          <View style={settingsStyles.rowContent}>
+            <Text style={settingsStyles.rowTitle}>
+              {t("settings.general.playTurnCompleteSound.label")}
+            </Text>
+            <Text style={settingsStyles.rowHint}>
+              {t("settings.general.playTurnCompleteSound.description")}
+            </Text>
+          </View>
+          <Switch
+            value={settings.playTurnCompleteSound}
+            onValueChange={handlePlayTurnCompleteSoundChange}
+            accessibilityLabel={t("settings.general.playTurnCompleteSound.label")}
+            testID="settings-play-turn-complete-sound-switch"
           />
         </View>
         {isDesktopApp ? (
@@ -1288,6 +1306,13 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
     [updateSettings],
   );
 
+  const handlePlayTurnCompleteSoundChange = useCallback(
+    (playTurnCompleteSound: boolean) => {
+      void updateSettings({ playTurnCompleteSound });
+    },
+    [updateSettings],
+  );
+
   const handlePlaybackTest = useCallback(async () => {
     if (!voiceAudioEngine || isPlaybackTestRunning) {
       return;
@@ -1502,6 +1527,7 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
                   handleLanguageChange={handleLanguageChange}
                   handleTerminalScrollbackLinesChange={handleTerminalScrollbackLinesChange}
                   handleShowVoiceButtonChange={handleShowVoiceButtonChange}
+                  handlePlayTurnCompleteSoundChange={handlePlayTurnCompleteSoundChange}
                 />
                 {isDesktopApp ? <BrowserDataSection /> : null}
               </>
