@@ -1,6 +1,8 @@
 import type { ComponentType } from "react";
+import { DiffViewer } from "@/components/diff-viewer";
 import { HighlightedCodeBlock } from "@/components/highlighted-code-block";
-import { getMarkdownFenceLanguage } from "./language";
+import { parseUnifiedDiff } from "@/utils/tool-call-parsers";
+import { getMarkdownFenceLanguage, isDiffFenceLanguage } from "./language";
 import { MermaidFence } from "./mermaid";
 import type { MarkdownFenceRendererProps } from "./types";
 
@@ -20,6 +22,9 @@ export function MarkdownFenceBlock({
   textStyle,
 }: MarkdownFenceBlockProps) {
   const language = getMarkdownFenceLanguage(info);
+  if (isDiffFenceLanguage(language)) {
+    return <DiffViewer diffLines={parseUnifiedDiff(code)} />;
+  }
   const DiagramFence = language ? diagramFences[language] : undefined;
   if (DiagramFence) {
     return (
