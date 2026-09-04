@@ -282,6 +282,7 @@ interface GeneralSectionProps {
   handleServiceUrlBehaviorChange: (behavior: ServiceUrlBehavior) => void;
   handleLanguageChange: (language: AppLanguage) => void;
   handleTerminalScrollbackLinesChange: (lines: number) => void;
+  handleShowVoiceButtonChange: (showVoiceButton: boolean) => void;
 }
 
 interface ServiceUrlBehaviorMenuItemProps {
@@ -356,6 +357,7 @@ function GeneralSection({
   handleServiceUrlBehaviorChange,
   handleLanguageChange,
   handleTerminalScrollbackLinesChange,
+  handleShowVoiceButtonChange,
 }: GeneralSectionProps) {
   const { t, i18n } = useTranslation();
   const activeLocale = getActiveLocale(i18n.language);
@@ -453,6 +455,22 @@ function GeneralSection({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+        </View>
+        <View style={[settingsStyles.row, settingsStyles.rowBorder]}>
+          <View style={settingsStyles.rowContent}>
+            <Text style={settingsStyles.rowTitle}>
+              {t("settings.general.showVoiceButton.label")}
+            </Text>
+            <Text style={settingsStyles.rowHint}>
+              {t("settings.general.showVoiceButton.description")}
+            </Text>
+          </View>
+          <Switch
+            value={settings.showVoiceButton}
+            onValueChange={handleShowVoiceButtonChange}
+            accessibilityLabel={t("settings.general.showVoiceButton.label")}
+            testID="settings-show-voice-button-switch"
+          />
         </View>
         {isDesktopApp ? (
           <View style={[settingsStyles.row, settingsStyles.rowBorder]}>
@@ -1263,6 +1281,13 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
     [updateSettings],
   );
 
+  const handleShowVoiceButtonChange = useCallback(
+    (showVoiceButton: boolean) => {
+      void updateSettings({ showVoiceButton });
+    },
+    [updateSettings],
+  );
+
   const handlePlaybackTest = useCallback(async () => {
     if (!voiceAudioEngine || isPlaybackTestRunning) {
       return;
@@ -1476,6 +1501,7 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
                   handleServiceUrlBehaviorChange={handleServiceUrlBehaviorChange}
                   handleLanguageChange={handleLanguageChange}
                   handleTerminalScrollbackLinesChange={handleTerminalScrollbackLinesChange}
+                  handleShowVoiceButtonChange={handleShowVoiceButtonChange}
                 />
                 {isDesktopApp ? <BrowserDataSection /> : null}
               </>
