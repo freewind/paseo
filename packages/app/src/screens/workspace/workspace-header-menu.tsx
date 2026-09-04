@@ -114,6 +114,13 @@ function WorkspaceHeaderWorkspaceActionItems({
     closeMenu();
     onRename();
   }, [closeMenu, onRename]);
+  const handleArchive = useCallback(() => {
+    if (!onArchive) return;
+    // Close the menu first so the archive flow (confirm dialog / optimistic hide /
+    // redirect) doesn't stack on top of the open menu.
+    closeMenu();
+    onArchive();
+  }, [closeMenu, onArchive]);
   return (
     <>
       <DropdownMenuItem
@@ -169,7 +176,7 @@ function WorkspaceHeaderWorkspaceActionItems({
           disabled={isArchiving}
           status={isArchiving ? "pending" : "idle"}
           pendingLabel={archiveLabel}
-          onSelect={onArchive}
+          onSelect={handleArchive}
         >
           {t("sidebar.workspace.actions.archive")}
         </DropdownMenuItem>
