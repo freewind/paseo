@@ -87,8 +87,19 @@ vi.mock("@/components/adaptive-modal-sheet", async () => {
         onChangeText: p.onChangeText,
         onSubmitEditing: p.onSubmitEditing,
       };
-      return ReactModule.createElement("input", {
-        ref,
+      const inputElement = ReactModule.createElement("input", {
+        ref: (node: HTMLInputElement | null) => {
+          if (node) {
+            (node as HTMLInputElement & { replaceText: (t: string) => void }).replaceText = (
+              next: string,
+            ) => {
+              node.value = next;
+              p.onChangeText?.(next);
+            };
+          }
+          if (typeof ref === "function") ref(node);
+          else if (ref) ref.current = node;
+        },
         defaultValue: p.initialValue ?? p.defaultValue ?? "",
         disabled: p.editable === false,
         maxLength: p.maxLength,
@@ -101,6 +112,7 @@ vi.mock("@/components/adaptive-modal-sheet", async () => {
           }
         },
       });
+      return inputElement;
     },
   );
   return { AdaptiveModalSheet, AdaptiveTextInput };
@@ -222,6 +234,10 @@ function queryCancel(): HTMLButtonElement | null {
 
 function queryError(): HTMLElement | null {
   return document.querySelector<HTMLElement>('[data-testid="rename-modal-error"]');
+}
+
+function queryClear(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('[data-testid="rename-modal-input-clear"]');
 }
 
 function click(element: Element | null): void {
@@ -365,5 +381,20 @@ describe("RenameModal", () => {
     expect(onClose).not.toHaveBeenCalled();
     expect(queryError()?.textContent).toContain("Server said no");
     expect(querySubmit()?.disabled).toBe(false);
+  });
+
+  it("shows the clear button only when there is draft content and clears on press", async () => {
+    renderModal({ initialValue: "main" });
+
+    const clear = queryClear();
+    expect(clear).not.toBeNull();
+    expect(queryInput()?.value).toBe("main");
+
+    click(clear);
+    await flush();
+
+    // Clears the input value and hides the button once the draft is empty.
+    expect(queryInput()?.value).toBe("");
+    expect(queryClear()).toBeNull();
   });
 });

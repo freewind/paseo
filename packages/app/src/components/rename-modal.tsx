@@ -149,16 +149,18 @@ export function AdaptiveRenameModal({
             style={styles.input}
             testID={inputTestID}
           />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("renameModal.clear")}
-            hitSlop={8}
-            onPress={handleClear}
-            style={styles.clearButton}
-            testID={inputTestID ? `${inputTestID}-clear` : undefined}
-          >
-            <ThemedX size={16} />
-          </Pressable>
+          {draft ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("renameModal.clear")}
+              hitSlop={8}
+              onPress={handleClear}
+              style={styles.clearButton}
+              testID={inputTestID ? `${inputTestID}-clear` : undefined}
+            >
+              <ThemedX size={16} />
+            </Pressable>
+          ) : null}
         </View>
         {error ? (
           <Text style={styles.errorText} testID={errorTestID}>
