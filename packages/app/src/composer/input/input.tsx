@@ -80,6 +80,7 @@ import {
   runAlternateSendAction,
   runDefaultSendAction,
   runMessageInputKeyboardAction,
+  runSendBehaviorAction,
   stopRealtimeVoice,
   type SendBehavior,
 } from "./state";
@@ -780,6 +781,22 @@ function SendButtonTooltip({
   const { t } = useTranslation();
   const [behaviorMenuOpen, setBehaviorMenuOpen] = useState(false);
   const handleLongPress = useCallback(() => setBehaviorMenuOpen(true), []);
+  const handlePress = useCallback(() => {
+    // When the behavior menu is open, tapping the button collapses it instead of sending.
+    if (behaviorMenuOpen) {
+      setBehaviorMenuOpen(false);
+      return;
+    }
+    if (canPressLoadingButton) {
+      onSubmitLoadingPress?.();
+    } else {
+      onDefaultSendAction();
+    }
+  }, [behaviorMenuOpen, canPressLoadingButton, onDefaultSendAction, onSubmitLoadingPress]);
+  const triggerStyle = useMemo(
+    () => [sendButtonCombinedStyle, behaviorMenuOpen && styles.sendButtonMenuOpen],
+    [behaviorMenuOpen, sendButtonCombinedStyle],
+  );
   const handleSelectBehavior = useCallback(
     (behavior: SendBehavior) => {
       setBehaviorMenuOpen(false);
@@ -796,13 +813,13 @@ function SendButtonTooltip({
     <DropdownMenu open={behaviorMenuOpen} onOpenChange={setBehaviorMenuOpen}>
       <Tooltip delayDuration={0} enabledOnDesktop enabledOnMobile={false}>
         <TooltipTrigger
-          onPress={canPressLoadingButton ? onSubmitLoadingPress : onDefaultSendAction}
+          onPress={handlePress}
           onLongPress={handleLongPress}
           disabled={isSendButtonDisabled}
           accessibilityLabel={submitAccessibilityLabel}
           accessibilityRole="button"
           testID={submitButtonTestID}
-          style={sendButtonCombinedStyle}
+          style={triggerStyle}
         >
           <SendButtonContent
             isSubmitLoading={isSubmitLoading}
@@ -1592,6 +1609,16 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
       });
     }, [defaultSendBehavior, isAgentRunning, handleSendMessage, handleQueueMessage, onQueue]);
 
+    const handleSelectBehavior = useCallback(
+      (behavior: SendBehavior) => {
+        runSendBehaviorAction(
+          { defaultSendBehavior, isAgentRunning, onQueue, handleSendMessage, handleQueueMessage },
+          behavior,
+        );
+      },
+      [defaultSendBehavior, isAgentRunning, onQueue, handleSendMessage, handleQueueMessage],
+    );
+
     const getWebTextArea = useCallback(
       (): TextAreaHandle | null => getWebTextAreaImpl(textInputRef.current),
       [],
@@ -1895,6 +1922,7 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
                 canPressLoadingButton={canPressLoadingButton}
                 onSubmitLoadingPress={onSubmitLoadingPress}
                 onDefaultSendAction={handleDefaultSendAction}
+                onSelectBehavior={handleSelectBehavior}
                 isSendButtonDisabled={isSendButtonDisabled}
                 submitAccessibilityLabel={submitAccessibilityLabel}
                 sendButtonCombinedStyle={sendButtonCombinedStyle}
@@ -2064,6 +2092,10 @@ const styles = StyleSheet.create((theme: Theme) => ({
     minWidth: 28,
     paddingHorizontal: theme.spacing[3],
     borderRadius: theme.borderRadius.full,
+  },
+  sendButtonMenuOpen: {
+    borderWidth: 2,
+    borderColor: theme.colors.foreground,
   },
   sendButtonLabel: {
     fontSize: theme.fontSize.base,
