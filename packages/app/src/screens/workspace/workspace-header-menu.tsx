@@ -20,6 +20,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  useDropdownMenuClose,
 } from "@/components/ui/dropdown-menu";
 import {
   extraMutedIconColorMapping,
@@ -96,6 +97,14 @@ function WorkspaceHeaderWorkspaceActionItems({
   onRename,
 }: WorkspaceHeaderWorkspaceActions) {
   const { t } = useTranslation();
+  const closeMenu = useDropdownMenuClose();
+  const handleRename = useCallback(() => {
+    if (!onRename) return;
+    // Close the menu (mobile bottom sheet / desktop popover) first so the rename
+    // modal doesn't stack a second surface on top of it.
+    closeMenu();
+    onRename();
+  }, [closeMenu, onRename]);
   return (
     <>
       <DropdownMenuItem
@@ -110,7 +119,7 @@ function WorkspaceHeaderWorkspaceActionItems({
         <DropdownMenuItem
           testID="workspace-header-rename"
           leading={MENU_RENAME_ICON}
-          onSelect={onRename}
+          onSelect={handleRename}
         >
           {t("sidebar.workspace.actions.rename")}
         </DropdownMenuItem>
