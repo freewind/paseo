@@ -81,10 +81,18 @@ import {
   runDefaultSendAction,
   runMessageInputKeyboardAction,
   stopRealtimeVoice,
+  type SendBehavior,
 } from "./state";
 
 const DEFAULT_SEND_KEYS: ShortcutKey[][] = [["Enter"]];
 const COMPOSER_INPUT_DATASET = { composerInput: "" } as const;
+
+/** The send behaviors offered by the long-press menu, in display order. */
+const SEND_BEHAVIOR_OPTIONS: ReadonlyArray<{ behavior: SendBehavior; labelKey: string }> = [
+  { behavior: "interrupt", labelKey: "settings.general.defaultSend.options.interrupt" },
+  { behavior: "steer", labelKey: "settings.general.defaultSend.options.steer" },
+  { behavior: "queue", labelKey: "settings.general.defaultSend.options.queue" },
+];
 
 export interface AttachmentMenuItem {
   id: string;
@@ -751,6 +759,7 @@ function SendButtonTooltip({
   buttonIconSize,
   sendKeys,
   sendTooltipLabel,
+  onSelectBehavior,
 }: {
   shouldShow: boolean;
   canPressLoadingButton: boolean;
@@ -766,29 +775,58 @@ function SendButtonTooltip({
   buttonIconSize: number;
   sendKeys: ShortcutChord | null | undefined;
   sendTooltipLabel: string;
+  onSelectBehavior?: (behavior: SendBehavior) => void;
 }) {
+  const { t } = useTranslation();
+  const [behaviorMenuOpen, setBehaviorMenuOpen] = useState(false);
+  const handleLongPress = useCallback(() => setBehaviorMenuOpen(true), []);
+  const handleSelectBehavior = useCallback(
+    (behavior: SendBehavior) => {
+      setBehaviorMenuOpen(false);
+      onSelectBehavior?.(behavior);
+    },
+    [onSelectBehavior],
+  );
+  const handleSelectBehaviorItem = useCallback(
+    (behavior: SendBehavior) => () => handleSelectBehavior(behavior),
+    [handleSelectBehavior],
+  );
   if (!shouldShow) return null;
   return (
-    <Tooltip delayDuration={0} enabledOnDesktop enabledOnMobile={false}>
-      <TooltipTrigger
-        onPress={canPressLoadingButton ? onSubmitLoadingPress : onDefaultSendAction}
-        disabled={isSendButtonDisabled}
-        accessibilityLabel={submitAccessibilityLabel}
-        accessibilityRole="button"
-        testID={submitButtonTestID}
-        style={sendButtonCombinedStyle}
-      >
-        <SendButtonContent
-          isSubmitLoading={isSubmitLoading}
-          submitIcon={submitIcon}
-          submitLabel={submitLabel}
-          buttonIconSize={buttonIconSize}
-        />
-      </TooltipTrigger>
-      <TooltipContent side="top" align="center" offset={8}>
-        <SendTooltipBody label={sendTooltipLabel} sendKeys={sendKeys} />
-      </TooltipContent>
-    </Tooltip>
+    <DropdownMenu open={behaviorMenuOpen} onOpenChange={setBehaviorMenuOpen}>
+      <Tooltip delayDuration={0} enabledOnDesktop enabledOnMobile={false}>
+        <TooltipTrigger
+          onPress={canPressLoadingButton ? onSubmitLoadingPress : onDefaultSendAction}
+          onLongPress={handleLongPress}
+          disabled={isSendButtonDisabled}
+          accessibilityLabel={submitAccessibilityLabel}
+          accessibilityRole="button"
+          testID={submitButtonTestID}
+          style={sendButtonCombinedStyle}
+        >
+          <SendButtonContent
+            isSubmitLoading={isSubmitLoading}
+            submitIcon={submitIcon}
+            submitLabel={submitLabel}
+            buttonIconSize={buttonIconSize}
+          />
+        </TooltipTrigger>
+        <TooltipContent side="top" align="center" offset={8}>
+          <SendTooltipBody label={sendTooltipLabel} sendKeys={sendKeys} />
+        </TooltipContent>
+      </Tooltip>
+      <DropdownMenuContent side="top" align="center" testID="send-behavior-menu">
+        {SEND_BEHAVIOR_OPTIONS.map(({ behavior, labelKey }) => (
+          <DropdownMenuItem
+            key={behavior}
+            testID={`send-behavior-${behavior}`}
+            onSelect={handleSelectBehaviorItem(behavior)}
+          >
+            {t(labelKey)}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
