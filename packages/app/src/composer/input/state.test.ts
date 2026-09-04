@@ -7,6 +7,7 @@ import {
   runAlternateSendAction,
   runDefaultSendAction,
   runMessageInputKeyboardAction,
+  runSendBehaviorAction,
   stopRealtimeVoice,
 } from "./state";
 
@@ -272,6 +273,48 @@ describe("composer send behavior", () => {
 
     expect(defaultAction.calls).toEqual(["queue"]);
     expect(alternateAction.calls).toEqual(["send"]);
+  });
+
+  it("sends with an explicit behavior chosen from the long-press menu", () => {
+    const interruptAction = actions();
+    runSendBehaviorAction(
+      {
+        defaultSendBehavior: "interrupt",
+        isAgentRunning: true,
+        onQueue: interruptAction.onQueue,
+        handleSendMessage: interruptAction.handleSendMessage,
+        handleQueueMessage: interruptAction.handleQueueMessage,
+      },
+      "interrupt",
+    );
+
+    const queueAction = actions();
+    runSendBehaviorAction(
+      {
+        defaultSendBehavior: "interrupt",
+        isAgentRunning: true,
+        onQueue: queueAction.onQueue,
+        handleSendMessage: queueAction.handleSendMessage,
+        handleQueueMessage: queueAction.handleQueueMessage,
+      },
+      "queue",
+    );
+
+    const steerWhileIdle = actions();
+    runSendBehaviorAction(
+      {
+        defaultSendBehavior: "queue",
+        isAgentRunning: false,
+        onQueue: steerWhileIdle.onQueue,
+        handleSendMessage: steerWhileIdle.handleSendMessage,
+        handleQueueMessage: steerWhileIdle.handleQueueMessage,
+      },
+      "steer",
+    );
+
+    expect(interruptAction.calls).toEqual(["send"]);
+    expect(queueAction.calls).toEqual(["queue"]);
+    expect(steerWhileIdle.calls).toEqual(["send"]);
   });
 });
 

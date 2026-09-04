@@ -125,6 +125,16 @@ export function runDefaultSendAction(ctx: SendActionContext): void {
   ctx.handleSendMessage();
 }
 
+/** Sends with an explicitly chosen behavior (from the long-press menu), independent of the
+ * configured default. "queue" while running queues; everything else sends immediately. */
+export function runSendBehaviorAction(ctx: SendActionContext, behavior: SendBehavior): void {
+  if (behavior === "queue" && ctx.isAgentRunning && ctx.onQueue) {
+    ctx.handleQueueMessage();
+    return;
+  }
+  ctx.handleSendMessage();
+}
+
 export function runAlternateSendAction(ctx: SendActionContext): void {
   if (ctx.defaultSendBehavior === "queue") {
     ctx.handleSendMessage();
