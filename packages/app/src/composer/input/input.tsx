@@ -811,7 +811,7 @@ function SendButtonTooltip({
   if (!shouldShow) return null;
   return (
     <DropdownMenu open={behaviorMenuOpen} onOpenChange={setBehaviorMenuOpen}>
-      <Tooltip delayDuration={0} enabledOnDesktop enabledOnMobile={false}>
+      <Tooltip delayDuration={0} enabledOnDesktop={!behaviorMenuOpen} enabledOnMobile={false}>
         <TooltipTrigger
           onPress={handlePress}
           onLongPress={handleLongPress}
