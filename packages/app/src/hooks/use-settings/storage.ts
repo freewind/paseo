@@ -91,6 +91,8 @@ export interface AppSettings {
   vimKeybindings: boolean;
   /** Whether the composer shows the voice/dictation button. */
   showVoiceButton: boolean;
+  /** Whether to play a sound when an agent finishes a turn. */
+  playTurnCompleteSound: boolean;
   /** Desktop-only preferences for implicit opens into the ordinary side pane. */
   openInSidePane: OpenInSidePanePreferences;
   pullRequestOpenLocation: PullRequestOpenLocation;
@@ -145,6 +147,7 @@ export const DEFAULT_CLIENT_SETTINGS: AppSettings = {
   chatOutlineEnabled: true,
   vimKeybindings: false,
   showVoiceButton: true,
+  playTurnCompleteSound: false,
   openInSidePane: DEFAULT_OPEN_IN_SIDE_PANE_PREFERENCES,
   pullRequestOpenLocation: "explorer",
 };
@@ -241,6 +244,7 @@ const StoredAppSettingsSchema = z
     chatOutlineEnabled: z.boolean().catch(true),
     vimKeybindings: z.boolean().catch(false),
     showVoiceButton: z.boolean().catch(true),
+    playTurnCompleteSound: z.boolean().catch(false),
     openInSidePane: z
       .object({
         explorerFiles: z.boolean().catch(false),
