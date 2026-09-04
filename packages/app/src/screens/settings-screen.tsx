@@ -284,6 +284,7 @@ interface GeneralSectionProps {
   handleTerminalScrollbackLinesChange: (lines: number) => void;
   handleShowVoiceButtonChange: (showVoiceButton: boolean) => void;
   handlePlayTurnCompleteSoundChange: (playTurnCompleteSound: boolean) => void;
+  handleTtsEnabledChange: (ttsEnabled: boolean) => void;
 }
 
 interface ServiceUrlBehaviorMenuItemProps {
@@ -360,6 +361,7 @@ function GeneralSection({
   handleTerminalScrollbackLinesChange,
   handleShowVoiceButtonChange,
   handlePlayTurnCompleteSoundChange,
+  handleTtsEnabledChange,
 }: GeneralSectionProps) {
   const { t, i18n } = useTranslation();
   const activeLocale = getActiveLocale(i18n.language);
@@ -488,6 +490,20 @@ function GeneralSection({
             onValueChange={handlePlayTurnCompleteSoundChange}
             accessibilityLabel={t("settings.general.playTurnCompleteSound.label")}
             testID="settings-play-turn-complete-sound-switch"
+          />
+        </View>
+        <View style={[settingsStyles.row, settingsStyles.rowBorder]}>
+          <View style={settingsStyles.rowContent}>
+            <Text style={settingsStyles.rowTitle}>{t("settings.general.ttsEnabled.label")}</Text>
+            <Text style={settingsStyles.rowHint}>
+              {t("settings.general.ttsEnabled.description")}
+            </Text>
+          </View>
+          <Switch
+            value={settings.ttsEnabled}
+            onValueChange={handleTtsEnabledChange}
+            accessibilityLabel={t("settings.general.ttsEnabled.label")}
+            testID="settings-tts-enabled-switch"
           />
         </View>
         {isDesktopApp ? (
@@ -1313,6 +1329,13 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
     [updateSettings],
   );
 
+  const handleTtsEnabledChange = useCallback(
+    (ttsEnabled: boolean) => {
+      void updateSettings({ ttsEnabled });
+    },
+    [updateSettings],
+  );
+
   const handlePlaybackTest = useCallback(async () => {
     if (!voiceAudioEngine || isPlaybackTestRunning) {
       return;
@@ -1528,6 +1551,7 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
                   handleTerminalScrollbackLinesChange={handleTerminalScrollbackLinesChange}
                   handleShowVoiceButtonChange={handleShowVoiceButtonChange}
                   handlePlayTurnCompleteSoundChange={handlePlayTurnCompleteSoundChange}
+                  handleTtsEnabledChange={handleTtsEnabledChange}
                 />
                 {isDesktopApp ? <BrowserDataSection /> : null}
               </>

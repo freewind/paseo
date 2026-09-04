@@ -1995,6 +1995,10 @@ export const ko: TranslationResources = {
         label: "음성 버튼 표시",
         description: "입력기에 음성 버튼을 표시합니다",
       },
+      ttsEnabled: {
+        label: "답변을 소리 내어 읽기",
+        description: "에이전트 답변이 끝나면 소리 내어 읽습니다",
+      },
       playTurnCompleteSound: {
         label: "완료 시 소리 재생",
         description: "에이전트가 턴을 완료할 때 소리를 재생합니다",

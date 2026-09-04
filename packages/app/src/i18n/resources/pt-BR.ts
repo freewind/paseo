@@ -2018,6 +2018,10 @@ export const ptBR: TranslationResources = {
         label: "Mostrar botão de voz",
         description: "Mostrar o botão de voz na entrada do compositor",
       },
+      ttsEnabled: {
+        label: "Ler respostas em voz alta",
+        description: "Ler em voz alta as respostas do agente quando terminam",
+      },
       playTurnCompleteSound: {
         label: "Tocar som ao terminar",
         description: "Tocar um som quando o agente termina uma rodada",

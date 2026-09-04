@@ -1985,6 +1985,10 @@ export const ar: TranslationResources = {
         label: "إظهار زر الصوت",
         description: "إظهار زر الصوت في منطقة إدخال الرسائل",
       },
+      ttsEnabled: {
+        label: "تمكين القراءة الصوتية",
+        description: "قراءة ردود الوكيل بصوت عالٍ عند اكتمال الرد",
+      },
       playTurnCompleteSound: {
         label: "تشغيل صوت عند اكتمال العمل",
         description: "تشغيل صوت عند اكتمال الوكيل لعمله",

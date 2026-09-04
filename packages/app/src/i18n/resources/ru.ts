@@ -2017,6 +2017,10 @@ export const ru: TranslationResources = {
         label: "Показывать кнопку голоса",
         description: "Показывать кнопку голоса в поле ввода композера",
       },
+      ttsEnabled: {
+        label: "Читать ответы вслух",
+        description: "Читать ответы агента вслух, когда они завершаются",
+      },
       playTurnCompleteSound: {
         label: "Воспроизводить звук при завершении",
         description: "Воспроизводить звук, когда агент завершает ход",

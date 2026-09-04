@@ -2085,6 +2085,10 @@ export const en = {
         label: "Show voice button",
         description: "Show the voice button in the composer input",
       },
+      ttsEnabled: {
+        label: "Read replies aloud",
+        description: "Read agent replies aloud when they finish",
+      },
       playTurnCompleteSound: {
         label: "Play sound when an agent finishes",
         description: "Play a sound when an agent finishes a turn",
