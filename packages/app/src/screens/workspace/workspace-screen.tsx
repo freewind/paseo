@@ -3930,7 +3930,7 @@ function WorkspaceScreenContent({
                   onCopyBranchName={handleCopyBranchName}
                   onOpenSetupTab={handleOpenSetupTab}
                   onRename={workspaceDescriptor ? handleOpenRename : undefined}
-                  onArchive={handleArchive}
+                  onArchive={workspaceDescriptor ? handleArchive : undefined}
                   isArchiving={isArchiving}
                   archiveLabel={archiveLabel}
                   onScriptTerminalStarted={handleScriptTerminalStarted}
