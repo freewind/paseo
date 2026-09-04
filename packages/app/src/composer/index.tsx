@@ -1964,7 +1964,7 @@ function ComposerContentImpl({
         isAgentRunning={isAgentRunning}
         hasSendableContent={hasSendableContent}
         isCompact={isCompactLayout}
-        showVoice={mode.showVoice}
+        showVoice={mode.showVoice && appSettings.showVoiceButton}
         buttonIconSize={buttonIconSize}
         handleToggleRealtimeVoice={handleToggleRealtimeVoice}
         isConnected={isConnected}
@@ -1975,6 +1975,7 @@ function ComposerContentImpl({
       />
     ),
     [
+      appSettings.showVoiceButton,
       buttonIconSize,
       handleToggleRealtimeVoice,
       hasAgent,
@@ -2366,6 +2367,7 @@ function ComposerContentImpl({
                   activeActionContent={activeActionContent}
                   voiceServerId={serverId}
                   voiceAgentId={agentId}
+                  showVoiceButton={appSettings.showVoiceButton}
                   isAgentRunning={isAgentRunning}
                   defaultSendBehavior={activeSendBehavior}
                   onQueue={handleQueue}
