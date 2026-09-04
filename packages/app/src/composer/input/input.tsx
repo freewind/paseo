@@ -780,8 +780,19 @@ function SendButtonTooltip({
 }) {
   const { t } = useTranslation();
   const [behaviorMenuOpen, setBehaviorMenuOpen] = useState(false);
-  const handleLongPress = useCallback(() => setBehaviorMenuOpen(true), []);
+  const didLongPressRef = useRef(false);
+  const handleLongPress = useCallback(() => {
+    if (isSendButtonDisabled) return;
+    didLongPressRef.current = true;
+    setBehaviorMenuOpen(true);
+  }, [isSendButtonDisabled]);
   const handlePress = useCallback(() => {
+    // A long press that just opened the menu also fires onPress afterward; suppress the
+    // send so the gesture only opens the menu.
+    if (didLongPressRef.current) {
+      didLongPressRef.current = false;
+      return;
+    }
     // When the behavior menu is open, tapping the button collapses it instead of sending.
     if (behaviorMenuOpen) {
       setBehaviorMenuOpen(false);
