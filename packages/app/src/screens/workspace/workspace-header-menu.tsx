@@ -7,6 +7,7 @@ import {
   Ellipsis,
   Globe,
   Import as ImportIcon,
+  Pencil,
   Settings,
   SquarePen,
 } from "lucide-react-native";
@@ -36,6 +37,7 @@ import type { Theme } from "@/styles/theme";
 
 const ThemedEllipsis = withUnistyles(Ellipsis);
 const ThemedCopy = withUnistyles(Copy);
+const ThemedPencil = withUnistyles(Pencil);
 const ThemedSquarePen = withUnistyles(SquarePen);
 const ThemedGlobe = withUnistyles(Globe);
 const ThemedImport = withUnistyles(ImportIcon);
@@ -48,6 +50,7 @@ const MENU_NEW_BROWSER_ICON = <ThemedGlobe size={16} uniProps={mutedColorMapping
 const MENU_NEW_TERMINAL_ICON = <TerminalProfileIcon iconKey={undefined} size={16} />;
 const MENU_IMPORT_ICON = <ThemedImport size={16} uniProps={mutedColorMapping} />;
 const MENU_COPY_ICON = <ThemedCopy size={16} uniProps={mutedColorMapping} />;
+const MENU_RENAME_ICON = <ThemedPencil size={16} uniProps={mutedColorMapping} />;
 const MENU_SETTINGS_ICON = <ThemedSettings size={16} uniProps={mutedColorMapping} />;
 function WorkspaceHeaderMenuTriggerIcon() {
   return (
@@ -78,6 +81,7 @@ export interface WorkspaceHeaderWorkspaceActions {
   onCopyWorkspacePath: () => void;
   onCopyBranchName: () => void;
   onOpenSetupTab: () => void;
+  onRename?: () => void;
 }
 
 function WorkspaceHeaderWorkspaceActionItems({
@@ -89,6 +93,7 @@ function WorkspaceHeaderWorkspaceActionItems({
   onCopyWorkspacePath,
   onCopyBranchName,
   onOpenSetupTab,
+  onRename,
 }: WorkspaceHeaderWorkspaceActions) {
   const { t } = useTranslation();
   return (
@@ -101,6 +106,15 @@ function WorkspaceHeaderWorkspaceActionItems({
       >
         {t("workspace.header.actions.copyPath")}
       </DropdownMenuItem>
+      {onRename ? (
+        <DropdownMenuItem
+          testID="workspace-header-rename"
+          leading={MENU_RENAME_ICON}
+          onSelect={onRename}
+        >
+          {t("sidebar.workspace.actions.rename")}
+        </DropdownMenuItem>
+      ) : null}
       {currentBranchName ? (
         <DropdownMenuItem
           testID="workspace-header-copy-branch-name"
