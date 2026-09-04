@@ -1909,6 +1909,7 @@ export const es: TranslationResources = {
   renameModal: {
     rename: "Rebautizar",
     saving: "Guardando...",
+    clear: "Borrar",
   },
   sidebarCallout: {
     dismiss: "Despedir",

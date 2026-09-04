@@ -1881,6 +1881,7 @@ export const ja: TranslationResources = {
   renameModal: {
     rename: "名前を変更",
     saving: "保存中...",
+    clear: "クリア",
   },
   sidebarCallout: {
     dismiss: "閉じる",

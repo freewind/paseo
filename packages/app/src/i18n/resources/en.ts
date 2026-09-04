@@ -1873,6 +1873,7 @@ export const en = {
   renameModal: {
     rename: "Rename",
     saving: "Saving...",
+    clear: "Clear",
   },
   sidebarCallout: {
     dismiss: "Dismiss",
