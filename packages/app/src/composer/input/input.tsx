@@ -6,6 +6,9 @@ import {
   NativeSyntheticEvent,
   TextInputKeyPressEventData,
   TextInputSelectionChangeEventData,
+  Platform,
+  StatusBar,
+  type GestureResponderEvent,
   type LayoutChangeEvent,
 } from "react-native";
 import {
@@ -46,6 +49,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useMenuContext } from "@/components/ui/menu";
 import { useShortcutKeys } from "@/hooks/use-shortcut-keys";
 import { useIosHardwareKeyboardSubmit } from "@/hooks/use-ios-hardware-keyboard-submit";
 import { formatShortcut, type ShortcutKey } from "@/utils/format-shortcut";
@@ -762,6 +766,55 @@ function MessageInputVoiceButton({
   return <VoiceButtonTooltip visible={showVoice && showVoiceButton !== false} {...props} />;
 }
 
+function coerceEventPoint(event: unknown): { pageX: number; pageY: number } | null {
+  if (typeof event !== "object" || event === null) return null;
+
+  const nativeEvent = Reflect.get(event, "nativeEvent");
+  const source = typeof nativeEvent === "object" && nativeEvent !== null ? nativeEvent : event;
+  const pageX = Reflect.get(source, "pageX");
+  const pageY = Reflect.get(source, "pageY");
+  if (typeof pageX === "number" && typeof pageY === "number") {
+    return { pageX, pageY };
+  }
+
+  const clientX = Reflect.get(source, "clientX");
+  const clientY = Reflect.get(source, "clientY");
+  if (typeof clientX === "number" && typeof clientY === "number") {
+    return { pageX: clientX, pageY: clientY };
+  }
+  return null;
+}
+
+/**
+ * The send button's menu trigger. The behavior menu is anchored to the long-press gesture
+ * point (like a context menu) rather than to the trigger box, so this sets `anchorRect` on
+ * open — the trigger itself stays a plain TooltipTrigger so a tap still sends.
+ */
+function SendButtonBehaviorTrigger({
+  onLongPress,
+  ...props
+}: ComponentProps<typeof TooltipTrigger> & {
+  onLongPress: (event: GestureResponderEvent) => void;
+}) {
+  const menu = useMenuContext("SendButtonBehaviorTrigger");
+  const handleLongPress = useCallback(
+    (event: GestureResponderEvent) => {
+      onLongPress(event);
+      const point = coerceEventPoint(event);
+      if (!point) return;
+      const statusBarHeight = Platform.OS === "android" ? (StatusBar.currentHeight ?? 0) : 0;
+      menu.setAnchorRect({
+        x: point.pageX,
+        y: point.pageY + statusBarHeight,
+        width: 0,
+        height: 0,
+      });
+    },
+    [menu, onLongPress],
+  );
+  return <TooltipTrigger onLongPress={handleLongPress} {...props} />;
+}
+
 function SendButtonTooltip({
   shouldShow,
   canPressLoadingButton,
@@ -798,6 +851,13 @@ function SendButtonTooltip({
   const { t } = useTranslation();
   const [behaviorMenuOpen, setBehaviorMenuOpen] = useState(false);
   const didLongPressRef = useRef(false);
+  const handleOpenChange = useCallback((open: boolean) => {
+    // A long press that opened the menu may not have been followed by an onPress on every
+    // platform (the gesture's release is what normally consumes `didLongPressRef`). Reset it
+    // whenever the menu closes so the next tap is never mistaken for the long press's tail.
+    if (!open) didLongPressRef.current = false;
+    setBehaviorMenuOpen(open);
+  }, []);
   const handleLongPress = useCallback(() => {
     if (isSendButtonDisabled) return;
     didLongPressRef.current = true;
@@ -838,9 +898,9 @@ function SendButtonTooltip({
   );
   if (!shouldShow) return null;
   return (
-    <DropdownMenu open={behaviorMenuOpen} onOpenChange={setBehaviorMenuOpen}>
+    <DropdownMenu open={behaviorMenuOpen} onOpenChange={handleOpenChange}>
       <Tooltip delayDuration={0} enabledOnDesktop={!behaviorMenuOpen} enabledOnMobile={false}>
-        <TooltipTrigger
+        <SendButtonBehaviorTrigger
           onPress={handlePress}
           onLongPress={handleLongPress}
           disabled={isSendButtonDisabled}
@@ -855,7 +915,7 @@ function SendButtonTooltip({
             submitLabel={submitLabel}
             buttonIconSize={buttonIconSize}
           />
-        </TooltipTrigger>
+        </SendButtonBehaviorTrigger>
         <TooltipContent side="top" align="center" offset={8}>
           <SendTooltipBody label={sendTooltipLabel} sendKeys={sendKeys} />
         </TooltipContent>
