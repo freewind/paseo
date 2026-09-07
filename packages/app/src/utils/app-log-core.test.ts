@@ -42,8 +42,8 @@ describe("safeStringify", () => {
 describe("shouldRotate", () => {
   it("rotates once the file outgrows the cap", () => {
     expect(shouldRotate(0)).toBe(false);
-    expect(shouldRotate(1024 * 1024)).toBe(false);
-    expect(shouldRotate(1024 * 1024 + 1)).toBe(true);
+    expect(shouldRotate(10 * 1024 * 1024)).toBe(false);
+    expect(shouldRotate(10 * 1024 * 1024 + 1)).toBe(true);
     expect(shouldRotate(null)).toBe(false);
   });
 });

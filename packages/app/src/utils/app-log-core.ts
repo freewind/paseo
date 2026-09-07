@@ -28,7 +28,7 @@ export function formatLogLine(input: LogLineInput): string {
   return `${input.timestamp} [${input.category}] ${input.event}${detailsText}`;
 }
 
-export const MAX_LOG_BYTES = 1024 * 1024;
+export const MAX_LOG_BYTES = 10 * 1024 * 1024;
 
 /** Whether the log file has outgrown the cap and should be trimmed. */
 export function shouldRotate(size: number | null, maxBytes: number = MAX_LOG_BYTES): boolean {

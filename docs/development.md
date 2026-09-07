@@ -322,6 +322,17 @@ The supervisor rotates `daemon.log`. Persisted `log.file.rotate` settings in
 `PASEO_LOG_ROTATE_SIZE` and `PASEO_LOG_ROTATE_COUNT` env vars override the
 defaults. The default rotation is `10m` x `3` files everywhere.
 
+### App logs
+
+The mobile app writes a file log to `<documentDirectory>/logs/paseo-app.log`
+(`/data/data/sh.paseo/files/logs/` on Android — fetch it with
+`adb pull /data/data/sh.paseo/files/logs/paseo-app.log`). The file is capped at
+10 MiB; once it outgrows the cap it is trimmed to roughly the newest 5 MiB.
+Lines also mirror to the console, so `adb logcat` shows them during
+development. Logging is intentionally sparse: only key events from recently
+shipped features, never user content. Implementation: `packages/app/src/utils/app-log.ts`
+with pure rotation rules in `app-log-core.ts`.
+
 ### Git process pressure
 
 If Git refreshes consume too much CPU, disk, or antivirus capacity, especially on Windows, reduce
