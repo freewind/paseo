@@ -2672,6 +2672,8 @@ export const ko: TranslationResources = {
       metadata: {
         title: "메타데이터 생성",
         info: "Paseo가 메타데이터를 생성하는 데 사용하는 AI 프롬프트에 주입되는 프로젝트별 지침 - 브랜치 이름, 커밋 스타일, PR 형식 같은 팀 규칙을 적용하는 데 사용하세요",
+        titlePrompt: "워크스페이스 제목",
+        titlePromptPlaceholder: "워크스페이스 제목의 명명 규칙을 설명하세요",
         branchName: "브랜치 이름",
         branchNamePlaceholder:
           "브랜치에 feat/ 또는 fix/를 접두사로, 개인 브랜치에는 mb/를 붙이세요",
