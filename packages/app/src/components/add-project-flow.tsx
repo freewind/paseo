@@ -629,6 +629,9 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
           select: () => {
             // Fill the input to keep matching deeper; creating is explicit via the Create button.
             setState((current) => setAddProjectPageInput(current, option.path));
+            // EditingTextInput's initialValue only applies at mount, so mirror the fill into
+            // the visible textbox (the query itself already updated through the page state).
+            inputRef.current?.replaceText(option.path);
           },
         };
       });
