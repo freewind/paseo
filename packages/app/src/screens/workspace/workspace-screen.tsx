@@ -167,10 +167,7 @@ import {
 } from "@/screens/workspace/workspace-pane-content";
 import { useMountedTabSet } from "@/screens/workspace/use-mounted-tab-set";
 import { WorkspaceFocusProvider } from "@/workspace/focus";
-import {
-  WorkspaceRenameModal,
-  type RenamableWorkspace,
-} from "@/components/workspace-rename-modal";
+import { WorkspaceRenameModal, type RenamableWorkspace } from "@/components/workspace-rename-modal";
 import { DiffDocumentWorkspaceCacheProvider } from "@/git/diff-document/workspace-cache";
 import { useWorkspaceHeaderArchive } from "@/workspace/use-workspace-header-archive";
 import type { NewTabSelection } from "@/workspace-tabs/new-tab";
@@ -761,6 +758,15 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
               />
             </View>
             <ThemedChevronDown size={14} uniProps={mutedColorMapping} />
+            {tabs.length >= 2 ? (
+              <Text
+                style={styles.switcherTriggerCount}
+                numberOfLines={1}
+                testID="workspace-tab-switcher-count"
+              >
+                {tabs.length}
+              </Text>
+            ) : null}
           </>
         )}
       </Pressable>
@@ -4325,6 +4331,11 @@ const styles = StyleSheet.create((theme) => ({
   },
   switcherTriggerPressed: {
     backgroundColor: theme.colors.surface1,
+  },
+  switcherTriggerCount: {
+    color: theme.colors.foregroundMuted,
+    fontSize: theme.fontSize.sm,
+    flexShrink: 0,
   },
   switcherTriggerLeft: {
     flexDirection: "row",
