@@ -1090,6 +1090,11 @@ export const fr: TranslationResources = {
         title: "Titre",
         branch: "Nom de branche",
       },
+      titleMultiline: {
+        label: "Lignes du titre",
+        single: "Une ligne",
+        multi: "Plusieurs lignes",
+      },
       show: {
         label: "Afficher",
         branch: "Branche",

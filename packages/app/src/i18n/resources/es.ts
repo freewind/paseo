@@ -1091,6 +1091,11 @@ export const es: TranslationResources = {
         title: "Título",
         branch: "Nombre de rama",
       },
+      titleMultiline: {
+        label: "Líneas del título",
+        single: "Una línea",
+        multi: "Varias líneas",
+      },
       show: {
         label: "Mostrar",
         branch: "Rama",

@@ -1057,6 +1057,11 @@ export const ar: TranslationResources = {
         title: "العنوان",
         branch: "اسم الفرع",
       },
+      titleMultiline: {
+        label: "أسطر العنوان",
+        single: "سطر واحد",
+        multi: "أسطر متعددة",
+      },
       show: {
         label: "إظهار",
         branch: "الفرع",

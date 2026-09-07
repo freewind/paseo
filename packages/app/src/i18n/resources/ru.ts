@@ -1072,6 +1072,11 @@ export const ru: TranslationResources = {
         title: "Заголовок",
         branch: "Имя ветки",
       },
+      titleMultiline: {
+        label: "Строки заголовка",
+        single: "Одна строка",
+        multi: "Несколько строк",
+      },
       show: {
         label: "Показывать",
         branch: "Ветка",

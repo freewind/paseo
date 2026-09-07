@@ -1049,6 +1049,11 @@ export const zhCN: TranslationResources = {
         title: "标题",
         branch: "分支名称",
       },
+      titleMultiline: {
+        label: "标题行数",
+        single: "单行",
+        multi: "多行",
+      },
       show: {
         label: "显示",
         branch: "分支",

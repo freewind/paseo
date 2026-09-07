@@ -1064,6 +1064,11 @@ export const ko: TranslationResources = {
         title: "제목",
         branch: "브랜치 이름",
       },
+      titleMultiline: {
+        label: "제목 줄 수",
+        single: "한 줄",
+        multi: "여러 줄",
+      },
       show: {
         label: "표시 항목",
         branch: "브랜치",

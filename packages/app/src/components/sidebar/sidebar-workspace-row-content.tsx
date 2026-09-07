@@ -120,7 +120,7 @@ export const SidebarWorkspaceRowContent = memo(function SidebarWorkspaceRowConte
   children?: ReactNode;
 }) {
   const {
-    settings: { workspaceTitleSource },
+    settings: { workspaceTitleSource, workspaceTitleMultiline },
   } = useAppSettings();
   const workspaceLabel = resolveSidebarWorkspacePrimaryLabel({ workspace, workspaceTitleSource });
   // The workspace carries label names; their colors live in its host's catalog, so the row is
@@ -159,7 +159,10 @@ export const SidebarWorkspaceRowContent = memo(function SidebarWorkspaceRowConte
         <View style={styles.workspaceContentColumn}>
           <View style={styles.workspaceTitleRow}>
             <View style={sidebarWorkspaceRowStyles.titleWithCount}>
-              <Text style={workspaceBranchTextStyle} numberOfLines={1}>
+              <Text
+                style={workspaceBranchTextStyle}
+                numberOfLines={workspaceTitleMultiline ? undefined : 1}
+              >
                 {workspaceLabel}
               </Text>
               {workspace.activeAgentCount >= 2 ? (
