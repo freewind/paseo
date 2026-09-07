@@ -1,6 +1,7 @@
 import type { AgentTimelineItem } from "@getpaseo/protocol/agent-types";
 import type { AgentStreamEventPayload } from "@getpaseo/protocol/messages";
 import { selectAgentTimelineState, useSessionStore } from "@/stores/session-store";
+import { appLog } from "@/utils/app-log";
 import type { AssistantMessageItem, StreamItem, TodoEntry } from "@/types/stream";
 import type { TurnLivenessTransition } from "@/timeline/turn-liveness";
 import {
@@ -1757,6 +1758,10 @@ export function processAgentStreamEvents(
         };
         head = nextHead;
         changedHead = true;
+        appLog("turn-stats", "usage-attached", {
+          assistantId: current.id,
+          outputTokens: turnUsage.outputTokens,
+        });
       }
     }
   }

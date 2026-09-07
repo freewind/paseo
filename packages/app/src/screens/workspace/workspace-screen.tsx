@@ -193,6 +193,7 @@ import { supportsDesktopPaneSplits, useIsCompactFormFactor } from "@/constants/l
 import { getIsElectron, isNative, isWeb } from "@/constants/platform";
 import type { SurfaceBackdrop } from "@/styles/surface-backdrop";
 import { buildHostRootRoute, buildSettingsHostRoute } from "@/utils/host-routes";
+import { appLog } from "@/utils/app-log";
 import { useWorkspaceTerminals } from "@/screens/workspace/terminals/use-workspace-terminals";
 import type { TerminalProfile } from "@getpaseo/protocol/messages";
 import {
@@ -662,6 +663,14 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const anchorRef = useRef<View>(null);
+  const previousTabCountRef = useRef(tabs.length);
+  useEffect(() => {
+    if (tabs.length === previousTabCountRef.current) return;
+    previousTabCountRef.current = tabs.length;
+    if (tabs.length >= 2) {
+      appLog("workspace.tabs", "count", { count: tabs.length });
+    }
+  }, [tabs.length]);
   const tabIndexByKey = useMemo(() => {
     const map = new Map<string, number>();
     tabs.forEach((tab, index) => {

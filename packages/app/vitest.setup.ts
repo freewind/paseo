@@ -59,6 +59,30 @@ vi.mock("@xterm/addon-ligatures", () => ({
   },
 }));
 
+// app-log.ts writes logs through expo-file-system's native File/Directory classes,
+// which cannot load under node/vitest. The mock keeps the logger's call sites safe in
+// tests — writes no-op through the empty fake instances.
+vi.mock("expo-file-system", () => {
+  class FakeDirectory {
+    exists = false;
+    create(): void {}
+  }
+  class FakeFile {
+    exists = false;
+    size = 0;
+    create(): void {}
+    textSync(): string {
+      return "";
+    }
+    write(): void {}
+  }
+  return {
+    Paths: { document: new FakeDirectory() },
+    Directory: FakeDirectory,
+    File: FakeFile,
+  };
+});
+
 // react-native-svg and expo-linking test doubles live in test-stubs/ and reach
 // every vitest project through the resolve.alias in vitest.config.ts, same as
 // react-native-unistyles and lucide-react-native.

@@ -71,6 +71,7 @@ import {
   type ProjectPickerOption,
 } from "@/components/project-picker-options";
 import { Button } from "@/components/ui/button";
+import { appLog } from "@/utils/app-log";
 import { Shortcut } from "@/components/ui/shortcut";
 import { useKeyboardShortcutsAvailable } from "@/keyboard/availability";
 import { getIsElectronRuntime } from "@/constants/layout";
@@ -632,6 +633,7 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
             // EditingTextInput's initialValue only applies at mount, so mirror the fill into
             // the visible textbox (the query itself already updated through the page state).
             inputRef.current?.replaceText(option.path);
+            appLog("add-project", "fill", { path: option.path });
           },
         };
       });
@@ -763,6 +765,7 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
   const submitDirectorySearchCreate = useCallback(() => {
     if (page.kind !== "directory-search") return;
     if (!isOpenableProjectPath(page.query.trim())) return;
+    appLog("add-project", "create", { query: page.query });
     void openAddedProject(page.query, "directory-search");
   }, [openAddedProject, page]);
 

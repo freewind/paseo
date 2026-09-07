@@ -84,6 +84,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ProjectLeadingVisual } from "@/components/sidebar/project-leading-visual";
 import { Switch } from "@/components/ui/switch";
+import { appLog } from "@/utils/app-log";
 import { useToast } from "@/contexts/toast-context";
 import { getForgePresentation, normalizeForge } from "@/git/forge";
 import { toWorktreeArchiveRisk } from "@/git/worktree-archive-warning";
@@ -2104,10 +2105,10 @@ function HiddenProjectRowSwitch({
   onRestore: (viewKey: string) => void;
 }) {
   const { t } = useTranslation();
-  const handleValueChange = useCallback(
-    () => onRestore(project.viewKey),
-    [onRestore, project.viewKey],
-  );
+  const handleValueChange = useCallback(() => {
+    appLog("sidebar.hidden", "restore", { projectKey: project.viewKey });
+    onRestore(project.viewKey);
+  }, [onRestore, project.viewKey]);
   return (
     <Switch
       value={false}
@@ -2451,10 +2452,12 @@ function ProjectModeList({
     ],
   );
 
-  const handleToggleHiddenProjects = useCallback(
-    () => setHiddenProjectsExpanded((open) => !open),
-    [],
-  );
+  const handleToggleHiddenProjects = useCallback(() => {
+    setHiddenProjectsExpanded((open) => {
+      appLog("sidebar.hidden", "bar-toggle", { expanded: !open, count: hiddenProjects.length });
+      return !open;
+    });
+  }, [hiddenProjects.length]);
   const handleRestoreHiddenProject = useCallback(
     (viewKey: string) => onToggleProjectHidden(viewKey),
     [onToggleProjectHidden],
