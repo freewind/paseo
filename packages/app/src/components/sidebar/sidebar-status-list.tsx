@@ -3,6 +3,8 @@ import {
   useCallback,
   useMemo,
   useState,
+  useRef,
+  type ComponentRef,
   type MutableRefObject,
   type ReactNode,
   type Ref,
@@ -79,6 +81,7 @@ import type { ToggleSidebarWorkspacePin } from "@/hooks/use-sidebar-workspace-pi
 import { DraggableList, type DraggableRenderItemInfo } from "@/components/draggable-list";
 import type { DraggableListDragHandleProps } from "@/components/draggable-list.types";
 import { useLongPressDragInteraction } from "@/components/sidebar/use-long-press-drag-interaction";
+import { useSidebarViewStore } from "@/stores/sidebar-view-store";
 
 // Themed icon wrappers
 const foregroundMutedColorMapping = (theme: Theme) => ({
@@ -145,6 +148,22 @@ export function SidebarStatusWorkspaceList({
   parentGestureRef,
   dragGestureHostActive,
 }: StatusWorkspaceListProps) {
+  const scrollRef = useRef<ComponentRef<typeof NestableScrollContainer>>(null);
+  const statusScrollOffset = useSidebarViewStore((state) => state.statusScrollOffset);
+  const setStatusScrollOffset = useSidebarViewStore((state) => state.setStatusScrollOffset);
+  const restoredScrollRef = useRef(false);
+  const initialStatusScrollOffsetRef = useRef(statusScrollOffset);
+  const restoreScroll = useCallback(() => {
+    if (restoredScrollRef.current) return;
+    restoredScrollRef.current = true;
+    scrollRef.current?.scrollTo({ y: initialStatusScrollOffsetRef.current, animated: false });
+  }, []);
+  const handleScroll = useCallback(
+    (event: { nativeEvent: { contentOffset: { y: number } } }) => {
+      setStatusScrollOffset(event.nativeEvent.contentOffset.y);
+    },
+    [setStatusScrollOffset],
+  );
   const collapsedWorkspaceGroupKeys = useSidebarCollapsedSectionsStore(
     (state) => state.collapsedWorkspaceGroupKeys,
   );
@@ -250,18 +269,26 @@ export function SidebarStatusWorkspaceList({
     <View style={styles.container}>
       {platformIsNative ? (
         <NestableScrollContainer
+          ref={scrollRef}
           style={styles.list}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          onLayout={restoreScroll}
+          onScroll={handleScroll}
+          scrollEventThrottle={100}
           testID="sidebar-status-list-scroll"
         >
           {content}
         </NestableScrollContainer>
       ) : (
         <ScrollView
+          ref={scrollRef}
           style={styles.list}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          onLayout={restoreScroll}
+          onScroll={handleScroll}
+          scrollEventThrottle={100}
           testID="sidebar-status-list-scroll"
         >
           {content}
