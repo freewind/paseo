@@ -9,6 +9,7 @@ import {
   buildSidebarWorkspacePlacementModel,
   buildSidebarProjectsFromStructure,
   computeSidebarOrderUpdates,
+  countSidebarWorkspaceAgents,
   createSidebarWorkspaceEntry,
   deriveProjectStatusBucket,
   deriveSidebarLoadingState,
@@ -322,6 +323,7 @@ describe("shared sidebar workspace model", () => {
         {
           serverId: "host-a",
           workspaceAgentActivity: new Map(),
+          agents: new Map(),
           workspaces: new Map([
             [
               "main",
@@ -338,6 +340,7 @@ describe("shared sidebar workspace model", () => {
         {
           serverId: "host-b",
           workspaceAgentActivity: new Map(),
+          agents: new Map(),
           workspaces: new Map([
             [
               "feature",
@@ -425,6 +428,7 @@ describe("shared sidebar workspace model", () => {
         {
           serverId: "srv",
           workspaceAgentActivity: new Map(),
+          agents: new Map(),
           workspaces: new Map([
             ["one", one],
             ["two", two],
@@ -438,6 +442,7 @@ describe("shared sidebar workspace model", () => {
         {
           serverId: "srv",
           workspaceAgentActivity: new Map(),
+          agents: new Map(),
           workspaces: new Map([
             ["one", one],
             ["two", { ...two, status: "running" }],
@@ -462,6 +467,7 @@ describe("shared sidebar workspace model", () => {
         {
           serverId: "srv",
           workspaceAgentActivity: new Map(),
+          agents: new Map(),
           workspaces: new Map([
             [
               "clone-a",
@@ -937,5 +943,68 @@ describe("deriveProjectStatusBucket", () => {
         },
       }),
     ).toBe("done");
+  });
+});
+
+describe("countSidebarWorkspaceAgents", () => {
+  it("counts non-archived root agents for the workspace regardless of status", () => {
+    const agents = new Map([
+      ["a1", agent({ id: "a1", workspaceId: "ws-1", status: "running" })],
+      ["a2", agent({ id: "a2", workspaceId: "ws-1", status: "idle" })],
+      ["a3", agent({ id: "a3", workspaceId: "ws-1", status: "error" })],
+    ]);
+    expect(countSidebarWorkspaceAgents(agents, "ws-1")).toBe(3);
+  });
+
+  it("excludes archived agents", () => {
+    const agents = new Map([
+      ["a1", agent({ id: "a1", workspaceId: "ws-1", status: "idle" })],
+      ["a2", agent({ id: "a2", workspaceId: "ws-1", status: "idle", archivedAt: new Date(5_000) })],
+    ]);
+    expect(countSidebarWorkspaceAgents(agents, "ws-1")).toBe(1);
+  });
+
+  it("excludes subagents", () => {
+    const agents = new Map([
+      ["a1", agent({ id: "a1", workspaceId: "ws-1", status: "idle" })],
+      ["a2", agent({ id: "a2", workspaceId: "ws-1", status: "running", parentAgentId: "a1" })],
+    ]);
+    expect(countSidebarWorkspaceAgents(agents, "ws-1")).toBe(1);
+  });
+
+  it("excludes agents belonging to other workspaces", () => {
+    const agents = new Map([
+      ["a1", agent({ id: "a1", workspaceId: "ws-1", status: "idle" })],
+      ["a2", agent({ id: "a2", workspaceId: "ws-2", status: "running" })],
+    ]);
+    expect(countSidebarWorkspaceAgents(agents, "ws-1")).toBe(1);
+  });
+
+  it("returns 0 when agents are undefined", () => {
+    expect(countSidebarWorkspaceAgents(undefined, "ws-1")).toBe(0);
+  });
+});
+
+describe("createSidebarWorkspaceEntry activeAgentCount", () => {
+  it("threads the non-archived root agent count onto the entry", () => {
+    const agents = new Map([
+      ["a1", agent({ id: "a1", workspaceId: "ws-1", status: "running" })],
+      ["a2", agent({ id: "a2", workspaceId: "ws-1", status: "idle", archivedAt: new Date(5_000) })],
+      ["a3", agent({ id: "a3", workspaceId: "ws-1", status: "idle", parentAgentId: "a1" })],
+    ]);
+    const entry = createSidebarWorkspaceEntry({
+      serverId: "srv",
+      workspace: workspaceWithForge(undefined, "https://github.com/acme/repo/pull/42"),
+      agents,
+    });
+    expect(entry.activeAgentCount).toBe(1);
+  });
+
+  it("defaults to 0 when agents are omitted", () => {
+    const entry = createSidebarWorkspaceEntry({
+      serverId: "srv",
+      workspace: workspaceWithForge(undefined, "https://github.com/acme/repo/pull/42"),
+    });
+    expect(entry.activeAgentCount).toBe(0);
   });
 });

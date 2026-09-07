@@ -158,9 +158,20 @@ export const SidebarWorkspaceRowContent = memo(function SidebarWorkspaceRowConte
         )}
         <View style={styles.workspaceContentColumn}>
           <View style={styles.workspaceTitleRow}>
-            <Text style={workspaceBranchTextStyle} numberOfLines={1}>
-              {workspaceLabel}
-            </Text>
+            <View style={sidebarWorkspaceRowStyles.titleWithCount}>
+              <Text style={workspaceBranchTextStyle} numberOfLines={1}>
+                {workspaceLabel}
+              </Text>
+              {workspace.activeAgentCount >= 2 ? (
+                <Text
+                  style={sidebarWorkspaceRowStyles.agentCountText}
+                  numberOfLines={1}
+                  testID={`sidebar-workspace-agent-count-${workspace.workspaceKey}`}
+                >
+                  ({workspace.activeAgentCount})
+                </Text>
+              ) : null}
+            </View>
             <View style={sidebarWorkspaceRowStyles.rowRight}>{children}</View>
           </View>
           <WorkspaceMetaRow
@@ -290,6 +301,18 @@ export const sidebarWorkspaceRowStyles = StyleSheet.create((theme) => ({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: theme.spacing[2],
+    flexShrink: 0,
+  },
+  titleWithCount: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: theme.spacing[0.5],
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  agentCountText: {
+    color: theme.colors.foregroundMuted,
+    fontSize: theme.fontSize.sm,
     flexShrink: 0,
   },
   shortcutBadge: {
