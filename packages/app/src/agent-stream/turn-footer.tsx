@@ -201,6 +201,8 @@ function CompletedTurnFooter({
         getContent={getContent}
         completedAt={timing?.completedAt}
         durationMs={timing?.durationMs}
+        ttftMs={timing?.ttftMs}
+        outputTokens={timing?.outputTokens}
         onFork={boundary && onForkAssistantTurn ? handleFork : undefined}
       />
     </View>

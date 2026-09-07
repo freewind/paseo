@@ -4487,3 +4487,55 @@ describe("createAgentStreamReducerQueue", () => {
     expect(scheduler.size).toBe(0);
   });
 });
+
+describe("processAgentStreamEvents turn stats", () => {
+  it("attaches turn_completed usage to the final assistant message", () => {
+    const result = processAgentStreamEvents({
+      events: [
+        makeStreamReducerEvent(makeAssistantTimelineEvent("Hello", "assistant-one"), 1),
+        makeStreamReducerEvent(makeAssistantTimelineEvent(" world", "assistant-one"), 2),
+        {
+          event: {
+            type: "turn_completed",
+            provider: "claude",
+            usage: { inputTokens: 10, outputTokens: 112 },
+            turnId: "turn-1",
+          } as AgentStreamEventPayload,
+          seq: 3,
+          epoch: "epoch-1",
+          timestamp: new Date(2000),
+        },
+      ],
+      currentTail: [],
+      currentHead: [],
+      currentCursor: undefined,
+      hasAuthoritativeBaseline: false,
+    });
+
+    const last = result.head[result.head.length - 1];
+    expect(last.kind).toBe("assistant_message");
+    if (last.kind === "assistant_message") {
+      expect(last.usage).toEqual({ outputTokens: 112 });
+    }
+  });
+
+  it("records firstDeltaAt on creation and keeps it across deltas", () => {
+    const result = processAgentStreamEvents({
+      events: [
+        makeStreamReducerEvent(makeAssistantTimelineEvent("Hel", "assistant-one"), 1),
+        makeStreamReducerEvent(makeAssistantTimelineEvent("lo", "assistant-one"), 2),
+      ],
+      currentTail: [],
+      currentHead: [],
+      currentCursor: undefined,
+      hasAuthoritativeBaseline: false,
+    });
+
+    const last = result.head[result.head.length - 1];
+    expect(last.kind).toBe("assistant_message");
+    if (last.kind === "assistant_message") {
+      expect(last.firstDeltaAt?.getTime()).toBe(1001);
+      expect(last.timestamp.getTime()).toBe(1002);
+    }
+  });
+});

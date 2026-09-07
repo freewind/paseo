@@ -831,6 +831,8 @@ function reconcileOverlappingProjectedAssistant(params: {
     ...(messageId !== undefined ? { messageId } : {}),
     text: projectedText,
     timestamp: unit.timestamp,
+    firstDeltaAt: match.current.firstDeltaAt ?? unit.timestamp,
+    ...(match.current.usage ? { usage: match.current.usage } : {}),
     timelineCursor: { epoch: params.epoch, seq: unit.seqEnd },
   };
   const belongsToBlockGroup = (item: StreamItem) =>
@@ -1729,6 +1731,33 @@ export function processAgentStreamEvents(
     if (result.cursorChanged) {
       cursor = result.cursor ?? undefined;
       cursorChanged = true;
+    }
+  }
+
+  // Attach turn-level usage (from turn_completed) to the turn's final assistant message so
+  // the render layer can derive output tokens / TPS without a separate channel.
+  let turnUsage: { outputTokens?: number } | undefined;
+  for (const reducerEvent of input.events) {
+    if (
+      reducerEvent.event.type === "turn_completed" &&
+      reducerEvent.event.usage?.outputTokens !== undefined
+    ) {
+      turnUsage = { outputTokens: reducerEvent.event.usage.outputTokens };
+    }
+  }
+  if (turnUsage) {
+    const lastAssistantIndex = head.findLastIndex((item) => item.kind === "assistant_message");
+    if (lastAssistantIndex >= 0) {
+      const current = head[lastAssistantIndex];
+      if (current.kind === "assistant_message") {
+        const nextHead = [...head];
+        nextHead[lastAssistantIndex] = {
+          ...current,
+          usage: { ...current.usage, ...turnUsage },
+        };
+        head = nextHead;
+        changedHead = true;
+      }
     }
   }
 

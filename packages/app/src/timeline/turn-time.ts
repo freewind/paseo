@@ -4,6 +4,10 @@ import { startsNewTurn } from "@/agent-stream/turn-membership";
 export interface TurnTiming {
   completedAt: Date;
   durationMs: number | null;
+  /** First-delta time minus the user message timestamp (request sent -> first character). */
+  ttftMs?: number;
+  /** Output token count reported by the provider for the completed turn. */
+  outputTokens?: number;
 }
 
 export interface StreamTurnTiming {
@@ -20,6 +24,8 @@ export function deriveStreamTurnTiming(params: {
   const byAssistantId = new Map<string, TurnTiming>();
   let currentUserAt: Date | null = null;
   let currentLastItemAt: Date | null = null;
+  let currentFirstDeltaAt: Date | null = null;
+  let currentOutputTokens: number | undefined;
   let currentAssistantIds: string[] = [];
   let previousItem: StreamItem | null = null;
 
@@ -32,6 +38,10 @@ export function deriveStreamTurnTiming(params: {
       durationMs: currentUserAt
         ? Math.max(0, currentLastItemAt.getTime() - currentUserAt.getTime())
         : null,
+      ...(currentFirstDeltaAt && currentUserAt
+        ? { ttftMs: Math.max(0, currentFirstDeltaAt.getTime() - currentUserAt.getTime()) }
+        : {}),
+      ...(currentOutputTokens !== undefined ? { outputTokens: currentOutputTokens } : {}),
     };
     for (const id of currentAssistantIds) {
       byAssistantId.set(id, timing);
@@ -43,11 +53,19 @@ export function deriveStreamTurnTiming(params: {
       flushCompletedTurn();
       currentUserAt = item.kind === "user_message" ? item.timestamp : null;
       currentLastItemAt = null;
+      currentFirstDeltaAt = null;
+      currentOutputTokens = undefined;
       currentAssistantIds = [];
     }
     currentLastItemAt = item.timestamp;
     if (item.kind === "assistant_message") {
       currentAssistantIds.push(item.id);
+      if (!currentFirstDeltaAt && item.firstDeltaAt) {
+        currentFirstDeltaAt = item.firstDeltaAt;
+      }
+      if (currentOutputTokens === undefined && item.usage?.outputTokens !== undefined) {
+        currentOutputTokens = item.usage.outputTokens;
+      }
     }
     previousItem = item;
   };

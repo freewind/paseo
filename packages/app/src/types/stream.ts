@@ -711,6 +711,10 @@ export interface AssistantMessageItem {
   timelineCursor?: TimelinePosition;
   text: string;
   timestamp: Date;
+  /** When the first delta of this message landed; later deltas never overwrite it. Feeds TTFT. */
+  firstDeltaAt?: Date;
+  /** Turn-level usage attached on turn completion (e.g. output token count). */
+  usage?: { outputTokens?: number };
   blockGroupId?: string;
   blockIndex?: number;
 }
@@ -969,6 +973,7 @@ function appendAssistantMessage(
     ...(timelineCursor ? { timelineCursor } : {}),
     text: chunk,
     timestamp,
+    firstDeltaAt: timestamp,
   };
   return [...state, item];
 }
