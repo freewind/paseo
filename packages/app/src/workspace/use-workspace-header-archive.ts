@@ -18,9 +18,13 @@ export interface WorkspaceHeaderArchive {
 
 /** The worktree-archive risk fields a header archive controller passes on, derived from the
  * workspace descriptor's git runtime. Kept pure so the derivation is unit-testable. */
-export function resolveArchiveWorkspaceRisk(
-  workspace: WorkspaceDescriptor | null | undefined,
-): { workspaceKind: WorkspaceDescriptor["workspaceKind"]; name: string; isDirty: boolean | null; aheadOfOrigin: number | null; diffStat: { additions: number; deletions: number } | null } {
+export function resolveArchiveWorkspaceRisk(workspace: WorkspaceDescriptor | null | undefined): {
+  workspaceKind: WorkspaceDescriptor["workspaceKind"];
+  name: string;
+  isDirty: boolean | null;
+  aheadOfOrigin: number | null;
+  diffStat: { additions: number; deletions: number } | null;
+} {
   return {
     workspaceKind: workspace?.workspaceKind ?? "directory",
     name: workspace?.name ?? "",
@@ -35,7 +39,9 @@ export function resolveArchiveWorkspaceRisk(
  * active workspace must send the user somewhere else once it is optimistically hidden. Exposed as
  * its own hook so the header wiring (and its redirect dependency) stays out of the screen body.
  */
-export function useWorkspaceHeaderArchive(input: WorkspaceHeaderArchiveInput): WorkspaceHeaderArchive {
+export function useWorkspaceHeaderArchive(
+  input: WorkspaceHeaderArchiveInput,
+): WorkspaceHeaderArchive {
   const { serverId, workspaceId, workspace } = input;
   const activeWorkspaceSelection: ActiveWorkspaceSelection | null = useActiveWorkspaceSelection();
   const [isHidingWorkspace, setIsHidingWorkspace] = useState(false);
