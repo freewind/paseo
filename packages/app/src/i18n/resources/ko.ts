@@ -1137,6 +1137,7 @@ export const ko: TranslationResources = {
     },
     project: {
       actions: {
+        collapse: "Collapse",
         menu: "프로젝트 작업",
         openSettings: "프로젝트 설정 열기",
         openNewWindow: "새 창에서 열기",
@@ -1178,6 +1179,8 @@ export const ko: TranslationResources = {
         pending: "대기 중: {{count}}개",
       },
       actions: {
+        collapsedCount: "{{count}} collapsed",
+        collapsedRestore: "Restore {{name}} to the sidebar",
         menu: "워크스페이스 작업",
         newWorkspace: "새 워크스페이스",
         showMore: "더 보기",

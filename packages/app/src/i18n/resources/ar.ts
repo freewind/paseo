@@ -1130,6 +1130,7 @@ export const ar: TranslationResources = {
     },
     project: {
       actions: {
+        collapse: "Collapse",
         menu: "إجراءات المشروع",
         openSettings: "افتح إعدادات المشروع",
         openNewWindow: "Open in new window",
@@ -1171,6 +1172,8 @@ export const ar: TranslationResources = {
         pending: "قيد الانتظار: {{count}}",
       },
       actions: {
+        collapsedCount: "{{count}} collapsed",
+        collapsedRestore: "Restore {{name}} to the sidebar",
         menu: "إجراءات Workspace",
         newWorkspace: "مساحة عمل جديدة",
         showMore: "عرض المزيد",

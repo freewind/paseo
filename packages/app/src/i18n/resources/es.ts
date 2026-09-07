@@ -1164,6 +1164,7 @@ export const es: TranslationResources = {
     },
     project: {
       actions: {
+        collapse: "Collapse",
         menu: "Acciones del proyecto",
         openSettings: "Abrir la configuración del proyecto",
         openNewWindow: "Open in new window",
@@ -1205,6 +1206,8 @@ export const es: TranslationResources = {
         pending: "Pendientes: {{count}}",
       },
       actions: {
+        collapsedCount: "{{count}} collapsed",
+        collapsedRestore: "Restore {{name}} to the sidebar",
         menu: "AccionesWorkspace",
         newWorkspace: "Nuevo espacio de trabajo",
         showMore: "Mostrar más",

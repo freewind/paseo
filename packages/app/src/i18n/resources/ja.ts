@@ -1142,6 +1142,7 @@ export const ja: TranslationResources = {
     },
     project: {
       actions: {
+        collapse: "Collapse",
         menu: "プロジェクトアクション",
         openSettings: "プロジェクト設定を開く",
         openNewWindow: "新しいウィンドウで開く",
@@ -1183,6 +1184,8 @@ export const ja: TranslationResources = {
         pending: "保留中: {{count}}",
       },
       actions: {
+        collapsedCount: "{{count}} collapsed",
+        collapsedRestore: "Restore {{name}} to the sidebar",
         menu: "ワークスペースアクション",
         newWorkspace: "新しいワークスペース",
         showMore: "さらに表示",
