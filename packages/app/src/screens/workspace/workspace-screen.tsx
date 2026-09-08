@@ -103,6 +103,8 @@ import {
   useWorkspaceSetupStore,
 } from "@/stores/workspace-setup-store";
 import { useWorkspace } from "@/stores/session-store-hooks";
+import { useSidebarWorkspacePinController } from "@/hooks/use-sidebar-workspace-pin";
+import { useHostFeature } from "@/runtime/host-features";
 import { useWorkspaceTerminalSessionRetention } from "@/terminal/hooks/use-workspace-terminal-session-retention";
 import type { CheckoutStatusPayload } from "@/git/use-status-query";
 import { confirmDialog } from "@/utils/confirm-dialog";
@@ -220,6 +222,38 @@ function getWorkspaceScripts(
   workspaceDescriptor: WorkspaceDescriptor | null | undefined,
 ): WorkspaceDescriptor["scripts"] {
   return workspaceDescriptor?.scripts ?? EMPTY_WORKSPACE_SCRIPTS;
+}
+
+function useWorkspaceHeaderPin(
+  serverId: string,
+  workspace: WorkspaceDescriptor | null,
+): {
+  canPin: boolean;
+  isPinned: boolean;
+  handleTogglePin: (() => void) | undefined;
+} {
+  const canPin = useHostFeature(serverId, "workspacePinning");
+  const togglePin = useSidebarWorkspacePinController();
+  const isPinned = workspace?.pinnedAt != null;
+  const handleTogglePin =
+    !workspace || !canPin
+      ? undefined
+      : () => {
+          const workspaceKey = buildWorkspaceTabPersistenceKey({
+            serverId,
+            workspaceId: workspace.id,
+          });
+          if (!workspaceKey) {
+            return;
+          }
+          togglePin({
+            serverId,
+            workspaceId: workspace.id,
+            workspaceKey,
+            pinnedAt: workspace.pinnedAt ?? null,
+          });
+        };
+  return { canPin, isPinned, handleTogglePin };
 }
 
 interface WorkspaceFileLocationFields {
@@ -983,6 +1017,8 @@ interface WorkspaceHeaderTitleBarProps {
   onCopyBranchName: () => void;
   onOpenSetupTab: () => void;
   onRename?: () => void;
+  onTogglePin?: () => void;
+  isPinned?: boolean;
   onArchive?: () => void;
   isArchiving?: boolean;
   archiveLabel?: string;
@@ -1016,6 +1052,8 @@ function WorkspaceHeaderTitleBar({
   onCopyBranchName,
   onOpenSetupTab,
   onRename,
+  onTogglePin,
+  isPinned,
   onArchive,
   isArchiving,
   archiveLabel,
@@ -1058,6 +1096,8 @@ function WorkspaceHeaderTitleBar({
             onCopyBranchName={onCopyBranchName}
             onOpenSetupTab={onOpenSetupTab}
             onRename={onRename}
+            onTogglePin={onTogglePin}
+            isPinned={isPinned}
             onArchive={onArchive}
             isArchiving={isArchiving}
             archiveLabel={archiveLabel}
@@ -1073,6 +1113,8 @@ function WorkspaceHeaderTitleBar({
             onCopyBranchName={onCopyBranchName}
             onOpenSetupTab={onOpenSetupTab}
             onRename={onRename}
+            onTogglePin={onTogglePin}
+            isPinned={isPinned}
             onArchive={onArchive}
             isArchiving={isArchiving}
             archiveLabel={archiveLabel}
@@ -1600,6 +1642,10 @@ function WorkspaceScreenContent({
     workspace: workspaceDescriptor,
   });
   const archiveLabel = t("sidebar.workspace.actions.archiving");
+  const { isPinned: isWorkspacePinned, handleTogglePin } = useWorkspaceHeaderPin(
+    normalizedServerId,
+    workspaceDescriptor,
+  );
   useEffect(() => {
     if (!normalizedServerId || !normalizedWorkspaceId || workspaceDescriptor) return;
     void getHostRuntimeStore()
@@ -3945,6 +3991,8 @@ function WorkspaceScreenContent({
                   onCopyBranchName={handleCopyBranchName}
                   onOpenSetupTab={handleOpenSetupTab}
                   onRename={workspaceDescriptor ? handleOpenRename : undefined}
+                  onTogglePin={handleTogglePin}
+                  isPinned={isWorkspacePinned}
                   onArchive={workspaceDescriptor ? handleArchive : undefined}
                   isArchiving={isArchiving}
                   archiveLabel={archiveLabel}
@@ -3970,6 +4018,8 @@ function WorkspaceScreenContent({
       createTerminalDisabled,
       currentBranchName,
       handleArchive,
+      handleTogglePin,
+      isWorkspacePinned,
       handleCopyBranchName,
       handleCopyWorkspacePath,
       handleCreateBrowserTab,
