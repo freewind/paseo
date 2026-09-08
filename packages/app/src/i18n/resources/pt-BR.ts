@@ -1082,11 +1082,7 @@ export const ptBR: TranslationResources = {
         title: "Título",
         branch: "Nome da branch",
       },
-      titleMultiline: {
-        label: "Linhas do título",
-        single: "Uma linha",
-        multi: "Várias linhas",
-      },
+
       show: {
         label: "Mostrar",
         branch: "Branch",
@@ -2173,6 +2169,13 @@ export const ptBR: TranslationResources = {
       chatOutline: {
         title: "Estrutura do chat",
         description: "Mostrar uma estrutura para navegar entre prompts",
+      },
+      workspaceRows: {
+        title: "Linhas de workspace",
+        titleLines: {
+          label: "Linhas do título",
+          hint: "Permitir que títulos longos de workspace ocupem várias linhas",
+        },
       },
       sidebar: {
         title: "Barra lateral",

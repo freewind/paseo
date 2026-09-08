@@ -1090,11 +1090,7 @@ export const fr: TranslationResources = {
         title: "Titre",
         branch: "Nom de branche",
       },
-      titleMultiline: {
-        label: "Lignes du titre",
-        single: "Une ligne",
-        multi: "Plusieurs lignes",
-      },
+
       show: {
         label: "Afficher",
         branch: "Branche",
@@ -2193,6 +2189,13 @@ export const fr: TranslationResources = {
       chatOutline: {
         title: "Plan de la discussion",
         description: "Afficher un plan pour passer d’une requête à l’autre",
+      },
+      workspaceRows: {
+        title: "Lignes des espaces de travail",
+        titleLines: {
+          label: "Lignes du titre",
+          hint: "Permettre aux titres longs d'espaces de travail de passer sur plusieurs lignes",
+        },
       },
       sidebar: {
         title: "Barre latérale",

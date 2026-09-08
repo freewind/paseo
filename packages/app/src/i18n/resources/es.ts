@@ -1091,11 +1091,7 @@ export const es: TranslationResources = {
         title: "Título",
         branch: "Nombre de rama",
       },
-      titleMultiline: {
-        label: "Líneas del título",
-        single: "Una línea",
-        multi: "Varias líneas",
-      },
+
       show: {
         label: "Mostrar",
         branch: "Rama",
@@ -2189,6 +2185,13 @@ export const es: TranslationResources = {
       chatOutline: {
         title: "Esquema del chat",
         description: "Muestra un esquema para saltar entre instrucciones",
+      },
+      workspaceRows: {
+        title: "Filas de espacios de trabajo",
+        titleLines: {
+          label: "Líneas del título",
+          hint: "Permitir que los títulos largos de espacios de trabajo ocupen varias líneas",
+        },
       },
       sidebar: {
         title: "Barra lateral",

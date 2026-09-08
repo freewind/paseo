@@ -1064,11 +1064,7 @@ export const ko: TranslationResources = {
         title: "제목",
         branch: "브랜치 이름",
       },
-      titleMultiline: {
-        label: "제목 줄 수",
-        single: "한 줄",
-        multi: "여러 줄",
-      },
+
       show: {
         label: "표시 항목",
         branch: "브랜치",
@@ -2150,6 +2146,13 @@ export const ko: TranslationResources = {
       chatOutline: {
         title: "채팅 개요",
         description: "프롬프트 사이를 이동하기 위한 개요 표시",
+      },
+      workspaceRows: {
+        title: "워크스페이스 행",
+        titleLines: {
+          label: "제목 줄 수",
+          hint: "긴 워크스페이스 제목을 여러 줄로 줄바꿈",
+        },
       },
       sidebar: {
         title: "사이드바",

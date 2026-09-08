@@ -1068,11 +1068,7 @@ export const ja: TranslationResources = {
         title: "タイトル",
         branch: "ブランチ名",
       },
-      titleMultiline: {
-        label: "タイトルの行数",
-        single: "1行",
-        multi: "複数行",
-      },
+
       show: {
         label: "表示項目",
         branch: "ブランチ",
@@ -2156,6 +2152,13 @@ export const ja: TranslationResources = {
       chatOutline: {
         title: "チャットのアウトライン",
         description: "プロンプト間を移動するためのアウトラインを表示します",
+      },
+      workspaceRows: {
+        title: "ワークスペースの行",
+        titleLines: {
+          label: "タイトルの行数",
+          hint: "長いワークスペースのタイトルを複数行に折り返す",
+        },
       },
       sidebar: {
         title: "サイドバー",

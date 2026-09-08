@@ -1072,11 +1072,7 @@ export const ru: TranslationResources = {
         title: "Заголовок",
         branch: "Имя ветки",
       },
-      titleMultiline: {
-        label: "Строки заголовка",
-        single: "Одна строка",
-        multi: "Несколько строк",
-      },
+
       show: {
         label: "Показывать",
         branch: "Ветка",
@@ -2175,6 +2171,13 @@ export const ru: TranslationResources = {
       chatOutline: {
         title: "Оглавление чата",
         description: "Показывать оглавление для перехода между запросами",
+      },
+      workspaceRows: {
+        title: "Строки рабочих пространств",
+        titleLines: {
+          label: "Строки заголовка",
+          hint: "Разрешить длинным названиям рабочих пространств переноситься на несколько строк",
+        },
       },
       sidebar: {
         title: "Боковая панель",
