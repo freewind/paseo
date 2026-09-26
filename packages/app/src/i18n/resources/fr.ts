@@ -2101,6 +2101,10 @@ export const fr: TranslationResources = {
         success: "Données du navigateur effacées.",
         error: "Impossible d'effacer les données du navigateur.",
       },
+      playTurnCompleteSound: {
+        label: "Jouer un son à la fin",
+        description: "Jouer un son lorsqu'un agent termine un tour",
+      },
       defaultSend: {
         label: "Envoi par défaut",
         descriptions: {

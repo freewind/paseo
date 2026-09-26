@@ -2097,6 +2097,10 @@ export const es: TranslationResources = {
         success: "Datos del navegador borrados.",
         error: "No se pudieron borrar los datos del navegador.",
       },
+      playTurnCompleteSound: {
+        label: "Reproducir sonido al terminar",
+        description: "Reproducir un sonido cuando el agente termina un turno",
+      },
       defaultSend: {
         label: "Envío predeterminado",
         descriptions: {

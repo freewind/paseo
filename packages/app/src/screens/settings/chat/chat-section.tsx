@@ -41,6 +41,10 @@ export function ChatSection() {
     (chatOutlineEnabled: boolean) => void updateSettings({ chatOutlineEnabled }),
     [updateSettings],
   );
+  const changePlayTurnCompleteSound = useCallback(
+    (playTurnCompleteSound: boolean) => void updateSettings({ playTurnCompleteSound }),
+    [updateSettings],
+  );
 
   return (
     <View>
@@ -58,6 +62,12 @@ export function ChatSection() {
             value={settings.toolCallDetailLevel}
             options={toolCallDetailOptions}
             onValueChange={changeToolCallDetailLevel}
+          />
+          <SettingsSwitch
+            label={t("settings.general.playTurnCompleteSound.label")}
+            hint={t("settings.general.playTurnCompleteSound.description")}
+            value={settings.playTurnCompleteSound}
+            onValueChange={changePlayTurnCompleteSound}
           />
           {isNative ? null : (
             <SettingsSwitch
