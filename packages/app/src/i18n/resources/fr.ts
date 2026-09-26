@@ -1134,6 +1134,7 @@ export const fr: TranslationResources = {
         title: "Titre",
         branch: "Nom de branche",
       },
+
       show: {
         label: "Afficher",
         branch: "Branche",
@@ -1205,6 +1206,7 @@ export const fr: TranslationResources = {
     },
     project: {
       actions: {
+        collapse: "Collapse",
         menu: "Actions du projet",
         openSettings: "Ouvrir les paramètres du projet",
         openNewWindow: "Open in new window",
@@ -1246,6 +1248,8 @@ export const fr: TranslationResources = {
         pending: "En attente : {{count}}",
       },
       actions: {
+        collapsedCount: "{{count}} collapsed",
+        collapsedRestore: "Restore {{name}} to the sidebar",
         menu: "ActionsWorkspace",
         newWorkspace: "Nouvel espace de travail",
         showMore: "Afficher plus",
@@ -1956,6 +1960,7 @@ export const fr: TranslationResources = {
   renameModal: {
     rename: "Rebaptiser",
     saving: "Sauvegarde...",
+    clear: "Effacer",
   },
   sidebarCallout: {
     dismiss: "Rejeter",
@@ -2073,6 +2078,10 @@ export const fr: TranslationResources = {
         confirmMessage: "Vous serez déconnecté des sites et les onglets ouverts seront rechargés.",
         success: "Données du navigateur effacées.",
         error: "Impossible d'effacer les données du navigateur.",
+      },
+      showVoiceButton: {
+        label: "Afficher le bouton vocal",
+        description: "Afficher le bouton vocal dans la saisie du compositeur",
       },
       defaultSend: {
         label: "Envoi par défaut",
@@ -2213,6 +2222,13 @@ export const fr: TranslationResources = {
       chatOutline: {
         title: "Plan de la discussion",
         description: "Afficher un plan pour passer d’une requête à l’autre",
+      },
+      workspaceRows: {
+        title: "Lignes des espaces de travail",
+        titleLines: {
+          label: "Lignes du titre",
+          hint: "Permettre aux titres longs d'espaces de travail de passer sur plusieurs lignes",
+        },
       },
       sidebar: {
         title: "Barre latérale",
@@ -2743,6 +2759,8 @@ export const fr: TranslationResources = {
       metadata: {
         title: "Génération de métadonnées",
         info: "Instructions spécifiques au projet injectées dans les invites de l'IA quePaseoutilise pour générer des métadonnées: utilisez-les pour appliquer les conventions de votre équipe telles que la dénomination des branches, le style de validation ou le formatPR.",
+        titlePrompt: "Titres des espaces de travail",
+        titlePromptPlaceholder: "Décrivez le style de nommage des titres d’espaces de travail",
         branchName: "Noms des succursales",
         branchNamePlaceholder:
           "Préfixez les branches avec feat/ ou fix/, mb/ pour les branches personnelles",

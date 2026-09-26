@@ -1112,6 +1112,7 @@ export const ja: TranslationResources = {
         title: "タイトル",
         branch: "ブランチ名",
       },
+
       show: {
         label: "表示項目",
         branch: "ブランチ",
@@ -1183,6 +1184,7 @@ export const ja: TranslationResources = {
     },
     project: {
       actions: {
+        collapse: "Collapse",
         menu: "プロジェクトアクション",
         openSettings: "プロジェクト設定を開く",
         openNewWindow: "新しいウィンドウで開く",
@@ -1224,6 +1226,8 @@ export const ja: TranslationResources = {
         pending: "保留中: {{count}}",
       },
       actions: {
+        collapsedCount: "{{count}} collapsed",
+        collapsedRestore: "Restore {{name}} to the sidebar",
         menu: "ワークスペースアクション",
         newWorkspace: "新しいワークスペース",
         showMore: "さらに表示",
@@ -1923,6 +1927,7 @@ export const ja: TranslationResources = {
   renameModal: {
     rename: "名前を変更",
     saving: "保存中...",
+    clear: "クリア",
   },
   sidebarCallout: {
     dismiss: "閉じる",
@@ -2039,6 +2044,10 @@ export const ja: TranslationResources = {
         confirmMessage: "サイトからログアウトし、開いているブラウザータブを再読み込みします。",
         success: "ブラウザーデータを消去しました。",
         error: "ブラウザーデータを消去できませんでした。",
+      },
+      showVoiceButton: {
+        label: "音声ボタンを表示",
+        description: "コンポーザー入力に音声ボタンを表示します",
       },
       defaultSend: {
         label: "デフォルトの送信",
@@ -2176,6 +2185,13 @@ export const ja: TranslationResources = {
       chatOutline: {
         title: "チャットのアウトライン",
         description: "プロンプト間を移動するためのアウトラインを表示します",
+      },
+      workspaceRows: {
+        title: "ワークスペースの行",
+        titleLines: {
+          label: "タイトルの行数",
+          hint: "長いワークスペースのタイトルを複数行に折り返す",
+        },
       },
       sidebar: {
         title: "サイドバー",
@@ -2704,6 +2720,8 @@ export const ja: TranslationResources = {
       metadata: {
         title: "メタデータ生成",
         info: "Paseoがメタデータ生成に使うAIプロンプトへ追加する、プロジェクト固有の指示です。ブランチ名、コミット形式、PR形式など、チームの規約を反映するために使います。",
+        titlePrompt: "ワークスペースのタイトル",
+        titlePromptPlaceholder: "ワークスペースのタイトルの命名規則を入力してください",
         branchName: "ブランチ名",
         branchNamePlaceholder: "ブランチ名は feat/ または fix/ で始め、個人ブランチは mb/ にする",
         commitMessage: "コミットメッセージ",

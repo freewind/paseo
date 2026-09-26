@@ -103,6 +103,8 @@ import {
   useWorkspaceSetupStore,
 } from "@/stores/workspace-setup-store";
 import { useWorkspace } from "@/stores/session-store-hooks";
+import { useSidebarWorkspacePinController } from "@/hooks/use-sidebar-workspace-pin";
+import { useHostFeature } from "@/runtime/host-features";
 import { useWorkspaceTerminalSessionRetention } from "@/terminal/hooks/use-workspace-terminal-session-retention";
 import type { CheckoutStatusPayload } from "@/git/use-status-query";
 import { confirmDialog } from "@/utils/confirm-dialog";
@@ -167,7 +169,9 @@ import {
 } from "@/screens/workspace/workspace-pane-content";
 import { useMountedTabSet } from "@/screens/workspace/use-mounted-tab-set";
 import { WorkspaceFocusProvider } from "@/workspace/focus";
+import { WorkspaceRenameModal, type RenamableWorkspace } from "@/components/workspace-rename-modal";
 import { DiffDocumentWorkspaceCacheProvider } from "@/git/diff-document/workspace-cache";
+import { useWorkspaceHeaderArchive } from "@/workspace/use-workspace-header-archive";
 import type { NewTabSelection } from "@/workspace-tabs/new-tab";
 import {
   NewTabLauncherProvider,
@@ -219,6 +223,38 @@ function getWorkspaceScripts(
   workspaceDescriptor: WorkspaceDescriptor | null | undefined,
 ): WorkspaceDescriptor["scripts"] {
   return workspaceDescriptor?.scripts ?? EMPTY_WORKSPACE_SCRIPTS;
+}
+
+function useWorkspaceHeaderPin(
+  serverId: string,
+  workspace: WorkspaceDescriptor | null,
+): {
+  canPin: boolean;
+  isPinned: boolean;
+  handleTogglePin: (() => void) | undefined;
+} {
+  const canPin = useHostFeature(serverId, "workspacePinning");
+  const togglePin = useSidebarWorkspacePinController();
+  const isPinned = workspace?.pinnedAt != null;
+  const handleTogglePin =
+    !workspace || !canPin
+      ? undefined
+      : () => {
+          const workspaceKey = buildWorkspaceTabPersistenceKey({
+            serverId,
+            workspaceId: workspace.id,
+          });
+          if (!workspaceKey) {
+            return;
+          }
+          togglePin({
+            serverId,
+            workspaceId: workspace.id,
+            workspaceKey,
+            pinnedAt: workspace.pinnedAt ?? null,
+          });
+        };
+  return { canPin, isPinned, handleTogglePin };
 }
 
 interface WorkspaceFileLocationFields {
@@ -764,6 +800,15 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
               />
             </View>
             <ThemedChevronDown size={14} uniProps={mutedColorMapping} />
+            {tabs.length >= 2 ? (
+              <Text
+                style={styles.switcherTriggerCount}
+                numberOfLines={1}
+                testID="workspace-tab-switcher-count"
+              >
+                {tabs.length}
+              </Text>
+            ) : null}
           </>
         )}
       </Pressable>
@@ -976,6 +1021,12 @@ interface WorkspaceHeaderTitleBarProps {
   onCopyWorkspacePath: () => void;
   onCopyBranchName: () => void;
   onOpenSetupTab: () => void;
+  onRename?: () => void;
+  onTogglePin?: () => void;
+  isPinned?: boolean;
+  onArchive?: () => void;
+  isArchiving?: boolean;
+  archiveLabel?: string;
   onScriptTerminalStarted: (terminalId: string) => void;
   onViewScriptTerminal: (terminalId: string) => void;
   onOpenUrlInBrowserTab: (url: string) => void;
@@ -1005,6 +1056,12 @@ function WorkspaceHeaderTitleBar({
   onCopyWorkspacePath,
   onCopyBranchName,
   onOpenSetupTab,
+  onRename,
+  onTogglePin,
+  isPinned,
+  onArchive,
+  isArchiving,
+  archiveLabel,
   onScriptTerminalStarted,
   onViewScriptTerminal,
   onOpenUrlInBrowserTab,
@@ -1043,6 +1100,12 @@ function WorkspaceHeaderTitleBar({
             onCopyWorkspacePath={onCopyWorkspacePath}
             onCopyBranchName={onCopyBranchName}
             onOpenSetupTab={onOpenSetupTab}
+            onRename={onRename}
+            onTogglePin={onTogglePin}
+            isPinned={isPinned}
+            onArchive={onArchive}
+            isArchiving={isArchiving}
+            archiveLabel={archiveLabel}
           />
         ) : (
           <WorkspaceHeaderMenuDesktop
@@ -1054,6 +1117,12 @@ function WorkspaceHeaderTitleBar({
             onCopyWorkspacePath={onCopyWorkspacePath}
             onCopyBranchName={onCopyBranchName}
             onOpenSetupTab={onOpenSetupTab}
+            onRename={onRename}
+            onTogglePin={onTogglePin}
+            isPinned={isPinned}
+            onArchive={onArchive}
+            isArchiving={isArchiving}
+            archiveLabel={archiveLabel}
           />
         )}
         {isMobile && workspaceScripts.length > 0 ? (
@@ -1564,6 +1633,28 @@ function WorkspaceScreenContent({
     [workspaceId],
   );
   const workspaceDescriptor = useWorkspace(normalizedServerId, normalizedWorkspaceId);
+  const [isRenameOpen, setIsRenameOpen] = useState(false);
+  const handleOpenRename = useCallback(() => setIsRenameOpen(true), []);
+  const handleCloseRename = useCallback(() => setIsRenameOpen(false), []);
+  const renameWorkspace = useMemo<RenamableWorkspace>(
+    () => ({
+      serverId: normalizedServerId,
+      workspaceId: normalizedWorkspaceId,
+      name: workspaceDescriptor?.name ?? "",
+      title: workspaceDescriptor?.title ?? null,
+    }),
+    [normalizedServerId, normalizedWorkspaceId, workspaceDescriptor],
+  );
+  const { archive: handleArchive, isArchiving } = useWorkspaceHeaderArchive({
+    serverId: normalizedServerId,
+    workspaceId: normalizedWorkspaceId,
+    workspace: workspaceDescriptor,
+  });
+  const archiveLabel = t("sidebar.workspace.actions.archiving");
+  const { isPinned: isWorkspacePinned, handleTogglePin } = useWorkspaceHeaderPin(
+    normalizedServerId,
+    workspaceDescriptor,
+  );
   useEffect(() => {
     if (!normalizedServerId || !normalizedWorkspaceId || workspaceDescriptor) return;
     void getHostRuntimeStore()
@@ -3890,59 +3981,81 @@ function WorkspaceScreenContent({
   const renderWorkspaceScreenHeader = useCallback(
     () =>
       showScreenHeader ? (
-        <ScreenHeader
-          left={
-            <>
-              <SidebarMenuToggle />
-              <WorkspaceHeaderTitleBar
-                isLoading={isWorkspaceHeaderLoading}
-                title={workspaceHeaderTitle}
-                subtitle={workspaceHeaderSubtitle}
-                isSubtitleDistinct={isWorkspaceHeaderSubtitleDistinct}
-                currentBranchName={currentBranchName}
-                normalizedServerId={normalizedServerId}
-                normalizedWorkspaceId={normalizedWorkspaceId}
-                workspaceScripts={workspaceScripts}
-                liveTerminalIds={liveTerminalIds}
-                showWorkspaceSetup={showWorkspaceSetup}
-                showCreateBrowserTab={showCreateBrowserTab}
-                isMobile={isMobile}
-                createTerminalDisabled={createTerminalDisabled}
-                importAgentDisabled={!canOpenImportSheet}
-                copyPathDisabled={!workspaceDirectory}
-                onCreateDraftTab={handleCreateDraftTab}
-                onCreateTerminal={handleCreateTerminal}
-                onCreateTerminalWithProfile={handleCreateTerminalWithProfile}
-                onCreateBrowser={handleCreateBrowserTab}
-                onOpenImportSheet={openImportSheet}
-                onCopyWorkspacePath={handleCopyWorkspacePath}
-                onCopyBranchName={handleCopyBranchName}
-                onOpenSetupTab={handleOpenSetupTab}
-                onScriptTerminalStarted={handleScriptTerminalStarted}
-                onViewScriptTerminal={handleViewScriptTerminal}
-                onOpenUrlInBrowserTab={handleOpenUrlInBrowserTab}
-              />
-            </>
-          }
-          right={headerRight}
-        />
+        <>
+          <ScreenHeader
+            left={
+              <>
+                <SidebarMenuToggle />
+                <WorkspaceHeaderTitleBar
+                  isLoading={isWorkspaceHeaderLoading}
+                  title={workspaceHeaderTitle}
+                  subtitle={workspaceHeaderSubtitle}
+                  isSubtitleDistinct={isWorkspaceHeaderSubtitleDistinct}
+                  currentBranchName={currentBranchName}
+                  normalizedServerId={normalizedServerId}
+                  normalizedWorkspaceId={normalizedWorkspaceId}
+                  workspaceScripts={workspaceScripts}
+                  liveTerminalIds={liveTerminalIds}
+                  showWorkspaceSetup={showWorkspaceSetup}
+                  showCreateBrowserTab={showCreateBrowserTab}
+                  isMobile={isMobile}
+                  createTerminalDisabled={createTerminalDisabled}
+                  importAgentDisabled={!canOpenImportSheet}
+                  copyPathDisabled={!workspaceDirectory}
+                  onCreateDraftTab={handleCreateDraftTab}
+                  onCreateTerminal={handleCreateTerminal}
+                  onCreateTerminalWithProfile={handleCreateTerminalWithProfile}
+                  onCreateBrowser={handleCreateBrowserTab}
+                  onOpenImportSheet={openImportSheet}
+                  onCopyWorkspacePath={handleCopyWorkspacePath}
+                  onCopyBranchName={handleCopyBranchName}
+                  onOpenSetupTab={handleOpenSetupTab}
+                  onRename={workspaceDescriptor ? handleOpenRename : undefined}
+                  onTogglePin={handleTogglePin}
+                  isPinned={isWorkspacePinned}
+                  onArchive={workspaceDescriptor ? handleArchive : undefined}
+                  isArchiving={isArchiving}
+                  archiveLabel={archiveLabel}
+                  onScriptTerminalStarted={handleScriptTerminalStarted}
+                  onViewScriptTerminal={handleViewScriptTerminal}
+                  onOpenUrlInBrowserTab={handleOpenUrlInBrowserTab}
+                />
+              </>
+            }
+            right={headerRight}
+          />
+          <WorkspaceRenameModal
+            visible={isRenameOpen}
+            workspace={renameWorkspace}
+            onClose={handleCloseRename}
+            testID="workspace-rename-modal-header"
+          />
+        </>
       ) : null,
     [
+      archiveLabel,
       canOpenImportSheet,
       createTerminalDisabled,
       currentBranchName,
+      handleArchive,
+      handleTogglePin,
+      isWorkspacePinned,
       handleCopyBranchName,
       handleCopyWorkspacePath,
       handleCreateBrowserTab,
       handleCreateDraftTab,
+      handleCloseRename,
       handleCreateTerminal,
       handleCreateTerminalWithProfile,
+      handleOpenRename,
       handleOpenSetupTab,
       handleOpenUrlInBrowserTab,
       handleScriptTerminalStarted,
       handleViewScriptTerminal,
       headerRight,
+      isArchiving,
       isMobile,
+      isRenameOpen,
       isWorkspaceHeaderLoading,
       liveTerminalIds,
       normalizedServerId,
@@ -3951,7 +4064,9 @@ function WorkspaceScreenContent({
       showCreateBrowserTab,
       showScreenHeader,
       showWorkspaceSetup,
+      workspaceDescriptor,
       workspaceDirectory,
+      renameWorkspace,
       workspaceHeaderSubtitle,
       workspaceHeaderTitle,
       isWorkspaceHeaderSubtitleDistinct,
@@ -4295,6 +4410,11 @@ const styles = StyleSheet.create((theme) => ({
   },
   switcherTriggerPressed: {
     backgroundColor: theme.colors.surface1,
+  },
+  switcherTriggerCount: {
+    color: theme.colors.foregroundMuted,
+    fontSize: theme.fontSize.sm,
+    flexShrink: 0,
   },
   switcherTriggerLeft: {
     flexDirection: "row",

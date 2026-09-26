@@ -1107,6 +1107,7 @@ export const en = {
         title: "Title",
         branch: "Branch name",
       },
+
       show: {
         label: "Show",
         branch: "Branch",
@@ -1177,6 +1178,7 @@ export const en = {
     },
     project: {
       actions: {
+        collapse: "Collapse",
         menu: "Project actions",
         openSettings: "Open project settings",
         openNewWindow: "Open in new window",
@@ -1218,6 +1220,8 @@ export const en = {
         pending: "Pending: {{count}}",
       },
       actions: {
+        collapsedCount: "{{count}} collapsed",
+        collapsedRestore: "Restore {{name}} to the sidebar",
         menu: "Workspace actions",
         newWorkspace: "New workspace",
         showMore: "Show more",
@@ -1928,6 +1932,7 @@ export const en = {
   renameModal: {
     rename: "Rename",
     saving: "Saving...",
+    clear: "Clear",
   },
   sidebarCallout: {
     dismiss: "Dismiss",
@@ -2141,6 +2146,10 @@ export const en = {
         success: "Browser data cleared.",
         error: "Couldn't clear browser data.",
       },
+      showVoiceButton: {
+        label: "Show voice button",
+        description: "Show the voice button in the composer input",
+      },
       defaultSend: {
         label: "Default send",
         descriptions: {
@@ -2277,6 +2286,13 @@ export const en = {
       chatOutline: {
         title: "Chat outline",
         description: "Show an outline for jumping between prompts",
+      },
+      workspaceRows: {
+        title: "Workspace rows",
+        titleLines: {
+          label: "Title lines",
+          hint: "Allow long workspace titles to wrap onto multiple lines",
+        },
       },
       sidebar: {
         title: "Sidebar",
@@ -2801,6 +2817,8 @@ export const en = {
       metadata: {
         title: "Metadata generation",
         info: "Project-specific instructions injected into the AI prompts Paseo uses to generate metadata - use them to enforce your team's conventions like branch naming, commit style, or PR format",
+        titlePrompt: "Workspace titles",
+        titlePromptPlaceholder: "Describe the naming style for workspace titles",
         branchName: "Branch names",
         branchNamePlaceholder: "Prefix branches with feat/ or fix/, mb/ for personal branches",
         commitMessage: "Commit messages",

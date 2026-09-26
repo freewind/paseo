@@ -577,6 +577,13 @@ export function AppearanceSection() {
     [updateSettings],
   );
 
+  const handleWorkspaceTitleMultilineChange = useCallback(
+    (workspaceTitleMultiline: boolean) => {
+      void updateSettings({ workspaceTitleMultiline });
+    },
+    [updateSettings],
+  );
+
   const commitUiFontFamily = useCallback(
     (value: string) => {
       const sanitized = sanitizeFontFamily(value);
@@ -699,6 +706,16 @@ export function AppearanceSection() {
         </SettingsCard>
       </SettingsSection>
       <SidebarNavSection />
+      <SettingsSection title={t("settings.appearance.workspaceRows.title")}>
+        <SettingsCard>
+          <SettingsSwitch
+            label={t("settings.appearance.workspaceRows.titleLines.label")}
+            hint={t("settings.appearance.workspaceRows.titleLines.hint")}
+            value={settings.workspaceTitleMultiline}
+            onValueChange={handleWorkspaceTitleMultilineChange}
+          />
+        </SettingsCard>
+      </SettingsSection>
       <SettingsSection title={t("settings.appearance.fonts.title")}>
         <View style={settingsStyles.card}>
           {showInterfaceFontFamilyRow ? (

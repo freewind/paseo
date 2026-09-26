@@ -1099,6 +1099,7 @@ export const ar: TranslationResources = {
         title: "العنوان",
         branch: "اسم الفرع",
       },
+
       show: {
         label: "إظهار",
         branch: "الفرع",
@@ -1169,6 +1170,7 @@ export const ar: TranslationResources = {
     },
     project: {
       actions: {
+        collapse: "Collapse",
         menu: "إجراءات المشروع",
         openSettings: "افتح إعدادات المشروع",
         openNewWindow: "Open in new window",
@@ -1210,6 +1212,8 @@ export const ar: TranslationResources = {
         pending: "قيد الانتظار: {{count}}",
       },
       actions: {
+        collapsedCount: "{{count}} collapsed",
+        collapsedRestore: "Restore {{name}} to the sidebar",
         menu: "إجراءات Workspace",
         newWorkspace: "مساحة عمل جديدة",
         showMore: "عرض المزيد",
@@ -1903,6 +1907,7 @@ export const ar: TranslationResources = {
   renameModal: {
     rename: "إعادة تسمية",
     saving: "جارٍ الحفظ...",
+    clear: "مسح",
   },
   sidebarCallout: {
     dismiss: "رفض",
@@ -2019,6 +2024,10 @@ export const ar: TranslationResources = {
         confirmMessage: "سيتم تسجيل خروجك من المواقع وإعادة تحميل علامات تبويب المتصفح المفتوحة.",
         success: "تم مسح بيانات المتصفح.",
         error: "تعذر مسح بيانات المتصفح.",
+      },
+      showVoiceButton: {
+        label: "إظهار زر الصوت",
+        description: "إظهار زر الصوت في منطقة إدخال الرسائل",
       },
       defaultSend: {
         label: "إرسال افتراضي",
@@ -2157,6 +2166,13 @@ export const ar: TranslationResources = {
       chatOutline: {
         title: "مخطط المحادثة",
         description: "عرض مخطط للتنقل بين المطالبات",
+      },
+      workspaceRows: {
+        title: "صفوف مساحات العمل",
+        titleLines: {
+          label: "أسطر العنوان",
+          hint: "السماح بالتفاف عناوين مساحات العمل الطويلة على عدة أسطر",
+        },
       },
       sidebar: {
         title: "الشريط الجانبي",
@@ -2676,6 +2692,8 @@ export const ar: TranslationResources = {
       metadata: {
         title: "توليد البيانات الوصفية",
         info: "تعليمات خاصة بالمشروع يتم إدخالها في الذكاء الاصطناعي الذي يستخدمه Paseo لإنشاء بيانات التعريف - استخدمها لفرض اصطلاحات فريقك مثل تسمية الفرع أو نمط الالتزام أو تنسيق PR",
+        titlePrompt: "عناوين مساحات العمل",
+        titlePromptPlaceholder: "صف أسلوب تسمية عناوين مساحات العمل",
         branchName: "اسماء الفروع",
         branchNamePlaceholder: "بادئة الفروع بـ fet/ أو Fix/, mb/ للفروع الشخصية",
         commitMessage: "ارتكاب الرسائل",

@@ -1091,6 +1091,7 @@ export const zhCN: TranslationResources = {
         title: "标题",
         branch: "分支名称",
       },
+
       show: {
         label: "显示",
         branch: "分支",
@@ -1160,6 +1161,7 @@ export const zhCN: TranslationResources = {
     },
     project: {
       actions: {
+        collapse: "Collapse",
         menu: "Project 操作",
         openSettings: "打开 project 设置",
         openNewWindow: "在新窗口中打开",
@@ -1200,6 +1202,8 @@ export const zhCN: TranslationResources = {
         pending: "等待中: {{count}}",
       },
       actions: {
+        collapsedCount: "{{count}} 个被折叠",
+        collapsedRestore: "将 {{name}} 恢复到侧边栏",
         menu: "Workspace 操作",
         newWorkspace: "新建 workspace",
         showMore: "显示更多",
@@ -1882,6 +1886,7 @@ export const zhCN: TranslationResources = {
   renameModal: {
     rename: "重命名",
     saving: "正在保存...",
+    clear: "清除",
   },
   sidebarCallout: {
     dismiss: "关闭",
@@ -1997,6 +2002,10 @@ export const zhCN: TranslationResources = {
         confirmMessage: "网站帐号将退出登录，打开的浏览器标签页将重新加载。",
         success: "浏览器数据已清除。",
         error: "无法清除浏览器数据。",
+      },
+      showVoiceButton: {
+        label: "显示语音按钮",
+        description: "在输入区显示语音按钮",
       },
       defaultSend: {
         label: "默认发送",
@@ -2133,6 +2142,13 @@ export const zhCN: TranslationResources = {
       chatOutline: {
         title: "聊天大纲",
         description: "显示用于在提示词之间跳转的大纲",
+      },
+      workspaceRows: {
+        title: "工作区行",
+        titleLines: {
+          label: "标题行数",
+          hint: "允许较长的工作区标题换行显示为多行",
+        },
       },
       sidebar: {
         title: "侧边栏",
@@ -2644,6 +2660,8 @@ export const zhCN: TranslationResources = {
       metadata: {
         title: "元数据生成",
         info: "注入到 Paseo 用来生成元数据的 AI prompts 中的 Project 专属指令，可用于强制执行团队约定，例如分支命名、提交风格或 PR 格式",
+        titlePrompt: "工作区标题",
+        titlePromptPlaceholder: "描述工作区标题的命名风格",
         branchName: "分支名称",
         branchNamePlaceholder: "分支以 feat/ 或 fix/ 开头，个人分支使用 mb/",
         commitMessage: "提交消息",

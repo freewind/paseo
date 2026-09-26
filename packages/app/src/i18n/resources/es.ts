@@ -1135,6 +1135,7 @@ export const es: TranslationResources = {
         title: "Título",
         branch: "Nombre de rama",
       },
+
       show: {
         label: "Mostrar",
         branch: "Rama",
@@ -1205,6 +1206,7 @@ export const es: TranslationResources = {
     },
     project: {
       actions: {
+        collapse: "Collapse",
         menu: "Acciones del proyecto",
         openSettings: "Abrir la configuración del proyecto",
         openNewWindow: "Open in new window",
@@ -1246,6 +1248,8 @@ export const es: TranslationResources = {
         pending: "Pendientes: {{count}}",
       },
       actions: {
+        collapsedCount: "{{count}} collapsed",
+        collapsedRestore: "Restore {{name}} to the sidebar",
         menu: "AccionesWorkspace",
         newWorkspace: "Nuevo espacio de trabajo",
         showMore: "Mostrar más",
@@ -1951,6 +1955,7 @@ export const es: TranslationResources = {
   renameModal: {
     rename: "Rebautizar",
     saving: "Guardando...",
+    clear: "Borrar",
   },
   sidebarCallout: {
     dismiss: "Despedir",
@@ -2069,6 +2074,10 @@ export const es: TranslationResources = {
           "Se cerrarán las sesiones de los sitios y se recargarán las pestañas abiertas del navegador.",
         success: "Datos del navegador borrados.",
         error: "No se pudieron borrar los datos del navegador.",
+      },
+      showVoiceButton: {
+        label: "Mostrar botón de voz",
+        description: "Mostrar el botón de voz en la entrada del compositor",
       },
       defaultSend: {
         label: "Envío predeterminado",
@@ -2209,6 +2218,13 @@ export const es: TranslationResources = {
       chatOutline: {
         title: "Esquema del chat",
         description: "Muestra un esquema para saltar entre instrucciones",
+      },
+      workspaceRows: {
+        title: "Filas de espacios de trabajo",
+        titleLines: {
+          label: "Líneas del título",
+          hint: "Permitir que los títulos largos de espacios de trabajo ocupen varias líneas",
+        },
       },
       sidebar: {
         title: "Barra lateral",
@@ -2736,6 +2752,9 @@ export const es: TranslationResources = {
       metadata: {
         title: "Generación de metadatos",
         info: "Instrucciones específicas del proyecto inyectadas en los mensajes de IA quePaseoutiliza para generar metadatos; úselas para hacer cumplir las convenciones de su equipo, como la denominación de ramas, el estilo de confirmación o el formatoPR.",
+        titlePrompt: "Títulos de espacios de trabajo",
+        titlePromptPlaceholder:
+          "Describe el estilo de nombres para los títulos de espacios de trabajo",
         branchName: "Nombres de sucursales",
         branchNamePlaceholder: "Prefijo ramas con feat/ o fix/, mb/ para ramas personales",
         commitMessage: "Confirmar mensajes",

@@ -1125,6 +1125,7 @@ export const ptBR: TranslationResources = {
         title: "Título",
         branch: "Nome da branch",
       },
+
       show: {
         label: "Mostrar",
         branch: "Branch",
@@ -1195,6 +1196,7 @@ export const ptBR: TranslationResources = {
     },
     project: {
       actions: {
+        collapse: "Collapse",
         menu: "Ações do projeto",
         openSettings: "Abrir configurações do projeto",
         openNewWindow: "Abrir em nova janela",
@@ -1236,6 +1238,8 @@ export const ptBR: TranslationResources = {
         pending: "Pendentes: {{count}}",
       },
       actions: {
+        collapsedCount: "{{count}} collapsed",
+        collapsedRestore: "Restore {{name}} to the sidebar",
         menu: "Ações do workspace",
         newWorkspace: "Novo workspace",
         showMore: "Mostrar mais",
@@ -1936,6 +1940,7 @@ export const ptBR: TranslationResources = {
   renameModal: {
     rename: "Renomear",
     saving: "Salvando...",
+    clear: "Limpar",
   },
   sidebarCallout: {
     dismiss: "Dispensar",
@@ -2053,6 +2058,10 @@ export const ptBR: TranslationResources = {
           "Você será desconectado dos sites e as abas abertas do navegador serão recarregadas.",
         success: "Dados do navegador limpos.",
         error: "Não foi possível limpar os dados do navegador.",
+      },
+      showVoiceButton: {
+        label: "Mostrar botão de voz",
+        description: "Mostrar o botão de voz na entrada do compositor",
       },
       defaultSend: {
         label: "Envio padrão",
@@ -2192,6 +2201,13 @@ export const ptBR: TranslationResources = {
       chatOutline: {
         title: "Estrutura do chat",
         description: "Mostrar uma estrutura para navegar entre prompts",
+      },
+      workspaceRows: {
+        title: "Linhas de workspace",
+        titleLines: {
+          label: "Linhas do título",
+          hint: "Permitir que títulos longos de workspace ocupem várias linhas",
+        },
       },
       sidebar: {
         title: "Barra lateral",
@@ -2719,6 +2735,8 @@ export const ptBR: TranslationResources = {
       metadata: {
         title: "Geração de metadados",
         info: "Instruções específicas do projeto injetadas nos prompts de IA que o Paseo usa para gerar metadados. Use-as para aplicar convenções da sua equipe, como nomes de branch, estilo de commit ou formato de PR",
+        titlePrompt: "Títulos de workspace",
+        titlePromptPlaceholder: "Descreva o estilo de nomenclatura dos títulos de workspace",
         branchName: "Nomes de branch",
         branchNamePlaceholder: "Prefixe branches com feat/ ou fix/, mb/ para branches pessoais",
         commitMessage: "Mensagens de commit",

@@ -1116,6 +1116,7 @@ export const ru: TranslationResources = {
         title: "Заголовок",
         branch: "Имя ветки",
       },
+
       show: {
         label: "Показывать",
         branch: "Ветка",
@@ -1187,6 +1188,7 @@ export const ru: TranslationResources = {
     },
     project: {
       actions: {
+        collapse: "Collapse",
         menu: "Действия проекта",
         openSettings: "Открыть настройки проекта",
         openNewWindow: "Открыть в новом окне",
@@ -1228,6 +1230,8 @@ export const ru: TranslationResources = {
         pending: "Ожидают: {{count}}",
       },
       actions: {
+        collapsedCount: "{{count}} collapsed",
+        collapsedRestore: "Restore {{name}} to the sidebar",
         menu: "Действия рабочего пространства",
         newWorkspace: "Новое рабочее пространство",
         showMore: "Показать ещё",
@@ -1936,6 +1940,7 @@ export const ru: TranslationResources = {
   renameModal: {
     rename: "Переименовать",
     saving: "Сохранение...",
+    clear: "Очистить",
   },
   sidebarCallout: {
     dismiss: "Закрыть",
@@ -2053,6 +2058,10 @@ export const ru: TranslationResources = {
           "Вы выйдете из аккаунтов на сайтах, а открытые вкладки браузера перезагрузятся.",
         success: "Данные браузера очищены.",
         error: "Не удалось очистить данные браузера.",
+      },
+      showVoiceButton: {
+        label: "Показывать кнопку голоса",
+        description: "Показывать кнопку голоса в поле ввода композера",
       },
       defaultSend: {
         label: "Отправка по умолчанию",
@@ -2195,6 +2204,13 @@ export const ru: TranslationResources = {
       chatOutline: {
         title: "Оглавление чата",
         description: "Показывать оглавление для перехода между запросами",
+      },
+      workspaceRows: {
+        title: "Строки рабочих пространств",
+        titleLines: {
+          label: "Строки заголовка",
+          hint: "Разрешить длинным названиям рабочих пространств переноситься на несколько строк",
+        },
       },
       sidebar: {
         title: "Боковая панель",
@@ -2727,6 +2743,8 @@ export const ru: TranslationResources = {
       metadata: {
         title: "Генерация метаданных",
         info: "Инструкции для этого проекта, добавляемые в промпты ИИ, с помощью которых Paseo генерирует метаданные. Используйте их, чтобы соблюдать принятые в команде правила именования веток, оформления коммитов и формата PR.",
+        titlePrompt: "Названия рабочих пространств",
+        titlePromptPlaceholder: "Опишите стиль именования рабочих пространств",
         branchName: "Названия веток",
         branchNamePlaceholder:
           "Добавляйте к веткам префиксы feat/ или fix/, а к личным веткам — mb/",

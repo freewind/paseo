@@ -1106,6 +1106,7 @@ export const ko: TranslationResources = {
         title: "제목",
         branch: "브랜치 이름",
       },
+
       show: {
         label: "표시 항목",
         branch: "브랜치",
@@ -1176,6 +1177,7 @@ export const ko: TranslationResources = {
     },
     project: {
       actions: {
+        collapse: "Collapse",
         menu: "프로젝트 작업",
         openSettings: "프로젝트 설정 열기",
         openNewWindow: "새 창에서 열기",
@@ -1217,6 +1219,8 @@ export const ko: TranslationResources = {
         pending: "대기 중: {{count}}개",
       },
       actions: {
+        collapsedCount: "{{count}} collapsed",
+        collapsedRestore: "Restore {{name}} to the sidebar",
         menu: "워크스페이스 작업",
         newWorkspace: "새 워크스페이스",
         showMore: "더 보기",
@@ -1913,6 +1917,7 @@ export const ko: TranslationResources = {
   renameModal: {
     rename: "이름 변경",
     saving: "저장하는 중...",
+    clear: "지우기",
   },
   sidebarCallout: {
     dismiss: "닫기",
@@ -2029,6 +2034,10 @@ export const ko: TranslationResources = {
         confirmMessage: "사이트가 로그아웃되고 열려 있는 브라우저 탭이 다시 로드됩니다.",
         success: "브라우저 데이터가 삭제되었습니다.",
         error: "브라우저 데이터를 삭제할 수 없습니다.",
+      },
+      showVoiceButton: {
+        label: "음성 버튼 표시",
+        description: "입력기에 음성 버튼을 표시합니다",
       },
       defaultSend: {
         label: "기본 전송",
@@ -2168,6 +2177,13 @@ export const ko: TranslationResources = {
       chatOutline: {
         title: "채팅 개요",
         description: "프롬프트 사이를 이동하기 위한 개요 표시",
+      },
+      workspaceRows: {
+        title: "워크스페이스 행",
+        titleLines: {
+          label: "제목 줄 수",
+          hint: "긴 워크스페이스 제목을 여러 줄로 줄바꿈",
+        },
       },
       sidebar: {
         title: "사이드바",
@@ -2690,6 +2706,8 @@ export const ko: TranslationResources = {
       metadata: {
         title: "메타데이터 생성",
         info: "Paseo가 메타데이터를 생성하는 데 사용하는 AI 프롬프트에 주입되는 프로젝트별 지침 - 브랜치 이름, 커밋 스타일, PR 형식 같은 팀 규칙을 적용하는 데 사용하세요",
+        titlePrompt: "워크스페이스 제목",
+        titlePromptPlaceholder: "워크스페이스 제목의 명명 규칙을 설명하세요",
         branchName: "브랜치 이름",
         branchNamePlaceholder:
           "브랜치에 feat/ 또는 fix/를 접두사로, 개인 브랜치에는 mb/를 붙이세요",
