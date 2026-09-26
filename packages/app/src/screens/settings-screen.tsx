@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
+
 import {
   Alert,
   Pressable,
@@ -298,6 +299,7 @@ function getActiveLocale(language: string | undefined): SupportedLocale {
 interface GeneralSectionProps {
   settings: AppSettings;
   handleLanguageChange: (language: AppLanguage) => void;
+
 
 }
 
@@ -1144,6 +1146,7 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
     [updateSettings],
   );
 
+
   const handlePlaybackTest = useCallback(async () => {
     if (!voiceAudioEngine || isPlaybackTestRunning) {
       return;
@@ -1389,6 +1392,7 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
     }
     return null;
   })();
+
 
 
   if (settingsLoading) {
