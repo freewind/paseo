@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { createValidatedPersistStorage } from "@/storage/validated-persist-storage";
+import { appLog } from "@/utils/app-log";
 import {
   type CollapsedProjectsState,
   type PersistedCollapsedProjects,
@@ -39,9 +40,14 @@ export const useSidebarCollapsedSectionsStore = create<SidebarCollapsedSectionsS
       toggleWorkspaceGroupCollapsed: (workspaceGroupKey) =>
         set((state) => toggleWorkspaceGroupCollapsed(state, workspaceGroupKey)),
       togglePinnedCollapsed: () => set((state) => togglePinnedCollapsed(state)),
-      toggleProjectHidden: (projectKey) => set((state) => toggleProjectHidden(state, projectKey)),
-      setProjectHidden: (projectKey, hidden) =>
-        set((state) => setProjectHidden(state, projectKey, hidden)),
+      toggleProjectHidden: (projectKey) => {
+        appLog("sidebar.hidden", "toggle", { projectKey });
+        set((state) => toggleProjectHidden(state, projectKey));
+      },
+      setProjectHidden: (projectKey, hidden) => {
+        appLog("sidebar.hidden", "set", { projectKey, hidden });
+        set((state) => setProjectHidden(state, projectKey, hidden));
+      },
     }),
     {
       name: "sidebar-collapsed-sections",
