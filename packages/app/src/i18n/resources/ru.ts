@@ -2054,6 +2054,15 @@ export const ru: TranslationResources = {
         success: "Данные браузера очищены.",
         error: "Не удалось очистить данные браузера.",
       },
+      ttsEnabled: {
+        label: "Читать ответы вслух",
+        description: "Читать ответы агента вслух, когда они завершаются",
+      },
+      ttsEngine: {
+        label: "Голос чтения",
+        description: "Выберите голос для чтения ответов вслух",
+        default: "По умолчанию",
+      },
       playTurnCompleteSound: {
         label: "Воспроизводить звук при завершении",
         description: "Воспроизводить звук, когда агент завершает ход",

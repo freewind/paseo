@@ -2141,6 +2141,15 @@ export const en = {
         success: "Browser data cleared.",
         error: "Couldn't clear browser data.",
       },
+      ttsEnabled: {
+        label: "Read replies aloud",
+        description: "Read agent replies aloud when they finish",
+      },
+      ttsEngine: {
+        label: "Read-aloud voice",
+        description: "Choose the voice used to read replies aloud",
+        default: "System default",
+      },
       playTurnCompleteSound: {
         label: "Play sound when an agent finishes",
         description: "Play a sound when an agent finishes a turn",

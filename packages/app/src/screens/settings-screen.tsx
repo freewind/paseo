@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
+import { useTts } from "@/hooks/use-tts";
 import {
   Alert,
   Pressable,
@@ -288,6 +289,9 @@ interface GeneralSectionProps {
   handleLanguageChange: (language: AppLanguage) => void;
   handleTerminalScrollbackLinesChange: (lines: number) => void;
   handlePlayTurnCompleteSoundChange: (playTurnCompleteSound: boolean) => void;
+  handleTtsEnabledChange: (ttsEnabled: boolean) => void;
+  handleTtsEngineChange: (ttsEngine: string | null) => void;
+  ttsVoices: { identifier: string; name: string }[];
 }
 
 interface ServiceUrlBehaviorMenuItemProps {
@@ -363,8 +367,15 @@ function GeneralSection({
   handleLanguageChange,
   handleTerminalScrollbackLinesChange,
   handlePlayTurnCompleteSoundChange,
+  handleTtsEnabledChange,
+  handleTtsEngineChange,
+  ttsVoices,
 }: GeneralSectionProps) {
   const { t, i18n } = useTranslation();
+  const handleSelectVoiceItem = useCallback(
+    (engineId: string | null) => () => handleTtsEngineChange(engineId),
+    [handleTtsEngineChange],
+  );
   const activeLocale = getActiveLocale(i18n.language);
   const sendBehaviorOptions = useMemo(() => getSendBehaviorOptions(t), [t]);
   const selectedSendBehaviorLabel =
@@ -477,6 +488,61 @@ function GeneralSection({
             testID="settings-play-turn-complete-sound-switch"
           />
         </View>
+        <View style={[settingsStyles.row, settingsStyles.rowBorder]}>
+          <View style={settingsStyles.rowContent}>
+            <Text style={settingsStyles.rowTitle}>{t("settings.general.ttsEnabled.label")}</Text>
+            <Text style={settingsStyles.rowHint}>
+              {t("settings.general.ttsEnabled.description")}
+            </Text>
+          </View>
+          <Switch
+            value={settings.ttsEnabled}
+            onValueChange={handleTtsEnabledChange}
+            accessibilityLabel={t("settings.general.ttsEnabled.label")}
+            testID="settings-tts-enabled-switch"
+          />
+        </View>
+        {ttsVoices.length > 0 ? (
+          <View style={[settingsStyles.row, settingsStyles.rowBorder]}>
+            <View style={settingsStyles.rowContent}>
+              <Text style={settingsStyles.rowTitle}>{t("settings.general.ttsEngine.label")}</Text>
+              <Text style={settingsStyles.rowHint}>
+                {t("settings.general.ttsEngine.description")}
+              </Text>
+            </View>
+            <DropdownMenu>
+              <DropdownTrigger
+                accessibilityRole="button"
+                accessibilityLabel={t("settings.general.ttsEngine.label")}
+                style={themeTriggerStyle}
+              >
+                <Text style={styles.themeTriggerText}>
+                  {settings.ttsEngine
+                    ? (ttsVoices.find((v) => v.identifier === settings.ttsEngine)?.name ??
+                      settings.ttsEngine)
+                    : t("settings.general.ttsEngine.default")}
+                </Text>
+              </DropdownTrigger>
+              <DropdownMenuContent side="bottom" align="end" width={220}>
+                <DropdownMenuItem
+                  testID="tts-engine-default"
+                  onSelect={handleSelectVoiceItem(null)}
+                >
+                  {t("settings.general.ttsEngine.default")}
+                </DropdownMenuItem>
+                {ttsVoices.map((voice) => (
+                  <DropdownMenuItem
+                    key={voice.identifier}
+                    testID={`tts-engine-${voice.identifier}`}
+                    onSelect={handleSelectVoiceItem(voice.identifier)}
+                  >
+                    {voice.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </View>
+        ) : null}
         {isDesktopApp ? (
           <View style={[settingsStyles.row, settingsStyles.rowBorder]}>
             <View style={settingsStyles.rowContent}>
@@ -1238,6 +1304,31 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
   const { t } = useTranslation();
   const voiceAudioEngine = useVoiceAudioEngineOptional();
   const { settings, isLoading: settingsLoading, updateSettings } = useAppSettings();
+  const { getVoices } = useTts();
+  const [ttsVoices, setTtsVoices] = useState<{ identifier: string; name: string }[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    void getVoices()
+      .then((voices) => {
+        if (!cancelled)
+          setTtsVoices(
+            voices
+              .filter((v) => {
+                // Only offer Chinese and English voices; other languages are noise for us.
+                const primary = v.language.split("-")[0]?.toLowerCase();
+                return primary === "zh" || primary === "en";
+              })
+              .map((v) => ({ identifier: v.identifier, name: v.name })),
+          );
+        return undefined;
+      })
+      .catch(() => {
+        if (!cancelled) setTtsVoices([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [getVoices]);
   const [isAddHostMethodVisible, setIsAddHostMethodVisible] = useState(false);
   const [isDirectHostVisible, setIsDirectHostVisible] = useState(false);
   const [isRemoteSshVisible, setIsRemoteSshVisible] = useState(false);
@@ -1321,6 +1412,20 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
   const handlePlayTurnCompleteSoundChange = useCallback(
     (playTurnCompleteSound: boolean) => {
       void updateSettings({ playTurnCompleteSound });
+    },
+    [updateSettings],
+  );
+
+  const handleTtsEnabledChange = useCallback(
+    (ttsEnabled: boolean) => {
+      void updateSettings({ ttsEnabled });
+    },
+    [updateSettings],
+  );
+
+  const handleTtsEngineChange = useCallback(
+    (ttsEngine: string | null) => {
+      void updateSettings({ ttsEngine });
     },
     [updateSettings],
   );
@@ -1557,6 +1662,9 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
                   handleLanguageChange={handleLanguageChange}
                   handleTerminalScrollbackLinesChange={handleTerminalScrollbackLinesChange}
                   handlePlayTurnCompleteSoundChange={handlePlayTurnCompleteSoundChange}
+                  handleTtsEnabledChange={handleTtsEnabledChange}
+                  handleTtsEngineChange={handleTtsEngineChange}
+                  ttsVoices={ttsVoices}
                 />
                 {isDesktopApp ? <BrowserDataSection /> : null}
               </>
