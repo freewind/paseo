@@ -1115,6 +1115,11 @@ export const ja: TranslationResources = {
         title: "タイトル",
         branch: "ブランチ名",
       },
+      titleMultiline: {
+        label: "タイトルの行数",
+        single: "1行",
+        multi: "複数行",
+      },
       show: {
         label: "表示項目",
         branch: "ブランチ",

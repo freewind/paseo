@@ -20,6 +20,8 @@ export interface SidebarDisplayPreferences {
   setGrouping: (mode: SidebarGroupMode) => void;
   titleSource: WorkspaceTitleSource;
   setTitleSource: (source: WorkspaceTitleSource) => void;
+  workspaceTitleMultiline: boolean;
+  setWorkspaceTitleMultiline: (multiline: boolean) => void;
   rowItems: SidebarRowItems;
   toggleRowItem: (item: SidebarRowItem) => void;
   checksDisplay: SidebarChecksDisplay;
@@ -63,6 +65,7 @@ export function useSidebarDisplayPreferences(): SidebarDisplayPreferences {
   const {
     settings: {
       workspaceTitleSource,
+      workspaceTitleMultiline,
       sidebarWorkspaceTrailing,
       sidebarRowItems,
       sidebarChecksDisplay,
@@ -73,6 +76,13 @@ export function useSidebarDisplayPreferences(): SidebarDisplayPreferences {
   const setTitleSource = useCallback(
     (source: WorkspaceTitleSource) => {
       void updateSettings({ workspaceTitleSource: source });
+    },
+    [updateSettings],
+  );
+
+  const setWorkspaceTitleMultiline = useCallback(
+    (multiline: boolean) => {
+      void updateSettings({ workspaceTitleMultiline: multiline });
     },
     [updateSettings],
   );
@@ -107,6 +117,8 @@ export function useSidebarDisplayPreferences(): SidebarDisplayPreferences {
       grouping,
       setGrouping,
       titleSource: workspaceTitleSource,
+      workspaceTitleMultiline,
+      setWorkspaceTitleMultiline,
       setTitleSource,
       rowItems: sidebarRowItems,
       toggleRowItem,
@@ -128,6 +140,8 @@ export function useSidebarDisplayPreferences(): SidebarDisplayPreferences {
       grouping,
       setGrouping,
       workspaceTitleSource,
+      workspaceTitleMultiline,
+      setWorkspaceTitleMultiline,
       setTitleSource,
       sidebarRowItems,
       toggleRowItem,
