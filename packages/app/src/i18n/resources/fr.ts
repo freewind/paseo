@@ -1956,6 +1956,7 @@ export const fr: TranslationResources = {
   renameModal: {
     rename: "Rebaptiser",
     saving: "Sauvegarde...",
+    clear: "Effacer",
   },
   sidebarCallout: {
     dismiss: "Rejeter",
