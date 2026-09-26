@@ -68,8 +68,10 @@ import {
 } from "@/add-project-flow/options";
 import {
   buildProjectPickerOptions,
+  isOpenableProjectPath,
   type ProjectPickerOption,
 } from "@/components/project-picker-options";
+import { Button } from "@/components/ui/button";
 import { Shortcut } from "@/components/ui/shortcut";
 import { useKeyboardShortcutsAvailable } from "@/keyboard/availability";
 import { getIsElectronRuntime } from "@/constants/layout";
@@ -633,7 +635,13 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
           subtitle: directoryOptionSubtitle(option, shortPath),
           icon: Folder,
           testID: pathTestId(option.path),
-          select: () => void openAddedProject(option.path, "directory-search"),
+          select: () => {
+            // Fill the input to keep matching deeper; creating is explicit via the Create button.
+            setState((current) => setAddProjectPageInput(current, option.path));
+            // EditingTextInput's initialValue only applies at mount, so mirror the fill into
+            // the visible textbox (the query itself already updated through the page state).
+            inputRef.current?.replaceText(option.path);
+          },
         };
       });
     }
@@ -706,7 +714,6 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
     githubQuery.data,
     host,
     onClose,
-    openAddedProject,
     page,
     pathOptions,
     recommendedPaths,
@@ -762,14 +769,24 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
     }
   }, [client, openNewWorkspaceForProject, page, setHasHydratedWorkspaces, upsertProject]);
 
+  const submitDirectorySearchCreate = useCallback(() => {
+    if (page.kind !== "directory-search") return;
+    if (!isOpenableProjectPath(page.query.trim())) return;
+    void openAddedProject(page.query, "directory-search");
+  }, [openAddedProject, page]);
+
   const submitActive = useCallback(() => {
     if (page.kind === "new-directory-name") {
       void createDirectory();
       return;
     }
+    if (page.kind === "directory-search") {
+      void submitDirectorySearchCreate();
+      return;
+    }
     const option = rows[activeIndex];
     if (option && !option.disabled) option.select();
-  }, [activeIndex, createDirectory, page.kind, rows]);
+  }, [activeIndex, createDirectory, page.kind, rows, submitDirectorySearchCreate]);
 
   const handleKey = useCallback(
     (key: string): boolean => {
@@ -888,20 +905,32 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
               />
             ) : null}
             {page.kind !== "method" ? (
-              <ThemedTextInput
-                ref={inputRef}
-                initialValue={pageInput(page)}
-                onChangeText={handleInputChange}
-                onKeyPress={isWeb ? undefined : handleNativeKeyPress}
-                onSubmitEditing={isWeb ? undefined : submitActive}
-                placeholder={pagePlaceholder(page)}
-                style={styles.input}
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!isSubmitting}
-                returnKeyType="go"
-                testID="add-project-flow-input"
-              />
+              <View style={styles.inputRow}>
+                <ThemedTextInput
+                  ref={inputRef}
+                  initialValue={pageInput(page)}
+                  onChangeText={handleInputChange}
+                  onKeyPress={isWeb ? undefined : handleNativeKeyPress}
+                  onSubmitEditing={isWeb ? undefined : submitActive}
+                  placeholder={pagePlaceholder(page)}
+                  style={styles.input}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!isSubmitting}
+                  returnKeyType="go"
+                  testID="add-project-flow-input"
+                />
+                {page.kind === "directory-search" ? (
+                  <Button
+                    size="sm"
+                    disabled={!isOpenableProjectPath(page.query.trim()) || isSubmitting}
+                    onPress={submitDirectorySearchCreate}
+                    testID="add-project-flow-create"
+                  >
+                    Create
+                  </Button>
+                ) : null}
+              </View>
             ) : null}
           </View>
           <ScrollView
@@ -1031,7 +1060,14 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.normal,
   },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing[3],
+  },
   input: {
+    flex: 1,
+    minWidth: 0,
     color: theme.colors.foreground,
     fontSize: theme.fontSize.base,
     paddingVertical: theme.spacing[1],
