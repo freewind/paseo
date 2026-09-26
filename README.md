@@ -209,6 +209,13 @@ Lines also mirror to the console, so `adb logcat` shows them during
 development. Logging is intentionally sparse: only key events from recently
 shipped features, never user content.
 
+Crashes land in that same file under the `crash` category: uncaught JavaScript
+errors and unhandled promise rejections via the `ErrorUtils` global handler
+(`global-handler`, `unhandled-rejection`, `window-error`), and React render
+failures via the root error boundary (`render-error`). Those entries are written
+synchronously so a fatal error still reaches disk. Only JavaScript-level crashes
+are covered; a native abort or an out-of-memory kill leaves no entry.
+
 ## Related projects
 
 - [getpaseo/paseo-relay](https://github.com/getpaseo/paseo-relay) — official distributed relay, written in Elixir
