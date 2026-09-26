@@ -15,7 +15,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { AppState, useWindowDimensions, View } from "react-native";
+import { AppState, Platform, StatusBar, useWindowDimensions, View } from "react-native";
 import { GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
@@ -976,6 +976,22 @@ function RootProviders({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Paints the Android status bar area in the brand green. Android runs edge-to-edge, so the
+ * bar itself is transparent and whatever sits under it shows through — which is the app's
+ * white `surface0` in the light theme, leaving the (white) system icons invisible. This strip
+ * is the backdrop for that area, so the system icons keep enough contrast against it.
+ *
+ * The color is intentionally the brand green rather than `theme.colors.accent`: the status bar
+ * must stay legible no matter which theme is active, and accent is not green in every theme.
+ */
+const STATUS_BAR_TINT_COLOR = "#20744A";
+
+function AndroidStatusBarTint() {
+  if (Platform.OS !== "android") return null;
+  return <View style={layoutStyles.statusBarTint} pointerEvents="none" />;
+}
+
 function RootAppTree() {
   return (
     <GestureHandlerRootView style={flexStyle}>
@@ -985,6 +1001,7 @@ function RootAppTree() {
             <AppShell />
           </RuntimeProviders>
         </RootProviders>
+        <AndroidStatusBarTint />
       </View>
     </GestureHandlerRootView>
   );
@@ -1008,6 +1025,15 @@ const layoutStyles = StyleSheet.create((theme) => ({
   surfaceFill: {
     flex: 1,
     backgroundColor: theme.colors.surface0,
+  },
+  statusBarTint: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: StatusBar.currentHeight ?? 0,
+    backgroundColor: STATUS_BAR_TINT_COLOR,
+    zIndex: 100,
   },
   windowSidebarToggle: {
     position: "absolute",

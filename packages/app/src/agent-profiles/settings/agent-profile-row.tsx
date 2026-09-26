@@ -79,12 +79,12 @@ export function AgentProfileRow({
         </View>
         <View style={settingsStyles.rowContent}>
           <View style={styles.titleLine}>
-            <Text style={settingsStyles.rowTitle} numberOfLines={1}>
-              {profile.name}
-            </Text>
-            <Text style={styles.summary} numberOfLines={1}>
-              {summary}
-            </Text>
+            <Text style={[settingsStyles.rowTitle, styles.nameText]}>{profile.name}</Text>
+            {summary ? (
+              <Text style={styles.summary} numberOfLines={1}>
+                {summary}
+              </Text>
+            ) : null}
           </View>
           {profile.notes ? (
             <View style={styles.notes}>
@@ -104,6 +104,7 @@ export function AgentProfileRow({
         <Button
           variant="ghost"
           size="sm"
+          style={styles.rowActionButton}
           leftIcon={moveUpIcon}
           onPress={handleMoveUp}
           disabled={isFirst}
@@ -113,6 +114,7 @@ export function AgentProfileRow({
         <Button
           variant="ghost"
           size="sm"
+          style={styles.rowActionButton}
           leftIcon={moveDownIcon}
           onPress={handleMoveDown}
           disabled={isLast}
@@ -122,6 +124,7 @@ export function AgentProfileRow({
         <Button
           variant="ghost"
           size="sm"
+          style={styles.rowActionButton}
           leftIcon={editIcon}
           onPress={handleEdit}
           accessibilityLabel={t("settings.host.agentProfiles.editProfile")}
@@ -130,6 +133,7 @@ export function AgentProfileRow({
         <Button
           variant="ghost"
           size="sm"
+          style={styles.rowActionButton}
           leftIcon={removeIcon}
           onPress={handleRemove}
           accessibilityLabel={t("settings.host.agentProfiles.remove")}
@@ -160,10 +164,13 @@ const styles = StyleSheet.create((theme) => ({
     marginTop: 1,
   },
   titleLine: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: theme.spacing[2],
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: theme.spacing[0.5],
     minWidth: 0,
+  },
+  nameText: {
+    flexShrink: 1,
   },
   summary: {
     flexShrink: 1,
@@ -184,5 +191,10 @@ const styles = StyleSheet.create((theme) => ({
   rowActions: {
     flexDirection: "row",
     alignItems: "center",
+    gap: theme.spacing[0.5],
+    flexShrink: 0,
+  },
+  rowActionButton: {
+    paddingHorizontal: theme.spacing[1],
   },
 }));
