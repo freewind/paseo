@@ -13,6 +13,10 @@ import {
 } from "@/hooks/use-agent-initialization";
 import type { StreamItem } from "@/types/stream";
 import { deriveAgentStreamTurnLiveness } from "@/timeline/session-stream-reducers";
+import { useTurnCompleteSound } from "@/hooks/use-turn-complete-sound";
+import { useTts } from "@/hooks/use-tts";
+import { stripMarkdown } from "@/utils/strip-markdown";
+import { useAppSettings } from "@/hooks/use-settings";
 import { planTimelineTailFetch } from "@/timeline/timeline-sync-plan";
 import { requestTimelineReplacement } from "@/timeline/timeline-replacement";
 import { type ViewedTimelineOwner } from "@/timeline/viewed-timeline-sync";
@@ -207,6 +211,55 @@ export function SessionProvider(props: SessionProviderProps) {
 
 function SessionProviderInternal({ children, serverId, client }: SessionProviderClientProps) {
   const { t } = useTranslation();
+  const playTurnCompleteSound = useTurnCompleteSound();
+  const { speak: speakReply, stop: stopTts } = useTts();
+  const { settings: appSettings } = useAppSettings();
+  // Tracks turnIds we already played a completion sound for, so one turn completes only once.
+  const completedTurnSoundRef = useRef<Set<string>>(new Set());
+  const handleTurnCompletion = useCallback(
+    (input: {
+      agentId: string;
+      turnLiveness: ReturnType<typeof deriveAgentStreamTurnLiveness>;
+    }) => {
+      const { agentId, turnLiveness } = input;
+      const closedTurns = turnLiveness.filter(
+        (transition) => transition.type === "stream_close" && transition.turnId !== null,
+      );
+      for (const closed of closedTurns) {
+        if (closed.type !== "stream_close" || !closed.turnId) continue;
+        if (
+          appSettings.playTurnCompleteSound &&
+          !completedTurnSoundRef.current.has(closed.turnId)
+        ) {
+          completedTurnSoundRef.current.add(closed.turnId);
+          playTurnCompleteSound();
+        }
+      }
+      if (!appSettings.ttsEnabled) return;
+      if (turnLiveness.some((transition) => transition.type === "stream_open")) {
+        // A new turn started — stop any in-progress reading of the previous reply.
+        stopTts();
+      }
+      if (closedTurns.length === 0) return;
+      const session = useSessionStore.getState().sessions[serverId];
+      const head = session?.agentStreamHead.get(agentId) ?? [];
+      const tail = session?.agentStreamTail.get(agentId) ?? [];
+      const replyText =
+        findLatestAssistantMessageText(head) ?? findLatestAssistantMessageText(tail);
+      if (replyText) {
+        speakReply({ text: stripMarkdown(replyText), voiceId: appSettings.ttsEngine });
+      }
+    },
+    [
+      appSettings.playTurnCompleteSound,
+      appSettings.ttsEnabled,
+      appSettings.ttsEngine,
+      playTurnCompleteSound,
+      serverId,
+      speakReply,
+      stopTts,
+    ],
+  );
   const voiceRuntime = useVoiceRuntimeOptional();
   const voiceAudioEngine = useVoiceAudioEngineOptional();
   const queryClient = useQueryClient();
@@ -410,6 +463,8 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
       if (turnLiveness.length > 0) {
         getHostRuntimeStore().applyAgentTurnLiveness(serverId, agentId, turnLiveness);
       }
+      // Play a completion sound and read the finished reply aloud (TTS), if enabled.
+      handleTurnCompletion({ agentId, turnLiveness });
       sync.enqueueStreamEvent(agentId, {
         event: streamEvent,
         seq,
@@ -758,6 +813,7 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
     toast,
     voiceRuntime,
     voiceAudioEngine,
+    handleTurnCompletion,
   ]);
 
   const _cancelAgentRun = useCallback(

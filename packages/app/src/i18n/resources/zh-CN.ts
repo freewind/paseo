@@ -2007,6 +2007,19 @@ export const zhCN: TranslationResources = {
         label: "显示语音按钮",
         description: "在输入区显示语音按钮",
       },
+      ttsEnabled: {
+        label: "朗读回复",
+        description: "Agent 回复完成时朗读内容",
+      },
+      ttsEngine: {
+        label: "朗读语音",
+        description: "选择朗读回复时使用的语音",
+        default: "系统默认",
+      },
+      playTurnCompleteSound: {
+        label: "Agent 完成时播放提示音",
+        description: "Agent 完成一个 turn 时播放提示音",
+      },
       defaultSend: {
         label: "默认发送",
         descriptions: {

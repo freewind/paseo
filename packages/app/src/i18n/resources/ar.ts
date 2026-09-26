@@ -2029,6 +2029,19 @@ export const ar: TranslationResources = {
         label: "إظهار زر الصوت",
         description: "إظهار زر الصوت في منطقة إدخال الرسائل",
       },
+      ttsEnabled: {
+        label: "تمكين القراءة الصوتية",
+        description: "قراءة ردود الوكيل بصوت عالٍ عند اكتمال الرد",
+      },
+      ttsEngine: {
+        label: "صوت القراءة",
+        description: "اختر صوت القراءة الصوتية",
+        default: "افتراضي",
+      },
+      playTurnCompleteSound: {
+        label: "تشغيل صوت عند اكتمال العمل",
+        description: "تشغيل صوت عند اكتمال الوكيل لعمله",
+      },
       defaultSend: {
         label: "إرسال افتراضي",
         descriptions: {

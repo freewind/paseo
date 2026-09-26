@@ -2063,6 +2063,19 @@ export const ru: TranslationResources = {
         label: "Показывать кнопку голоса",
         description: "Показывать кнопку голоса в поле ввода композера",
       },
+      ttsEnabled: {
+        label: "Читать ответы вслух",
+        description: "Читать ответы агента вслух, когда они завершаются",
+      },
+      ttsEngine: {
+        label: "Голос чтения",
+        description: "Выберите голос для чтения ответов вслух",
+        default: "По умолчанию",
+      },
+      playTurnCompleteSound: {
+        label: "Воспроизводить звук при завершении",
+        description: "Воспроизводить звук, когда агент завершает ход",
+      },
       defaultSend: {
         label: "Отправка по умолчанию",
         descriptions: {

@@ -2063,6 +2063,19 @@ export const ptBR: TranslationResources = {
         label: "Mostrar botão de voz",
         description: "Mostrar o botão de voz na entrada do compositor",
       },
+      ttsEnabled: {
+        label: "Ler respostas em voz alta",
+        description: "Ler em voz alta as respostas do agente quando terminam",
+      },
+      ttsEngine: {
+        label: "Voz de leitura",
+        description: "Escolha a voz para ler as respostas em voz alta",
+        default: "Padrão do sistema",
+      },
+      playTurnCompleteSound: {
+        label: "Tocar som ao terminar",
+        description: "Tocar um som quando o agente termina uma rodada",
+      },
       defaultSend: {
         label: "Envio padrão",
         descriptions: {
