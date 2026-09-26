@@ -1959,6 +1959,7 @@ export const ptBR: TranslationResources = {
   renameModal: {
     rename: "Renomear",
     saving: "Salvando...",
+    clear: "Limpar",
   },
   sidebarCallout: {
     dismiss: "Dispensar",
