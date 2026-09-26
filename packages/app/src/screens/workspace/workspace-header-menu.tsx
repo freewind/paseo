@@ -9,6 +9,8 @@ import {
   Globe,
   Import as ImportIcon,
   Pencil,
+  Pin,
+  PinOff,
   Settings,
   SquarePen,
 } from "lucide-react-native";
@@ -40,6 +42,8 @@ import type { Theme } from "@/styles/theme";
 const ThemedEllipsis = withUnistyles(Ellipsis);
 const ThemedArchive = withUnistyles(Archive);
 const ThemedCopy = withUnistyles(Copy);
+const ThemedPin = withUnistyles(Pin);
+const ThemedPinOff = withUnistyles(PinOff);
 const ThemedPencil = withUnistyles(Pencil);
 const ThemedSquarePen = withUnistyles(SquarePen);
 const ThemedGlobe = withUnistyles(Globe);
@@ -55,6 +59,8 @@ const MENU_IMPORT_ICON = <ThemedImport size={16} uniProps={mutedColorMapping} />
 const MENU_COPY_ICON = <ThemedCopy size={16} uniProps={mutedColorMapping} />;
 const MENU_RENAME_ICON = <ThemedPencil size={16} uniProps={mutedColorMapping} />;
 const MENU_ARCHIVE_ICON = <ThemedArchive size={16} uniProps={mutedColorMapping} />;
+const MENU_PIN_ICON = <ThemedPin size={16} uniProps={mutedColorMapping} />;
+const MENU_UNPIN_ICON = <ThemedPinOff size={16} uniProps={mutedColorMapping} />;
 const MENU_SETTINGS_ICON = <ThemedSettings size={16} uniProps={mutedColorMapping} />;
 function WorkspaceHeaderMenuTriggerIcon() {
   return (
@@ -86,6 +92,8 @@ export interface WorkspaceHeaderWorkspaceActions {
   onCopyBranchName: () => void;
   onOpenSetupTab: () => void;
   onRename?: () => void;
+  onTogglePin?: () => void;
+  isPinned?: boolean;
   onArchive?: () => void;
   isArchiving?: boolean;
   archiveLabel?: string;
@@ -101,6 +109,8 @@ function WorkspaceHeaderWorkspaceActionItems({
   onCopyBranchName,
   onOpenSetupTab,
   onRename,
+  onTogglePin,
+  isPinned,
   onArchive,
   isArchiving,
   archiveLabel,
@@ -114,6 +124,13 @@ function WorkspaceHeaderWorkspaceActionItems({
     closeMenu();
     onRename();
   }, [closeMenu, onRename]);
+  const handleTogglePin = useCallback(() => {
+    if (!onTogglePin) return;
+    // Close the menu first so the pin toggle's optimistic state doesn't stack on
+    // top of the open menu.
+    closeMenu();
+    onTogglePin();
+  }, [closeMenu, onTogglePin]);
   const handleArchive = useCallback(() => {
     if (!onArchive) return;
     // Close the menu first so the archive flow (confirm dialog / optimistic hide /
@@ -168,6 +185,15 @@ function WorkspaceHeaderWorkspaceActionItems({
             {t("workspace.header.actions.showSetup")}
           </DropdownMenuItem>
         </>
+      ) : null}
+      {onTogglePin ? (
+        <DropdownMenuItem
+          testID="workspace-header-pin"
+          leading={isPinned ? MENU_UNPIN_ICON : MENU_PIN_ICON}
+          onSelect={handleTogglePin}
+        >
+          {t(isPinned ? "sidebar.workspace.actions.unpin" : "sidebar.workspace.actions.pin")}
+        </DropdownMenuItem>
       ) : null}
       {onArchive ? (
         <DropdownMenuItem
