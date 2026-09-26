@@ -1998,6 +1998,10 @@ export const zhCN: TranslationResources = {
         success: "浏览器数据已清除。",
         error: "无法清除浏览器数据。",
       },
+      playTurnCompleteSound: {
+        label: "Agent 完成时播放提示音",
+        description: "Agent 完成一个 turn 时播放提示音",
+      },
       defaultSend: {
         label: "默认发送",
         descriptions: {

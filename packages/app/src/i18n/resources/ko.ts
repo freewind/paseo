@@ -2030,6 +2030,10 @@ export const ko: TranslationResources = {
         success: "브라우저 데이터가 삭제되었습니다.",
         error: "브라우저 데이터를 삭제할 수 없습니다.",
       },
+      playTurnCompleteSound: {
+        label: "완료 시 소리 재생",
+        description: "에이전트가 턴을 완료할 때 소리를 재생합니다",
+      },
       defaultSend: {
         label: "기본 전송",
         descriptions: {

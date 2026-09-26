@@ -2020,6 +2020,10 @@ export const ar: TranslationResources = {
         success: "تم مسح بيانات المتصفح.",
         error: "تعذر مسح بيانات المتصفح.",
       },
+      playTurnCompleteSound: {
+        label: "تشغيل صوت عند اكتمال العمل",
+        description: "تشغيل صوت عند اكتمال الوكيل لعمله",
+      },
       defaultSend: {
         label: "إرسال افتراضي",
         descriptions: {

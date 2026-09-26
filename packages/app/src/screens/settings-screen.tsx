@@ -287,6 +287,7 @@ interface GeneralSectionProps {
   handleServiceUrlBehaviorChange: (behavior: ServiceUrlBehavior) => void;
   handleLanguageChange: (language: AppLanguage) => void;
   handleTerminalScrollbackLinesChange: (lines: number) => void;
+  handlePlayTurnCompleteSoundChange: (playTurnCompleteSound: boolean) => void;
 }
 
 interface ServiceUrlBehaviorMenuItemProps {
@@ -361,6 +362,7 @@ function GeneralSection({
   handleServiceUrlBehaviorChange,
   handleLanguageChange,
   handleTerminalScrollbackLinesChange,
+  handlePlayTurnCompleteSoundChange,
 }: GeneralSectionProps) {
   const { t, i18n } = useTranslation();
   const activeLocale = getActiveLocale(i18n.language);
@@ -458,6 +460,22 @@ function GeneralSection({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+        </View>
+        <View style={[settingsStyles.row, settingsStyles.rowBorder]}>
+          <View style={settingsStyles.rowContent}>
+            <Text style={settingsStyles.rowTitle}>
+              {t("settings.general.playTurnCompleteSound.label")}
+            </Text>
+            <Text style={settingsStyles.rowHint}>
+              {t("settings.general.playTurnCompleteSound.description")}
+            </Text>
+          </View>
+          <Switch
+            value={settings.playTurnCompleteSound}
+            onValueChange={handlePlayTurnCompleteSoundChange}
+            accessibilityLabel={t("settings.general.playTurnCompleteSound.label")}
+            testID="settings-play-turn-complete-sound-switch"
+          />
         </View>
         {isDesktopApp ? (
           <View style={[settingsStyles.row, settingsStyles.rowBorder]}>
@@ -1300,6 +1318,13 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
     [updateSettings],
   );
 
+  const handlePlayTurnCompleteSoundChange = useCallback(
+    (playTurnCompleteSound: boolean) => {
+      void updateSettings({ playTurnCompleteSound });
+    },
+    [updateSettings],
+  );
+
   const handlePlaybackTest = useCallback(async () => {
     if (!voiceAudioEngine || isPlaybackTestRunning) {
       return;
@@ -1531,6 +1556,7 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
                   handleServiceUrlBehaviorChange={handleServiceUrlBehaviorChange}
                   handleLanguageChange={handleLanguageChange}
                   handleTerminalScrollbackLinesChange={handleTerminalScrollbackLinesChange}
+                  handlePlayTurnCompleteSoundChange={handlePlayTurnCompleteSoundChange}
                 />
                 {isDesktopApp ? <BrowserDataSection /> : null}
               </>

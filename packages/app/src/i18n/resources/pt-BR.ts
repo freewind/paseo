@@ -2054,6 +2054,10 @@ export const ptBR: TranslationResources = {
         success: "Dados do navegador limpos.",
         error: "Não foi possível limpar os dados do navegador.",
       },
+      playTurnCompleteSound: {
+        label: "Tocar som ao terminar",
+        description: "Tocar um som quando o agente termina uma rodada",
+      },
       defaultSend: {
         label: "Envio padrão",
         descriptions: {

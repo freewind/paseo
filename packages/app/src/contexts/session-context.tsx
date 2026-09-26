@@ -13,6 +13,8 @@ import {
 } from "@/hooks/use-agent-initialization";
 import type { StreamItem } from "@/types/stream";
 import { deriveAgentStreamTurnLiveness } from "@/timeline/session-stream-reducers";
+import { useTurnCompleteSound } from "@/hooks/use-turn-complete-sound";
+import { useAppSettings } from "@/hooks/use-settings";
 import { planTimelineTailFetch } from "@/timeline/timeline-sync-plan";
 import { requestTimelineReplacement } from "@/timeline/timeline-replacement";
 import { type ViewedTimelineOwner } from "@/timeline/viewed-timeline-sync";
@@ -207,6 +209,10 @@ export function SessionProvider(props: SessionProviderProps) {
 
 function SessionProviderInternal({ children, serverId, client }: SessionProviderClientProps) {
   const { t } = useTranslation();
+  const playTurnCompleteSound = useTurnCompleteSound();
+  const { settings: appSettings } = useAppSettings();
+  // Tracks turnIds we already played a completion sound for, so one turn completes only once.
+  const completedTurnSoundRef = useRef<Set<string>>(new Set());
   const voiceRuntime = useVoiceRuntimeOptional();
   const voiceAudioEngine = useVoiceAudioEngineOptional();
   const queryClient = useQueryClient();
@@ -409,6 +415,18 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
       ]);
       if (turnLiveness.length > 0) {
         getHostRuntimeStore().applyAgentTurnLiveness(serverId, agentId, turnLiveness);
+      }
+      // Play a completion sound when a turn closes, once per turn, if enabled.
+      if (appSettings.playTurnCompleteSound) {
+        const completedTurn = turnLiveness.find(
+          (transition) => transition.type === "stream_close" && transition.turnId !== null,
+        );
+        if (completedTurn && completedTurn.type === "stream_close" && completedTurn.turnId) {
+          if (!completedTurnSoundRef.current.has(completedTurn.turnId)) {
+            completedTurnSoundRef.current.add(completedTurn.turnId);
+            playTurnCompleteSound();
+          }
+        }
       }
       sync.enqueueStreamEvent(agentId, {
         event: streamEvent,
@@ -758,6 +776,8 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
     toast,
     voiceRuntime,
     voiceAudioEngine,
+    playTurnCompleteSound,
+    appSettings.playTurnCompleteSound,
   ]);
 
   const _cancelAgentRun = useCallback(

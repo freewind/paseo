@@ -2141,6 +2141,10 @@ export const en = {
         success: "Browser data cleared.",
         error: "Couldn't clear browser data.",
       },
+      playTurnCompleteSound: {
+        label: "Play sound when an agent finishes",
+        description: "Play a sound when an agent finishes a turn",
+      },
       defaultSend: {
         label: "Default send",
         descriptions: {

@@ -2054,6 +2054,10 @@ export const ru: TranslationResources = {
         success: "Данные браузера очищены.",
         error: "Не удалось очистить данные браузера.",
       },
+      playTurnCompleteSound: {
+        label: "Воспроизводить звук при завершении",
+        description: "Воспроизводить звук, когда агент завершает ход",
+      },
       defaultSend: {
         label: "Отправка по умолчанию",
         descriptions: {
