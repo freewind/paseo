@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useTranslation } from "react-i18next";
 import {
+  Archive,
   Copy,
   Ellipsis,
   Globe,
@@ -37,6 +38,7 @@ import { buildSettingsHostSectionRoute } from "@/utils/host-routes";
 import type { Theme } from "@/styles/theme";
 
 const ThemedEllipsis = withUnistyles(Ellipsis);
+const ThemedArchive = withUnistyles(Archive);
 const ThemedCopy = withUnistyles(Copy);
 const ThemedPencil = withUnistyles(Pencil);
 const ThemedSquarePen = withUnistyles(SquarePen);
@@ -52,6 +54,7 @@ const MENU_NEW_TERMINAL_ICON = <TerminalProfileIcon iconKey={undefined} size={16
 const MENU_IMPORT_ICON = <ThemedImport size={16} uniProps={mutedColorMapping} />;
 const MENU_COPY_ICON = <ThemedCopy size={16} uniProps={mutedColorMapping} />;
 const MENU_RENAME_ICON = <ThemedPencil size={16} uniProps={mutedColorMapping} />;
+const MENU_ARCHIVE_ICON = <ThemedArchive size={16} uniProps={mutedColorMapping} />;
 const MENU_SETTINGS_ICON = <ThemedSettings size={16} uniProps={mutedColorMapping} />;
 function WorkspaceHeaderMenuTriggerIcon() {
   return (
@@ -83,6 +86,9 @@ export interface WorkspaceHeaderWorkspaceActions {
   onCopyBranchName: () => void;
   onOpenSetupTab: () => void;
   onRename?: () => void;
+  onArchive?: () => void;
+  isArchiving?: boolean;
+  archiveLabel?: string;
 }
 
 function WorkspaceHeaderWorkspaceActionItems({
@@ -95,6 +101,9 @@ function WorkspaceHeaderWorkspaceActionItems({
   onCopyBranchName,
   onOpenSetupTab,
   onRename,
+  onArchive,
+  isArchiving,
+  archiveLabel,
 }: WorkspaceHeaderWorkspaceActions) {
   const { t } = useTranslation();
   const closeMenu = useDropdownMenuClose();
@@ -105,6 +114,13 @@ function WorkspaceHeaderWorkspaceActionItems({
     closeMenu();
     onRename();
   }, [closeMenu, onRename]);
+  const handleArchive = useCallback(() => {
+    if (!onArchive) return;
+    // Close the menu first so the archive flow (confirm dialog / optimistic hide /
+    // redirect) doesn't stack on top of the open menu.
+    closeMenu();
+    onArchive();
+  }, [closeMenu, onArchive]);
   return (
     <>
       <DropdownMenuItem
@@ -152,6 +168,18 @@ function WorkspaceHeaderWorkspaceActionItems({
             {t("workspace.header.actions.showSetup")}
           </DropdownMenuItem>
         </>
+      ) : null}
+      {onArchive ? (
+        <DropdownMenuItem
+          testID="workspace-header-archive"
+          leading={MENU_ARCHIVE_ICON}
+          disabled={isArchiving}
+          status={isArchiving ? "pending" : "idle"}
+          pendingLabel={archiveLabel}
+          onSelect={handleArchive}
+        >
+          {t("sidebar.workspace.actions.archive")}
+        </DropdownMenuItem>
       ) : null}
     </>
   );
