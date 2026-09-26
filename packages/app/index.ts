@@ -1,3 +1,8 @@
+// Capture crashes into the app log from the earliest moment: a failure while any later
+// import loads would otherwise kill the app without leaving a trace.
+import { installGlobalErrorLogging } from "./src/utils/global-error-logging";
+installGlobalErrorLogging();
+
 // Polyfill crypto.randomUUID for React Native before any other imports
 import { polyfillCrypto } from "./src/polyfills/crypto";
 polyfillCrypto();
