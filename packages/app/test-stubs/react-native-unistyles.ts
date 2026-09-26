@@ -28,6 +28,11 @@ const testTheme = {
       red: { 300: "#fca5a5" },
       white: "#ffffff",
     },
+    syntax: {
+      keyword: "#a626a4",
+      comment: "#a0a1a7",
+      string: "#50a14f",
+    },
   },
   borderWidth: { 1: 1 },
   spacing: [0, 4, 8, 12, 16, 20, 24, 28, 32],
