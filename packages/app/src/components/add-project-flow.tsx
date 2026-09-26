@@ -110,6 +110,8 @@ interface FlowRowOption {
   title: string;
   subtitle: string | null;
   icon: ComponentType<{ size?: number; color?: string }>;
+  /** Optional trailing action icon marking the row as the confirm/create target. */
+  actionIcon?: ComponentType<{ size?: number; color?: string }>;
   disabled?: boolean;
   testID: string;
   select: () => void;
@@ -129,6 +131,9 @@ function FlowIcon({ icon: Icon, size, color }: FlowIconProps) {
 
 const MutedFlowIcon = withUnistyles(FlowIcon, (theme) => ({
   color: theme.colors.foregroundMuted,
+}));
+const AccentFlowIcon = withUnistyles(FlowIcon, (theme) => ({
+  color: theme.colors.accent,
 }));
 const ThemedArrowLeft = withUnistyles(ArrowLeft);
 const ThemedTextInput = withUnistyles(TextInput, (theme) => ({
@@ -290,6 +295,11 @@ function FlowRow({ option, active }: { option: FlowRowOption; active: boolean })
           </Text>
         ) : null}
       </View>
+      {option.actionIcon ? (
+        <View style={styles.rowAction}>
+          <AccentFlowIcon icon={option.actionIcon} size={16} />
+        </View>
+      ) : null}
     </Pressable>
   );
 }
@@ -628,16 +638,25 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
       }));
     }
     if (page.kind === "directory-search") {
+      const queryPath = page.query.trim();
       return pathOptions.map((option) => {
         const shortPath = shortenPath(option.path);
+        // An exact match between the input and a row means the user has already
+        // drilled down to this path; selecting it again creates the project.
+        const isExactMatch = option.path === queryPath;
         return {
           id: option.path,
           title: shortPath,
           subtitle: directoryOptionSubtitle(option, shortPath),
           icon: Folder,
+          actionIcon: isExactMatch ? FolderPlus : undefined,
           testID: pathTestId(option.path),
           select: () => {
-            // Fill the input to keep matching deeper; creating is explicit via the Create button.
+            if (isExactMatch) {
+              void openAddedProject(option.path, "directory-search");
+              return;
+            }
+            // Fill the input so the list keeps matching deeper directories.
             setState((current) => setAddProjectPageInput(current, option.path));
             // EditingTextInput's initialValue only applies at mount, so mirror the fill into
             // the visible textbox (the query itself already updated through the page state).
@@ -716,6 +735,7 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
     githubQuery.data,
     host,
     onClose,
+    openAddedProject,
     page,
     pathOptions,
     recommendedPaths,
@@ -923,16 +943,6 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
                   returnKeyType="go"
                   testID="add-project-flow-input"
                 />
-                {page.kind === "directory-search" ? (
-                  <Button
-                    size="sm"
-                    disabled={!isOpenableProjectPath(page.query.trim()) || isSubmitting}
-                    onPress={submitDirectorySearchCreate}
-                    testID="add-project-flow-create"
-                  >
-                    Create
-                  </Button>
-                ) : null}
               </View>
             ) : null}
           </View>
@@ -1094,6 +1104,7 @@ const styles = StyleSheet.create((theme) => ({
   rowActive: { backgroundColor: theme.colors.surface1 },
   disabled: { opacity: theme.opacity[50] },
   iconSlot: { width: 18, alignItems: "center" },
+  rowAction: { width: 18, alignItems: "center" },
   rowText: { flex: 1, minWidth: 0 },
   rowTitle: { color: theme.colors.foreground, fontSize: theme.fontSize.base },
   rowSubtitle: { color: theme.colors.foregroundMuted, fontSize: theme.fontSize.sm, marginTop: 2 },
