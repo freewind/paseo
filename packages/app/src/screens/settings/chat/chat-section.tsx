@@ -41,6 +41,10 @@ export function ChatSection() {
     (chatOutlineEnabled: boolean) => void updateSettings({ chatOutlineEnabled }),
     [updateSettings],
   );
+  const changeShowVoiceButton = useCallback(
+    (showVoiceButton: boolean) => void updateSettings({ showVoiceButton }),
+    [updateSettings],
+  );
 
   return (
     <View>
@@ -58,6 +62,12 @@ export function ChatSection() {
             value={settings.toolCallDetailLevel}
             options={toolCallDetailOptions}
             onValueChange={changeToolCallDetailLevel}
+          />
+          <SettingsSwitch
+            label={t("settings.general.showVoiceButton.label")}
+            hint={t("settings.general.showVoiceButton.description")}
+            value={settings.showVoiceButton}
+            onValueChange={changeShowVoiceButton}
           />
           {isNative ? null : (
             <SettingsSwitch

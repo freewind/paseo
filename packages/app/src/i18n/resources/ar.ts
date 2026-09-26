@@ -2048,6 +2048,10 @@ export const ar: TranslationResources = {
         success: "تم مسح بيانات المتصفح.",
         error: "تعذر مسح بيانات المتصفح.",
       },
+      showVoiceButton: {
+        label: "إظهار زر الصوت",
+        description: "إظهار زر الصوت في منطقة إدخال الرسائل",
+      },
       defaultSend: {
         label: "إرسال افتراضي",
         descriptions: {
