@@ -1107,6 +1107,11 @@ export const en = {
         title: "Title",
         branch: "Branch name",
       },
+      titleMultiline: {
+        label: "Title lines",
+        single: "Single line",
+        multi: "Multiple lines",
+      },
       show: {
         label: "Show",
         branch: "Branch",

@@ -1125,6 +1125,11 @@ export const ptBR: TranslationResources = {
         title: "Título",
         branch: "Nome da branch",
       },
+      titleMultiline: {
+        label: "Linhas do título",
+        single: "Uma linha",
+        multi: "Várias linhas",
+      },
       show: {
         label: "Mostrar",
         branch: "Branch",
