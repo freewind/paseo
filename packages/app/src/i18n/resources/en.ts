@@ -1107,11 +1107,7 @@ export const en = {
         title: "Title",
         branch: "Branch name",
       },
-      titleMultiline: {
-        label: "Title lines",
-        single: "Single line",
-        multi: "Multiple lines",
-      },
+
       show: {
         label: "Show",
         branch: "Branch",
@@ -2290,6 +2286,13 @@ export const en = {
       chatOutline: {
         title: "Chat outline",
         description: "Show an outline for jumping between prompts",
+      },
+      workspaceRows: {
+        title: "Workspace rows",
+        titleLines: {
+          label: "Title lines",
+          hint: "Allow long workspace titles to wrap onto multiple lines",
+        },
       },
       sidebar: {
         title: "Sidebar",

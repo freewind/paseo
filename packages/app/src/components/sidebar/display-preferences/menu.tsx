@@ -123,12 +123,6 @@ const TRAILING_ICONS: Record<SidebarTrailingChoice, OptionIcon> = {
 const GROUPING_MODES: readonly SidebarGroupMode[] = ["project", "status"];
 const TITLE_SOURCES: readonly WorkspaceTitleSource[] = ["title", "branch"];
 const TRAILING_CHOICES: readonly SidebarTrailingChoice[] = ["diff", "timestamp"];
-const TITLE_MULTILINE_VALUES = ["single", "multi"] as const;
-type TitleMultilineValue = (typeof TITLE_MULTILINE_VALUES)[number];
-const TITLE_MULTILINE_ICONS: Record<TitleMultilineValue, OptionIcon> = {
-  single: withUnistyles(Type),
-  multi: withUnistyles(Captions),
-};
 
 const GROUPING_LABEL_KEYS: Record<SidebarGroupMode, string> = {
   project: "sidebar.display.grouping.project",
@@ -138,10 +132,6 @@ const GROUPING_LABEL_KEYS: Record<SidebarGroupMode, string> = {
 const TITLE_SOURCE_LABEL_KEYS: Record<WorkspaceTitleSource, string> = {
   title: "sidebar.display.titleSource.title",
   branch: "sidebar.display.titleSource.branch",
-};
-const TITLE_MULTILINE_LABEL_KEYS: Record<TitleMultilineValue, string> = {
-  single: "sidebar.display.titleMultiline.single",
-  multi: "sidebar.display.titleMultiline.multi",
 };
 
 const ROW_ITEM_LABEL_KEYS: Record<SidebarRowItem, string> = {
@@ -180,10 +170,6 @@ export function SidebarDisplayPreferencesMenu(): ReactElement {
   const { allProjects, resolvedProjectFilters } = useSidebarModel();
   const { labels } = useWorkspaceLabelProjection();
   const [managerOpen, setManagerOpen] = useState(false);
-  const setTitleMultiline = useCallback(
-    (value: TitleMultilineValue) => preferences.setWorkspaceTitleMultiline(value === "multi"),
-    [preferences],
-  );
   const openManager = useCallback(() => setManagerOpen(true), []);
   const closeManager = useCallback(() => setManagerOpen(false), []);
 
@@ -230,20 +216,6 @@ export function SidebarDisplayPreferencesMenu(): ReactElement {
             selectedValue={preferences.titleSource}
             onSelect={preferences.setTitleSource}
             testIDPrefix="sidebar-workspace-title-source"
-          />
-        ),
-      },
-      {
-        id: "titleMultiline",
-        title: t("sidebar.display.titleMultiline.label"),
-        content: (
-          <OptionList
-            values={TITLE_MULTILINE_VALUES}
-            icons={TITLE_MULTILINE_ICONS}
-            labelKeys={TITLE_MULTILINE_LABEL_KEYS}
-            selectedValue={preferences.workspaceTitleMultiline ? "multi" : "single"}
-            onSelect={setTitleMultiline}
-            testIDPrefix="sidebar-workspace-title-multiline"
           />
         ),
       },
@@ -309,7 +281,6 @@ export function SidebarDisplayPreferencesMenu(): ReactElement {
     showLabelFilter,
     labels,
     openManager,
-    setTitleMultiline,
   ]);
 
   return (
@@ -343,17 +314,6 @@ export function SidebarDisplayPreferencesMenu(): ReactElement {
             testID="sidebar-display-title-source"
           >
             {t("sidebar.display.titleSource.label")}
-          </MenuSubTrigger>
-          <MenuSubTrigger
-            id="titleMultiline"
-            value={t(
-              preferences.workspaceTitleMultiline
-                ? "sidebar.display.titleMultiline.multi"
-                : "sidebar.display.titleMultiline.single",
-            )}
-            testID="sidebar-display-title-multiline"
-          >
-            {t("sidebar.display.titleMultiline.label")}
           </MenuSubTrigger>
           <MenuSubTrigger id="show" testID="sidebar-display-show">
             {t("sidebar.display.show.label")}

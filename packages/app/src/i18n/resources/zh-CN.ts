@@ -1091,11 +1091,7 @@ export const zhCN: TranslationResources = {
         title: "标题",
         branch: "分支名称",
       },
-      titleMultiline: {
-        label: "标题行数",
-        single: "单行",
-        multi: "多行",
-      },
+
       show: {
         label: "显示",
         branch: "分支",
@@ -2146,6 +2142,13 @@ export const zhCN: TranslationResources = {
       chatOutline: {
         title: "聊天大纲",
         description: "显示用于在提示词之间跳转的大纲",
+      },
+      workspaceRows: {
+        title: "工作区行",
+        titleLines: {
+          label: "标题行数",
+          hint: "允许较长的工作区标题换行显示为多行",
+        },
       },
       sidebar: {
         title: "侧边栏",
