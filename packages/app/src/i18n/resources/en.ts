@@ -2142,6 +2142,10 @@ export const en = {
         success: "Browser data cleared.",
         error: "Couldn't clear browser data.",
       },
+      showVoiceButton: {
+        label: "Show voice button",
+        description: "Show the voice button in the composer input",
+      },
       defaultSend: {
         label: "Default send",
         descriptions: {
