@@ -2225,6 +2225,10 @@ export const fr: TranslationResources = {
         checking: "Vérification...",
         alertTitle: "Erreur",
         alertMessage: "Impossible d'ouvrir la boîte de dialogue de confirmation de mise à jour.",
+        autoCheck: {
+          label: "Rechercher les mises à jour automatiquement",
+          description: "Rechercher les mises à jour en arrière-plan toutes les 30 minutes",
+        },
       },
     },
     appearance: {

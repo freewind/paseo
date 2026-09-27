@@ -2180,6 +2180,10 @@ export const ko: TranslationResources = {
         checking: "확인 중...",
         alertTitle: "오류",
         alertMessage: "업데이트 확인 대화 상자를 열 수 없습니다.",
+        autoCheck: {
+          label: "자동으로 업데이트 확인",
+          description: "30분마다 백그라운드에서 업데이트를 확인합니다",
+        },
       },
     },
     appearance: {

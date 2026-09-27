@@ -2293,6 +2293,10 @@ export const en = {
         checking: "Checking...",
         alertTitle: "Error",
         alertMessage: "Unable to open the update confirmation dialog.",
+        autoCheck: {
+          label: "Automatically check for updates",
+          description: "Check for updates in the background every 30 minutes",
+        },
       },
     },
     appearance: {

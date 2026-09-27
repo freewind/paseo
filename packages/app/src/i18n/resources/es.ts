@@ -2221,6 +2221,10 @@ export const es: TranslationResources = {
         checking: "De cheques...",
         alertTitle: "Error",
         alertMessage: "No se puede abrir el cuadro de diálogo de confirmación de actualización.",
+        autoCheck: {
+          label: "Buscar actualizaciones automáticamente",
+          description: "Buscar actualizaciones en segundo plano cada 30 minutos",
+        },
       },
     },
     appearance: {
