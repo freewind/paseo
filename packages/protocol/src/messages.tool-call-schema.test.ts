@@ -114,6 +114,31 @@ describe("shared messages tool_call schema", () => {
     expect(legacyStatus.success).toBe(false);
   });
 
+  it("keeps the search parameters the daemon sends for grep, find and ls", () => {
+    const parsed = AgentTimelineItemPayloadSchema.parse({
+      ...canonicalBase(),
+      name: "grep",
+      status: "running",
+      error: null,
+      detail: {
+        type: "search",
+        query: "buildDetailSections",
+        toolName: "grep",
+        path: "packages/app/src",
+        glob: "*.tsx",
+        limit: 50,
+        content: "src/components/tool-call-details.tsx:668",
+      },
+    });
+
+    if (parsed.type !== "tool_call" || parsed.detail.type !== "search") {
+      throw new Error(`unexpected payload: ${parsed.type}/${parsed.detail.type}`);
+    }
+    expect(parsed.detail.path).toBe("packages/app/src");
+    expect(parsed.detail.glob).toBe("*.tsx");
+    expect(parsed.detail.limit).toBe(50);
+  });
+
   it("parses canonical sub_agent detail payload", () => {
     const parsed = AgentTimelineItemPayloadSchema.parse({
       type: "tool_call",
