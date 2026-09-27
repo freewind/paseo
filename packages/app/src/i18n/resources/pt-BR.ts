@@ -1927,6 +1927,8 @@ export const ptBR: TranslationResources = {
     },
   },
   toolCallDetails: {
+    copy: "Copiar",
+    copied: "Copiado",
     error: "Erro",
     empty: "Nenhum detalhe adicional disponível",
     subAgentActivity: "Atividade do subagente",

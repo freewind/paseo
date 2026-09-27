@@ -81,6 +81,8 @@ import { getAgentAttachmentPillContent } from "@/attachments/attachment-pill-con
 import { PlanCard } from "./plan-card";
 import { useToolCallSheet } from "./tool-call-sheet";
 import { ToolCallDetailsContent } from "./tool-call-details";
+import { CopyTextButton } from "./copy-text-button";
+import { buildToolCallDetailText } from "@/utils/tool-call-detail-text";
 import {
   AssistantInlineCodePathLink,
   type AssistantFileLinkSource,
@@ -1179,6 +1181,10 @@ const expandableBadgeStylesheet = StyleSheet.create((theme) => ({
     marginLeft: theme.spacing[1],
     padding: theme.spacing[1],
     borderRadius: theme.borderRadius.md,
+    flexShrink: 0,
+  },
+  trailingAction: {
+    marginLeft: theme.spacing[1],
     flexShrink: 0,
   },
   openFileButtonPlaceholderIcon: {
@@ -2325,6 +2331,7 @@ interface ExpandableBadgeProps {
   onOpenFile?: () => void;
   onDetailHoverChange?: (hovered: boolean) => void;
   renderDetails?: () => ReactNode;
+  trailingAction?: ReactNode;
   isLoading?: boolean;
   isError?: boolean;
   isLastInSequence?: boolean;
@@ -2688,6 +2695,7 @@ export const ExpandableBadge = memo(function ExpandableBadge({
   onOpenFile,
   onDetailHoverChange,
   renderDetails,
+  trailingAction,
   isLoading = false,
   isError = false,
   isLastInSequence = false,
@@ -2987,6 +2995,9 @@ export const ExpandableBadge = memo(function ExpandableBadge({
             onOpenFileHoverIn={handleOpenFileHoverIn}
             onOpenFileHoverOut={handleOpenFileHoverOut}
           />
+          {isExpanded && trailingAction ? (
+            <View style={expandableBadgeStylesheet.trailingAction}>{trailingAction}</View>
+          ) : null}
         </View>
       </Pressable>
       {detailContent ? (
@@ -3019,6 +3030,7 @@ function areExpandableBadgePropsEqual(previous: ExpandableBadgeProps, next: Expa
   if (previous.onOpenFile !== next.onOpenFile) return false;
   if (previous.onDetailHoverChange !== next.onDetailHoverChange) return false;
   if (previous.renderDetails !== next.renderDetails) return false;
+  if (previous.trailingAction !== next.trailingAction) return false;
   return true;
 }
 
@@ -3174,6 +3186,20 @@ export const ToolCall = memo(function ToolCall({
     maxDetailHeight,
   ]);
 
+  const getCopyText = useCallback(
+    () => buildToolCallDetailText(effectiveDetail, toolName),
+    [effectiveDetail, toolName],
+  );
+  // Desktop shows details inline, so the badge carries the copy action itself; it
+  // stays hidden while collapsed to keep the idle row uncluttered.
+  const copyAction = useMemo(
+    () =>
+      shouldRenderInline && isExpanded ? (
+        <CopyTextButton getText={getCopyText} size={16} />
+      ) : undefined,
+    [shouldRenderInline, isExpanded, getCopyText],
+  );
+
   if (presentation.isPlan && effectiveDetail?.type === "plan") {
     return (
       <PlanCard
@@ -3195,6 +3221,7 @@ export const ToolCall = memo(function ToolCall({
       onToggle={presentation.canOpenDetails ? handleToggle : undefined}
       onOpenFile={handleOpenFile}
       renderDetails={presentation.canOpenDetails && shouldRenderInline ? renderDetails : undefined}
+      trailingAction={copyAction}
       isLoading={status === "running" || status === "executing"}
       isError={status === "failed"}
       isLastInSequence={isLastInSequence}

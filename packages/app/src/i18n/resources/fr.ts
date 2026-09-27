@@ -1947,6 +1947,8 @@ export const fr: TranslationResources = {
     },
   },
   toolCallDetails: {
+    copy: "Copier",
+    copied: "Copié",
     error: "Erreur",
     empty: "Aucun détail supplémentaire disponible",
     subAgentActivity: "Activité du sous-agent",
