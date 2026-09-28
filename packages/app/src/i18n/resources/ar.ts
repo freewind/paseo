@@ -2048,13 +2048,13 @@ export const ar: TranslationResources = {
         error: "تعذر مسح بيانات المتصفح.",
       },
       ttsEnabled: {
-        label: "تمكين القراءة الصوتية",
-        description: "قراءة ردود الوكيل بصوت عالٍ عند اكتمال الرد",
+        label: "🌿 تمكين القراءة الصوتية",
+        description: "🌿 قراءة ردود الوكيل بصوت عالٍ عند اكتمال الرد",
       },
       ttsEngine: {
-        label: "صوت القراءة",
-        description: "اختر صوت القراءة الصوتية",
-        default: "افتراضي",
+        label: "🌿 صوت القراءة",
+        description: "🌿 اختر صوت القراءة الصوتية",
+        default: "🌿 افتراضي",
       },
       playTurnCompleteSound: {
         label: "تشغيل صوت عند اكتمال العمل",

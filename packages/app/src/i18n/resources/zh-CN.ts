@@ -2025,13 +2025,13 @@ export const zhCN: TranslationResources = {
         error: "无法清除浏览器数据。",
       },
       ttsEnabled: {
-        label: "朗读回复",
-        description: "Agent 回复完成时朗读内容",
+        label: "🌿 朗读回复",
+        description: "🌿 Agent 回复完成时朗读内容",
       },
       ttsEngine: {
-        label: "朗读语音",
-        description: "选择朗读回复时使用的语音",
-        default: "系统默认",
+        label: "🌿 朗读语音",
+        description: "🌿 选择朗读回复时使用的语音",
+        default: "🌿 系统默认",
       },
       playTurnCompleteSound: {
         label: "Agent 完成时播放提示音",

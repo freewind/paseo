@@ -2098,13 +2098,13 @@ export const es: TranslationResources = {
         error: "No se pudieron borrar los datos del navegador.",
       },
       ttsEnabled: {
-        label: "Leer respuestas en voz alta",
-        description: "Leer en voz alta las respuestas del agente cuando terminan",
+        label: "🌿 Leer respuestas en voz alta",
+        description: "🌿 Leer en voz alta las respuestas del agente cuando terminan",
       },
       ttsEngine: {
-        label: "Voz de lectura",
-        description: "Elige la voz para leer las respuestas en voz alta",
-        default: "Predeterminado del sistema",
+        label: "🌿 Voz de lectura",
+        description: "🌿 Elige la voz para leer las respuestas en voz alta",
+        default: "🌿 Predeterminado del sistema",
       },
       playTurnCompleteSound: {
         label: "Reproducir sonido al terminar",

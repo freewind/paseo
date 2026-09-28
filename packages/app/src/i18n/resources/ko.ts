@@ -2058,13 +2058,13 @@ export const ko: TranslationResources = {
         error: "브라우저 데이터를 삭제할 수 없습니다.",
       },
       ttsEnabled: {
-        label: "답변을 소리 내어 읽기",
-        description: "에이전트 답변이 끝나면 소리 내어 읽습니다",
+        label: "🌿 답변을 소리 내어 읽기",
+        description: "🌿 에이전트 답변이 끝나면 소리 내어 읽습니다",
       },
       ttsEngine: {
-        label: "읽기 음성",
-        description: "답변을 소리 내어 읽을 음성을 선택합니다",
-        default: "시스템 기본",
+        label: "🌿 읽기 음성",
+        description: "🌿 답변을 소리 내어 읽을 음성을 선택합니다",
+        default: "🌿 시스템 기본",
       },
       playTurnCompleteSound: {
         label: "완료 시 소리 재생",

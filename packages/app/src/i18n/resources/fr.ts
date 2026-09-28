@@ -2102,13 +2102,13 @@ export const fr: TranslationResources = {
         error: "Impossible d'effacer les données du navigateur.",
       },
       ttsEnabled: {
-        label: "Lire les réponses à voix haute",
-        description: "Lire à voix haute les réponses de l'agent lorsqu'elles se terminent",
+        label: "🌿 Lire les réponses à voix haute",
+        description: "🌿 Lire à voix haute les réponses de l'agent lorsqu'elles se terminent",
       },
       ttsEngine: {
-        label: "Voix de lecture",
-        description: "Choisissez la voix de lecture des réponses",
-        default: "Par défaut du système",
+        label: "🌿 Voix de lecture",
+        description: "🌿 Choisissez la voix de lecture des réponses",
+        default: "🌿 Par défaut du système",
       },
       playTurnCompleteSound: {
         label: "Jouer un son à la fin",

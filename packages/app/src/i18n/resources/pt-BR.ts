@@ -2082,13 +2082,13 @@ export const ptBR: TranslationResources = {
         error: "Não foi possível limpar os dados do navegador.",
       },
       ttsEnabled: {
-        label: "Ler respostas em voz alta",
-        description: "Ler em voz alta as respostas do agente quando terminam",
+        label: "🌿 Ler respostas em voz alta",
+        description: "🌿 Ler em voz alta as respostas do agente quando terminam",
       },
       ttsEngine: {
-        label: "Voz de leitura",
-        description: "Escolha a voz para ler as respostas em voz alta",
-        default: "Padrão do sistema",
+        label: "🌿 Voz de leitura",
+        description: "🌿 Escolha a voz para ler as respostas em voz alta",
+        default: "🌿 Padrão do sistema",
       },
       playTurnCompleteSound: {
         label: "Tocar som ao terminar",
