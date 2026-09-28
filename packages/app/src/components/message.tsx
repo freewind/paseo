@@ -733,7 +733,7 @@ export const AssistantTurnFooter = memo(function AssistantTurnFooter({
           testID="assistant-turn-stats"
           numberOfLines={1}
         >
-          {statsLabel}
+          {`🌿 ${statsLabel}`}
         </Text>
       ) : null}
     </>
