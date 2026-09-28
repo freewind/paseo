@@ -2067,8 +2067,8 @@ export const ko: TranslationResources = {
         default: "🌿 시스템 기본",
       },
       playTurnCompleteSound: {
-        label: "완료 시 소리 재생",
-        description: "에이전트가 턴을 완료할 때 소리를 재생합니다",
+        label: "🌿 완료 시 소리 재생",
+        description: "🌿 에이전트가 턴을 완료할 때 소리를 재생합니다",
       },
       defaultSend: {
         label: "기본 전송",

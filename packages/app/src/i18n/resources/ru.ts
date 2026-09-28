@@ -2091,8 +2091,8 @@ export const ru: TranslationResources = {
         default: "🌿 По умолчанию",
       },
       playTurnCompleteSound: {
-        label: "Воспроизводить звук при завершении",
-        description: "Воспроизводить звук, когда агент завершает ход",
+        label: "🌿 Воспроизводить звук при завершении",
+        description: "🌿 Воспроизводить звук, когда агент завершает ход",
       },
       defaultSend: {
         label: "Отправка по умолчанию",

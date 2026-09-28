@@ -2034,8 +2034,8 @@ export const zhCN: TranslationResources = {
         default: "🌿 系统默认",
       },
       playTurnCompleteSound: {
-        label: "Agent 完成时播放提示音",
-        description: "Agent 完成一个 turn 时播放提示音",
+        label: "🌿 Agent 完成时播放提示音",
+        description: "🌿 Agent 完成一个 turn 时播放提示音",
       },
       defaultSend: {
         label: "默认发送",

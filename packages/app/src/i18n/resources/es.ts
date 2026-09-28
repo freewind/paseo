@@ -2107,8 +2107,8 @@ export const es: TranslationResources = {
         default: "🌿 Predeterminado del sistema",
       },
       playTurnCompleteSound: {
-        label: "Reproducir sonido al terminar",
-        description: "Reproducir un sonido cuando el agente termina un turno",
+        label: "🌿 Reproducir sonido al terminar",
+        description: "🌿 Reproducir un sonido cuando el agente termina un turno",
       },
       defaultSend: {
         label: "Envío predeterminado",

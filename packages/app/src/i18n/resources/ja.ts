@@ -2077,8 +2077,8 @@ export const ja: TranslationResources = {
         default: "🌿 システム既定",
       },
       playTurnCompleteSound: {
-        label: "完了時にサウンドを再生",
-        description: "エージェントがターンを完了したときにサウンドを再生します",
+        label: "🌿 完了時にサウンドを再生",
+        description: "🌿 エージェントがターンを完了したときにサウンドを再生します",
       },
       defaultSend: {
         label: "デフォルトの送信",

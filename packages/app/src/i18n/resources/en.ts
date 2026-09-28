@@ -2182,8 +2182,8 @@ export const en = {
         default: "🌿 System default",
       },
       playTurnCompleteSound: {
-        label: "Play sound when an agent finishes",
-        description: "Play a sound when an agent finishes a turn",
+        label: "🌿 Play sound when an agent finishes",
+        description: "🌿 Play a sound when an agent finishes a turn",
       },
       defaultSend: {
         label: "Default send",

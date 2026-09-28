@@ -2091,8 +2091,8 @@ export const ptBR: TranslationResources = {
         default: "🌿 Padrão do sistema",
       },
       playTurnCompleteSound: {
-        label: "Tocar som ao terminar",
-        description: "Tocar um som quando o agente termina uma rodada",
+        label: "🌿 Tocar som ao terminar",
+        description: "🌿 Tocar um som quando o agente termina uma rodada",
       },
       defaultSend: {
         label: "Envio padrão",

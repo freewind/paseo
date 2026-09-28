@@ -2111,8 +2111,8 @@ export const fr: TranslationResources = {
         default: "🌿 Par défaut du système",
       },
       playTurnCompleteSound: {
-        label: "Jouer un son à la fin",
-        description: "Jouer un son lorsqu'un agent termine un tour",
+        label: "🌿 Jouer un son à la fin",
+        description: "🌿 Jouer un son lorsqu'un agent termine un tour",
       },
       defaultSend: {
         label: "Envoi par défaut",

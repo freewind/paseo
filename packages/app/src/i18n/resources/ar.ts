@@ -2057,8 +2057,8 @@ export const ar: TranslationResources = {
         default: "🌿 افتراضي",
       },
       playTurnCompleteSound: {
-        label: "تشغيل صوت عند اكتمال العمل",
-        description: "تشغيل صوت عند اكتمال الوكيل لعمله",
+        label: "🌿 تشغيل صوت عند اكتمال العمل",
+        description: "🌿 تشغيل صوت عند اكتمال الوكيل لعمله",
       },
       defaultSend: {
         label: "إرسال افتراضي",
