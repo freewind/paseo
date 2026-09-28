@@ -86,6 +86,40 @@ export function highlightDiffLines(
     } else if (line.type === "remove" && oldTokens) {
       tokens = oldTokens[oldIndex];
     }
-    return tokens ? { ...line, tokens } : line;
+    if (!tokens) {
+      return line;
+    }
+    // Merge word-level `changed` flags from segments into the tokens so the
+    // renderer can apply highlight backgrounds on top of syntax colors.
+    const segments = line.segments;
+    if (!segments || segments.length === 0) {
+      return { ...line, tokens };
+    }
+    const merged: HighlightToken[] = [];
+    let segIndex = 0;
+    let segOffset = 0;
+    for (const token of tokens) {
+      let remaining = token.text;
+      while (remaining.length > 0 && segIndex < segments.length) {
+        const segment = segments[segIndex];
+        const segRemaining = segment.text.slice(segOffset);
+        const take = Math.min(remaining.length, segRemaining.length);
+        merged.push({
+          text: remaining.slice(0, take),
+          style: token.style,
+          changed: segment.changed,
+        });
+        remaining = remaining.slice(take);
+        segOffset += take;
+        if (segOffset >= segment.text.length) {
+          segIndex += 1;
+          segOffset = 0;
+        }
+      }
+      if (remaining.length > 0) {
+        merged.push({ text: remaining, style: token.style, changed: false });
+      }
+    }
+    return { ...line, tokens: merged };
   });
 }
