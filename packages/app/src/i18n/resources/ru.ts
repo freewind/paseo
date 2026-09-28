@@ -1194,7 +1194,7 @@ export const ru: TranslationResources = {
     },
     project: {
       actions: {
-        collapse: "Collapse",
+        collapse: "🌿 Collapse",
         menu: "Действия проекта",
         openSettings: "Открыть настройки проекта",
         openNewWindow: "Открыть в новом окне",
@@ -1236,8 +1236,8 @@ export const ru: TranslationResources = {
         pending: "Ожидают: {{count}}",
       },
       actions: {
-        collapsedCount: "{{count}} collapsed",
-        collapsedRestore: "Restore {{name}} to the sidebar",
+        collapsedCount: "🌿 {{count}} collapsed",
+        collapsedRestore: "🌿 Restore {{name}} to the sidebar",
         menu: "Действия рабочего пространства",
         newWorkspace: "Новое рабочее пространство",
         showMore: "Показать ещё",
@@ -2236,10 +2236,10 @@ export const ru: TranslationResources = {
         description: "Показывать оглавление для перехода между запросами",
       },
       workspaceRows: {
-        title: "Строки рабочих пространств",
+        title: "🌿 Строки рабочих пространств",
         titleLines: {
-          label: "Строки заголовка",
-          hint: "Разрешить длинным названиям рабочих пространств переноситься на несколько строк",
+          label: "🌿 Строки заголовка",
+          hint: "🌿 Разрешить длинным названиям рабочих пространств переноситься на несколько строк",
         },
       },
       sidebar: {

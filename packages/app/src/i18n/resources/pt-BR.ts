@@ -1202,7 +1202,7 @@ export const ptBR: TranslationResources = {
     },
     project: {
       actions: {
-        collapse: "Collapse",
+        collapse: "🌿 Collapse",
         menu: "Ações do projeto",
         openSettings: "Abrir configurações do projeto",
         openNewWindow: "Abrir em nova janela",
@@ -1244,8 +1244,8 @@ export const ptBR: TranslationResources = {
         pending: "Pendentes: {{count}}",
       },
       actions: {
-        collapsedCount: "{{count}} collapsed",
-        collapsedRestore: "Restore {{name}} to the sidebar",
+        collapsedCount: "🌿 {{count}} collapsed",
+        collapsedRestore: "🌿 Restore {{name}} to the sidebar",
         menu: "Ações do workspace",
         newWorkspace: "Novo workspace",
         showMore: "Mostrar mais",
@@ -2233,10 +2233,10 @@ export const ptBR: TranslationResources = {
         description: "Mostrar uma estrutura para navegar entre prompts",
       },
       workspaceRows: {
-        title: "Linhas de workspace",
+        title: "🌿 Linhas de workspace",
         titleLines: {
-          label: "Linhas do título",
-          hint: "Permitir que títulos longos de workspace ocupem várias linhas",
+          label: "🌿 Linhas do título",
+          hint: "🌿 Permitir que títulos longos de workspace ocupem várias linhas",
         },
       },
       sidebar: {

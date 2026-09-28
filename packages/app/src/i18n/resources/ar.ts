@@ -1176,7 +1176,7 @@ export const ar: TranslationResources = {
     },
     project: {
       actions: {
-        collapse: "Collapse",
+        collapse: "🌿 Collapse",
         menu: "إجراءات المشروع",
         openSettings: "افتح إعدادات المشروع",
         openNewWindow: "Open in new window",
@@ -1218,8 +1218,8 @@ export const ar: TranslationResources = {
         pending: "قيد الانتظار: {{count}}",
       },
       actions: {
-        collapsedCount: "{{count}} collapsed",
-        collapsedRestore: "Restore {{name}} to the sidebar",
+        collapsedCount: "🌿 {{count}} collapsed",
+        collapsedRestore: "🌿 Restore {{name}} to the sidebar",
         menu: "إجراءات Workspace",
         newWorkspace: "مساحة عمل جديدة",
         showMore: "عرض المزيد",
@@ -2198,10 +2198,10 @@ export const ar: TranslationResources = {
         description: "عرض مخطط للتنقل بين المطالبات",
       },
       workspaceRows: {
-        title: "صفوف مساحات العمل",
+        title: "🌿 صفوف مساحات العمل",
         titleLines: {
-          label: "أسطر العنوان",
-          hint: "السماح بالتفاف عناوين مساحات العمل الطويلة على عدة أسطر",
+          label: "🌿 أسطر العنوان",
+          hint: "🌿 السماح بالتفاف عناوين مساحات العمل الطويلة على عدة أسطر",
         },
       },
       sidebar: {

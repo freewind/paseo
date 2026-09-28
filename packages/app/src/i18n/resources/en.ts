@@ -1184,7 +1184,7 @@ export const en = {
     },
     project: {
       actions: {
-        collapse: "Collapse",
+        collapse: "🌿 Collapse",
         menu: "Project actions",
         openSettings: "Open project settings",
         openNewWindow: "Open in new window",
@@ -1226,8 +1226,8 @@ export const en = {
         pending: "Pending: {{count}}",
       },
       actions: {
-        collapsedCount: "{{count}} collapsed",
-        collapsedRestore: "Restore {{name}} to the sidebar",
+        collapsedCount: "🌿 {{count}} collapsed",
+        collapsedRestore: "🌿 Restore {{name}} to the sidebar",
         menu: "Workspace actions",
         newWorkspace: "New workspace",
         showMore: "Show more",
@@ -2322,10 +2322,10 @@ export const en = {
         description: "Show an outline for jumping between prompts",
       },
       workspaceRows: {
-        title: "Workspace rows",
+        title: "🌿 Workspace rows",
         titleLines: {
-          label: "Title lines",
-          hint: "Allow long workspace titles to wrap onto multiple lines",
+          label: "🌿 Title lines",
+          hint: "🌿 Allow long workspace titles to wrap onto multiple lines",
         },
       },
       sidebar: {

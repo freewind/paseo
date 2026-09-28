@@ -1212,7 +1212,7 @@ export const es: TranslationResources = {
     },
     project: {
       actions: {
-        collapse: "Collapse",
+        collapse: "🌿 Collapse",
         menu: "Acciones del proyecto",
         openSettings: "Abrir la configuración del proyecto",
         openNewWindow: "Open in new window",
@@ -1254,8 +1254,8 @@ export const es: TranslationResources = {
         pending: "Pendientes: {{count}}",
       },
       actions: {
-        collapsedCount: "{{count}} collapsed",
-        collapsedRestore: "Restore {{name}} to the sidebar",
+        collapsedCount: "🌿 {{count}} collapsed",
+        collapsedRestore: "🌿 Restore {{name}} to the sidebar",
         menu: "AccionesWorkspace",
         newWorkspace: "Nuevo espacio de trabajo",
         showMore: "Mostrar más",
@@ -2250,10 +2250,10 @@ export const es: TranslationResources = {
         description: "Muestra un esquema para saltar entre instrucciones",
       },
       workspaceRows: {
-        title: "Filas de espacios de trabajo",
+        title: "🌿 Filas de espacios de trabajo",
         titleLines: {
-          label: "Líneas del título",
-          hint: "Permitir que los títulos largos de espacios de trabajo ocupen varias líneas",
+          label: "🌿 Líneas del título",
+          hint: "🌿 Permitir que los títulos largos de espacios de trabajo ocupen varias líneas",
         },
       },
       sidebar: {

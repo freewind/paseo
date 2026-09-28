@@ -1167,7 +1167,7 @@ export const zhCN: TranslationResources = {
     },
     project: {
       actions: {
-        collapse: "Collapse",
+        collapse: "🌿 Collapse",
         menu: "Project 操作",
         openSettings: "打开 project 设置",
         openNewWindow: "在新窗口中打开",
@@ -1208,8 +1208,8 @@ export const zhCN: TranslationResources = {
         pending: "等待中: {{count}}",
       },
       actions: {
-        collapsedCount: "{{count}} 个被折叠",
-        collapsedRestore: "将 {{name}} 恢复到侧边栏",
+        collapsedCount: "🌿 {{count}} 个被折叠",
+        collapsedRestore: "🌿 将 {{name}} 恢复到侧边栏",
         menu: "Workspace 操作",
         newWorkspace: "新建 workspace",
         showMore: "显示更多",
@@ -2173,10 +2173,10 @@ export const zhCN: TranslationResources = {
         description: "显示用于在提示词之间跳转的大纲",
       },
       workspaceRows: {
-        title: "工作区行",
+        title: "🌿 工作区行",
         titleLines: {
-          label: "标题行数",
-          hint: "允许较长的工作区标题换行显示为多行",
+          label: "🌿 标题行数",
+          hint: "🌿 允许较长的工作区标题换行显示为多行",
         },
       },
       sidebar: {

@@ -1183,7 +1183,7 @@ export const ko: TranslationResources = {
     },
     project: {
       actions: {
-        collapse: "Collapse",
+        collapse: "🌿 Collapse",
         menu: "프로젝트 작업",
         openSettings: "프로젝트 설정 열기",
         openNewWindow: "새 창에서 열기",
@@ -1225,8 +1225,8 @@ export const ko: TranslationResources = {
         pending: "대기 중: {{count}}개",
       },
       actions: {
-        collapsedCount: "{{count}} collapsed",
-        collapsedRestore: "Restore {{name}} to the sidebar",
+        collapsedCount: "🌿 {{count}} collapsed",
+        collapsedRestore: "🌿 Restore {{name}} to the sidebar",
         menu: "워크스페이스 작업",
         newWorkspace: "새 워크스페이스",
         showMore: "더 보기",
@@ -2209,10 +2209,10 @@ export const ko: TranslationResources = {
         description: "프롬프트 사이를 이동하기 위한 개요 표시",
       },
       workspaceRows: {
-        title: "워크스페이스 행",
+        title: "🌿 워크스페이스 행",
         titleLines: {
-          label: "제목 줄 수",
-          hint: "긴 워크스페이스 제목을 여러 줄로 줄바꿈",
+          label: "🌿 제목 줄 수",
+          hint: "🌿 긴 워크스페이스 제목을 여러 줄로 줄바꿈",
         },
       },
       sidebar: {
