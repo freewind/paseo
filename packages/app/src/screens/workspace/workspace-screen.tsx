@@ -785,7 +785,7 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
         ref={anchorRef}
         testID="workspace-tab-switcher-trigger"
         accessibilityRole="button"
-        accessibilityLabel={t("workspace.tabs.switcher.trigger", { count: tabs.length })}
+        accessibilityLabel={`🌿 ${t("workspace.tabs.switcher.trigger", { count: tabs.length })}`}
         style={switcherTriggerStyle}
         onPress={handleOpenSwitcher}
       >
