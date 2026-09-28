@@ -1919,8 +1919,8 @@ export const en = {
     },
   },
   toolCallDetails: {
-    copy: "Copy",
-    copied: "Copied",
+    copy: "🌿 Copy",
+    copied: "🌿 Copied",
     error: "Error",
     empty: "No additional details available",
     subAgentActivity: "Sub-agent activity",
@@ -1957,7 +1957,7 @@ export const en = {
   renameModal: {
     rename: "Rename",
     saving: "Saving...",
-    clear: "Clear",
+    clear: "🌿 Clear",
   },
   sidebarCallout: {
     dismiss: "Dismiss",

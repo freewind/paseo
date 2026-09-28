@@ -1927,8 +1927,8 @@ export const ru: TranslationResources = {
     },
   },
   toolCallDetails: {
-    copy: "Копировать",
-    copied: "Скопировано",
+    copy: "🌿 Копировать",
+    copied: "🌿 Скопировано",
     error: "Ошибка",
     empty: "Дополнительные сведения отсутствуют",
     subAgentActivity: "Активность субагента",
@@ -1965,7 +1965,7 @@ export const ru: TranslationResources = {
   renameModal: {
     rename: "Переименовать",
     saving: "Сохранение...",
-    clear: "Очистить",
+    clear: "🌿 Очистить",
   },
   sidebarCallout: {
     dismiss: "Закрыть",

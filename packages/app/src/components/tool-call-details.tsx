@@ -529,7 +529,7 @@ function ToolCallInputSection({ fields }: { fields: ToolCallInputField[] }) {
   if (fields.length === 0) return null;
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{t("toolCallDetails.input")}</Text>
+      <Text style={styles.sectionTitle}>{`🌿 ${t("toolCallDetails.input")}`}</Text>
       <View style={styles.inputFields}>
         {fields.map((field) => (
           <View key={field.label} style={styles.inputFieldRow}>

@@ -1904,8 +1904,8 @@ export const ko: TranslationResources = {
     },
   },
   toolCallDetails: {
-    copy: "복사",
-    copied: "복사됨",
+    copy: "🌿 복사",
+    copied: "🌿 복사됨",
     error: "오류",
     empty: "추가 세부 정보가 없습니다",
     subAgentActivity: "서브에이전트 활동",
@@ -1942,7 +1942,7 @@ export const ko: TranslationResources = {
   renameModal: {
     rename: "이름 변경",
     saving: "저장하는 중...",
-    clear: "지우기",
+    clear: "🌿 지우기",
   },
   sidebarCallout: {
     dismiss: "닫기",

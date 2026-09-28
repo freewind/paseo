@@ -1927,8 +1927,8 @@ export const ptBR: TranslationResources = {
     },
   },
   toolCallDetails: {
-    copy: "Copiar",
-    copied: "Copiado",
+    copy: "🌿 Copiar",
+    copied: "🌿 Copiado",
     error: "Erro",
     empty: "Nenhum detalhe adicional disponível",
     subAgentActivity: "Atividade do subagente",
@@ -1965,7 +1965,7 @@ export const ptBR: TranslationResources = {
   renameModal: {
     rename: "Renomear",
     saving: "Salvando...",
-    clear: "Limpar",
+    clear: "🌿 Limpar",
   },
   sidebarCallout: {
     dismiss: "Dispensar",

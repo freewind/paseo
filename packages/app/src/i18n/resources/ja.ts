@@ -1914,8 +1914,8 @@ export const ja: TranslationResources = {
     },
   },
   toolCallDetails: {
-    copy: "コピー",
-    copied: "コピーしました",
+    copy: "🌿 コピー",
+    copied: "🌿 コピーしました",
     error: "エラー",
     empty: "追加の詳細はありません",
     subAgentActivity: "サブエージェントアクティビティ",
@@ -1952,7 +1952,7 @@ export const ja: TranslationResources = {
   renameModal: {
     rename: "名前を変更",
     saving: "保存中...",
-    clear: "クリア",
+    clear: "🌿 クリア",
   },
   sidebarCallout: {
     dismiss: "閉じる",

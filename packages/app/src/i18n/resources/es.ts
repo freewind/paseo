@@ -1942,8 +1942,8 @@ export const es: TranslationResources = {
     },
   },
   toolCallDetails: {
-    copy: "Copiar",
-    copied: "Copiado",
+    copy: "🌿 Copiar",
+    copied: "🌿 Copiado",
     error: "Error",
     empty: "No hay detalles adicionales disponibles",
     subAgentActivity: "Actividad de subagente",
@@ -1980,7 +1980,7 @@ export const es: TranslationResources = {
   renameModal: {
     rename: "Rebautizar",
     saving: "Guardando...",
-    clear: "Borrar",
+    clear: "🌿 Borrar",
   },
   sidebarCallout: {
     dismiss: "Despedir",
