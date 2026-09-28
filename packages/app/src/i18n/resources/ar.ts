@@ -2058,6 +2058,11 @@ export const ar: TranslationResources = {
         label: "🌿 إظهار زر الصوت",
         description: "🌿 إظهار زر الصوت في منطقة إدخال الرسائل",
       },
+      doubleBackToExit: {
+        label: "🌿 الرجوع مرتين للخروج",
+        description: "🌿 اضغط زر الرجوع مرتين للخروج من التطبيق",
+        toast: "🌿 اضغط الرجوع مرة أخرى للخروج",
+      },
       defaultSend: {
         label: "إرسال افتراضي",
         descriptions: {
