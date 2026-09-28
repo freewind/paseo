@@ -154,7 +154,7 @@ function WorkspaceHeaderWorkspaceActionItems({
           leading={MENU_RENAME_ICON}
           onSelect={handleRename}
         >
-          {t("sidebar.workspace.actions.rename")}
+          {`🌿 ${t("sidebar.workspace.actions.rename")}`}
         </DropdownMenuItem>
       ) : null}
       {currentBranchName ? (
@@ -192,7 +192,7 @@ function WorkspaceHeaderWorkspaceActionItems({
           leading={isPinned ? MENU_UNPIN_ICON : MENU_PIN_ICON}
           onSelect={handleTogglePin}
         >
-          {t(isPinned ? "sidebar.workspace.actions.unpin" : "sidebar.workspace.actions.pin")}
+          {`🌿 ${t(isPinned ? "sidebar.workspace.actions.unpin" : "sidebar.workspace.actions.pin")}`}
         </DropdownMenuItem>
       ) : null}
       {onArchive ? (
@@ -204,7 +204,7 @@ function WorkspaceHeaderWorkspaceActionItems({
           pendingLabel={archiveLabel}
           onSelect={handleArchive}
         >
-          {t("sidebar.workspace.actions.archive")}
+          {`🌿 ${t("sidebar.workspace.actions.archive")}`}
         </DropdownMenuItem>
       ) : null}
     </>
