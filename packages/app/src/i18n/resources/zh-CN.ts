@@ -2032,8 +2032,8 @@ export const zhCN: TranslationResources = {
         error: "无法清除浏览器数据。",
       },
       showVoiceButton: {
-        label: "显示语音按钮",
-        description: "在输入区显示语音按钮",
+        label: "🌿 显示语音按钮",
+        description: "🌿 在输入区显示语音按钮",
       },
       defaultSend: {
         label: "默认发送",
@@ -2145,8 +2145,8 @@ export const zhCN: TranslationResources = {
         alertTitle: "错误",
         alertMessage: "无法打开更新确认对话框。",
         autoCheck: {
-          label: "自动检查更新",
-          description: "每 30 分钟在后台自动检查更新",
+          label: "🌿 自动检查更新",
+          description: "🌿 每 30 分钟在后台自动检查更新",
         },
       },
     },
@@ -2706,8 +2706,8 @@ export const zhCN: TranslationResources = {
       metadata: {
         title: "元数据生成",
         info: "注入到 Paseo 用来生成元数据的 AI prompts 中的 Project 专属指令，可用于强制执行团队约定，例如分支命名、提交风格或 PR 格式",
-        titlePrompt: "工作区标题",
-        titlePromptPlaceholder: "描述工作区标题的命名风格",
+        titlePrompt: "🌿 工作区标题",
+        titlePromptPlaceholder: "🌿 描述工作区标题的命名风格",
         branchName: "分支名称",
         branchNamePlaceholder: "分支以 feat/ 或 fix/ 开头，个人分支使用 mb/",
         commitMessage: "提交消息",

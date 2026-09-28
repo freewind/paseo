@@ -2109,8 +2109,8 @@ export const fr: TranslationResources = {
         error: "Impossible d'effacer les données du navigateur.",
       },
       showVoiceButton: {
-        label: "Afficher le bouton vocal",
-        description: "Afficher le bouton vocal dans la saisie du compositeur",
+        label: "🌿 Afficher le bouton vocal",
+        description: "🌿 Afficher le bouton vocal dans la saisie du compositeur",
       },
       defaultSend: {
         label: "Envoi par défaut",
@@ -2226,8 +2226,8 @@ export const fr: TranslationResources = {
         alertTitle: "Erreur",
         alertMessage: "Impossible d'ouvrir la boîte de dialogue de confirmation de mise à jour.",
         autoCheck: {
-          label: "Rechercher les mises à jour automatiquement",
-          description: "Rechercher les mises à jour en arrière-plan toutes les 30 minutes",
+          label: "🌿 Rechercher les mises à jour automatiquement",
+          description: "🌿 Rechercher les mises à jour en arrière-plan toutes les 30 minutes",
         },
       },
     },
@@ -2809,8 +2809,8 @@ export const fr: TranslationResources = {
       metadata: {
         title: "Génération de métadonnées",
         info: "Instructions spécifiques au projet injectées dans les invites de l'IA quePaseoutilise pour générer des métadonnées: utilisez-les pour appliquer les conventions de votre équipe telles que la dénomination des branches, le style de validation ou le formatPR.",
-        titlePrompt: "Titres des espaces de travail",
-        titlePromptPlaceholder: "Décrivez le style de nommage des titres d’espaces de travail",
+        titlePrompt: "🌿 Titres des espaces de travail",
+        titlePromptPlaceholder: "🌿 Décrivez le style de nommage des titres d’espaces de travail",
         branchName: "Noms des succursales",
         branchNamePlaceholder:
           "Préfixez les branches avec feat/ ou fix/, mb/ pour les branches personnelles",

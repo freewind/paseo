@@ -2105,8 +2105,8 @@ export const es: TranslationResources = {
         error: "No se pudieron borrar los datos del navegador.",
       },
       showVoiceButton: {
-        label: "Mostrar botón de voz",
-        description: "Mostrar el botón de voz en la entrada del compositor",
+        label: "🌿 Mostrar botón de voz",
+        description: "🌿 Mostrar el botón de voz en la entrada del compositor",
       },
       defaultSend: {
         label: "Envío predeterminado",
@@ -2222,8 +2222,8 @@ export const es: TranslationResources = {
         alertTitle: "Error",
         alertMessage: "No se puede abrir el cuadro de diálogo de confirmación de actualización.",
         autoCheck: {
-          label: "Buscar actualizaciones automáticamente",
-          description: "Buscar actualizaciones en segundo plano cada 30 minutos",
+          label: "🌿 Buscar actualizaciones automáticamente",
+          description: "🌿 Buscar actualizaciones en segundo plano cada 30 minutos",
         },
       },
     },
@@ -2800,9 +2800,9 @@ export const es: TranslationResources = {
       metadata: {
         title: "Generación de metadatos",
         info: "Instrucciones específicas del proyecto inyectadas en los mensajes de IA quePaseoutiliza para generar metadatos; úselas para hacer cumplir las convenciones de su equipo, como la denominación de ramas, el estilo de confirmación o el formatoPR.",
-        titlePrompt: "Títulos de espacios de trabajo",
+        titlePrompt: "🌿 Títulos de espacios de trabajo",
         titlePromptPlaceholder:
-          "Describe el estilo de nombres para los títulos de espacios de trabajo",
+          "🌿 Describe el estilo de nombres para los títulos de espacios de trabajo",
         branchName: "Nombres de sucursales",
         branchNamePlaceholder: "Prefijo ramas con feat/ o fix/, mb/ para ramas personales",
         commitMessage: "Confirmar mensajes",

@@ -2089,8 +2089,8 @@ export const ptBR: TranslationResources = {
         error: "Não foi possível limpar os dados do navegador.",
       },
       showVoiceButton: {
-        label: "Mostrar botão de voz",
-        description: "Mostrar o botão de voz na entrada do compositor",
+        label: "🌿 Mostrar botão de voz",
+        description: "🌿 Mostrar o botão de voz na entrada do compositor",
       },
       defaultSend: {
         label: "Envio padrão",
@@ -2205,8 +2205,8 @@ export const ptBR: TranslationResources = {
         alertTitle: "Erro",
         alertMessage: "Não foi possível abrir o diálogo de confirmação da atualização.",
         autoCheck: {
-          label: "Verificar atualizações automaticamente",
-          description: "Verificar atualizações em segundo plano a cada 30 minutos",
+          label: "🌿 Verificar atualizações automaticamente",
+          description: "🌿 Verificar atualizações em segundo plano a cada 30 minutos",
         },
       },
     },
@@ -2783,8 +2783,8 @@ export const ptBR: TranslationResources = {
       metadata: {
         title: "Geração de metadados",
         info: "Instruções específicas do projeto injetadas nos prompts de IA que o Paseo usa para gerar metadados. Use-as para aplicar convenções da sua equipe, como nomes de branch, estilo de commit ou formato de PR",
-        titlePrompt: "Títulos de workspace",
-        titlePromptPlaceholder: "Descreva o estilo de nomenclatura dos títulos de workspace",
+        titlePrompt: "🌿 Títulos de workspace",
+        titlePromptPlaceholder: "🌿 Descreva o estilo de nomenclatura dos títulos de workspace",
         branchName: "Nomes de branch",
         branchNamePlaceholder: "Prefixe branches com feat/ ou fix/, mb/ para branches pessoais",
         commitMessage: "Mensagens de commit",

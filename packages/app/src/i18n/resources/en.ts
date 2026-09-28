@@ -2180,8 +2180,8 @@ export const en = {
         error: "Couldn't clear browser data.",
       },
       showVoiceButton: {
-        label: "Show voice button",
-        description: "Show the voice button in the composer input",
+        label: "🌿 Show voice button",
+        description: "🌿 Show the voice button in the composer input",
       },
       defaultSend: {
         label: "Default send",
@@ -2294,8 +2294,8 @@ export const en = {
         alertTitle: "Error",
         alertMessage: "Unable to open the update confirmation dialog.",
         autoCheck: {
-          label: "Automatically check for updates",
-          description: "Check for updates in the background every 30 minutes",
+          label: "🌿 Automatically check for updates",
+          description: "🌿 Check for updates in the background every 30 minutes",
         },
       },
     },
@@ -2869,8 +2869,8 @@ export const en = {
       metadata: {
         title: "Metadata generation",
         info: "Project-specific instructions injected into the AI prompts Paseo uses to generate metadata - use them to enforce your team's conventions like branch naming, commit style, or PR format",
-        titlePrompt: "Workspace titles",
-        titlePromptPlaceholder: "Describe the naming style for workspace titles",
+        titlePrompt: "🌿 Workspace titles",
+        titlePromptPlaceholder: "🌿 Describe the naming style for workspace titles",
         branchName: "Branch names",
         branchNamePlaceholder: "Prefix branches with feat/ or fix/, mb/ for personal branches",
         commitMessage: "Commit messages",

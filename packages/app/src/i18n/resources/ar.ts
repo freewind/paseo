@@ -2055,8 +2055,8 @@ export const ar: TranslationResources = {
         error: "تعذر مسح بيانات المتصفح.",
       },
       showVoiceButton: {
-        label: "إظهار زر الصوت",
-        description: "إظهار زر الصوت في منطقة إدخال الرسائل",
+        label: "🌿 إظهار زر الصوت",
+        description: "🌿 إظهار زر الصوت في منطقة إدخال الرسائل",
       },
       defaultSend: {
         label: "إرسال افتراضي",
@@ -2170,8 +2170,8 @@ export const ar: TranslationResources = {
         alertTitle: "خطأ",
         alertMessage: "غير قادر على فتح مربع حوار تأكيد التحديث.",
         autoCheck: {
-          label: "التحقق من التحديثات تلقائيًا",
-          description: "التحقق من التحديثات في الخلفية كل 30 دقيقة",
+          label: "🌿 التحقق من التحديثات تلقائيًا",
+          description: "🌿 التحقق من التحديثات في الخلفية كل 30 دقيقة",
         },
       },
     },
@@ -2740,8 +2740,8 @@ export const ar: TranslationResources = {
       metadata: {
         title: "توليد البيانات الوصفية",
         info: "تعليمات خاصة بالمشروع يتم إدخالها في الذكاء الاصطناعي الذي يستخدمه Paseo لإنشاء بيانات التعريف - استخدمها لفرض اصطلاحات فريقك مثل تسمية الفرع أو نمط الالتزام أو تنسيق PR",
-        titlePrompt: "عناوين مساحات العمل",
-        titlePromptPlaceholder: "صف أسلوب تسمية عناوين مساحات العمل",
+        titlePrompt: "🌿 عناوين مساحات العمل",
+        titlePromptPlaceholder: "🌿 صف أسلوب تسمية عناوين مساحات العمل",
         branchName: "اسماء الفروع",
         branchNamePlaceholder: "بادئة الفروع بـ fet/ أو Fix/, mb/ للفروع الشخصية",
         commitMessage: "ارتكاب الرسائل",

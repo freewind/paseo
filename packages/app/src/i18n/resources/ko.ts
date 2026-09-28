@@ -2065,8 +2065,8 @@ export const ko: TranslationResources = {
         error: "브라우저 데이터를 삭제할 수 없습니다.",
       },
       showVoiceButton: {
-        label: "음성 버튼 표시",
-        description: "입력기에 음성 버튼을 표시합니다",
+        label: "🌿 음성 버튼 표시",
+        description: "🌿 입력기에 음성 버튼을 표시합니다",
       },
       defaultSend: {
         label: "기본 전송",
@@ -2181,8 +2181,8 @@ export const ko: TranslationResources = {
         alertTitle: "오류",
         alertMessage: "업데이트 확인 대화 상자를 열 수 없습니다.",
         autoCheck: {
-          label: "자동으로 업데이트 확인",
-          description: "30분마다 백그라운드에서 업데이트를 확인합니다",
+          label: "🌿 자동으로 업데이트 확인",
+          description: "🌿 30분마다 백그라운드에서 업데이트를 확인합니다",
         },
       },
     },
@@ -2754,8 +2754,8 @@ export const ko: TranslationResources = {
       metadata: {
         title: "메타데이터 생성",
         info: "Paseo가 메타데이터를 생성하는 데 사용하는 AI 프롬프트에 주입되는 프로젝트별 지침 - 브랜치 이름, 커밋 스타일, PR 형식 같은 팀 규칙을 적용하는 데 사용하세요",
-        titlePrompt: "워크스페이스 제목",
-        titlePromptPlaceholder: "워크스페이스 제목의 명명 규칙을 설명하세요",
+        titlePrompt: "🌿 워크스페이스 제목",
+        titlePromptPlaceholder: "🌿 워크스페이스 제목의 명명 규칙을 설명하세요",
         branchName: "브랜치 이름",
         branchNamePlaceholder:
           "브랜치에 feat/ 또는 fix/를 접두사로, 개인 브랜치에는 mb/를 붙이세요",
