@@ -2182,6 +2182,11 @@ export const en = {
         label: "🌿 Show voice button",
         description: "🌿 Show the voice button in the composer input",
       },
+      doubleBackToExit: {
+        label: "🌿 Double back to exit",
+        description: "🌿 Press Back twice to leave the app",
+        toast: "🌿 Press Back again to exit",
+      },
       defaultSend: {
         label: "Default send",
         descriptions: {
