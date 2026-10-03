@@ -11,6 +11,7 @@ function emptyDraft(): ProjectConfigDraft {
     teardownOriginalKind: "missing",
     scripts: [],
     metadataPrompts: {
+      title: "",
       branchName: "",
       commitMessage: "",
       pullRequest: "",
@@ -219,12 +220,14 @@ describe("applyDraftToConfig", () => {
   it("reads metadata prompt instructions for visible keys", () => {
     const draft = configToDraft({
       metadataGeneration: {
+        title: { instructions: "Workspace title style." },
         branchName: { instructions: "feat/<slug>" },
         commitMessage: { instructions: "Conventional commits." },
         pullRequest: { instructions: "Include risk notes." },
       },
     });
     expect(draft.metadataPrompts).toEqual({
+      title: "Workspace title style.",
       branchName: "feat/<slug>",
       commitMessage: "Conventional commits.",
       pullRequest: "Include risk notes.",
@@ -236,6 +239,7 @@ describe("applyDraftToConfig", () => {
       metadataGeneration: { branchName: { instructions: "feat/<slug>" } },
     });
     expect(draft.metadataPrompts).toEqual({
+      title: "",
       branchName: "feat/<slug>",
       commitMessage: "",
       pullRequest: "",
@@ -253,6 +257,7 @@ describe("applyDraftToConfig", () => {
     );
 
     expect(draft.metadataPrompts).toEqual({
+      title: "",
       branchName: "feat/<slug>",
       commitMessage: "",
       pullRequest: "",

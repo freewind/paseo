@@ -2983,7 +2983,9 @@ export const fr: TranslationResources = {
       },
       metadata: {
         title: "Génération des métadonnées",
-        info: "Instructions propres au projet, injectées dans les prompts IA que Paseo utilise pour générer les métadonnées : servez-vous-en pour imposer les conventions de votre équipe (nommage des branches, style de commit, format des PR).",
+        info: "Instructions propres au projet, injectées dans les prompts IA que Paseo utilise pour générer les métadonnées : servez-vous-en pour imposer les conventions de votre équipe (nommage des branches, style de commit, format des PR).",
+        titlePrompt: "🌿 Titres des espaces de travail",
+        titlePromptPlaceholder: "🌿 Décrivez le style de nommage des titres d’espaces de travail",
         branchName: "Noms de branches",
         branchNamePlaceholder:
           "Préfixez les branches par feat/ ou fix/, et par mb/ pour les branches personnelles",
