@@ -17,7 +17,7 @@ const SIDEBAR_VIEW_STORE_VERSION = 8;
  *
  * `normalizeWorkspaceLabelName` trims, so no real label can ever normalize to the empty string
  * and nothing in `labels` can collide with it. That is the whole reason the empty string is the
- * choice: a sentinel like `"__unlabelled__"` would be a name a person is free to type.
+ * choice: a sentinel like "__unlabelled__" would be a name a person is free to type.
  */
 export const SIDEBAR_UNLABELLED_LABEL_KEY = "";
 
@@ -39,8 +39,8 @@ export function hasActiveSidebarLabelFilter(filter: SidebarLabelFilter): boolean
  * Include/exclude toggle over an allowlist, shared by the host and project filters.
  *
  * Both filters answer the same question — "is this one of the things I pinned the sidebar to" —
- * so they share the operation. The label filter does not: its keys go through
- * `workspaceLabelKey` first, which is a different identity.
+ * so they share the operation. The label filter does not: its keys go through `workspaceLabelKey`
+ * first, which is a different identity.
  */
 function toggleFilterEntry(list: readonly string[], key: string): string[] {
   return list.includes(key) ? list.filter((entry) => entry !== key) : [...list, key];
@@ -65,8 +65,12 @@ interface SidebarViewStoreState {
   projectFilters: string[];
   labelFilter: SidebarLabelFilter;
   toggleBackground: () => void;
+  projectScrollOffset: number;
+  statusScrollOffset: number;
   setGroupMode: (mode: SidebarGroupMode) => void;
   setWorkspaceSort: (sort: WorkspaceSort) => void;
+  setProjectScrollOffset: (offset: number) => void;
+  setStatusScrollOffset: (offset: number) => void;
   toggleHostFilter: (serverId: string) => void;
   clearHostFilters: () => void;
   toggleProjectFilter: (viewKey: string) => void;
@@ -84,6 +88,8 @@ interface SidebarViewPersistedState {
   hostFilters: string[];
   projectFilters: string[];
   labelFilter: SidebarLabelFilter;
+  projectScrollOffset?: number;
+  statusScrollOffset?: number;
 }
 
 const PersistedSidebarGroupModeSchema = z.enum(["project", "status", "label"]);
@@ -99,6 +105,8 @@ const SidebarViewPersistedStateSchema = z.strictObject({
   projectFilters: z.array(z.string()).optional(),
   groupModeByServerId: z.record(z.string(), PersistedSidebarGroupModeSchema).optional(),
   labelFilter: SidebarLabelFilterSchema.optional(),
+  projectScrollOffset: z.number().finite().nonnegative().optional(),
+  statusScrollOffset: z.number().finite().nonnegative().optional(),
 });
 
 type SidebarViewStorageState = z.infer<typeof SidebarViewPersistedStateSchema>;
@@ -137,6 +145,8 @@ export function migrateSidebarViewState(persistedState: unknown): SidebarViewPer
       hostFilters: [],
       projectFilters: [],
       labelFilter: emptyLabelFilter(),
+      projectScrollOffset: 0,
+      statusScrollOffset: 0,
     };
   }
   const state = result.data;
@@ -150,6 +160,8 @@ export function migrateSidebarViewState(persistedState: unknown): SidebarViewPer
       hostFilters: [],
       projectFilters: [],
       labelFilter: emptyLabelFilter(),
+      projectScrollOffset: 0,
+      statusScrollOffset: 0,
     };
   }
 
@@ -162,6 +174,8 @@ export function migrateSidebarViewState(persistedState: unknown): SidebarViewPer
     labelFilter: state.labelFilter
       ? normalizeSidebarLabelFilter(state.labelFilter)
       : emptyLabelFilter(),
+    projectScrollOffset: state.projectScrollOffset ?? 0,
+    statusScrollOffset: state.statusScrollOffset ?? 0,
   };
 }
 
@@ -200,8 +214,14 @@ export const useSidebarViewStore = create<SidebarViewStoreState>()(
       projectFilters: [],
       labelFilter: emptyLabelFilter(),
       toggleBackground: () => set((state) => ({ showBackground: !state.showBackground })),
+      projectScrollOffset: 0,
+      statusScrollOffset: 0,
       setGroupMode: (mode) => set({ groupMode: mode }),
       setWorkspaceSort: (workspaceSort) => set({ workspaceSort }),
+      setProjectScrollOffset: (offset) =>
+        set({ projectScrollOffset: Number.isFinite(offset) ? Math.max(0, offset) : 0 }),
+      setStatusScrollOffset: (offset) =>
+        set({ statusScrollOffset: Number.isFinite(offset) ? Math.max(0, offset) : 0 }),
       toggleHostFilter: (serverId) =>
         set((state) => ({ hostFilters: toggleFilterEntry(state.hostFilters, serverId) })),
       clearHostFilters: () => set({ hostFilters: [] }),
@@ -253,6 +273,8 @@ export const useSidebarViewStore = create<SidebarViewStoreState>()(
         hostFilters: state.hostFilters,
         projectFilters: state.projectFilters,
         labelFilter: state.labelFilter,
+        projectScrollOffset: state.projectScrollOffset,
+        statusScrollOffset: state.statusScrollOffset,
       }),
       migrate: migrateSidebarViewState,
     },
