@@ -110,6 +110,10 @@ export interface AppSettings {
   doubleBackToExit: boolean;
   /** Whether to play a sound when an agent finishes a turn. */
   playTurnCompleteSound: boolean;
+  /** Whether to read agent replies aloud via TTS. */
+  ttsEnabled: boolean;
+  /** Android TTS engine id (null = system default). */
+  ttsEngine: string | null;
   /** Desktop-only preferences for implicit opens into the ordinary side pane. */
   openInSidePane: OpenInSidePanePreferences;
   pullRequestOpenLocation: PullRequestOpenLocation;
@@ -169,6 +173,8 @@ export const DEFAULT_CLIENT_SETTINGS: AppSettings = {
   showVoiceButton: true,
   doubleBackToExit: false,
   playTurnCompleteSound: false,
+  ttsEnabled: false,
+  ttsEngine: null,
   openInSidePane: DEFAULT_OPEN_IN_SIDE_PANE_PREFERENCES,
   pullRequestOpenLocation: "explorer",
 };
@@ -273,6 +279,8 @@ const StoredAppSettingsSchema = z
     showVoiceButton: z.boolean().catch(true),
     doubleBackToExit: z.boolean().catch(false),
     playTurnCompleteSound: z.boolean().catch(false),
+    ttsEnabled: z.boolean().catch(false),
+    ttsEngine: z.string().nullable().catch(null),
     openInSidePane: z
       .object({
         explorerFiles: z.boolean().catch(false),
