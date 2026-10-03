@@ -19,7 +19,12 @@ function sidebarSession(input?: Partial<Omit<SidebarWorkspaceSession, "serverId"
   return {
     workspaces: input?.workspaces ?? workspaceMap(),
     workspaceAgentActivity: input?.workspaceAgentActivity ?? activityMap(),
+    agents: input?.agents ?? agentMap(),
   };
+}
+
+function agentMap(): Map<string, never> {
+  return new Map<string, never>();
 }
 
 describe("sidebar workspace session selection", () => {
@@ -42,11 +47,13 @@ describe("sidebar workspace session selection", () => {
         serverId: "host-b",
         workspaces: hostB.workspaces,
         workspaceAgentActivity: hostB.workspaceAgentActivity,
+        agents: hostB.agents,
       },
       {
         serverId: "host-a",
         workspaces: hostA.workspaces,
         workspaceAgentActivity: hostA.workspaceAgentActivity,
+        agents: hostA.agents,
       },
     ]);
   });
@@ -54,13 +61,14 @@ describe("sidebar workspace session selection", () => {
   it("ignores high-frequency session changes outside the sidebar indexes", () => {
     const workspaces = workspaceMap();
     const workspaceAgentActivity = activityMap();
+    const agents = agentMap();
 
     const previous = selectSidebarWorkspaceSessions(
-      { "host-a": sidebarSession({ workspaces, workspaceAgentActivity }) },
+      { "host-a": sidebarSession({ workspaces, workspaceAgentActivity, agents }) },
       ["host-a"],
     );
     const next = selectSidebarWorkspaceSessions(
-      { "host-a": sidebarSession({ workspaces, workspaceAgentActivity }) },
+      { "host-a": sidebarSession({ workspaces, workspaceAgentActivity, agents }) },
       ["host-a"],
     );
 
