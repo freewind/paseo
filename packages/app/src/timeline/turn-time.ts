@@ -4,6 +4,10 @@ import { startsNewTurn } from "@/agent-stream/turn-membership";
 export interface TurnTiming {
   completedAt: Date;
   durationMs: number | null;
+  /** First-delta time minus the user message timestamp (request sent -> first character). */
+  ttftMs?: number;
+  /** Output token count reported by the provider for the completed turn. */
+  outputTokens?: number;
 }
 
 export interface StreamTurnTiming {
@@ -16,6 +20,8 @@ interface OpenTurn {
   lastItemAt: Date | null;
   assistantIds: readonly string[];
   previousItem: StreamItem | null;
+  firstDeltaAt: Date | null;
+  outputTokens: number | undefined;
 }
 
 interface HeadTurnTiming {
@@ -34,6 +40,8 @@ const EMPTY_OPEN_TURN: OpenTurn = {
   lastItemAt: null,
   assistantIds: [],
   previousItem: null,
+  firstDeltaAt: null,
+  outputTokens: undefined,
 };
 
 function closeTurn(turn: OpenTurn, into: Map<string, TurnTiming>): void {
@@ -43,6 +51,10 @@ function closeTurn(turn: OpenTurn, into: Map<string, TurnTiming>): void {
   const timing: TurnTiming = {
     completedAt: turn.lastItemAt,
     durationMs: turn.userAt ? Math.max(0, turn.lastItemAt.getTime() - turn.userAt.getTime()) : null,
+    ...(turn.firstDeltaAt && turn.userAt
+      ? { ttftMs: Math.max(0, turn.firstDeltaAt.getTime() - turn.userAt.getTime()) }
+      : {}),
+    ...(turn.outputTokens !== undefined ? { outputTokens: turn.outputTokens } : {}),
   };
   for (const id of turn.assistantIds) {
     into.set(id, timing);
@@ -58,20 +70,30 @@ function walkTurns(
   let lastItemAt = from.lastItemAt;
   let assistantIds = [...from.assistantIds];
   let previousItem = from.previousItem;
+  let firstDeltaAt = from.firstDeltaAt;
+  let outputTokens = from.outputTokens;
   for (const item of items) {
     if (startsNewTurn(item, previousItem)) {
-      closeTurn({ userAt, lastItemAt, assistantIds, previousItem }, into);
+      closeTurn({ userAt, lastItemAt, assistantIds, previousItem, firstDeltaAt, outputTokens }, into);
       userAt = item.kind === "user_message" ? item.timestamp : null;
       lastItemAt = null;
       assistantIds = [];
+      firstDeltaAt = null;
+      outputTokens = undefined;
     }
     lastItemAt = item.timestamp;
     if (item.kind === "assistant_message") {
       assistantIds.push(item.id);
+      if (!firstDeltaAt && item.firstDeltaAt) {
+        firstDeltaAt = item.firstDeltaAt;
+      }
+      if (outputTokens === undefined && item.usage?.outputTokens !== undefined) {
+        outputTokens = item.usage.outputTokens;
+      }
     }
     previousItem = item;
   }
-  return { userAt, lastItemAt, assistantIds, previousItem };
+  return { userAt, lastItemAt, assistantIds, previousItem, firstDeltaAt, outputTokens };
 }
 
 function areTimingsEqual(a: Map<string, TurnTiming>, b: Map<string, TurnTiming>): boolean {
@@ -83,7 +105,9 @@ function areTimingsEqual(a: Map<string, TurnTiming>, b: Map<string, TurnTiming>)
     if (
       !other ||
       other.completedAt.getTime() !== timing.completedAt.getTime() ||
-      other.durationMs !== timing.durationMs
+      other.durationMs !== timing.durationMs ||
+      other.ttftMs !== timing.ttftMs ||
+      other.outputTokens !== timing.outputTokens
     ) {
       return false;
     }
