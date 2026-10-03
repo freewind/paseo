@@ -2204,6 +2204,10 @@ export const ptBR: TranslationResources = {
         checking: "Verificando...",
         alertTitle: "Erro",
         alertMessage: "Não foi possível abrir o diálogo de confirmação da atualização.",
+        autoCheck: {
+          label: "🌿 Verificar atualizações automaticamente",
+          description: "🌿 Verificar atualizações em segundo plano a cada 30 minutos",
+        },
       },
     },
     appearance: {

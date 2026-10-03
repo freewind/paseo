@@ -2188,6 +2188,10 @@ export const ja: TranslationResources = {
         checking: "確認中...",
         alertTitle: "エラー",
         alertMessage: "更新確認ダイアログを開けません。",
+        autoCheck: {
+          label: "🌿 更新を自動的に確認",
+          description: "🌿 30 分ごとにバックグラウンドで更新を確認します",
+        },
       },
     },
     appearance: {

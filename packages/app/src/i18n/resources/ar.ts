@@ -2169,6 +2169,10 @@ export const ar: TranslationResources = {
         checking: "جارٍ التحقق...",
         alertTitle: "خطأ",
         alertMessage: "غير قادر على فتح مربع حوار تأكيد التحديث.",
+        autoCheck: {
+          label: "🌿 التحقق من التحديثات تلقائيًا",
+          description: "🌿 التحقق من التحديثات في الخلفية كل 30 دقيقة",
+        },
       },
     },
     appearance: {
