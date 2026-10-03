@@ -31,7 +31,7 @@ import {
 } from "react";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import { useIsFocused } from "expo-router/react-navigation";
-import { BackHandler, Text, View } from "react-native";
+import { BackHandler, Keyboard, Platform, Pressable, Text, ToastAndroid, View } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter, type Href } from "expo-router";
 import * as Clipboard from "expo-clipboard";
@@ -1417,6 +1417,9 @@ function useLastMainPane(input: {
   return lastMainPaneRef;
 }
 
+/** A second hardware Back press inside this window leaves the app. */
+const DOUBLE_BACK_TO_EXIT_WINDOW_MS = 2000;
+
 function WorkspaceScreenContent({
   serverId,
   workspaceId,
@@ -1425,6 +1428,8 @@ function WorkspaceScreenContent({
   const { t } = useTranslation();
   const _insets = useSafeAreaInsets();
   const toast = useToast();
+  const router = useRouter();
+  const doubleBackToExit = useSettings((settings) => settings.doubleBackToExit);
   const isMobile = useIsCompactFormFactor();
   const canRenderDesktopPaneSplits = supportsDesktopPaneSplits();
   const layoutMode = useWorkspaceLayoutStore((state) => state.layoutMode);
@@ -1707,6 +1712,40 @@ function WorkspaceScreenContent({
     () => ({ expanded: isExplorerSidebarShowing }),
     [isExplorerSidebarShowing],
   );
+
+  const lastExitBackPressAtRef = useRef(0);
+
+  useEffect(() => {
+    // Declared before the explorer overlay handler below on purpose: React Native runs the
+    // most recently added subscription first, so the overlay keeps priority over this guard.
+    if (!doubleBackToExit || isWeb || !isMobile || !isRouteFocused) {
+      return;
+    }
+
+    const handler = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (router.canGoBack() || isExplorerSidebarShowing) {
+        lastExitBackPressAtRef.current = 0;
+        return false;
+      }
+
+      const now = Date.now();
+      if (now - lastExitBackPressAtRef.current < DOUBLE_BACK_TO_EXIT_WINDOW_MS) {
+        lastExitBackPressAtRef.current = 0;
+        return false;
+      }
+
+      lastExitBackPressAtRef.current = now;
+      const message = t("settings.general.doubleBackToExit.toast");
+      if (Platform.OS === "android") {
+        ToastAndroid.showWithGravity(message, ToastAndroid.SHORT, ToastAndroid.BOTTOM);
+      } else {
+        toast.show(message, { durationMs: DOUBLE_BACK_TO_EXIT_WINDOW_MS });
+      }
+      return true;
+    });
+
+    return () => handler.remove();
+  }, [doubleBackToExit, isExplorerSidebarShowing, isMobile, isRouteFocused, router, t, toast]);
 
   useEffect(() => {
     // Back dismisses the compact overlay only. On a wide native layout the

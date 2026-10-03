@@ -314,6 +314,7 @@ interface GeneralSectionProps {
   settings: AppSettings;
   handleLanguageChange: (language: AppLanguage) => void;
 
+
 }
 
 interface LanguageMenuItemProps {
@@ -1402,6 +1403,7 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
     }
     return null;
   })();
+
 
 
   if (settingsLoading) {

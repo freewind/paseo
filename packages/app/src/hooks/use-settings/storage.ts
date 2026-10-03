@@ -107,6 +107,8 @@ export interface AppSettings {
   filePanelAssociations: Record<string, string>;
   /** Whether the composer shows the voice/dictation button. */
   showVoiceButton: boolean;
+  /** Whether Back must be pressed twice in a row to leave the app on devices with a hardware Back key. */
+  doubleBackToExit: boolean;
   /** Desktop-only preferences for implicit opens into the ordinary side pane. */
   openInSidePane: OpenInSidePanePreferences;
   pullRequestOpenLocation: PullRequestOpenLocation;
@@ -165,6 +167,7 @@ export const DEFAULT_CLIENT_SETTINGS: AppSettings = {
   vimKeybindings: false,
   filePanelAssociations: {},
   showVoiceButton: true,
+  doubleBackToExit: false,
   openInSidePane: DEFAULT_OPEN_IN_SIDE_PANE_PREFERENCES,
   pullRequestOpenLocation: "explorer",
 };
@@ -268,6 +271,7 @@ const StoredAppSettingsSchema = z
     vimKeybindings: z.boolean().catch(false),
     filePanelAssociations: z.record(z.string(), z.string()).catch({}),
     showVoiceButton: z.boolean().catch(true),
+    doubleBackToExit: z.boolean().catch(false),
     openInSidePane: z
       .object({
         explorerFiles: z.boolean().catch(false),
