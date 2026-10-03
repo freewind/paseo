@@ -56,7 +56,7 @@ function DiffLineRow({ line }: { line: DiffLine }) {
       <View style={lineContainerStyle}>
         <Text style={styles.lineText}>
           <Text style={prefixStyle}>{diffLinePrefix(line)}</Text>
-          <DiffTokens tokens={line.tokens} />
+          <DiffTokens tokens={line.tokens} lineType={line.type} />
         </Text>
       </View>
     );
@@ -84,7 +84,13 @@ function DiffLineRow({ line }: { line: DiffLine }) {
   );
 }
 
-function DiffTokens({ tokens }: { tokens: NonNullable<DiffLine["tokens"]> }) {
+function DiffTokens({
+  tokens,
+  lineType,
+}: {
+  tokens: NonNullable<DiffLine["tokens"]>;
+  lineType: DiffLine["type"];
+}) {
   const keyed = React.useMemo(
     () => tokens.map((token, index) => ({ key: `${index}-${token.text}`, token })),
     [tokens],
@@ -92,7 +98,13 @@ function DiffTokens({ tokens }: { tokens: NonNullable<DiffLine["tokens"]> }) {
   return (
     <>
       {keyed.map(({ key, token }) => (
-        <Text key={key} style={token.style ? syntaxTokenStyleFor(token.style) : undefined}>
+        <Text
+          key={key}
+          style={[
+            token.style ? syntaxTokenStyleFor(token.style) : undefined,
+            token.changed && (lineType === "add" ? styles.addHighlight : styles.removeHighlight),
+          ]}
+        >
           {token.text}
         </Text>
       ))}

@@ -2677,6 +2677,7 @@ export const WorkspaceMarkUnreadRequestSchema = z.object({
 const HighlightTokenSchema = z.object({
   text: z.string(),
   style: z.string().nullable(),
+  changed: z.boolean().optional(),
 });
 
 const DiffLineSchema = z.object({

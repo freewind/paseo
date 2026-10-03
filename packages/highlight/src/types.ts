@@ -23,4 +23,6 @@ export type HighlightStyle =
 export interface HighlightToken {
   text: string;
   style: HighlightStyle | null;
+  /** Word-level diff flag: this span is part of a changed region. */
+  changed?: boolean;
 }
