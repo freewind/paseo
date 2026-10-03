@@ -33,6 +33,7 @@ function ws(
     archiveUnpushedCommitCount: null,
     scripts: [],
     hasRunningScripts: false,
+    activeAgentCount: 0,
     workspaceKey: input.workspaceKey,
   };
 }
