@@ -7,6 +7,10 @@ import { formatLogLine, rotateLogContent, shouldRotate, type LogLevel } from "./
  * fetchable via `adb pull`). Native writes are serialized through a promise chain so
  * callers never block; write failures are swallowed — logging must never affect the app.
  * Console mirrors the line so `adb logcat` sees it too during development.
+ *
+ * `appLogSync` exists for crash reporting: when JavaScript is already unwinding towards a
+ * fatal handler, no microtask gets another turn, so the line has to reach disk on the
+ * current stack. It shares the same file, rotation rules and blank failure handling.
  */
 
 let logFile: File | null = null;
@@ -42,19 +46,7 @@ function writeLine(line: string): void {
   }
 }
 
-export function appLog(
-  category: string,
-  event: string,
-  details?: unknown,
-  level: LogLevel = "info",
-): void {
-  const line = formatLogLine({
-    timestamp: new Date().toISOString(),
-    category,
-    event,
-    details,
-    level,
-  });
+function mirrorToConsole(line: string, level: LogLevel): void {
   if (level === "error") {
     console.error(line);
   } else if (level === "warn") {
@@ -62,5 +54,37 @@ export function appLog(
   } else {
     console.log(line);
   }
+}
+
+function buildLine(category: string, event: string, details: unknown, level: LogLevel): string {
+  return formatLogLine({
+    timestamp: new Date().toISOString(),
+    category,
+    event,
+    details,
+    level,
+  });
+}
+
+export function appLog(
+  category: string,
+  event: string,
+  details?: unknown,
+  level: LogLevel = "info",
+): void {
+  const line = buildLine(category, event, details, level);
+  mirrorToConsole(line, level);
   writeChain = writeChain.then(() => writeLine(line)).catch(() => {});
+}
+
+/** Blocking variant for crash paths, where the pending promise chain may never get a turn. */
+export function appLogSync(
+  category: string,
+  event: string,
+  details?: unknown,
+  level: LogLevel = "info",
+): void {
+  const line = buildLine(category, event, details, level);
+  mirrorToConsole(line, level);
+  writeLine(line);
 }

@@ -6,6 +6,7 @@ import { StyleSheet } from "react-native-unistyles";
 import { Button } from "@/components/ui/button";
 import { ScrollableCodeSurface } from "@/components/ui/scrollable-code-surface";
 import { useIsCompactFormFactor } from "@/constants/layout";
+import { appLogSync } from "@/utils/app-log";
 import { formatCaughtValue } from "./root-error-details";
 
 interface RootErrorBoundaryProps {
@@ -27,10 +28,18 @@ export class RootErrorBoundary extends Component<RootErrorBoundaryProps, RootErr
   }
 
   componentDidCatch(error: unknown, errorInfo: ErrorInfo) {
+    const formattedError = formatCaughtValue(error);
     console.error("[RootErrorBoundary] Unhandled render error", {
-      error: formatCaughtValue(error),
+      error: formattedError,
       componentStack: errorInfo.componentStack,
     });
+    // The fallback screen swallows the error, so the log file is the only durable record.
+    appLogSync(
+      "crash",
+      "render-error",
+      { error: formattedError, componentStack: errorInfo.componentStack },
+      "error",
+    );
   }
 
   render() {
