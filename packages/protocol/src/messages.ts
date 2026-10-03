@@ -559,6 +559,9 @@ const ToolCallDetailPayloadSchema: z.ZodType<ToolCallDetail, unknown> = z.discri
       type: z.literal("search"),
       query: z.string(),
       toolName: z.enum(["search", "grep", "glob", "web_search"]).optional(),
+      path: z.string().optional(),
+      glob: z.string().optional(),
+      limit: z.number().optional(),
       content: z.string().optional(),
       filePaths: z.array(z.string()).optional(),
       webResults: z
