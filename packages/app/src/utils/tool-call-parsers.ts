@@ -134,6 +134,24 @@ function computeWordLevelDiff(
   };
 }
 
+// Post-process to add word-level segments for adjacent remove/add pairs.
+function attachWordSegments(diff: DiffLine[]): void {
+  for (let idx = 0; idx < diff.length - 1; idx++) {
+    const curr = diff[idx];
+    const next = diff[idx + 1];
+
+    if (curr.type === "remove" && next.type === "add") {
+      // Strip the leading -/+ from content for comparison
+      const oldLineText = curr.content.slice(1);
+      const newLineText = next.content.slice(1);
+
+      const { oldSegments, newSegments } = computeWordLevelDiff(oldLineText, newLineText);
+      curr.segments = oldSegments;
+      next.segments = newSegments;
+    }
+  }
+}
+
 export function buildLineDiff(originalText: string, updatedText: string): DiffLine[] {
   const originalLines = splitIntoLines(originalText);
   const updatedLines = splitIntoLines(updatedText);
@@ -185,21 +203,7 @@ export function buildLineDiff(originalText: string, updatedText: string): DiffLi
     j += 1;
   }
 
-  // Post-process to add word-level segments for adjacent remove/add pairs
-  for (let idx = 0; idx < diff.length - 1; idx++) {
-    const curr = diff[idx];
-    const next = diff[idx + 1];
-
-    if (curr.type === "remove" && next.type === "add") {
-      // Strip the leading -/+ from content for comparison
-      const oldLineText = curr.content.slice(1);
-      const newLineText = next.content.slice(1);
-
-      const { oldSegments, newSegments } = computeWordLevelDiff(oldLineText, newLineText);
-      curr.segments = oldSegments;
-      next.segments = newSegments;
-    }
-  }
+  attachWordSegments(diff);
 
   return diff;
 }
@@ -253,6 +257,8 @@ export function parseUnifiedDiff(diffText?: string): DiffLine[] {
 
     diff.push({ type: "context", content: line });
   }
+
+  attachWordSegments(diff);
 
   return diff;
 }

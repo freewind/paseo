@@ -50,4 +50,27 @@ describe("highlightDiffLines", () => {
     const diff = buildLineDiff("a", "b");
     expect(highlightDiffLines(diff, undefined)).toBe(diff);
   });
+
+  it("keeps word-level changed flags visible alongside syntax tokens", () => {
+    const diff = buildLineDiff("const a = 1;", "const a = 2;");
+    const result = highlightDiffLines(diff, "/repo/src/index.ts");
+
+    const remove = result.find((line) => line.type === "remove");
+    const add = result.find((line) => line.type === "add");
+
+    expect(remove?.tokens).toBeDefined();
+    expect(add?.tokens).toBeDefined();
+
+    const removeChanged = remove?.tokens
+      ?.filter((t) => t.changed)
+      .map((t) => t.text)
+      .join("");
+    const addChanged = add?.tokens
+      ?.filter((t) => t.changed)
+      .map((t) => t.text)
+      .join("");
+
+    expect(removeChanged).toBe("1");
+    expect(addChanged).toBe("2");
+  });
 });
