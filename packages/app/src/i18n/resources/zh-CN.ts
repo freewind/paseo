@@ -1872,6 +1872,8 @@ export const zhCN: TranslationResources = {
     },
   },
   toolCallDetails: {
+    copy: "🌿 复制",
+    copied: "🌿 已复制",
     error: "错误",
     empty: "没有可用的更多详情",
     subAgentActivity: "Sub-agent 活动",
