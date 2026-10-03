@@ -169,10 +169,7 @@ import {
 } from "@/screens/workspace/workspace-pane-content";
 import { useMountedTabSet } from "@/screens/workspace/use-mounted-tab-set";
 import { WorkspaceFocusProvider } from "@/workspace/focus";
-import {
-  WorkspaceRenameModal,
-  type RenamableWorkspace,
-} from "@/components/workspace-rename-modal";
+import { WorkspaceRenameModal, type RenamableWorkspace } from "@/components/workspace-rename-modal";
 import { DiffDocumentWorkspaceCacheProvider } from "@/git/diff-document/workspace-cache";
 import { useWorkspaceHeaderArchive } from "@/workspace/use-workspace-header-archive";
 import type { NewTabSelection } from "@/workspace-tabs/new-tab";
@@ -198,6 +195,7 @@ import { supportsDesktopPaneSplits, useIsCompactFormFactor } from "@/constants/l
 import { getIsElectron, isNative, isWeb } from "@/constants/platform";
 import type { SurfaceBackdrop } from "@/styles/surface-backdrop";
 import { buildHostRootRoute, buildSettingsHostRoute } from "@/utils/host-routes";
+import { appLog } from "@/utils/app-log";
 import { useWorkspaceTerminals } from "@/screens/workspace/terminals/use-workspace-terminals";
 import type { TerminalProfile } from "@getpaseo/protocol/messages";
 import {
@@ -698,6 +696,14 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const anchorRef = useRef<View>(null);
+  const previousTabCountRef = useRef(tabs.length);
+  useEffect(() => {
+    if (tabs.length === previousTabCountRef.current) return;
+    previousTabCountRef.current = tabs.length;
+    if (tabs.length >= 2) {
+      appLog("workspace.tabs", "count", { count: tabs.length });
+    }
+  }, [tabs.length]);
   const tabIndexByKey = useMemo(() => {
     const map = new Map<string, number>();
     tabs.forEach((tab, index) => {
@@ -779,7 +785,7 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
         ref={anchorRef}
         testID="workspace-tab-switcher-trigger"
         accessibilityRole="button"
-        accessibilityLabel={t("workspace.tabs.switcher.trigger", { count: tabs.length })}
+        accessibilityLabel={`🌿 ${t("workspace.tabs.switcher.trigger", { count: tabs.length })}`}
         style={switcherTriggerStyle}
         onPress={handleOpenSwitcher}
       >
@@ -794,6 +800,15 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
               />
             </View>
             <ThemedChevronDown size={14} uniProps={mutedColorMapping} />
+            {tabs.length >= 2 ? (
+              <Text
+                style={styles.switcherTriggerCount}
+                numberOfLines={1}
+                testID="workspace-tab-switcher-count"
+              >
+                {tabs.length}
+              </Text>
+            ) : null}
           </>
         )}
       </Pressable>
@@ -4395,6 +4410,11 @@ const styles = StyleSheet.create((theme) => ({
   },
   switcherTriggerPressed: {
     backgroundColor: theme.colors.surface1,
+  },
+  switcherTriggerCount: {
+    color: theme.colors.foregroundMuted,
+    fontSize: theme.fontSize.sm,
+    flexShrink: 0,
   },
   switcherTriggerLeft: {
     flexDirection: "row",
