@@ -36,6 +36,7 @@ import type { SidebarSurfaceBackdrop } from "@/styles/surface-backdrop";
 import { getSidebarRowBackdrop } from "@/components/sidebar/sidebar-row-backdrop";
 import { type GestureType } from "react-native-gesture-handler";
 import { WorkspaceRenameModal } from "@/components/workspace-rename-modal";
+import { SidebarWorkspaceAgentList } from "@/components/sidebar/sidebar-workspace-agent-list";
 import { useWorkspaceClipboardActions } from "@/hooks/use-workspace-clipboard-actions";
 import { ExternalLink, Settings, MoreVertical, Plus, Trash2 } from "lucide-react-native";
 import { NestableScrollContainer } from "react-native-draggable-flatlist";
@@ -1231,27 +1232,11 @@ function WorkspaceRowInner({
                 </SidebarWorkspaceRowContent>
               </SidebarWorkspaceContextMenu>
             </View>
-            <WorkspaceAgentListPlaceholder workspace={workspace} />
+            <SidebarWorkspaceAgentList workspace={workspace} />
           </>
         );
       }}
     </SidebarWorkspaceRowFrame>
-  );
-}
-
-/**
- * 🌿 Placeholder for the workspace's agent list, which will be rendered under each sidebar
- * workspace row. Not implemented yet — it only marks the slot so the layout and the row's
- * surrounding spacing can be reviewed first.
- */
-function WorkspaceAgentListPlaceholder({ workspace }: { workspace: SidebarWorkspaceEntry }) {
-  return (
-    <View
-      style={styles.workspaceAgentListPlaceholder}
-      testID={`sidebar-workspace-agents-placeholder-${workspace.workspaceKey}`}
-    >
-      <Text style={styles.workspaceAgentListPlaceholderText}>🌿 agent list placeholder</Text>
-    </View>
   );
 }
 
@@ -2894,16 +2879,6 @@ const styles = StyleSheet.create((theme) => ({
   },
   workspaceRowContainer: {
     position: "relative",
-  },
-  // Placeholder slot under each workspace row, reserved for the agent list.
-  workspaceAgentListPlaceholder: {
-    marginLeft: 28,
-    paddingVertical: theme.spacing[1],
-    paddingHorizontal: theme.spacing[2],
-  },
-  workspaceAgentListPlaceholderText: {
-    color: theme.colors.foregroundExtraMuted,
-    fontSize: theme.fontSize.sm,
   },
   workspaceStatusDot: {
     position: "relative",
