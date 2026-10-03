@@ -67,6 +67,12 @@ interface MetadataPromptField {
 }
 
 const METADATA_PROMPT_FIELDS: Record<MetadataPromptKey, MetadataPromptField> = {
+  title: {
+    titleKey: "settings.project.metadata.titlePrompt",
+    placeholderKey: "settings.project.metadata.titlePromptPlaceholder",
+    sectionTestID: "metadata-prompt-title-section",
+    inputTestID: "metadata-prompt-title-input",
+  },
   branchName: {
     titleKey: "settings.project.metadata.branchName",
     placeholderKey: "settings.project.metadata.branchNamePlaceholder",
