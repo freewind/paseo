@@ -105,7 +105,7 @@ export interface OpenWorkspaceTabInput {
   state?: JsonValue;
 }
 
-interface WorkspaceLayoutStore {
+export interface WorkspaceLayoutStore {
   layoutByWorkspace: Record<string, WorkspaceLayout>;
   splitSizesByWorkspace: Record<string, Record<string, number[]>>;
   explorerSidebarWidthByWorkspace: Record<string, number>;
