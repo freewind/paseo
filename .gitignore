@@ -93,3 +93,6 @@ app.json
 
 # Heap snapshots dumped by --heapsnapshot-near-heap-limit; keep them for debugging.
 *.heapsnapshot
+
+# CodeGraph 本地索引数据库，每台机器各自生成
+/.codegraph/
