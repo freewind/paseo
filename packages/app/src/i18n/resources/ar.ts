@@ -1894,6 +1894,8 @@ export const ar: TranslationResources = {
     },
   },
   toolCallDetails: {
+    copy: "🌿 نسخ",
+    copied: "🌿 تم النسخ",
     error: "خطأ",
     empty: "لا توجد تفاصيل إضافية متاحة",
     subAgentActivity: "نشاط الوكيل الفرعي",
