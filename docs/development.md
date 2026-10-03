@@ -330,7 +330,14 @@ The mobile app writes a file log to `<documentDirectory>/logs/paseo-app.log`
 10 MiB; once it outgrows the cap it is trimmed to roughly the newest 5 MiB.
 Lines also mirror to the console, so `adb logcat` shows them during
 development. Logging is intentionally sparse: only key events from recently
-shipped features, never user content. Implementation: `packages/app/src/utils/app-log.ts`
+shipped features, never user content.
+
+Crashes land in that same file under the `crash` category: uncaught JavaScript
+errors and unhandled promise rejections via the `ErrorUtils` global handler
+(`global-handler`, `unhandled-rejection`, `window-error`), and React render
+failures via the root error boundary (`render-error`). Those entries are written
+synchronously so a fatal error still reaches disk. Only JavaScript-level crashes
+are covered; a native abort or an out-of-memory kill leaves no entry. Implementation: `packages/app/src/utils/app-log.ts`
 with pure rotation rules in `app-log-core.ts`.
 
 ### Git process pressure
