@@ -7,6 +7,7 @@ import {
   TextInputKeyPressEventData,
   TextInputSelectionChangeEventData,
   type LayoutChangeEvent,
+  type PressableStateCallbackType,
 } from "react-native";
 import {
   useState,
@@ -1765,11 +1766,13 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
       [mode.isMonospace],
     );
     const sendButtonCombinedStyle = useMemo(
-      () => [
-        styles.sendButton,
-        submitLabel ? styles.sendButtonLabeled : undefined,
-        isSendButtonDisabled && styles.buttonDisabled,
-      ],
+      () =>
+        ({ pressed }: PressableStateCallbackType) => [
+          styles.sendButton,
+          submitLabel ? styles.sendButtonLabeled : undefined,
+          isSendButtonDisabled && styles.buttonDisabled,
+          pressed && !isSendButtonDisabled && styles.sendButtonPressed,
+        ],
       [isSendButtonDisabled, submitLabel],
     );
     const overlayContainerStyle = useMemo(
@@ -2052,13 +2055,20 @@ const styles = StyleSheet.create((theme: Theme) => ({
     backgroundColor: theme.colors.destructive,
   },
   sendButton: {
-    width: 28,
-    height: 28,
+    width: 36,
+    height: 36,
     borderRadius: theme.borderRadius.full,
     backgroundColor: theme.colors.accent,
     alignItems: "center",
     justifyContent: "center",
     marginLeft: theme.spacing[1],
+  },
+  // A finger covers this button while it is held, and a tap swaps it for the cancel
+  // button in place, so without a press state a tap looks like it never registered.
+  // The fill brightens instead of fading: the button keeps its opacity, so the change
+  // stays visible even where the circle sits on a light surface.
+  sendButtonPressed: {
+    backgroundColor: theme.colors.accentBright,
   },
   sendButtonLabeled: {
     width: "auto",

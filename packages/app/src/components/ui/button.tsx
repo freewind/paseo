@@ -133,6 +133,9 @@ const styles = StyleSheet.create((theme) => {
     pressed: {
       opacity: 0.85,
     },
+    pressedTransparent: {
+      backgroundColor: theme.colors.surface2,
+    },
     disabled: {
       opacity: theme.opacity[50],
     },
@@ -214,16 +217,22 @@ export function Button({
   const handleHoverIn = useCallback(() => setHovered(true), []);
   const handleHoverOut = useCallback(() => setHovered(false), []);
 
+  // Transparent variants have nothing to dim: fading a transparent fill only shows whatever
+  // sits behind the button, so an outline or ghost press is invisible. They take a fill
+  // instead, the same one menu rows use for their pressed state.
+  const isTransparentVariant = variant === "ghost" || variant === "outline";
+  const pressedStyle = isTransparentVariant ? styles.pressedTransparent : styles.pressed;
+
   const pressableStyle = useCallback(
     ({ pressed }: PressableStateCallbackType): StyleProp<ViewStyle> => [
       styles.base,
       sizeStyle,
       variantStyle,
-      pressed ? styles.pressed : null,
+      pressed ? pressedStyle : null,
       isDisabled ? styles.disabled : null,
       style,
     ],
-    [sizeStyle, variantStyle, isDisabled, style],
+    [pressedStyle, sizeStyle, variantStyle, isDisabled, style],
   );
 
   const resolvedTextStyle = useMemo(
