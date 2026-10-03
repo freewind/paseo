@@ -2035,6 +2035,11 @@ export const zhCN: TranslationResources = {
         label: "🌿 显示语音按钮",
         description: "🌿 在输入区显示语音按钮",
       },
+      doubleBackToExit: {
+        label: "🌿 双击返回退出",
+        description: "🌿 需要连续按两次返回键才能退出应用",
+        toast: "🌿 再次点击返回才能退出",
+      },
       defaultSend: {
         label: "默认发送",
         descriptions: {

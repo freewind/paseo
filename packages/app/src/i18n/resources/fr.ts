@@ -2112,6 +2112,11 @@ export const fr: TranslationResources = {
         label: "🌿 Afficher le bouton vocal",
         description: "🌿 Afficher le bouton vocal dans la saisie du compositeur",
       },
+      doubleBackToExit: {
+        label: "🌿 Double retour pour quitter",
+        description: "🌿 Appuyez deux fois sur retour pour quitter l'appli",
+        toast: "🌿 Appuyez encore sur retour pour quitter",
+      },
       defaultSend: {
         label: "Envoi par défaut",
         descriptions: {

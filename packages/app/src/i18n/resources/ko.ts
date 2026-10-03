@@ -2068,6 +2068,11 @@ export const ko: TranslationResources = {
         label: "🌿 음성 버튼 표시",
         description: "🌿 입력기에 음성 버튼을 표시합니다",
       },
+      doubleBackToExit: {
+        label: "🌿 두 번 눌러 종료",
+        description: "🌿 앱을 종료하려면 뒤로 버튼을 두 번 누르세요",
+        toast: "🌿 종료하려면 뒤로를 한 번 더 누르세요",
+      },
       defaultSend: {
         label: "기본 전송",
         descriptions: {

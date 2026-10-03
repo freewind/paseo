@@ -2078,6 +2078,11 @@ export const ja: TranslationResources = {
         label: "🌿 音声ボタンを表示",
         description: "🌿 コンポーザー入力に音声ボタンを表示します",
       },
+      doubleBackToExit: {
+        label: "🌿 戻るを2回押して終了",
+        description: "🌿 アプリを終了するには戻るボタンを2回押します",
+        toast: "🌿 終了するにはもう一度戻るを押してください",
+      },
       defaultSend: {
         label: "デフォルトの送信",
         descriptions: {

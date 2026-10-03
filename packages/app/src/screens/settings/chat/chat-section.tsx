@@ -45,6 +45,10 @@ export function ChatSection() {
     (showVoiceButton: boolean) => void updateSettings({ showVoiceButton }),
     [updateSettings],
   );
+  const changeDoubleBackToExit = useCallback(
+    (doubleBackToExit: boolean) => void updateSettings({ doubleBackToExit }),
+    [updateSettings],
+  );
 
   return (
     <View>
@@ -68,6 +72,12 @@ export function ChatSection() {
             hint={t("settings.general.showVoiceButton.description")}
             value={settings.showVoiceButton}
             onValueChange={changeShowVoiceButton}
+          />
+          <SettingsSwitch
+            label={t("settings.general.doubleBackToExit.label")}
+            hint={t("settings.general.doubleBackToExit.description")}
+            value={settings.doubleBackToExit}
+            onValueChange={changeDoubleBackToExit}
           />
           {isNative ? null : (
             <SettingsSwitch
