@@ -65,6 +65,18 @@ export function shouldShowDesktopUpdateSection(): boolean {
   return isWeb && isElectronRuntime();
 }
 
+export function shouldRunDesktopUpdateCheck(input: {
+  isDesktopApp: boolean;
+  autoCheckUpdates: boolean;
+  settingsLoaded: boolean;
+  intent: DesktopAppUpdateCheckIntent;
+}): boolean {
+  if (!input.isDesktopApp) {
+    return false;
+  }
+  return input.intent === "manual" || (input.settingsLoaded && input.autoCheckUpdates);
+}
+
 export function parseLocalDaemonVersionResult(raw: unknown): LocalDaemonVersionResult {
   if (!isRecord(raw)) {
     return { version: null, error: "Unexpected response from version check." };

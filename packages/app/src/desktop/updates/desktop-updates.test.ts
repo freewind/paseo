@@ -119,4 +119,28 @@ describe("desktop-updates helpers", () => {
     );
     expect(buildMacAppleSiliconDownloadUrl(null)).toBeNull();
   });
+
+  it("skips automatic update checks when the user disabled them", async () => {
+    const { shouldRunDesktopUpdateCheck } = await loadModuleForPlatform("web");
+    const base = { isDesktopApp: true, autoCheckUpdates: true, settingsLoaded: true };
+
+    expect(shouldRunDesktopUpdateCheck({ ...base, intent: "automatic" })).toBe(true);
+    expect(
+      shouldRunDesktopUpdateCheck({ ...base, autoCheckUpdates: false, intent: "automatic" }),
+    ).toBe(false);
+    expect(
+      shouldRunDesktopUpdateCheck({ ...base, settingsLoaded: false, intent: "automatic" }),
+    ).toBe(false);
+    expect(
+      shouldRunDesktopUpdateCheck({
+        ...base,
+        autoCheckUpdates: false,
+        settingsLoaded: false,
+        intent: "manual",
+      }),
+    ).toBe(true);
+    expect(shouldRunDesktopUpdateCheck({ ...base, isDesktopApp: false, intent: "manual" })).toBe(
+      false,
+    );
+  });
 });

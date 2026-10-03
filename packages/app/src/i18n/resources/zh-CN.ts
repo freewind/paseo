@@ -2144,6 +2144,10 @@ export const zhCN: TranslationResources = {
         checking: "正在检查...",
         alertTitle: "错误",
         alertMessage: "无法打开更新确认对话框。",
+        autoCheck: {
+          label: "🌿 自动检查更新",
+          description: "🌿 每 30 分钟在后台自动检查更新",
+        },
       },
     },
     appearance: {
