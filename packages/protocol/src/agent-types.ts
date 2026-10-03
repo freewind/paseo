@@ -242,6 +242,9 @@ export type ToolCallDetail =
       type: "search";
       query: string;
       toolName?: "search" | "grep" | "glob" | "web_search";
+      path?: string;
+      glob?: string;
+      limit?: number;
       content?: string;
       filePaths?: string[];
       webResults?: Array<{
