@@ -312,6 +312,7 @@ function getActiveLocale(language: string | undefined): SupportedLocale {
 interface GeneralSectionProps {
   settings: AppSettings;
   handleLanguageChange: (language: AppLanguage) => void;
+
 }
 
 interface LanguageMenuItemProps {
@@ -376,6 +377,7 @@ function GeneralSection({ settings, handleLanguageChange }: GeneralSectionProps)
             </DropdownMenuContent>
           </DropdownMenu>
         </View>
+
       </View>
     </SettingsSection>
   );
@@ -1378,6 +1380,7 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
     }
     return null;
   })();
+
 
   if (settingsLoading) {
     return (

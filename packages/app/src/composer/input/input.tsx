@@ -22,6 +22,7 @@ import {
   useImperativeHandle,
   useMemo,
   forwardRef,
+  type ComponentProps,
 } from "react";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { useTranslation } from "react-i18next";
@@ -156,6 +157,8 @@ export interface MessageInputProps {
   activeActionContent?: React.ReactNode;
   voiceServerId?: string;
   voiceAgentId?: string;
+  /** Whether the voice/dictation button is visible (settings-gated). */
+  showVoiceButton?: boolean;
   /** When true and there's sendable content, calls onQueue instead of onSubmit */
   isAgentRunning?: boolean;
   /** Controls what the default send action (Enter, send button, dictation) does when the agent is
@@ -760,6 +763,20 @@ function VoiceButtonTooltip({
   );
 }
 
+type VoiceButtonTooltipProps = Omit<ComponentProps<typeof VoiceButtonTooltip>, "visible"> & {
+  showVoice: boolean;
+  showVoiceButton: boolean | undefined;
+};
+
+/** Renders the voice button only when the input mode and the showVoiceButton setting both allow it. */
+function MessageInputVoiceButton({
+  showVoice,
+  showVoiceButton,
+  ...props
+}: VoiceButtonTooltipProps) {
+  return <VoiceButtonTooltip visible={showVoice && showVoiceButton !== false} {...props} />;
+}
+
 function SendButtonTooltip({
   shouldShow,
   canPressLoadingButton,
@@ -1102,6 +1119,7 @@ interface ResolvedMessageInputProps {
   activeActionContent: React.ReactNode;
   voiceServerId: string | undefined;
   voiceAgentId: string | undefined;
+  showVoiceButton: boolean | undefined;
   isAgentRunning: boolean;
   defaultSendBehavior: "interrupt" | "steer" | "queue";
   onQueue: ((payload: MessagePayload) => void) | undefined;
@@ -1149,6 +1167,7 @@ function resolveMessageInputProps(props: MessageInputProps): ResolvedMessageInpu
     activeActionContent: props.activeActionContent,
     voiceServerId: props.voiceServerId,
     voiceAgentId: props.voiceAgentId,
+    showVoiceButton: props.showVoiceButton,
     isAgentRunning: props.isAgentRunning ?? false,
     defaultSendBehavior: props.defaultSendBehavior,
     onQueue: props.onQueue,
@@ -1226,6 +1245,7 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
       activeActionContent,
       voiceServerId,
       voiceAgentId,
+      showVoiceButton,
       isAgentRunning,
       defaultSendBehavior,
       onQueue,
@@ -2067,8 +2087,9 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
           {/* Right: voice button, contextual button (realtime/send/cancel) */}
           <View style={styles.rightButtonGroup}>
             {beforeVoiceContent}
-            <VoiceButtonTooltip
-              visible={mode.showVoice}
+            <MessageInputVoiceButton
+              showVoice={mode.showVoice}
+              showVoiceButton={showVoiceButton}
               onVoicePress={handleVoicePress}
               isDictationStartEnabled={isDictationStartEnabled}
               voiceButtonAccessibilityLabel={voiceButtonAccessibilityLabel}
@@ -2082,7 +2103,6 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
             {rightContent}
             {sendButton}
           </View>
-        </View>
       ),
       [
         mode.showAttachments,
@@ -2095,6 +2115,7 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
         leftContent,
         beforeVoiceContent,
         mode.showVoice,
+        showVoiceButton,
         handleVoicePress,
         isDictationStartEnabled,
         voiceButtonAccessibilityLabel,
