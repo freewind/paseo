@@ -2092,6 +2092,11 @@ export const ptBR: TranslationResources = {
         label: "🌿 Mostrar botão de voz",
         description: "🌿 Mostrar o botão de voz na entrada do compositor",
       },
+      doubleBackToExit: {
+        label: "🌿 Voltar duas vezes para sair",
+        description: "🌿 Pressione voltar duas vezes para sair do app",
+        toast: "🌿 Pressione voltar novamente para sair",
+      },
       defaultSend: {
         label: "Envio padrão",
         descriptions: {

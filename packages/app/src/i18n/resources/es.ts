@@ -2108,6 +2108,11 @@ export const es: TranslationResources = {
         label: "🌿 Mostrar botón de voz",
         description: "🌿 Mostrar el botón de voz en la entrada del compositor",
       },
+      doubleBackToExit: {
+        label: "🌿 Doble atrás para salir",
+        description: "🌿 Pulsa atrás dos veces para salir de la app",
+        toast: "🌿 Pulsa atrás de nuevo para salir",
+      },
       defaultSend: {
         label: "Envío predeterminado",
         descriptions: {

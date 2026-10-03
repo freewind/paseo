@@ -2092,6 +2092,11 @@ export const ru: TranslationResources = {
         label: "🌿 Показывать кнопку голоса",
         description: "🌿 Показывать кнопку голоса в поле ввода композера",
       },
+      doubleBackToExit: {
+        label: "🌿 Двойное «назад» для выхода",
+        description: "🌿 Нажмите «назад» дважды, чтобы выйти из приложения",
+        toast: "🌿 Нажмите «назад» ещё раз, чтобы выйти",
+      },
       defaultSend: {
         label: "Отправка по умолчанию",
         descriptions: {
