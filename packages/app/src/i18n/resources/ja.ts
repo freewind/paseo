@@ -2025,6 +2025,8 @@ export const ja: TranslationResources = {
     },
   },
   toolCallDetails: {
+    copy: "🌿 コピー",
+    copied: "🌿 コピーしました",
     error: "エラー",
     empty: "追加の詳細はありません",
     subAgentActivity: "サブエージェントアクティビティ",

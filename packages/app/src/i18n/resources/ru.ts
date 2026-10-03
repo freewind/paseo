@@ -2038,6 +2038,8 @@ export const ru: TranslationResources = {
     },
   },
   toolCallDetails: {
+    copy: "🌿 Копировать",
+    copied: "🌿 Скопировано",
     error: "Ошибка",
     empty: "Дополнительные сведения отсутствуют",
     subAgentActivity: "Активность субагента",

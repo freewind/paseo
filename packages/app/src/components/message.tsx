@@ -77,14 +77,68 @@ import Animated, {
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
-import Svg, { Defs, Rect, Stop, LinearGradient as SvgLinearGradient } from "react-native-svg";
+import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from "react-native-svg";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
+import { inlineUnistylesStyle } from "@/styles/unistyles-inline-style";
+import { MarkdownRenderer, type MarkdownStyles } from "@/components/markdown/renderer";
+import type { TaskActivity, TodoEntry, UserMessageImageAttachment } from "@/types/stream";
+import type { AgentAttachment } from "@getpaseo/protocol/messages";
+import type { ToolCallDetail } from "@getpaseo/protocol/agent-types";
+import { buildToolCallPresentation } from "@/tool-calls/presentation";
+import { resolveToolCallIcon } from "@/utils/tool-call-icon";
+import { getMarkdownListMarker, getMarkdownListSpacing } from "@/utils/markdown-list";
+import { markdownNodeContainsType } from "@/utils/markdown-ast";
+import { useStableEvent } from "@/hooks/use-stable-event";
+import { HighlightedCodeBlock } from "@/components/highlighted-code-block";
+import { MarkdownFenceBlock } from "@/components/markdown/fence";
+import type { MarkdownPhase } from "@/components/markdown/fence/types";
+import { splitMarkdownBlocks } from "@/utils/split-markdown-blocks";
+import { useRevealedText } from "@/hooks/use-revealed-text";
+import { colorMarkdownLinkChildren } from "@/components/markdown/link-children";
+import { createAssistantMarkdownParser } from "@/utils/assistant-markdown-parser";
+import { formatDuration, formatMessageTimestamp } from "@/utils/time";
+import { writeMarkdownToRichClipboard } from "@/utils/rich-clipboard";
+import { getDefaultMarkdownClipboardEnvironment } from "@/utils/rich-clipboard-default-environment";
+import { setAssistantMarkdownBlockHeight } from "@/utils/assistant-message-height-estimate";
+import { isRenderProfileEnabled } from "@/utils/render-profiler";
+import { getAgentAttachmentPillContent } from "@/attachments/attachment-pill-content";
+import { PlanCard } from "./plan-card";
+import { useToolCallSheet } from "./tool-call-sheet";
+import { ToolCallDetailsContent } from "./tool-call-details";
+import { CopyTextButton } from "./copy-text-button";
+import { buildToolCallDetailText } from "@/utils/tool-call-detail-text";
+import {
+  AssistantInlineCodePathLink,
+  type AssistantFileLinkSource,
+  AssistantMarkdownCodeLink,
+  AssistantMarkdownLink,
+  type InlinePathTarget,
+  useAssistantFileLinkActions,
+  useAssistantLinkPress,
+} from "@/assistant-file-links";
+import { getCompactionMarkerLabel } from "./message-compaction-label";
+import { useAssistantImage } from "@/assistant-image/use-assistant-image";
+import {
+  AttachmentFrame,
+  AttachmentLabel,
+  AttachmentThumbnail,
+} from "@/components/attachment-pill";
+import { AttachmentLightbox, type ImageLightboxSource } from "@/components/attachment-lightbox";
+import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
+import { isWeb, isNative } from "@/constants/platform";
+import type { AgentCapabilityFlags } from "@getpaseo/protocol/agent-types";
+import { RewindMenu, type RewindMode } from "@/components/rewind/rewind-menu";
+import { useRewindAgentMutation } from "@/components/rewind/use-rewind-agent-mutation";
+import { AssistantForkMenu, type AssistantForkTarget } from "@/components/assistant-fork-menu";
+import { useRetainedPanelActive } from "@/components/retained-panel";
+import {
+  markdownCopyDataSet,
+  markdownCopyOrderedListDataSet,
+  markdownCopyTableCellDataSet,
+  type MarkdownCopyInlineTag,
+} from "@/assistant-selection-copy/markup";
 import { capAssistantMessageForRender, getUtf8ByteLength } from "./assistant-message-render-limit";
 import { getTurnDurationLabel } from "./assistant-turn-footer-label";
-import { getCompactionMarkerLabel } from "./message-compaction-label";
-import { PlanCard } from "./plan-card";
-import { ToolCallDetailsContent } from "./tool-call-details";
-import { useToolCallSheet } from "./tool-call-sheet";
 export type { InlinePathTarget } from "@/assistant-file-links";
 export type { AssistantForkTarget };
 
@@ -946,6 +1000,10 @@ const expandableBadgeStylesheet = StyleSheet.create((theme) => ({
     borderRadius: theme.borderRadius.md,
     flexShrink: 0,
   },
+  trailingAction: {
+    marginLeft: theme.spacing[1],
+    flexShrink: 0,
+  },
   openFileButtonPlaceholderIcon: {
     width: 14,
     height: 14,
@@ -1510,6 +1568,7 @@ interface ExpandableBadgeProps {
   onOpenFile?: () => void;
   onDetailHoverChange?: (hovered: boolean) => void;
   renderDetails?: () => ReactNode;
+  trailingAction?: ReactNode;
   isLoading?: boolean;
   isError?: boolean;
   isLastInSequence?: boolean;
@@ -1873,6 +1932,7 @@ export const ExpandableBadge = memo(function ExpandableBadge({
   onOpenFile,
   onDetailHoverChange,
   renderDetails,
+  trailingAction,
   isLoading = false,
   isError = false,
   isLastInSequence = false,
@@ -2172,6 +2232,9 @@ export const ExpandableBadge = memo(function ExpandableBadge({
             onOpenFileHoverIn={handleOpenFileHoverIn}
             onOpenFileHoverOut={handleOpenFileHoverOut}
           />
+          {isExpanded && trailingAction ? (
+            <View style={expandableBadgeStylesheet.trailingAction}>{trailingAction}</View>
+          ) : null}
         </View>
       </Pressable>
       {detailContent ? (
@@ -2204,6 +2267,7 @@ function areExpandableBadgePropsEqual(previous: ExpandableBadgeProps, next: Expa
   if (previous.onOpenFile !== next.onOpenFile) return false;
   if (previous.onDetailHoverChange !== next.onDetailHoverChange) return false;
   if (previous.renderDetails !== next.renderDetails) return false;
+  if (previous.trailingAction !== next.trailingAction) return false;
   return true;
 }
 
@@ -2366,6 +2430,20 @@ export const ToolCall = memo(function ToolCall({
     maxDetailHeight,
   ]);
 
+  const getCopyText = useCallback(
+    () => buildToolCallDetailText(effectiveDetail, toolName),
+    [effectiveDetail, toolName],
+  );
+  // Desktop shows details inline, so the badge carries the copy action itself; it
+  // stays hidden while collapsed to keep the idle row uncluttered.
+  const copyAction = useMemo(
+    () =>
+      shouldRenderInline && isExpanded ? (
+        <CopyTextButton getText={getCopyText} size={16} />
+      ) : undefined,
+    [shouldRenderInline, isExpanded, getCopyText],
+  );
+
   if (presentation.isPlan && effectiveDetail?.type === "plan") {
     return (
       <PlanCard
@@ -2387,6 +2465,7 @@ export const ToolCall = memo(function ToolCall({
       onToggle={presentation.canOpenDetails ? handleToggle : undefined}
       onOpenFile={handleOpenFile}
       renderDetails={presentation.canOpenDetails && shouldRenderInline ? renderDetails : undefined}
+      trailingAction={copyAction}
       isLoading={status === "running" || status === "executing"}
       isError={status === "failed"}
       isLastInSequence={isLastInSequence}
