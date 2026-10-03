@@ -222,6 +222,16 @@ npm run typecheck
 
 Paseo is an independent project used by tens of thousands of developers daily, built by one person and funded by the people who use it. Support the work on [GitHub Sponsors](https://github.com/sponsors/boudra). Companies can [sponsor Paseo](https://paseo.sh/sponsor#spot) monthly and have their logo shown at the top of this README and on the paseo.sh homepage and docs.
 
+### App logs
+
+The mobile app writes a file log to `<documentDirectory>/logs/paseo-app.log`
+(`/data/data/sh.paseo/files/logs/` on Android — fetch it with
+`adb pull /data/data/sh.paseo/files/logs/paseo-app.log`). The file is capped at
+10 MiB; once it outgrows the cap it is trimmed to roughly the newest 5 MiB.
+Lines also mirror to the console, so `adb logcat` shows them during
+development. Logging is intentionally sparse: only key events from recently
+shipped features, never user content.
+
 ## Related projects
 
 - [getpaseo/paseo-relay](https://github.com/getpaseo/paseo-relay) — official distributed relay, written in Elixir
