@@ -2054,6 +2054,15 @@ export const ar: TranslationResources = {
         success: "تم مسح بيانات المتصفح.",
         error: "تعذر مسح بيانات المتصفح.",
       },
+      ttsEnabled: {
+        label: "🌿 تمكين القراءة الصوتية",
+        description: "🌿 قراءة ردود الوكيل بصوت عالٍ عند اكتمال الرد",
+      },
+      ttsEngine: {
+        label: "🌿 صوت القراءة",
+        description: "🌿 اختر صوت القراءة الصوتية",
+        default: "🌿 افتراضي",
+      },
       showVoiceButton: {
         label: "🌿 إظهار زر الصوت",
         description: "🌿 إظهار زر الصوت في منطقة إدخال الرسائل",

@@ -2108,6 +2108,15 @@ export const fr: TranslationResources = {
         success: "Données du navigateur effacées.",
         error: "Impossible d'effacer les données du navigateur.",
       },
+      ttsEnabled: {
+        label: "🌿 Lire les réponses à voix haute",
+        description: "🌿 Lire à voix haute les réponses de l'agent lorsqu'elles se terminent",
+      },
+      ttsEngine: {
+        label: "🌿 Voix de lecture",
+        description: "🌿 Choisissez la voix de lecture des réponses",
+        default: "🌿 Par défaut du système",
+      },
       showVoiceButton: {
         label: "🌿 Afficher le bouton vocal",
         description: "🌿 Afficher le bouton vocal dans la saisie du compositeur",
