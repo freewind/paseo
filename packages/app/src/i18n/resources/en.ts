@@ -2179,6 +2179,15 @@ export const en = {
         success: "Browser data cleared.",
         error: "Couldn't clear browser data.",
       },
+      ttsEnabled: {
+        label: "🌿 Read replies aloud",
+        description: "🌿 Read agent replies aloud when they finish",
+      },
+      ttsEngine: {
+        label: "🌿 Read-aloud voice",
+        description: "🌿 Choose the voice used to read replies aloud",
+        default: "🌿 System default",
+      },
       showVoiceButton: {
         label: "🌿 Show voice button",
         description: "🌿 Show the voice button in the composer input",

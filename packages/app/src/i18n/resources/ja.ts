@@ -2074,6 +2074,15 @@ export const ja: TranslationResources = {
         success: "ブラウザーデータを消去しました。",
         error: "ブラウザーデータを消去できませんでした。",
       },
+      ttsEnabled: {
+        label: "🌿 返信を読み上げる",
+        description: "🌿 エージェントの返信が完了したときに読み上げます",
+      },
+      ttsEngine: {
+        label: "🌿 読み上げの声",
+        description: "🌿 返信を読み上げる声を選択します",
+        default: "🌿 システム既定",
+      },
       showVoiceButton: {
         label: "🌿 音声ボタンを表示",
         description: "🌿 コンポーザー入力に音声ボタンを表示します",

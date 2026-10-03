@@ -2064,6 +2064,15 @@ export const ko: TranslationResources = {
         success: "브라우저 데이터가 삭제되었습니다.",
         error: "브라우저 데이터를 삭제할 수 없습니다.",
       },
+      ttsEnabled: {
+        label: "🌿 답변을 소리 내어 읽기",
+        description: "🌿 에이전트 답변이 끝나면 소리 내어 읽습니다",
+      },
+      ttsEngine: {
+        label: "🌿 읽기 음성",
+        description: "🌿 답변을 소리 내어 읽을 음성을 선택합니다",
+        default: "🌿 시스템 기본",
+      },
       showVoiceButton: {
         label: "🌿 음성 버튼 표시",
         description: "🌿 입력기에 음성 버튼을 표시합니다",
