@@ -84,6 +84,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { ProjectLeadingVisual } from "@/components/sidebar/project-leading-visual";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/contexts/toast-context";
 import { getForgePresentation, normalizeForge } from "@/git/forge";
 import { toWorktreeArchiveRisk } from "@/git/worktree-archive-warning";
@@ -224,6 +225,8 @@ interface SidebarWorkspaceListProps {
   workspaceEntriesByKey: ReadonlyMap<string, SidebarWorkspaceEntry>;
   collapsedProjectKeys: ReadonlySet<string>;
   onToggleProjectCollapsed: (projectViewKey: string) => void;
+  hiddenProjectKeys: ReadonlySet<string>;
+  onToggleProjectHidden: (projectViewKey: string) => void;
   shortcutIndexByWorkspaceKey: Map<string, number>;
   groupMode: SidebarGroupMode;
   isRefreshing?: boolean;
@@ -260,6 +263,7 @@ interface ProjectHeaderRowProps {
   menuController: ReturnType<typeof useContextMenu> | null;
   onRemoveProject?: () => void;
   removeProjectStatus?: "idle" | "pending";
+  onToggleProjectHidden?: (projectViewKey: string) => void;
   dragHandleProps?: DraggableListDragHandleProps;
 }
 
@@ -413,6 +417,7 @@ function ProjectRowTrailingActions({
   onBeginWorkspaceSetup,
   onRemoveProject,
   removeProjectStatus,
+  onToggleProjectHidden,
 }: {
   projectViewKey: string;
   displayName: string;
@@ -425,6 +430,7 @@ function ProjectRowTrailingActions({
   onBeginWorkspaceSetup: () => void;
   onRemoveProject?: () => void;
   removeProjectStatus: "idle" | "pending" | "success";
+  onToggleProjectHidden?: (projectViewKey: string) => void;
 }) {
   const actionsVisible = isHovered || platformIsNative || isMobileBreakpoint;
   return (
@@ -449,6 +455,7 @@ function ProjectRowTrailingActions({
             projectPath={projectPath}
             onRemoveProject={onRemoveProject}
             removeProjectStatus={removeProjectStatus}
+            onToggleProjectHidden={onToggleProjectHidden}
           />
         </View>
       ) : null}
@@ -477,12 +484,14 @@ function ProjectKebabMenu({
   projectPath,
   onRemoveProject,
   removeProjectStatus,
+  onToggleProjectHidden,
 }: {
   projectViewKey: string;
   settingsTarget: { serverId: string; projectId: string } | null;
   projectPath: string;
   onRemoveProject: () => void;
   removeProjectStatus: "idle" | "pending" | "success";
+  onToggleProjectHidden?: (projectViewKey: string) => void;
 }) {
   const { t } = useTranslation();
   return (
@@ -504,6 +513,7 @@ function ProjectKebabMenu({
           projectPath={projectPath}
           onRemoveProject={onRemoveProject}
           removeProjectStatus={removeProjectStatus}
+          onToggleProjectHidden={onToggleProjectHidden}
         />
       </DropdownMenuContent>
     </DropdownMenu>
@@ -532,6 +542,7 @@ function ProjectMenuItems({
   projectPath,
   onRemoveProject,
   removeProjectStatus,
+  onToggleProjectHidden,
 }: {
   surface: ProjectMenuSurface;
   projectViewKey: string;
@@ -539,9 +550,14 @@ function ProjectMenuItems({
   projectPath: string;
   onRemoveProject: () => void;
   removeProjectStatus: "idle" | "pending" | "success";
+  onToggleProjectHidden?: (projectViewKey: string) => void;
 }) {
   const { t } = useTranslation();
   const toast = useToast();
+  const handleCollapse = useCallback(
+    () => onToggleProjectHidden?.(projectViewKey),
+    [onToggleProjectHidden, projectViewKey],
+  );
   const handleOpenProjectSettings = useCallback(() => {
     if (!settingsTarget) return;
     router.navigate(buildProjectSettingsRoute(settingsTarget.serverId, settingsTarget.projectId));
@@ -585,6 +601,15 @@ function ProjectMenuItems({
         path={projectPath}
         testID={`sidebar-project-menu-open-folder-${projectViewKey}`}
       />
+      {onToggleProjectHidden ? (
+        <ProjectMenuItem
+          surface={surface}
+          testID={`sidebar-project-menu-collapse-${projectViewKey}`}
+          onSelect={handleCollapse}
+        >
+          {t("sidebar.project.actions.collapse")}
+        </ProjectMenuItem>
+      ) : null}
       <ProjectMenuItem
         surface={surface}
         testID={`sidebar-project-menu-remove-${projectViewKey}`}
@@ -868,6 +893,7 @@ function ProjectHeaderRow({
   menuController,
   onRemoveProject,
   removeProjectStatus = "idle",
+  onToggleProjectHidden,
   dragHandleProps,
 }: ProjectHeaderRowProps) {
   const [isHovered, setIsHovered] = useState(false);
@@ -973,6 +999,7 @@ function ProjectHeaderRow({
         onBeginWorkspaceSetup={handleBeginWorkspaceSetup}
         onRemoveProject={onRemoveProject}
         removeProjectStatus={removeProjectStatus}
+        onToggleProjectHidden={onToggleProjectHidden}
       />
       {showShortcutBadge && shortcutNumber !== null ? (
         <View style={styles.projectShortcutBadgeOverlay} pointerEvents="none">
@@ -1042,6 +1069,7 @@ function ProjectHeaderRow({
           projectPath={projectPath}
           onRemoveProject={onRemoveProject}
           removeProjectStatus={removeProjectStatus}
+          onToggleProjectHidden={onToggleProjectHidden}
         />
       </ContextMenuContent>
     </ContextMenu>
@@ -1551,6 +1579,7 @@ function ProjectBlock({
   showShortcutBadges,
   shortcutIndexByWorkspaceKey,
   onToggleCollapsed,
+  onToggleProjectHidden,
   onWorkspacePress,
   onWorktreeCreated,
   drag,
@@ -1572,6 +1601,7 @@ function ProjectBlock({
   showShortcutBadges: boolean;
   shortcutIndexByWorkspaceKey: Map<string, number>;
   onToggleCollapsed: (projectViewKey: string) => void;
+  onToggleProjectHidden?: (projectViewKey: string) => void;
   onWorkspacePress?: () => void;
   onWorktreeCreated?: (workspaceId: string) => void;
   drag: () => void;
@@ -1778,6 +1808,7 @@ function ProjectBlock({
         menuController={null}
         onRemoveProject={handleRemoveProject}
         removeProjectStatus={isRemovingProject ? "pending" : "idle"}
+        onToggleProjectHidden={onToggleProjectHidden}
         dragHandleProps={dragHandleProps}
       />
 
@@ -1804,6 +1835,7 @@ function areProjectBlockPropsEqual(previous: ProjectBlockProps, next: ProjectBlo
     previous.supportsPinningByServerId === next.supportsPinningByServerId &&
     previous.onToggleWorkspacePin === next.onToggleWorkspacePin &&
     previous.onToggleCollapsed === next.onToggleCollapsed &&
+    previous.onToggleProjectHidden === next.onToggleProjectHidden &&
     previous.onWorkspacePress === next.onWorkspacePress &&
     previous.onWorktreeCreated === next.onWorktreeCreated &&
     previous.drag === next.drag &&
@@ -1878,6 +1910,8 @@ export function SidebarWorkspaceList({
   workspaceEntriesByKey,
   collapsedProjectKeys,
   onToggleProjectCollapsed,
+  hiddenProjectKeys,
+  onToggleProjectHidden,
   shortcutIndexByWorkspaceKey,
   groupMode,
   isRefreshing: _isRefreshing = false,
@@ -1971,6 +2005,8 @@ export function SidebarWorkspaceList({
         projectIconByProjectViewKey={projectIconByProjectViewKey}
         collapsedProjectKeys={collapsedProjectKeys}
         onToggleProjectCollapsed={onToggleProjectCollapsed}
+        hiddenProjectKeys={hiddenProjectKeys}
+        onToggleProjectHidden={onToggleProjectHidden}
         shortcutIndexByWorkspaceKey={shortcutIndexByWorkspaceKey}
         onWorkspacePress={onWorkspacePress}
         onAddProject={onAddProject}
@@ -2060,6 +2096,30 @@ function SidebarGroupedModeList({
   );
 }
 
+function HiddenProjectRowSwitch({
+  project,
+  onRestore,
+}: {
+  project: SidebarProjectEntry;
+  onRestore: (viewKey: string) => void;
+}) {
+  const { t } = useTranslation();
+  const handleValueChange = useCallback(
+    () => onRestore(project.viewKey),
+    [onRestore, project.viewKey],
+  );
+  return (
+    <Switch
+      value={false}
+      onValueChange={handleValueChange}
+      accessibilityLabel={t("sidebar.workspace.actions.collapsedRestore", {
+        name: project.projectName,
+      })}
+      testID={`sidebar-hidden-project-${project.viewKey}`}
+    />
+  );
+}
+
 function ProjectModeList({
   projects,
   pinnedGroups,
@@ -2067,6 +2127,8 @@ function ProjectModeList({
   projectIconByProjectViewKey,
   collapsedProjectKeys,
   onToggleProjectCollapsed,
+  hiddenProjectKeys,
+  onToggleProjectHidden,
   shortcutIndexByWorkspaceKey,
   onWorkspacePress,
   onAddProject,
@@ -2124,6 +2186,16 @@ function ProjectModeList({
   const selectionEnabled = isWorkspaceRoute;
   const activeWorkspaceSelection = useActiveWorkspaceSelection();
   const { pinnedChats, unpinnedProjects } = pinnedGroups;
+  const { t } = useTranslation();
+  const [hiddenProjectsExpanded, setHiddenProjectsExpanded] = useState(false);
+  const hiddenProjects = useMemo(
+    () => projects.filter((project) => hiddenProjectKeys.has(project.viewKey)),
+    [hiddenProjectKeys, projects],
+  );
+  const visibleUnpinnedProjects = useMemo(
+    () => unpinnedProjects.filter((project) => !hiddenProjectKeys.has(project.viewKey)),
+    [hiddenProjectKeys, unpinnedProjects],
+  );
   const {
     visibleItems: visiblePinnedChats,
     expanded: pinnedChatsExpanded,
@@ -2260,6 +2332,7 @@ function ProjectModeList({
           showShortcutBadges={showShortcutBadges}
           shortcutIndexByWorkspaceKey={shortcutIndexByWorkspaceKey}
           onToggleCollapsed={onToggleProjectCollapsed}
+          onToggleProjectHidden={onToggleProjectHidden}
           onWorkspacePress={onWorkspacePress}
           onWorktreeCreated={handleWorktreeCreated}
           drag={dragState.drag}
@@ -2284,6 +2357,9 @@ function ProjectModeList({
       onToggleWorkspacePin,
       onWorkspacePress,
       onToggleProjectCollapsed,
+      onToggleProjectHidden,
+      parentGestureRef,
+      dragGestureHostActive,
       projectIconByProjectViewKey,
       selectionEnabled,
       shortcutIndexByWorkspaceKey,
@@ -2345,13 +2421,22 @@ function ProjectModeList({
     ],
   );
 
+  const handleToggleHiddenProjects = useCallback(
+    () => setHiddenProjectsExpanded((open) => !open),
+    [],
+  );
+  const handleRestoreHiddenProject = useCallback(
+    (viewKey: string) => onToggleProjectHidden(viewKey),
+    [onToggleProjectHidden],
+  );
+
   const projectBody =
     projects.length === 0 ? (
       <SidebarProjectEmptyState onAddProject={onAddProject} onImportSession={onImportSession} />
     ) : (
       <DraggableList
         testID="sidebar-project-list"
-        data={unpinnedProjects}
+        data={visibleUnpinnedProjects}
         keyExtractor={projectViewKeyExtractor}
         renderItem={renderProject}
         onDragEnd={handleProjectDragEnd}
@@ -2415,6 +2500,33 @@ function ProjectModeList({
         ? listHeaderComponent
         : null}
       {sidebarFilterEmpty ? <SidebarFilterEmptyState /> : projectBody}
+      {hiddenProjects.length > 0 ? (
+        <>
+          <SidebarGroupToggleRow
+            expanded={hiddenProjectsExpanded}
+            onPress={handleToggleHiddenProjects}
+            label={t("sidebar.workspace.actions.collapsedCount", {
+              count: hiddenProjects.length,
+            })}
+            testID="sidebar-hidden-projects-toggle"
+          />
+          {hiddenProjectsExpanded ? (
+            <View style={styles.hiddenProjectsSection} testID="sidebar-hidden-projects">
+              {hiddenProjects.map((project) => (
+                <View key={project.viewKey} style={styles.hiddenProjectRow}>
+                  <Text style={styles.hiddenProjectName} numberOfLines={1}>
+                    {project.projectName}
+                  </Text>
+                  <HiddenProjectRowSwitch
+                    project={project}
+                    onRestore={handleRestoreHiddenProject}
+                  />
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </>
+      ) : null}
       {listFooterComponent}
     </>
   );
@@ -2754,5 +2866,25 @@ const styles = StyleSheet.create((theme) => ({
   },
   kebabButtonHovered: {
     backgroundColor: theme.colors.surface2,
+  },
+  hiddenProjectsSection: {
+    paddingVertical: theme.spacing[1],
+    marginLeft: theme.spacing[3],
+    gap: theme.spacing[0.5],
+  },
+  hiddenProjectRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing[2],
+    paddingHorizontal: theme.spacing[2],
+    paddingVertical: theme.spacing[1],
+    minHeight: 36,
+    borderRadius: theme.borderRadius.lg,
+  },
+  hiddenProjectName: {
+    flex: 1,
+    minWidth: 0,
+    color: theme.colors.foregroundMuted,
+    fontSize: theme.fontSize.base,
   },
 }));

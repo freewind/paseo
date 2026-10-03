@@ -1264,6 +1264,7 @@ export const en = {
     },
     project: {
       actions: {
+        collapse: "🌿 Collapse",
         menu: "Project actions",
         openSettings: "Open project settings",
         openNewWindow: "Open in new window",
@@ -1305,6 +1306,8 @@ export const en = {
         pending: "Pending: {{count}}",
       },
       actions: {
+        collapsedCount: "🌿 {{count}} collapsed",
+        collapsedRestore: "🌿 Restore {{name}} to the sidebar",
         menu: "Workspace actions",
         newWorkspace: "New workspace",
         showMore: "Show more",

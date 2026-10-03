@@ -1274,6 +1274,7 @@ export const ru: TranslationResources = {
     },
     project: {
       actions: {
+        collapse: "🌿 Collapse",
         menu: "Действия проекта",
         openSettings: "Открыть настройки проекта",
         openNewWindow: "Открыть в новом окне",
@@ -1315,6 +1316,8 @@ export const ru: TranslationResources = {
         pending: "Ожидают: {{count}}",
       },
       actions: {
+        collapsedCount: "🌿 {{count}} collapsed",
+        collapsedRestore: "🌿 Restore {{name}} to the sidebar",
         menu: "Действия рабочего пространства",
         newWorkspace: "Новое рабочее пространство",
         showMore: "Показать ещё",
