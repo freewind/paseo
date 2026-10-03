@@ -16,7 +16,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { AppState, useWindowDimensions, View } from "react-native";
+import { AppState, Platform, StatusBar, useWindowDimensions, View } from "react-native";
 import { GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
@@ -969,6 +969,21 @@ function RootProviders({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Keeps the Android status bar icons readable on top of the app surface.
+ *
+ * Android's own automatic flipping does not apply here: the app theme is picked in-app
+ * (light/dark/zinc, plus plugin themes) rather than through the platform DayNight setting, so
+ * the system never learns the surface changed and keeps the default light icons — white on
+ * white over the light theme's `surface0`. Setting `barStyle` from JS tracks the theme we
+ * actually render, so no status bar backdrop color is needed.
+ */
+function AndroidStatusBarIcons() {
+  const { theme } = useUnistyles();
+  if (Platform.OS !== "android") return null;
+  return <StatusBar barStyle={theme.colorScheme === "dark" ? "light-content" : "dark-content"} />;
+}
+
 function RootAppTree() {
   return (
     <GestureHandlerRootView style={flexStyle}>
@@ -980,6 +995,7 @@ function RootAppTree() {
             </RuntimeProviders>
           </RootProviders>
         </LucideProvider>
+        <AndroidStatusBarIcons />
       </View>
     </GestureHandlerRootView>
   );
