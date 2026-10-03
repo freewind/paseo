@@ -8,6 +8,7 @@ import type { AppReleaseChannel } from "../features/auto-updater.js";
 
 export interface DesktopSettings {
   releaseChannel: AppReleaseChannel;
+  autoCheckUpdates: boolean;
   notifications: {
     playSound: boolean;
   };
@@ -19,6 +20,7 @@ export interface DesktopSettings {
 
 interface DesktopSettingsPatch {
   releaseChannel?: AppReleaseChannel;
+  autoCheckUpdates?: boolean;
   notifications?: Partial<DesktopSettings["notifications"]>;
   daemon?: Partial<DesktopSettings["daemon"]>;
 }
@@ -31,6 +33,7 @@ export interface DesktopSettingsStore {
 
 export const DEFAULT_DESKTOP_SETTINGS: DesktopSettings = {
   releaseChannel: "stable",
+  autoCheckUpdates: true,
   notifications: {
     playSound: true,
   },
@@ -60,6 +63,7 @@ const DaemonSchema = z
 const DesktopSettingsSchema = z
   .looseObject({
     releaseChannel: ReleaseChannelSchema.catch(DEFAULT_DESKTOP_SETTINGS.releaseChannel),
+    autoCheckUpdates: z.boolean().catch(DEFAULT_DESKTOP_SETTINGS.autoCheckUpdates),
     notifications: NotificationsSchema,
     daemon: DaemonSchema,
   })
@@ -106,6 +110,7 @@ function isNodeError(error: unknown): error is NodeJS.ErrnoException {
 function buildDefaultSettings(): StoredDesktopSettings {
   return {
     releaseChannel: DEFAULT_DESKTOP_SETTINGS.releaseChannel,
+    autoCheckUpdates: DEFAULT_DESKTOP_SETTINGS.autoCheckUpdates,
     notifications: { ...DEFAULT_DESKTOP_SETTINGS.notifications },
     daemon: { ...DEFAULT_DESKTOP_SETTINGS.daemon },
   };
@@ -125,6 +130,7 @@ function buildDefaultDocument(): PersistedDesktopSettingsDocument {
 function toDesktopSettings(stored: StoredDesktopSettings): DesktopSettings {
   return {
     releaseChannel: stored.releaseChannel,
+    autoCheckUpdates: stored.autoCheckUpdates,
     notifications: { playSound: stored.notifications.playSound },
     daemon: {
       manageBuiltInDaemon: stored.daemon.manageBuiltInDaemon,
@@ -142,6 +148,11 @@ function coerceDesktopSettingsPatch(input: unknown): DesktopSettingsPatch {
   const releaseChannel = coerceReleaseChannel(input.releaseChannel);
   if (releaseChannel) {
     patch.releaseChannel = releaseChannel;
+  }
+
+  const autoCheckUpdates = coerceBoolean(input.autoCheckUpdates);
+  if (autoCheckUpdates !== null) {
+    patch.autoCheckUpdates = autoCheckUpdates;
   }
 
   if (isRecord(input.notifications)) {
@@ -197,6 +208,7 @@ function mergeDesktopSettings(
   return {
     ...current,
     releaseChannel: patch.releaseChannel ?? current.releaseChannel,
+    autoCheckUpdates: patch.autoCheckUpdates ?? current.autoCheckUpdates,
     notifications: { ...current.notifications, ...patch.notifications },
     daemon: { ...current.daemon, ...patch.daemon },
   };

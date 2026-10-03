@@ -1,5 +1,5 @@
 import { Gift } from "lucide-react-native";
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useUnistyles } from "react-native-unistyles";
 import {
@@ -42,6 +42,7 @@ export function UpdateCalloutSource() {
   const { theme } = useUnistyles();
   const {
     isDesktopApp,
+    autoCheckUpdates,
     status,
     availableUpdate,
     errorMessage,
@@ -49,7 +50,6 @@ export function UpdateCalloutSource() {
     installUpdate,
     isInstalling,
   } = useDesktopAppUpdater();
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const install = useStableEvent(() => {
     void installUpdate();
@@ -58,20 +58,20 @@ export function UpdateCalloutSource() {
     void checkForUpdates();
   });
   useEffect(() => {
-    if (!isDesktopApp) return;
+    if (!isDesktopApp || !autoCheckUpdates) {
+      return;
+    }
 
     void checkForUpdates({ intent: "automatic", silent: true });
 
-    intervalRef.current = setInterval(() => {
+    const intervalId = setInterval(() => {
       void checkForUpdates({ intent: "automatic", silent: true });
     }, CHECK_INTERVAL_MS);
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      clearInterval(intervalId);
     };
-  }, [isDesktopApp, checkForUpdates]);
+  }, [autoCheckUpdates, isDesktopApp, checkForUpdates]);
 
   useEffect(() => {
     const descriptor = resolveUpdateCalloutDescriptor({

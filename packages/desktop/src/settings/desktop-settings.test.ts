@@ -43,6 +43,20 @@ describe("desktop-settings", () => {
     expect(persisted.settings).toEqual(DEFAULT_DESKTOP_SETTINGS);
   });
 
+  it("persists an automatic update check opt-out across restarts", async () => {
+    const userDataPath = await createTempUserDataDir();
+    directories.add(userDataPath);
+    const store = createDesktopSettingsStore({ userDataPath });
+
+    expect((await store.get()).autoCheckUpdates).toBe(true);
+
+    const patched = await store.patch({ autoCheckUpdates: false });
+    const reloaded = await createDesktopSettingsStore({ userDataPath }).get();
+
+    expect(patched.autoCheckUpdates).toBe(false);
+    expect(reloaded.autoCheckUpdates).toBe(false);
+  });
+
   it("handles concurrent first-launch reads without racing the settings write", async () => {
     const userDataPath = await createTempUserDataDir();
     directories.add(userDataPath);
@@ -81,6 +95,7 @@ describe("desktop-settings", () => {
 
     expect(settings).toEqual({
       releaseChannel: "stable",
+      autoCheckUpdates: true,
       notifications: { playSound: true },
       daemon: {
         manageBuiltInDaemon: true,
@@ -103,6 +118,7 @@ describe("desktop-settings", () => {
 
     expect(next).toEqual({
       releaseChannel: "beta",
+      autoCheckUpdates: true,
       notifications: { playSound: true },
       daemon: {
         manageBuiltInDaemon: true,
@@ -270,6 +286,7 @@ describe("desktop-settings", () => {
 
     expect(migrated).toEqual({
       releaseChannel: "beta",
+      autoCheckUpdates: true,
       notifications: { playSound: true },
       daemon: {
         manageBuiltInDaemon: false,
@@ -315,6 +332,7 @@ describe("desktop-settings", () => {
     expect(persisted.settings.releaseChannel).toBe("beta");
     expect(next).toEqual({
       releaseChannel: "beta",
+      autoCheckUpdates: true,
       notifications: { playSound: false },
       daemon: { manageBuiltInDaemon: true, keepRunningAfterQuit: false },
     });
