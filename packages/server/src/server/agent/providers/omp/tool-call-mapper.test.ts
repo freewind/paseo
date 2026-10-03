@@ -67,6 +67,47 @@ describe("OMP tool call mapper", () => {
     });
   });
 
+  test("keeps the find, grep and ls parameters in search details", () => {
+    expect(
+      mapOmpToolDetail(parseToolArgs("find", { pattern: "*.tsx", path: "src", limit: 20 }), null),
+    ).toEqual({
+      type: "search",
+      query: "*.tsx",
+      toolName: "search",
+      path: "src",
+      limit: 20,
+      content: undefined,
+    });
+    expect(
+      mapOmpToolDetail(
+        parseToolArgs("grep", {
+          pattern: "buildDetailSections",
+          path: "src",
+          glob: "*.ts",
+          limit: 30,
+        }),
+        null,
+      ),
+    ).toEqual({
+      type: "search",
+      query: "buildDetailSections",
+      toolName: "grep",
+      path: "src",
+      glob: "*.ts",
+      limit: 30,
+      content: undefined,
+    });
+    expect(mapOmpToolDetail(parseToolArgs("ls", { path: "src/terminal", limit: 5 }), null)).toEqual(
+      {
+        type: "search",
+        query: "src/terminal",
+        path: "src/terminal",
+        limit: 5,
+        content: undefined,
+      },
+    );
+  });
+
   test("maps task to sub-agent detail and suppresses todo raw cards", () => {
     expect(
       mapOmpToolDetail(
