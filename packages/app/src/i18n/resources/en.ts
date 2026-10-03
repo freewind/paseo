@@ -1918,6 +1918,8 @@ export const en = {
     },
   },
   toolCallDetails: {
+    copy: "🌿 Copy",
+    copied: "🌿 Copied",
     error: "Error",
     empty: "No additional details available",
     subAgentActivity: "Sub-agent activity",

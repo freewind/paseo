@@ -12,6 +12,8 @@ import {
   useIsolatedBottomSheetVisibility,
 } from "@/components/ui/isolated-bottom-sheet-modal";
 import type { ToolCallIconComponent } from "@/utils/tool-call-icon";
+import { buildToolCallDetailText } from "@/utils/tool-call-detail-text";
+import { CopyTextButton } from "./copy-text-button";
 import { ToolCallDetailsContent } from "./tool-call-details";
 
 // ----- Types -----
@@ -159,6 +161,11 @@ function ToolCallSheetContent({ data, onClose }: ToolCallSheetContentProps) {
     showLoadingSkeleton,
   } = data;
 
+  const getCopyText = useCallback(
+    () => buildToolCallDetailText(detail, toolName),
+    [detail, toolName],
+  );
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -176,6 +183,7 @@ function ToolCallSheetContent({ data, onClose }: ToolCallSheetContentProps) {
             ) : null}
           </View>
         </View>
+        <CopyTextButton getText={getCopyText} size={20} />
         <Pressable
           onPress={onClose}
           style={styles.closeButton}

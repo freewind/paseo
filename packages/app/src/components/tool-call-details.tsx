@@ -17,6 +17,11 @@ import {
 } from "@getpaseo/protocol/paseo-tool-call-detail";
 import { buildLineDiff, parseUnifiedDiff, type DiffLine } from "@/utils/tool-call-parsers";
 import { highlightDiffLines } from "@/utils/diff-highlight";
+import {
+  buildToolCallInputFields,
+  serializeUnknownValue,
+  type ToolCallInputField,
+} from "@/utils/tool-call-detail-text";
 import { hasMeaningfulToolCallDetail } from "@/utils/tool-call-detail-state";
 import { inlineUnistylesStyle } from "@/styles/unistyles-inline-style";
 import { CODE_SURFACE_DATASET } from "@/styles/code-surface";
@@ -519,47 +524,6 @@ interface SearchDetail {
   annotations?: string[];
 }
 
-interface ToolCallInputField {
-  label: string;
-  value: string;
-}
-
-function pushInputField(
-  fields: ToolCallInputField[],
-  label: string,
-  value: string | number | null | undefined,
-): void {
-  if (value === null || value === undefined || value === "") return;
-  fields.push({ label, value: String(value) });
-}
-
-/**
- * Parameters the tool was invoked with. Rendered above the result so a detail panel
- * still explains what ran when the tool produced no body (e.g. an empty `read`).
- */
-function buildToolCallInputFields(detail: ToolCallDetail | undefined): ToolCallInputField[] {
-  if (!detail) return [];
-  const fields: ToolCallInputField[] = [];
-  if (detail.type === "read") {
-    pushInputField(fields, "path", detail.filePath);
-    pushInputField(fields, "offset", detail.offset);
-    pushInputField(fields, "limit", detail.limit);
-    return fields;
-  }
-  if (detail.type === "write" || detail.type === "edit") {
-    pushInputField(fields, "path", detail.filePath);
-    return fields;
-  }
-  if (detail.type === "search") {
-    pushInputField(fields, "query", detail.query);
-    pushInputField(fields, "path", detail.path);
-    pushInputField(fields, "glob", detail.glob);
-    pushInputField(fields, "limit", detail.limit);
-    return fields;
-  }
-  return fields;
-}
-
 function ToolCallInputSection({ fields }: { fields: ToolCallInputField[] }) {
   const { t } = useTranslation();
   if (fields.length === 0) return null;
@@ -635,14 +599,6 @@ function buildSearchSections(
     );
   }
   return out;
-}
-
-function serializeUnknownValue(value: unknown): string {
-  try {
-    return typeof value === "string" ? value : JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
 }
 
 interface UnknownDetail {
