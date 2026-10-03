@@ -30,17 +30,20 @@ export function SidebarGroupToggleRow({
   expanded,
   onPress,
   indented = false,
+  label,
   testID,
 }: {
   expanded: boolean;
   onPress: () => void;
   indented?: boolean;
+  /** Overrides the built-in "Show more/less" label (e.g. "3 collapsed"). */
+  label?: string;
   testID: string;
 }) {
   const { t } = useTranslation();
-  const label = t(
-    expanded ? "sidebar.workspace.actions.showLess" : "sidebar.workspace.actions.showMore",
-  );
+  const resolvedLabel =
+    label ??
+    t(expanded ? "sidebar.workspace.actions.showLess" : "sidebar.workspace.actions.showMore");
   const rowStyle = useCallback(
     ({ hovered = false, pressed }: PressableStateCallbackType & { hovered?: boolean }) => [
       styles.row,
@@ -54,7 +57,7 @@ export function SidebarGroupToggleRow({
   return (
     <Pressable
       accessibilityRole={isWeb ? undefined : "button"}
-      accessibilityLabel={label}
+      accessibilityLabel={resolvedLabel}
       onPress={onPress}
       style={rowStyle}
       testID={testID}
@@ -75,7 +78,7 @@ export function SidebarGroupToggleRow({
             )}
           </View>
           <Text style={hovered || pressed ? styles.textHovered : styles.text} numberOfLines={1}>
-            {label}
+            {resolvedLabel}
           </Text>
         </>
       )}
