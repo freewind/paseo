@@ -519,8 +519,76 @@ interface SearchDetail {
   annotations?: string[];
 }
 
-function buildSearchSections(detail: SearchDetail, ds: DetailStyles): ReactNode[] {
+interface ToolCallInputField {
+  label: string;
+  value: string;
+}
+
+function pushInputField(
+  fields: ToolCallInputField[],
+  label: string,
+  value: string | number | null | undefined,
+): void {
+  if (value === null || value === undefined || value === "") return;
+  fields.push({ label, value: String(value) });
+}
+
+/**
+ * Parameters the tool was invoked with. Rendered above the result so a detail panel
+ * still explains what ran when the tool produced no body (e.g. an empty `read`).
+ */
+function buildToolCallInputFields(detail: ToolCallDetail | undefined): ToolCallInputField[] {
+  if (!detail) return [];
+  const fields: ToolCallInputField[] = [];
+  if (detail.type === "read") {
+    pushInputField(fields, "path", detail.filePath);
+    pushInputField(fields, "offset", detail.offset);
+    pushInputField(fields, "limit", detail.limit);
+    return fields;
+  }
+  if (detail.type === "write" || detail.type === "edit") {
+    pushInputField(fields, "path", detail.filePath);
+    return fields;
+  }
+  if (detail.type === "search") {
+    pushInputField(fields, "query", detail.query);
+    pushInputField(fields, "path", detail.path);
+    pushInputField(fields, "glob", detail.glob);
+    pushInputField(fields, "limit", detail.limit);
+    return fields;
+  }
+  return fields;
+}
+
+function ToolCallInputSection({ fields }: { fields: ToolCallInputField[] }) {
+  const { t } = useTranslation();
+  if (fields.length === 0) return null;
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>{`🌿 ${t("toolCallDetails.input")}`}</Text>
+      <View style={styles.inputFields}>
+        {fields.map((field) => (
+          <View key={field.label} style={styles.inputFieldRow}>
+            <Text style={styles.inputFieldLabel}>{field.label}</Text>
+            <Text selectable style={styles.inputFieldValue}>
+              {field.value}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function buildSearchSections(
+  detail: SearchDetail,
+  ds: DetailStyles,
+  inputFields: ToolCallInputField[],
+): ReactNode[] {
   const out: ReactNode[] = [];
+  if (inputFields.length > 0) {
+    out.push(<ToolCallInputSection key="search-input" fields={inputFields} />);
+  }
   if (detail.content) {
     out.push(
       <View key="search-content" style={styles.section}>
@@ -702,10 +770,14 @@ function buildDetailSections(
     ];
   }
   if (detail.type === "edit") {
-    return [<EditDetailSection key="edit" diffLines={diffLines} ds={ds} />];
+    return [
+      <ToolCallInputSection key="edit-input" fields={buildToolCallInputFields(detail)} />,
+      <EditDetailSection key="edit" diffLines={diffLines} ds={ds} />,
+    ];
   }
   if (detail.type === "write") {
     return [
+      <ToolCallInputSection key="write-input" fields={buildToolCallInputFields(detail)} />,
       <View key="write" style={ds.sectionFillStyle}>
         {detail.content ? (
           <ScrollableTextSection
@@ -719,8 +791,12 @@ function buildDetailSections(
     ];
   }
   if (detail.type === "read") {
-    if (!detail.content) return [];
+    const inputSection = (
+      <ToolCallInputSection key="read-input" fields={buildToolCallInputFields(detail)} />
+    );
+    if (!detail.content) return [inputSection];
     return [
+      inputSection,
       <ScrollableTextSection
         key="read"
         content={detail.content}
@@ -731,7 +807,7 @@ function buildDetailSections(
     ];
   }
   if (detail.type === "search") {
-    return buildSearchSections(detail, ds);
+    return buildSearchSections(detail, ds, buildToolCallInputFields(detail));
   }
   if (detail.type === "fetch") {
     return [<FetchDetailSection key="fetch" url={detail.url} result={detail.result} ds={ds} />];
@@ -901,6 +977,35 @@ const styles = StyleSheet.create((theme) => {
     rangeText: {
       color: theme.colors.foregroundMuted,
       fontSize: theme.fontSize.sm,
+    },
+    inputFields: {
+      gap: theme.spacing[2],
+      borderWidth: theme.borderWidth[1],
+      borderColor: theme.colors.border,
+      borderRadius: theme.borderRadius.base,
+      backgroundColor: theme.colors.surface2,
+      padding: insets.padding,
+    },
+    inputFieldRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: theme.spacing[2],
+    },
+    inputFieldLabel: {
+      width: 64,
+      color: theme.colors.foregroundMuted,
+      fontFamily: theme.fontFamily.mono,
+      fontSize: theme.fontSize.code,
+      lineHeight: 18,
+    },
+    inputFieldValue: {
+      flex: 1,
+      minWidth: 0,
+      color: theme.colors.foreground,
+      fontFamily: theme.fontFamily.mono,
+      fontSize: theme.fontSize.code,
+      lineHeight: 18,
+      overflowWrap: "anywhere",
     },
     diffContainer: {
       borderWidth: theme.borderWidth[1],

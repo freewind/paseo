@@ -152,6 +152,7 @@ function ToolCallSheetContent({ data, onClose }: ToolCallSheetContentProps) {
   const {
     toolName,
     displayName,
+    summary,
     detail,
     errorText,
     icon: IconComponent,
@@ -164,9 +165,16 @@ function ToolCallSheetContent({ data, onClose }: ToolCallSheetContentProps) {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <ThemedToolCallHeaderIcon icon={IconComponent} size={20} />
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {displayName}
-          </Text>
+          <View style={styles.headerText}>
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              {displayName}
+            </Text>
+            {summary ? (
+              <Text style={styles.headerSummary} numberOfLines={2}>
+                {summary}
+              </Text>
+            ) : null}
+          </View>
         </View>
         <Pressable
           onPress={onClose}
@@ -220,6 +228,15 @@ const styles = StyleSheet.create((theme) => ({
     fontWeight: theme.fontWeight.semibold,
     color: theme.colors.foreground,
     flex: 1,
+  },
+  headerText: {
+    flex: 1,
+    minWidth: 0,
+    gap: theme.spacing[1],
+  },
+  headerSummary: {
+    color: theme.colors.foregroundMuted,
+    fontSize: theme.fontSize.sm,
   },
   closeButton: {
     padding: theme.spacing[2],
