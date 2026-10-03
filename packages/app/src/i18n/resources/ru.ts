@@ -2400,6 +2400,10 @@ export const ru: TranslationResources = {
         checking: "Проверка...",
         alertTitle: "Ошибка",
         alertMessage: "Не удалось открыть диалог подтверждения обновления.",
+        autoCheck: {
+          label: "🌿 Автоматически проверять обновления",
+          description: "🌿 Проверять обновления в фоне каждые 30 минут",
+        },
       },
     },
     appearance: {
