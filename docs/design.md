@@ -32,6 +32,8 @@ Hierarchy is conveyed through weight and color, not size. Most interface text is
 
 The authored interface ramp uses a 14px base. New native installs default to 15px; web and desktop default to 14px. The Appearance **Interface size** setting is the rendered `fontSize.base` value and scales the rest of the UI ramp proportionally. Primary readable content has its own `fontSize.content`, which defaults to 16px on native and 15px on web and desktop. It owns message bodies, composer input, Markdown, and PR prose. Controls, navigation, metadata, tool chrome, code, diffs, editors, and terminals stay on their interface or code tokens. **Code size** remains independent.
 
+Chat patch/diff fences and Edit tool details keep whole-line addition/removal backgrounds separate from stronger inline change backgrounds. Inline matching compares all removed and added rows in each contiguous change block, then maps the result back to the original rows; joined or split lines must not highlight their shared code. Words, whitespace, punctuation, and newlines are matched separately. Diff markers never participate, and context rows and hunk headers terminate a comparison block. Syntax colors preserve the same changed ranges. Very large replacements retain whole-line coloring without an unbounded quadratic inline comparison.
+
 Weight has three tiers, applied by role:
 
 - **Screen titles** — the title in app chrome — use `<ScreenTitle>` (`packages/app/src/components/headers/screen-title.tsx`), which renders `fontSize.base` at weight `400` on compact and `300` on desktop. The New workspace hero is the only larger product title; it uses `fontSize["2xl"]` (`packages/app/src/screens/new-workspace-screen.tsx`).

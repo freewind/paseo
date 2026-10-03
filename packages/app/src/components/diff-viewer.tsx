@@ -51,6 +51,15 @@ function DiffLineRow({ line }: { line: DiffLine }) {
     [line.type],
   );
 
+  const keyedSegments = React.useMemo(() => {
+    let offset = 0;
+    return line.segments?.map((segment) => {
+      const key = offset;
+      offset += segment.text.length;
+      return { key, segment };
+    });
+  }, [line.segments]);
+
   if (line.tokens) {
     return (
       <View style={lineContainerStyle}>
@@ -69,12 +78,8 @@ function DiffLineRow({ line }: { line: DiffLine }) {
           <Text style={line.type === "add" ? styles.addText : styles.removeText}>
             {line.content[0]}
           </Text>
-          {line.segments.map((segment) => (
-            <DiffSegment
-              key={`${segment.changed ? "c" : "u"}:${segment.text}`}
-              segment={segment}
-              lineType={line.type}
-            />
+          {keyedSegments?.map(({ key, segment }) => (
+            <DiffSegment key={key} segment={segment} lineType={line.type} />
           ))}
         </Text>
       ) : (
