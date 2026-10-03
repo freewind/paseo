@@ -2188,6 +2188,10 @@ export const en = {
         description: "🌿 Press Back twice to leave the app",
         toast: "🌿 Press Back again to exit",
       },
+      playTurnCompleteSound: {
+        label: "🌿 Play sound when an agent finishes",
+        description: "🌿 Play a sound when an agent finishes a turn",
+      },
       defaultSend: {
         label: "Default send",
         descriptions: {

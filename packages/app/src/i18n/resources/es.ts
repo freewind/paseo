@@ -2113,6 +2113,10 @@ export const es: TranslationResources = {
         description: "🌿 Pulsa atrás dos veces para salir de la app",
         toast: "🌿 Pulsa atrás de nuevo para salir",
       },
+      playTurnCompleteSound: {
+        label: "🌿 Reproducir sonido al terminar",
+        description: "🌿 Reproducir un sonido cuando el agente termina un turno",
+      },
       defaultSend: {
         label: "Envío predeterminado",
         descriptions: {

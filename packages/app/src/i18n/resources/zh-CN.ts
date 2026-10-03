@@ -2040,6 +2040,10 @@ export const zhCN: TranslationResources = {
         description: "🌿 需要连续按两次返回键才能退出应用",
         toast: "🌿 再次点击返回才能退出",
       },
+      playTurnCompleteSound: {
+        label: "🌿 Agent 完成时播放提示音",
+        description: "🌿 Agent 完成一个 turn 时播放提示音",
+      },
       defaultSend: {
         label: "默认发送",
         descriptions: {

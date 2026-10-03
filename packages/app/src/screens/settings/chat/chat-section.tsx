@@ -49,6 +49,10 @@ export function ChatSection() {
     (doubleBackToExit: boolean) => void updateSettings({ doubleBackToExit }),
     [updateSettings],
   );
+  const changePlayTurnCompleteSound = useCallback(
+    (playTurnCompleteSound: boolean) => void updateSettings({ playTurnCompleteSound }),
+    [updateSettings],
+  );
 
   return (
     <View>
@@ -78,6 +82,12 @@ export function ChatSection() {
             hint={t("settings.general.doubleBackToExit.description")}
             value={settings.doubleBackToExit}
             onValueChange={changeDoubleBackToExit}
+          />
+          <SettingsSwitch
+            label={t("settings.general.playTurnCompleteSound.label")}
+            hint={t("settings.general.playTurnCompleteSound.description")}
+            value={settings.playTurnCompleteSound}
+            onValueChange={changePlayTurnCompleteSound}
           />
           {isNative ? null : (
             <SettingsSwitch
