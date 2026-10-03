@@ -2084,6 +2084,7 @@ export const fr: TranslationResources = {
   renameModal: {
     rename: "Renommer",
     saving: "Enregistrement…",
+    clear: "🌿 Effacer",
   },
   sidebarCallout: {
     dismiss: "Ignorer",

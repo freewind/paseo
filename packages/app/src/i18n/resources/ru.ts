@@ -2070,6 +2070,7 @@ export const ru: TranslationResources = {
   renameModal: {
     rename: "Переименовать",
     saving: "Сохранение...",
+    clear: "🌿 Очистить",
   },
   sidebarCallout: {
     dismiss: "Закрыть",

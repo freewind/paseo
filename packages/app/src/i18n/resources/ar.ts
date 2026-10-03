@@ -2037,6 +2037,7 @@ export const ar: TranslationResources = {
   renameModal: {
     rename: "إعادة تسمية",
     saving: "جارٍ الحفظ...",
+    clear: "🌿 مسح",
   },
   sidebarCallout: {
     dismiss: "رفض",
