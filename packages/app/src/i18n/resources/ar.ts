@@ -1102,6 +1102,7 @@ export const ar: TranslationResources = {
         title: "العنوان",
         branch: "اسم الفرع",
       },
+
       show: {
         label: "إظهار",
         branch: "الفرع",
@@ -2189,6 +2190,13 @@ export const ar: TranslationResources = {
       chatOutline: {
         title: "مخطط المحادثة",
         description: "عرض مخطط للتنقل بين المطالبات",
+      },
+      workspaceRows: {
+        title: "🌿 صفوف مساحات العمل",
+        titleLines: {
+          label: "🌿 أسطر العنوان",
+          hint: "🌿 السماح بالتفاف عناوين مساحات العمل الطويلة على عدة أسطر",
+        },
       },
       sidebar: {
         header: {

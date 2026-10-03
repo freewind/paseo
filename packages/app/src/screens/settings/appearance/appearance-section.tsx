@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DropdownTrigger } from "@/components/ui/dropdown-trigger";
 import { SettingsSection } from "@/components/settings/headings/settings-section";
+import { SettingsSwitch } from "@/components/settings";
 import { useContributedThemes } from "@/appearance/provider";
 import { Button } from "@/components/ui/button";
 import {
@@ -528,6 +529,12 @@ export function AppearanceSection() {
     [updateSettings],
   );
 
+const handleWorkspaceTitleMultilineChange = useCallback(
+    (workspaceTitleMultiline: boolean) => {
+      void updateSettings({ workspaceTitleMultiline });
+    },
+    [updateSettings],
+  );
   const commitUiFontFamily = useCallback(
     (value: string) => {
       const sanitized = sanitizeFontFamily(value);
@@ -628,6 +635,16 @@ export function AppearanceSection() {
             selectedPluginTheme={selectedPluginTheme}
             onChange={handleThemeChange}
             onSelectPluginTheme={handlePluginThemeChange}
+          />
+        </View>
+      </SettingsSection>
+<SettingsSection title={t("settings.appearance.workspaceRows.title")}>
+        <View style={settingsStyles.card}>
+          <SettingsSwitch
+            label={t("settings.appearance.workspaceRows.titleLines.label")}
+            hint={t("settings.appearance.workspaceRows.titleLines.hint")}
+            value={settings.workspaceTitleMultiline}
+            onValueChange={handleWorkspaceTitleMultilineChange}
           />
         </View>
       </SettingsSection>
