@@ -183,10 +183,7 @@ import { useMountedTabSet } from "@/screens/workspace/use-mounted-tab-set";
 import { SheetTabs } from "@/screens/workspace/sheet-tabs";
 import type { PaneHost } from "@/panels/panel-manifest";
 import { WorkspaceFocusProvider } from "@/workspace/focus";
-import {
-  WorkspaceRenameModal,
-  type RenamableWorkspace,
-} from "@/components/workspace-rename-modal";
+import { WorkspaceRenameModal, type RenamableWorkspace } from "@/components/workspace-rename-modal";
 import { DiffDocumentWorkspaceCacheProvider } from "@/git/diff-document/workspace-cache";
 import { useWorkspaceHeaderArchive } from "@/workspace/use-workspace-header-archive";
 import type { NewTabSelection } from "@/workspace-tabs/new-tab";
@@ -211,6 +208,7 @@ import { findAdjacentPane } from "@/utils/split-navigation";
 import { supportsDesktopPaneSplits, useIsCompactFormFactor } from "@/constants/layout";
 import { getIsElectron, isNative, isWeb } from "@/constants/platform";
 import { buildHostRootRoute, buildSettingsHostRoute } from "@/utils/host-routes";
+import { appLog } from "@/utils/app-log";
 import { useWorkspaceTerminals } from "@/screens/workspace/terminals/use-workspace-terminals";
 import type { TerminalProfile } from "@getpaseo/protocol/messages";
 import {
@@ -376,6 +374,295 @@ function WorkspaceDocumentTitleEffect({
   return null;
 }
 
+function switcherTriggerStyle({ pressed }: { pressed?: boolean }) {
+  return [styles.switcherTrigger, Boolean(pressed) && styles.switcherTriggerPressed];
+}
+
+function MobileWorkspaceTabOption({
+  tab,
+  tabIndex,
+  tabCount,
+  normalizedServerId,
+  normalizedWorkspaceId,
+  selected,
+  active,
+  onPress,
+  onCopyResumeCommand,
+  onCopyAgentId,
+  onCopyTerminalId,
+  onCopyFilePath,
+  onReloadAgent,
+  onRenameTab,
+  onCloseTab,
+  onCloseTabsAbove,
+  onCloseTabsBelow,
+  onCloseOtherTabs,
+}: {
+  tab: WorkspaceTabDescriptor;
+  tabIndex: number;
+  tabCount: number;
+  normalizedServerId: string;
+  normalizedWorkspaceId: string;
+  selected: boolean;
+  active: boolean;
+  onPress: () => void;
+  onCopyResumeCommand: (agentId: string) => Promise<void> | void;
+  onCopyAgentId: (agentId: string) => Promise<void> | void;
+  onCopyTerminalId: (terminalId: string) => Promise<void> | void;
+  onCopyFilePath: (path: string) => Promise<void> | void;
+  onReloadAgent: (agentId: string) => Promise<void> | void;
+  onRenameTab: (tab: WorkspaceTabDescriptor) => void;
+  onCloseTab: (tabId: string) => Promise<void> | void;
+  onCloseTabsAbove: (tabId: string) => Promise<void> | void;
+  onCloseTabsBelow: (tabId: string) => Promise<void> | void;
+  onCloseOtherTabs: (tabId: string) => Promise<void> | void;
+}) {
+  const { t } = useTranslation();
+  const tabMenuLabels = useMemo<WorkspaceTabMenuLabels>(
+    () => ({
+      copyResumeCommand: t("workspace.tabs.menu.copyResumeCommand"),
+      copyAgentId: t("workspace.tabs.menu.copyAgentId"),
+      copyTerminalId: t("workspace.tabs.menu.copyTerminalId"),
+      copyFilePath: t("workspace.tabs.menu.copyFilePath"),
+      rename: t("workspace.tabs.menu.rename"),
+      closeAbove: t("workspace.tabs.menu.closeAbove"),
+      closeBelow: t("workspace.tabs.menu.closeBelow"),
+      closeLeft: t("workspace.tabs.menu.closeLeft"),
+      closeRight: t("workspace.tabs.menu.closeRight"),
+      closeOthers: t("workspace.tabs.menu.closeOthers"),
+      reloadAgent: t("workspace.tabs.menu.reloadAgent"),
+      reloadAgentTooltip: t("workspace.tabs.menu.reloadAgentTooltip"),
+      close: t("workspace.tabs.menu.close"),
+    }),
+    [t],
+  );
+  const menuTestIDBase = `workspace-tab-menu-${tab.tabId}`;
+  const menuEntries = buildWorkspaceTabMenuEntries({
+    surface: "mobile",
+    tab,
+    index: tabIndex,
+    tabCount,
+    menuTestIDBase,
+    onCopyResumeCommand,
+    onCopyAgentId,
+    onCopyTerminalId,
+    onCopyFilePath,
+    onReloadAgent,
+    onRenameTab,
+    onCloseTab,
+    onCloseTabsBefore: onCloseTabsAbove,
+    onCloseTabsAfter: onCloseTabsBelow,
+    onCloseOtherTabs,
+    labels: tabMenuLabels,
+  });
+
+  const fallbackLabels = useMemo(
+    () => ({
+      newTab: t("workspace.tabs.actions.newTab"),
+      newAgent: t("workspace.tabs.fallback.newAgent"),
+      setup: t("workspace.tabs.fallback.setup"),
+      terminal: t("workspace.tabs.fallback.terminal"),
+      browser: t("workspace.tabs.fallback.browser"),
+      agent: t("workspace.tabs.fallback.agent"),
+      changes: t("panels.diff.changesLabel"),
+      files: t("panels.files.label"),
+      pullRequest: t("panels.pullRequest.label"),
+    }),
+    [t],
+  );
+  const fallbackLabel = getFallbackTabOptionLabel(tab, fallbackLabels);
+  const trailingAccessory = useMemo(
+    () => (
+      <MobileTabTrailingAccessory
+        menuTestIDBase={menuTestIDBase}
+        presentationLabel={fallbackLabel}
+        menuEntries={menuEntries}
+      />
+    ),
+    [menuTestIDBase, fallbackLabel, menuEntries],
+  );
+
+  const renderPresentation = useCallback(
+    (presentation: WorkspaceTabPresentation) => (
+      <WorkspaceTabOptionRow
+        presentation={presentation}
+        selected={selected}
+        active={active}
+        onPress={onPress}
+        trailingAccessory={trailingAccessory}
+      />
+    ),
+    [selected, active, onPress, trailingAccessory],
+  );
+
+  return (
+    <WorkspaceTabPresentationResolver
+      tab={tab}
+      serverId={normalizedServerId}
+      workspaceId={normalizedWorkspaceId}
+    >
+      {renderPresentation}
+    </WorkspaceTabPresentationResolver>
+  );
+}
+
+const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
+  tabs,
+  activeTabKey,
+  activeTab,
+  tabSwitcherOptions,
+  tabByKey,
+  normalizedServerId,
+  normalizedWorkspaceId,
+  onSelectSwitcherTab,
+  onCopyResumeCommand,
+  onCopyAgentId,
+  onCopyTerminalId,
+  onCopyFilePath,
+  onReloadAgent,
+  onRenameTab,
+  onCloseTab,
+  onCloseTabsAbove,
+  onCloseTabsBelow,
+  onCloseOtherTabs,
+}: MobileWorkspaceTabSwitcherProps) {
+  const { t } = useTranslation();
+  const [isOpen, setIsOpen] = useState(false);
+  const anchorRef = useRef<View>(null);
+  const previousTabCountRef = useRef(tabs.length);
+  useEffect(() => {
+    if (tabs.length === previousTabCountRef.current) return;
+    previousTabCountRef.current = tabs.length;
+    if (tabs.length >= 2) {
+      appLog("workspace.tabs", "count", { count: tabs.length });
+    }
+  }, [tabs.length]);
+  const tabIndexByKey = useMemo(() => {
+    const map = new Map<string, number>();
+    tabs.forEach((tab, index) => {
+      map.set(tab.key, index);
+    });
+    return map;
+  }, [tabs]);
+
+  const handleOpenSwitcher = useCallback(() => {
+    Keyboard.dismiss();
+    setIsOpen(true);
+  }, []);
+
+  const renderTabOption = useCallback(
+    ({
+      option,
+      selected,
+      active,
+      onPress,
+    }: {
+      option: ComboboxOption;
+      selected: boolean;
+      active: boolean;
+      onPress: () => void;
+    }) => {
+      const tab = tabByKey.get(option.id);
+      if (!tab) {
+        return <View />;
+      }
+      const tabIndex = tabIndexByKey.get(tab.key) ?? -1;
+      if (tabIndex < 0) {
+        return <View />;
+      }
+      return (
+        <MobileWorkspaceTabOption
+          tab={tab}
+          tabIndex={tabIndex}
+          tabCount={tabs.length}
+          normalizedServerId={normalizedServerId}
+          normalizedWorkspaceId={normalizedWorkspaceId}
+          selected={selected}
+          active={active}
+          onPress={onPress}
+          onCopyResumeCommand={onCopyResumeCommand}
+          onCopyAgentId={onCopyAgentId}
+          onCopyTerminalId={onCopyTerminalId}
+          onCopyFilePath={onCopyFilePath}
+          onReloadAgent={onReloadAgent}
+          onRenameTab={onRenameTab}
+          onCloseTab={onCloseTab}
+          onCloseTabsAbove={onCloseTabsAbove}
+          onCloseTabsBelow={onCloseTabsBelow}
+          onCloseOtherTabs={onCloseOtherTabs}
+        />
+      );
+    },
+    [
+      tabByKey,
+      tabIndexByKey,
+      tabs.length,
+      normalizedServerId,
+      normalizedWorkspaceId,
+      onCopyResumeCommand,
+      onCopyAgentId,
+      onCopyTerminalId,
+      onCopyFilePath,
+      onReloadAgent,
+      onRenameTab,
+      onCloseTab,
+      onCloseTabsAbove,
+      onCloseTabsBelow,
+      onCloseOtherTabs,
+    ],
+  );
+
+  return (
+    <View style={styles.mobileTabsRow} testID="workspace-tabs-row">
+      <Pressable
+        ref={anchorRef}
+        testID="workspace-tab-switcher-trigger"
+        accessibilityRole="button"
+        accessibilityLabel={`🌿 ${t("workspace.tabs.switcher.trigger", { count: tabs.length })}`}
+        style={switcherTriggerStyle}
+        onPress={handleOpenSwitcher}
+      >
+        {({ pressed }) => (
+          <>
+            <View style={styles.switcherTriggerLeft}>
+              <MobileActiveTabTrigger
+                activeTab={activeTab}
+                normalizedServerId={normalizedServerId}
+                normalizedWorkspaceId={normalizedWorkspaceId}
+                backdrop={pressed ? "surface1" : "surface0"}
+              />
+            </View>
+            <ThemedChevronDown size={14} uniProps={mutedColorMapping} />
+            {tabs.length >= 2 ? (
+              <Text
+                style={styles.switcherTriggerCount}
+                numberOfLines={1}
+                testID="workspace-tab-switcher-count"
+              >
+                {tabs.length}
+              </Text>
+            ) : null}
+          </>
+        )}
+      </Pressable>
+
+      <Combobox
+        options={tabSwitcherOptions}
+        value={activeTabKey}
+        onSelect={onSelectSwitcherTab}
+        searchable={false}
+        title={t("workspace.tabs.switcher.title")}
+        searchPlaceholder={t("workspace.tabs.switcher.searchPlaceholder")}
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        anchorRef={anchorRef}
+        renderOption={renderTabOption}
+      />
+    </View>
+  );
+});
+
+>>>>>>> a5cd1e7b4 (feat(workspace): tab 切换器显示标签数量并记录埋点)
 interface MobileMountedTabSlotProps {
   tabDescriptor: WorkspaceTabDescriptor;
   isVisible: boolean;
@@ -4096,6 +4383,42 @@ const styles = StyleSheet.create((theme) => ({
     gap: theme.spacing[2],
   },
   newTabTooltipShortcut: {},
+  mobileTabsRow: {
+    backgroundColor: theme.colors.surface0,
+    borderBottomWidth: theme.borderWidth[1],
+    borderBottomColor: theme.colors.border,
+  },
+  switcherTrigger: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing[2],
+    paddingHorizontal: theme.spacing[2] + theme.spacing[3],
+    paddingVertical: theme.spacing[2],
+  },
+  switcherTriggerPressed: {
+    backgroundColor: theme.colors.surface1,
+  },
+  switcherTriggerCount: {
+    color: theme.colors.foregroundMuted,
+    fontSize: theme.fontSize.sm,
+    flexShrink: 0,
+  },
+  switcherTriggerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing[1],
+    flex: 1,
+    minWidth: 0,
+  },
+  switcherTriggerIcon: {
+    flexShrink: 0,
+  },
+  switcherTriggerText: {
+    minWidth: 0,
+    flex: 1,
+    color: theme.colors.foreground,
+    fontSize: theme.fontSize.base,
+  },
   headerMenuProfileIconWrapper: {
     width: 16,
     height: 16,
