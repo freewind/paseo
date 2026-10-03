@@ -172,6 +172,7 @@ import {
   type RenamableWorkspace,
 } from "@/components/workspace-rename-modal";
 import { DiffDocumentWorkspaceCacheProvider } from "@/git/diff-document/workspace-cache";
+import { useWorkspaceHeaderArchive } from "@/workspace/use-workspace-header-archive";
 import type { NewTabSelection } from "@/workspace-tabs/new-tab";
 import {
   NewTabLauncherProvider,
@@ -972,6 +973,9 @@ interface WorkspaceHeaderTitleBarProps {
   onCopyBranchName: () => void;
   onOpenSetupTab: () => void;
   onRename?: () => void;
+  onArchive?: () => void;
+  isArchiving?: boolean;
+  archiveLabel?: string;
   onScriptTerminalStarted: (terminalId: string) => void;
   onViewScriptTerminal: (terminalId: string) => void;
   onOpenUrlInBrowserTab: (url: string) => void;
@@ -1002,6 +1006,9 @@ function WorkspaceHeaderTitleBar({
   onCopyBranchName,
   onOpenSetupTab,
   onRename,
+  onArchive,
+  isArchiving,
+  archiveLabel,
   onScriptTerminalStarted,
   onViewScriptTerminal,
   onOpenUrlInBrowserTab,
@@ -1041,6 +1048,9 @@ function WorkspaceHeaderTitleBar({
             onCopyBranchName={onCopyBranchName}
             onOpenSetupTab={onOpenSetupTab}
             onRename={onRename}
+            onArchive={onArchive}
+            isArchiving={isArchiving}
+            archiveLabel={archiveLabel}
           />
         ) : (
           <WorkspaceHeaderMenuDesktop
@@ -1053,6 +1063,9 @@ function WorkspaceHeaderTitleBar({
             onCopyBranchName={onCopyBranchName}
             onOpenSetupTab={onOpenSetupTab}
             onRename={onRename}
+            onArchive={onArchive}
+            isArchiving={isArchiving}
+            archiveLabel={archiveLabel}
           />
         )}
         {isMobile && workspaceScripts.length > 0 ? (
@@ -1575,6 +1588,12 @@ function WorkspaceScreenContent({
     }),
     [normalizedServerId, normalizedWorkspaceId, workspaceDescriptor],
   );
+  const { archive: handleArchive, isArchiving } = useWorkspaceHeaderArchive({
+    serverId: normalizedServerId,
+    workspaceId: normalizedWorkspaceId,
+    workspace: workspaceDescriptor,
+  });
+  const archiveLabel = t("sidebar.workspace.actions.archiving");
   useEffect(() => {
     if (!normalizedServerId || !normalizedWorkspaceId || workspaceDescriptor) return;
     void getHostRuntimeStore()
@@ -3931,6 +3950,9 @@ function WorkspaceScreenContent({
                   onCopyBranchName={handleCopyBranchName}
                   onOpenSetupTab={handleOpenSetupTab}
                   onRename={workspaceDescriptor ? handleOpenRename : undefined}
+                  onArchive={workspaceDescriptor ? handleArchive : undefined}
+                  isArchiving={isArchiving}
+                  archiveLabel={archiveLabel}
                   onScriptTerminalStarted={handleScriptTerminalStarted}
                   onViewScriptTerminal={handleViewScriptTerminal}
                   onOpenUrlInBrowserTab={handleOpenUrlInBrowserTab}
@@ -3948,9 +3970,11 @@ function WorkspaceScreenContent({
         </>
       ) : null,
     [
+      archiveLabel,
       canOpenImportSheet,
       createTerminalDisabled,
       currentBranchName,
+      handleArchive,
       handleCopyBranchName,
       handleCopyWorkspacePath,
       handleCreateBrowserTab,
@@ -3964,6 +3988,7 @@ function WorkspaceScreenContent({
       handleScriptTerminalStarted,
       handleViewScriptTerminal,
       headerRight,
+      isArchiving,
       isMobile,
       isRenameOpen,
       isWorkspaceHeaderLoading,
