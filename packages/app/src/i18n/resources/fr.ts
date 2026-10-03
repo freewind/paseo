@@ -1212,6 +1212,7 @@ export const fr: TranslationResources = {
         title: "Titre",
         branch: "Nom de branche",
       },
+
       show: {
         label: "Afficher",
         branch: "Branche",
@@ -2433,6 +2434,13 @@ export const fr: TranslationResources = {
       chatOutline: {
         title: "Plan de la discussion",
         description: "Afficher un plan pour naviguer entre les prompts",
+      },
+      workspaceRows: {
+        title: "🌿 Lignes des espaces de travail",
+        titleLines: {
+          label: "🌿 Lignes du titre",
+          hint: "🌿 Permettre aux titres longs d'espaces de travail de passer sur plusieurs lignes",
+        },
       },
       sidebar: {
         header: {
