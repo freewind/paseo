@@ -95,6 +95,9 @@ const tokenChanges = {
   style: (value) => {
     value.style = null;
   },
+  changed: (value) => {
+    value.changed = !value.changed;
+  },
 } satisfies Record<keyof Token, (value: Token) => void>;
 
 describe("diff sharing", () => {

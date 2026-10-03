@@ -21,6 +21,22 @@ describe("tool-call-parsers", () => {
     expect(parsed.find((entry) => entry.type === "add")?.content).toBe("+new");
   });
 
+  it("parseUnifiedDiff attaches word-level segments for adjacent remove/add pairs", () => {
+    const parsed = parseUnifiedDiff("@@\n-const a = 1;\n+const a = 2;\n");
+
+    const remove = parsed.find((entry) => entry.type === "remove");
+    const add = parsed.find((entry) => entry.type === "add");
+
+    expect(remove?.segments).toBeDefined();
+    expect(add?.segments).toBeDefined();
+
+    const removeChanged = remove?.segments?.filter((s) => s.changed).map((s) => s.text);
+    const addChanged = add?.segments?.filter((s) => s.changed).map((s) => s.text);
+
+    expect(removeChanged).toEqual(["1"]);
+    expect(addChanged).toEqual(["2"]);
+  });
+
   it("extracts TodoWrite task entries", () => {
     const tasks = extractTaskEntriesFromToolCall("TodoWrite", {
       todos: [

@@ -91,7 +91,7 @@ function equalLines(
     for (let t = 0; t < x.tokens.length; t++) {
       const p = x.tokens[t]!;
       const q = y.tokens[t]!;
-      if (p.text !== q.text || p.style !== q.style) return false;
+      if (p.text !== q.text || p.style !== q.style || p.changed !== q.changed) return false;
     }
   }
   return true;
