@@ -98,3 +98,6 @@ app.json
 
 # Project-local Serena configuration and memories.
 .serena/
+
+# CodeGraph 本地索引数据库，每台机器各自生成
+/.codegraph/
