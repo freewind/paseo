@@ -6,6 +6,13 @@ function joinTokens(line: DiffLine): string {
   return (line.tokens ?? []).map((token) => token.text).join("");
 }
 
+function changedTokenText(line: DiffLine): string {
+  return (line.tokens ?? [])
+    .filter((token) => token.changed)
+    .map((token) => token.text)
+    .join("");
+}
+
 describe("highlightDiffLines", () => {
   it("attaches tokens to add/remove/context lines for a supported language", () => {
     const diff = buildLineDiff("const a = 1;\nconst b = 2;", "const a = 1;\nconst b = 3;");
@@ -51,6 +58,31 @@ describe("highlightDiffLines", () => {
     expect(highlightDiffLines(diff, undefined)).toBe(diff);
   });
 
+  it("preserves changed ranges when syntax tokens span a joined line", () => {
+    const diff = parseUnifiedDiff(
+      [
+        "@@",
+        '-<Button variant="ghost"',
+        "-  size={size}>",
+        '+<Button variant="ghost" size={size}>',
+      ].join("\n"),
+    );
+    const result = highlightDiffLines(diff, "/repo/button.tsx");
+    const rows = result.filter((line) => line.type !== "header");
+    expect(rows.map(joinTokens)).toEqual([
+      '<Button variant="ghost"',
+      "  size={size}>",
+      '<Button variant="ghost" size={size}>',
+    ]);
+    expect(rows.map(changedTokenText)).toEqual(["", "  ", " "]);
+    expect(
+      rows[2].tokens
+        ?.filter((token) => token.style === "attribute")
+        .map((token) => token.text)
+        .join(""),
+    ).toBe("variantsize");
+  });
+
   it("keeps word-level changed flags visible alongside syntax tokens", () => {
     const diff = buildLineDiff("const a = 1;", "const a = 2;");
     const result = highlightDiffLines(diff, "/repo/src/index.ts");
@@ -61,16 +93,7 @@ describe("highlightDiffLines", () => {
     expect(remove?.tokens).toBeDefined();
     expect(add?.tokens).toBeDefined();
 
-    const removeChanged = remove?.tokens
-      ?.filter((t) => t.changed)
-      .map((t) => t.text)
-      .join("");
-    const addChanged = add?.tokens
-      ?.filter((t) => t.changed)
-      .map((t) => t.text)
-      .join("");
-
-    expect(removeChanged).toBe("1");
-    expect(addChanged).toBe("2");
+    expect(changedTokenText(remove as DiffLine)).toBe("1");
+    expect(changedTokenText(add as DiffLine)).toBe("2");
   });
 });

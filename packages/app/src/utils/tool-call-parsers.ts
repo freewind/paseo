@@ -24,131 +24,137 @@ function splitIntoLines(text: string): string[] {
 }
 
 function splitIntoWords(text: string): string[] {
-  const result: string[] = [];
-  let current = "";
-  let inWord = false;
-
-  for (const char of text) {
-    const isWordChar = /\w/.test(char);
-    if (isWordChar) {
-      if (!inWord && current) {
-        result.push(current);
-        current = "";
-      }
-      inWord = true;
-      current += char;
-    } else {
-      if (inWord && current) {
-        result.push(current);
-        current = "";
-      }
-      inWord = false;
-      current += char;
-    }
-  }
-  if (current) {
-    result.push(current);
-  }
-  return result;
+  // Keep words and horizontal whitespace intact, but match punctuation and
+  // newlines separately so a moved delimiter does not mark its neighbors.
+  return text.match(/[\p{L}\p{N}_]+|[ \t\r]+|[^\p{L}\p{N}_ \t\r]/gu) ?? [];
 }
 
+const MAX_WORD_DIFF_CELLS = 1_000_000;
+
 function computeWordLevelDiff(
-  oldLine: string,
-  newLine: string,
-): { oldSegments: DiffSegment[]; newSegments: DiffSegment[] } {
-  const oldWords = splitIntoWords(oldLine);
-  const newWords = splitIntoWords(newLine);
+  oldText: string,
+  newText: string,
+): { oldSegments: DiffSegment[]; newSegments: DiffSegment[] } | null {
+  const oldWords = splitIntoWords(oldText);
+  const newWords = splitIntoWords(newText);
+  const oldInLCS = new Uint8Array(oldWords.length);
+  const newInLCS = new Uint8Array(newWords.length);
 
-  const m = oldWords.length;
-  const n = newWords.length;
+  // Trim shared edges before allocating the LCS table. Large unchanged
+  // prefixes and suffixes should not make a small edit expensive.
+  let start = 0;
+  let oldEnd = oldWords.length;
+  let newEnd = newWords.length;
+  while (start < oldEnd && start < newEnd && oldWords[start] === newWords[start]) {
+    oldInLCS[start] = newInLCS[start] = 1;
+    start += 1;
+  }
+  while (oldEnd > start && newEnd > start && oldWords[oldEnd - 1] === newWords[newEnd - 1]) {
+    oldInLCS[--oldEnd] = newInLCS[--newEnd] = 1;
+  }
 
-  // LCS to find common words
-  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  const m = oldEnd - start;
+  const n = newEnd - start;
+  if (m > 0 && n > 0) {
+    const width = n + 1;
+    const cells = (m + 1) * width;
+    // Keep the existing whole-line backgrounds for very large replacements
+    // rather than blocking the UI on an unbounded quadratic comparison.
+    if (cells > MAX_WORD_DIFF_CELLS) return null;
+    const dp = new Uint32Array(cells);
+    for (let i = m - 1; i >= 0; i -= 1) {
+      const row = i * width;
+      const nextRow = row + width;
+      for (let j = n - 1; j >= 0; j -= 1) {
+        dp[row + j] =
+          oldWords[start + i] === newWords[start + j]
+            ? dp[nextRow + j + 1] + 1
+            : Math.max(dp[nextRow + j], dp[row + j + 1]);
+      }
+    }
 
-  for (let i = m - 1; i >= 0; i -= 1) {
-    for (let j = n - 1; j >= 0; j -= 1) {
-      if (oldWords[i] === newWords[j]) {
-        dp[i][j] = dp[i + 1][j + 1] + 1;
+    let i = 0;
+    let j = 0;
+    while (i < m && j < n) {
+      if (oldWords[start + i] === newWords[start + j]) {
+        oldInLCS[start + i] = newInLCS[start + j] = 1;
+        i += 1;
+        j += 1;
+      } else if (dp[(i + 1) * width + j] >= dp[i * width + j + 1]) {
+        i += 1;
       } else {
-        dp[i][j] = Math.max(dp[i + 1][j], dp[i][j + 1]);
+        j += 1;
       }
     }
   }
 
-  // Mark which words are in LCS (unchanged)
-  const oldInLCS = new Set<number>();
-  const newInLCS = new Set<number>();
-
-  let i = 0;
-  let j = 0;
-  while (i < m && j < n) {
-    if (oldWords[i] === newWords[j]) {
-      oldInLCS.add(i);
-      newInLCS.add(j);
-      i += 1;
-      j += 1;
-    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
-      i += 1;
-    } else {
-      j += 1;
-    }
-  }
-
-  // Build segments: consecutive unchanged or changed words merged
-  const buildSegments = (words: string[], inLCS: Set<number>): DiffSegment[] => {
-    if (words.length === 0) return [];
-
+  const buildSegments = (words: string[], inLCS: Uint8Array): DiffSegment[] => {
     const segments: DiffSegment[] = [];
-    let currentText = "";
-    let currentChanged: boolean | null = null;
-
-    for (let idx = 0; idx < words.length; idx++) {
-      const word = words[idx];
-      const changed = !inLCS.has(idx);
-
-      if (currentChanged === null) {
-        currentText = word;
-        currentChanged = changed;
-      } else if (changed === currentChanged) {
-        currentText += word;
+    for (let index = 0; index < words.length; index += 1) {
+      const text = words[index];
+      const changed = inLCS[index] === 0;
+      const previous = segments.at(-1);
+      if (previous?.changed === changed) {
+        previous.text += text;
       } else {
-        segments.push({ text: currentText, changed: currentChanged });
-        currentText = word;
-        currentChanged = changed;
+        segments.push({ text, changed });
       }
     }
-
-    if (currentText) {
-      segments.push({ text: currentText, changed: currentChanged ?? false });
-    }
-
     return segments;
   };
 
-  const oldSegments = buildSegments(oldWords, oldInLCS);
-  const newSegments = buildSegments(newWords, newInLCS);
-
   return {
-    oldSegments,
-    newSegments,
+    oldSegments: buildSegments(oldWords, oldInLCS),
+    newSegments: buildSegments(newWords, newInLCS),
   };
 }
 
-// Post-process to add word-level segments for adjacent remove/add pairs.
-function attachWordSegments(diff: DiffLine[]): void {
-  for (let idx = 0; idx < diff.length - 1; idx++) {
-    const curr = diff[idx];
-    const next = diff[idx + 1];
-
-    if (curr.type === "remove" && next.type === "add") {
-      // Strip the leading -/+ from content for comparison
-      const oldLineText = curr.content.slice(1);
-      const newLineText = next.content.slice(1);
-
-      const { oldSegments, newSegments } = computeWordLevelDiff(oldLineText, newLineText);
-      curr.segments = oldSegments;
-      next.segments = newSegments;
+function assignWordSegments(lines: DiffLine[], segments: DiffSegment[]): void {
+  let lineIndex = 0;
+  let lineSegments: DiffSegment[] = [];
+  for (const segment of segments) {
+    const parts = segment.text.split("\n");
+    for (let index = 0; index < parts.length; index += 1) {
+      if (index > 0) {
+        lines[lineIndex++].segments = lineSegments;
+        lineSegments = [];
+      }
+      const text = parts[index];
+      if (!text) continue;
+      const previous = lineSegments.at(-1);
+      if (previous?.changed === segment.changed) {
+        previous.text += text;
+      } else {
+        lineSegments.push({ text, changed: segment.changed });
+      }
     }
+  }
+  lines[lineIndex].segments = lineSegments;
+}
+
+// Compare both sides of each change block, not just the two rows at its
+// remove/add boundary. This preserves common code across line joins/splits.
+function attachWordSegments(diff: DiffLine[]): void {
+  let index = 0;
+  while (index < diff.length) {
+    if (diff[index].type !== "remove" && diff[index].type !== "add") {
+      index += 1;
+      continue;
+    }
+    const removed: DiffLine[] = [];
+    const added: DiffLine[] = [];
+    while (index < diff.length && (diff[index].type === "remove" || diff[index].type === "add")) {
+      const line = diff[index++];
+      (line.type === "remove" ? removed : added).push(line);
+    }
+    if (removed.length === 0 || added.length === 0) continue;
+    const comparison = computeWordLevelDiff(
+      removed.map((line) => line.content.slice(1)).join("\n"),
+      added.map((line) => line.content.slice(1)).join("\n"),
+    );
+    if (!comparison) continue;
+    assignWordSegments(removed, comparison.oldSegments);
+    assignWordSegments(added, comparison.newSegments);
   }
 }
 
