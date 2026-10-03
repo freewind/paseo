@@ -108,6 +108,8 @@ export interface AppSettings {
   showVoiceButton: boolean;
   /** Whether Back must be pressed twice in a row to leave the app on devices with a hardware Back key. */
   doubleBackToExit: boolean;
+  /** Whether to play a sound when an agent finishes a turn. */
+  playTurnCompleteSound: boolean;
   /** Desktop-only preferences for implicit opens into the ordinary side pane. */
   openInSidePane: OpenInSidePanePreferences;
   pullRequestOpenLocation: PullRequestOpenLocation;
@@ -166,6 +168,7 @@ export const DEFAULT_CLIENT_SETTINGS: AppSettings = {
   vimKeybindings: false,
   showVoiceButton: true,
   doubleBackToExit: false,
+  playTurnCompleteSound: false,
   openInSidePane: DEFAULT_OPEN_IN_SIDE_PANE_PREFERENCES,
   pullRequestOpenLocation: "explorer",
 };
@@ -269,6 +272,7 @@ const StoredAppSettingsSchema = z
     vimKeybindings: z.boolean().catch(false),
     showVoiceButton: z.boolean().catch(true),
     doubleBackToExit: z.boolean().catch(false),
+    playTurnCompleteSound: z.boolean().catch(false),
     openInSidePane: z
       .object({
         explorerFiles: z.boolean().catch(false),
