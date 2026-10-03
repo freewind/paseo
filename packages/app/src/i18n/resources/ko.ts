@@ -2073,6 +2073,10 @@ export const ko: TranslationResources = {
         description: "🌿 앱을 종료하려면 뒤로 버튼을 두 번 누르세요",
         toast: "🌿 종료하려면 뒤로를 한 번 더 누르세요",
       },
+      playTurnCompleteSound: {
+        label: "🌿 완료 시 소리 재생",
+        description: "🌿 에이전트가 턴을 완료할 때 소리를 재생합니다",
+      },
       defaultSend: {
         label: "기본 전송",
         descriptions: {

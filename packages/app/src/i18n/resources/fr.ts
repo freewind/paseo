@@ -2117,6 +2117,10 @@ export const fr: TranslationResources = {
         description: "🌿 Appuyez deux fois sur retour pour quitter l'appli",
         toast: "🌿 Appuyez encore sur retour pour quitter",
       },
+      playTurnCompleteSound: {
+        label: "🌿 Jouer un son à la fin",
+        description: "🌿 Jouer un son lorsqu'un agent termine un tour",
+      },
       defaultSend: {
         label: "Envoi par défaut",
         descriptions: {

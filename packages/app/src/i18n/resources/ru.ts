@@ -2097,6 +2097,10 @@ export const ru: TranslationResources = {
         description: "🌿 Нажмите «назад» дважды, чтобы выйти из приложения",
         toast: "🌿 Нажмите «назад» ещё раз, чтобы выйти",
       },
+      playTurnCompleteSound: {
+        label: "🌿 Воспроизводить звук при завершении",
+        description: "🌿 Воспроизводить звук, когда агент завершает ход",
+      },
       defaultSend: {
         label: "Отправка по умолчанию",
         descriptions: {

@@ -2097,6 +2097,10 @@ export const ptBR: TranslationResources = {
         description: "🌿 Pressione voltar duas vezes para sair do app",
         toast: "🌿 Pressione voltar novamente para sair",
       },
+      playTurnCompleteSound: {
+        label: "🌿 Tocar som ao terminar",
+        description: "🌿 Tocar um som quando o agente termina uma rodada",
+      },
       defaultSend: {
         label: "Envio padrão",
         descriptions: {

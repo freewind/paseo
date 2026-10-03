@@ -2083,6 +2083,10 @@ export const ja: TranslationResources = {
         description: "🌿 アプリを終了するには戻るボタンを2回押します",
         toast: "🌿 終了するにはもう一度戻るを押してください",
       },
+      playTurnCompleteSound: {
+        label: "🌿 完了時にサウンドを再生",
+        description: "🌿 エージェントがターンを完了したときにサウンドを再生します",
+      },
       defaultSend: {
         label: "デフォルトの送信",
         descriptions: {

@@ -2063,6 +2063,10 @@ export const ar: TranslationResources = {
         description: "🌿 اضغط زر الرجوع مرتين للخروج من التطبيق",
         toast: "🌿 اضغط الرجوع مرة أخرى للخروج",
       },
+      playTurnCompleteSound: {
+        label: "🌿 تشغيل صوت عند اكتمال العمل",
+        description: "🌿 تشغيل صوت عند اكتمال الوكيل لعمله",
+      },
       defaultSend: {
         label: "إرسال افتراضي",
         descriptions: {
