@@ -247,9 +247,19 @@ function resolveCheckoutRemoteUrl(
   return checkoutStatus?.remoteUrl ?? null;
 }
 
-function buildCancelButtonStyle(isConnected: boolean, isCancellingAgent: boolean): object[] {
-  const disabled = !isConnected || isCancellingAgent ? styles.buttonDisabled : undefined;
-  return [styles.cancelButton, disabled].filter((value): value is object => Boolean(value));
+function buildCancelButtonStyle(
+  isConnected: boolean,
+  isCancellingAgent: boolean,
+): (state: PressableStateCallbackType) => object[] {
+  const disabled = !isConnected || isCancellingAgent;
+  // A finger covers this button while it is held, and a tap swaps it for the send button
+  // in place, so without a press state a tap looks like it never registered.
+  return ({ pressed }: PressableStateCallbackType) =>
+    [
+      styles.cancelButton,
+      disabled && styles.buttonDisabled,
+      pressed && !disabled && styles.cancelButtonPressed,
+    ].filter((value): value is object => Boolean(value));
 }
 
 function buildRealtimeVoiceButtonStyle(
@@ -1090,7 +1100,7 @@ function ComposerForgeBinding({
 
 interface ComposerCancelButtonProps {
   buttonIconSize: number;
-  cancelButtonStyle: (object | undefined)[];
+  cancelButtonStyle: (state: PressableStateCallbackType) => (object | undefined)[];
   handleCancelAgent: () => void;
   isConnected: boolean;
   isCancellingAgent: boolean;
@@ -2548,13 +2558,18 @@ const styles = StyleSheet.create((theme: Theme) => ({
     gap: theme.spacing[3],
   },
   cancelButton: {
-    width: 28,
-    height: 28,
+    width: 36,
+    height: 36,
     borderRadius: theme.borderRadius.full,
     backgroundColor: theme.colors.palette.red[600],
     alignItems: "center",
     justifyContent: "center",
     marginLeft: theme.spacing[1],
+  },
+  // Brightens like the send button it swaps with, so the same press reads the same way
+  // on either side of the swap and stays visible under the finger.
+  cancelButtonPressed: {
+    backgroundColor: theme.colors.palette.red[500],
   },
   rightControls: {
     flexDirection: "row",
