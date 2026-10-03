@@ -110,6 +110,7 @@ export interface OpenWorkspaceTabInput {
   state?: JsonValue;
 }
 
+<<<<<<< HEAD
 /**
  * How the app shell lays out a workspace: compact (one tab at a time, plus sheets), a single
  * wide pane (touch tablets, which cannot render splits), or split panes.
