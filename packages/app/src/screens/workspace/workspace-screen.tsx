@@ -181,6 +181,10 @@ import { useMountedTabSet } from "@/screens/workspace/use-mounted-tab-set";
 import { SheetTabs } from "@/screens/workspace/sheet-tabs";
 import type { PaneHost } from "@/panels/panel-manifest";
 import { WorkspaceFocusProvider } from "@/workspace/focus";
+import {
+  WorkspaceRenameModal,
+  type RenamableWorkspace,
+} from "@/components/workspace-rename-modal";
 import { DiffDocumentWorkspaceCacheProvider } from "@/git/diff-document/workspace-cache";
 import type { NewTabSelection } from "@/workspace-tabs/new-tab";
 import {
@@ -469,13 +473,27 @@ interface WorkspaceHeaderTitleBarProps {
   isSubtitleDistinct: boolean;
   currentBranchName: string | null;
   normalizedServerId: string;
+  normalizedWorkspaceId: string;
+  workspaceScripts: WorkspaceDescriptor["scripts"];
+  liveTerminalIds: string[];
   showWorkspaceSetup: boolean;
+  showCreateBrowserTab: boolean;
+  isMobile: boolean;
+  createTerminalDisabled: boolean;
   importAgentDisabled: boolean;
   copyPathDisabled: boolean;
+  onCreateDraftTab: () => void;
+  onCreateTerminal: () => void;
+  onCreateTerminalWithProfile: (profile: TerminalProfile) => void;
+  onCreateBrowser: () => void;
   onOpenImportSheet: () => void;
   onCopyWorkspacePath: () => void;
   onCopyBranchName: () => void;
   onOpenSetupTab: () => void;
+  onRename?: () => void;
+  onScriptTerminalStarted: (terminalId: string) => void;
+  onViewScriptTerminal: (terminalId: string) => void;
+  onOpenUrlInBrowserTab: (url: string) => void;
 }
 
 function WorkspaceHeaderTitleBar({
@@ -485,13 +503,27 @@ function WorkspaceHeaderTitleBar({
   isSubtitleDistinct,
   currentBranchName,
   normalizedServerId,
+  normalizedWorkspaceId,
+  workspaceScripts,
+  liveTerminalIds,
   showWorkspaceSetup,
+  showCreateBrowserTab,
+  isMobile,
+  createTerminalDisabled,
   importAgentDisabled,
   copyPathDisabled,
+  onCreateDraftTab,
+  onCreateTerminal,
+  onCreateTerminalWithProfile,
+  onCreateBrowser,
   onOpenImportSheet,
   onCopyWorkspacePath,
   onCopyBranchName,
   onOpenSetupTab,
+  onRename,
+  onScriptTerminalStarted,
+  onViewScriptTerminal,
+  onOpenUrlInBrowserTab,
 }: WorkspaceHeaderTitleBarProps) {
   return (
     <View style={styles.headerTitleContainer}>
@@ -510,16 +542,51 @@ function WorkspaceHeaderTitleBar({
         </View>
       )}
       <View style={styles.compactHeaderMenuCluster}>
-        <WorkspaceHeaderMenuDesktop
-          currentBranchName={currentBranchName}
-          showWorkspaceSetup={showWorkspaceSetup}
-          importAgentDisabled={importAgentDisabled}
-          copyPathDisabled={copyPathDisabled}
-          onOpenImportSheet={onOpenImportSheet}
-          onCopyWorkspacePath={onCopyWorkspacePath}
-          onCopyBranchName={onCopyBranchName}
-          onOpenSetupTab={onOpenSetupTab}
-        />
+        {isMobile ? (
+          <WorkspaceHeaderMenuMobile
+            normalizedServerId={normalizedServerId}
+            currentBranchName={currentBranchName}
+            showWorkspaceSetup={showWorkspaceSetup}
+            showCreateBrowserTab={showCreateBrowserTab}
+            createTerminalDisabled={createTerminalDisabled}
+            importAgentDisabled={importAgentDisabled}
+            copyPathDisabled={copyPathDisabled}
+            onCreateDraftTab={onCreateDraftTab}
+            onCreateTerminal={onCreateTerminal}
+            onCreateTerminalWithProfile={onCreateTerminalWithProfile}
+            onCreateBrowser={onCreateBrowser}
+            onOpenImportSheet={onOpenImportSheet}
+            onCopyWorkspacePath={onCopyWorkspacePath}
+            onCopyBranchName={onCopyBranchName}
+            onOpenSetupTab={onOpenSetupTab}
+            onRename={onRename}
+          />
+        ) : (
+          <WorkspaceHeaderMenuDesktop
+            currentBranchName={currentBranchName}
+            showWorkspaceSetup={showWorkspaceSetup}
+            importAgentDisabled={importAgentDisabled}
+            copyPathDisabled={copyPathDisabled}
+            onOpenImportSheet={onOpenImportSheet}
+            onCopyWorkspacePath={onCopyWorkspacePath}
+            onCopyBranchName={onCopyBranchName}
+            onOpenSetupTab={onOpenSetupTab}
+            onRename={onRename}
+          />
+        )}
+          <WorkspaceScriptsButton
+            serverId={normalizedServerId}
+            workspaceId={normalizedWorkspaceId}
+            scripts={workspaceScripts}
+            liveTerminalIds={liveTerminalIds}
+            onScriptTerminalStarted={onScriptTerminalStarted}
+            onViewTerminal={onViewScriptTerminal}
+            onOpenUrlInBrowserTab={onOpenUrlInBrowserTab}
+            hideLabels
+            presentation="ghost"
+          />
+        ) : null}
+>>>>>>> 83e086c6c (feat(workspace): 头部菜单加 Rename 入口并接上重命名弹窗)
       </View>
     </View>
   );
@@ -1034,6 +1101,18 @@ function WorkspaceScreenContent({
     [workspaceId],
   );
   const workspaceDescriptor = useWorkspace(normalizedServerId, normalizedWorkspaceId);
+  const [isRenameOpen, setIsRenameOpen] = useState(false);
+  const handleOpenRename = useCallback(() => setIsRenameOpen(true), []);
+  const handleCloseRename = useCallback(() => setIsRenameOpen(false), []);
+  const renameWorkspace = useMemo<RenamableWorkspace>(
+    () => ({
+      serverId: normalizedServerId,
+      workspaceId: normalizedWorkspaceId,
+      name: workspaceDescriptor?.name ?? "",
+      title: workspaceDescriptor?.title ?? null,
+    }),
+    [normalizedServerId, normalizedWorkspaceId, workspaceDescriptor],
+  );
   useEffect(() => {
     if (!normalizedServerId || !normalizedWorkspaceId || workspaceDescriptor) return;
     void getHostRuntimeStore()
@@ -3309,43 +3388,75 @@ function WorkspaceScreenContent({
   const renderWorkspaceScreenHeader = useCallback(
     () =>
       showScreenHeader ? (
-        <ScreenHeader
-          left={
-            <>
-              <SidebarMenuToggle />
-              <WorkspaceHeaderTitleBar
-                isLoading={isWorkspaceHeaderLoading}
-                title={workspaceHeaderTitle}
-                subtitle={workspaceHeaderSubtitle}
-                isSubtitleDistinct={isWorkspaceHeaderSubtitleDistinct}
-                currentBranchName={currentBranchName}
-                normalizedServerId={normalizedServerId}
-                showWorkspaceSetup={showWorkspaceSetup}
-                importAgentDisabled={!canOpenImportSheet}
-                copyPathDisabled={!workspaceDirectory}
-                onOpenImportSheet={openImportSheet}
-                onCopyWorkspacePath={handleCopyWorkspacePath}
-                onCopyBranchName={handleCopyBranchName}
-                onOpenSetupTab={handleOpenSetupTab}
-              />
-            </>
-          }
-          right={headerRight}
-        />
+        <>
+          <ScreenHeader
+            left={
+              <>
+                <SidebarMenuToggle />
+                <WorkspaceHeaderTitleBar
+                  isLoading={isWorkspaceHeaderLoading}
+                  title={workspaceHeaderTitle}
+                  subtitle={workspaceHeaderSubtitle}
+                  isSubtitleDistinct={isWorkspaceHeaderSubtitleDistinct}
+                  currentBranchName={currentBranchName}
+                  normalizedServerId={normalizedServerId}
+                  normalizedWorkspaceId={normalizedWorkspaceId}
+                  workspaceScripts={workspaceScripts}
+                  liveTerminalIds={liveTerminalIds}
+                  showWorkspaceSetup={showWorkspaceSetup}
+                  showCreateBrowserTab={showCreateBrowserTab}
+                  isMobile={isMobile}
+                  createTerminalDisabled={createTerminalDisabled}
+                  importAgentDisabled={!canOpenImportSheet}
+                  copyPathDisabled={!workspaceDirectory}
+                  onCreateDraftTab={handleCreateDraftTab}
+                  onCreateTerminal={handleCreateTerminal}
+                  onCreateTerminalWithProfile={handleCreateTerminalWithProfile}
+                  onCreateBrowser={handleCreateBrowserTab}
+                  onOpenImportSheet={openImportSheet}
+                  onCopyWorkspacePath={handleCopyWorkspacePath}
+                  onCopyBranchName={handleCopyBranchName}
+                  onOpenSetupTab={handleOpenSetupTab}
+                  onRename={workspaceDescriptor ? handleOpenRename : undefined}
+                  onScriptTerminalStarted={handleScriptTerminalStarted}
+                  onViewScriptTerminal={handleViewScriptTerminal}
+                  onOpenUrlInBrowserTab={handleOpenUrlInBrowserTab}
+                />
+              </>
+            }
+            right={headerRight}
+          />
+          <WorkspaceRenameModal
+            visible={isRenameOpen}
+            workspace={renameWorkspace}
+            onClose={handleCloseRename}
+            testID="workspace-rename-modal-header"
+          />
+        </>
       ) : null,
     [
       canOpenImportSheet,
       currentBranchName,
       handleCopyBranchName,
       handleCopyWorkspacePath,
+      handleCreateBrowserTab,
+      handleCreateDraftTab,
+      handleCloseRename,
+      handleCreateTerminal,
+      handleCreateTerminalWithProfile,
+      handleOpenRename,
       handleOpenSetupTab,
       headerRight,
+      isMobile,
+      isRenameOpen,
       isWorkspaceHeaderLoading,
       normalizedServerId,
       openImportSheet,
       showScreenHeader,
       showWorkspaceSetup,
+      workspaceDescriptor,
       workspaceDirectory,
+      renameWorkspace,
       workspaceHeaderSubtitle,
       workspaceHeaderTitle,
       isWorkspaceHeaderSubtitleDistinct,

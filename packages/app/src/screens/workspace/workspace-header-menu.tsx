@@ -2,7 +2,15 @@ import React, { useCallback, useMemo } from "react";
 import { View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Copy, Ellipsis, Globe, Import as ImportIcon, Settings } from "lucide-react-native";
+import {
+  Copy,
+  Ellipsis,
+  Globe,
+  Import as ImportIcon,
+  Pencil,
+  Settings,
+  SquarePen,
+} from "lucide-react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import type { TerminalProfile } from "@getpaseo/protocol/messages";
 import {
@@ -12,6 +20,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  useDropdownMenuClose,
 } from "@/components/ui/dropdown-menu";
 import {
   extraMutedIconColorMapping,
@@ -35,6 +44,8 @@ import { usePluginWorkspaceMenu } from "@/plugins";
 
 const ThemedEllipsis = withUnistyles(Ellipsis);
 const ThemedCopy = withUnistyles(Copy);
+const ThemedPencil = withUnistyles(Pencil);
+const ThemedSquarePen = withUnistyles(SquarePen);
 const ThemedGlobe = withUnistyles(Globe);
 const ThemedImport = withUnistyles(ImportIcon);
 const ThemedSettings = withUnistyles(Settings);
@@ -44,6 +55,7 @@ const mutedColorMapping = (theme: Theme) => ({ color: theme.colors.foregroundMut
 const MENU_NEW_BROWSER_ICON = <ThemedGlobe size={16} uniProps={mutedColorMapping} />;
 const MENU_IMPORT_ICON = <ThemedImport size={16} uniProps={mutedColorMapping} />;
 const MENU_COPY_ICON = <ThemedCopy size={16} uniProps={mutedColorMapping} />;
+const MENU_RENAME_ICON = <ThemedPencil size={16} uniProps={mutedColorMapping} />;
 const MENU_SETTINGS_ICON = <ThemedSettings size={16} uniProps={mutedColorMapping} />;
 function WorkspaceHeaderMenuTriggerIcon() {
   return (
@@ -84,6 +96,7 @@ export interface WorkspaceHeaderWorkspaceActions {
   onCopyWorkspacePath: () => void;
   onCopyBranchName: () => void;
   onOpenSetupTab: () => void;
+  onRename?: () => void;
 }
 
 function WorkspaceHeaderWorkspaceActionItems({
@@ -95,8 +108,17 @@ function WorkspaceHeaderWorkspaceActionItems({
   onCopyWorkspacePath,
   onCopyBranchName,
   onOpenSetupTab,
+  onRename,
 }: WorkspaceHeaderWorkspaceActions) {
   const { t } = useTranslation();
+  const closeMenu = useDropdownMenuClose();
+  const handleRename = useCallback(() => {
+    if (!onRename) return;
+    // Close the menu (mobile bottom sheet / desktop popover) first so the rename
+    // modal doesn't stack a second surface on top of it.
+    closeMenu();
+    onRename();
+  }, [closeMenu, onRename]);
   return (
     <>
       <DropdownMenuItem
@@ -107,6 +129,15 @@ function WorkspaceHeaderWorkspaceActionItems({
       >
         {t("workspace.header.actions.copyPath")}
       </DropdownMenuItem>
+      {onRename ? (
+        <DropdownMenuItem
+          testID="workspace-header-rename"
+          leading={MENU_RENAME_ICON}
+          onSelect={handleRename}
+        >
+          {`🌿 ${t("sidebar.workspace.actions.rename")}`}
+        </DropdownMenuItem>
+      ) : null}
       {currentBranchName ? (
         <DropdownMenuItem
           testID="workspace-header-copy-branch-name"
