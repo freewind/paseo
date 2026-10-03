@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Pressable,
+  ScrollView,
   View,
   Text,
   type StyleProp,
@@ -96,37 +97,73 @@ export const HighlightedCodeBlock = React.memo(function HighlightedCodeBlock({
 
   return (
     <View
-      style={containerStyle}
+      style={[containerStyle, styles.container]}
       dataSet={copyDataSet}
       onPointerEnter={handlePointerEnter}
       onPointerLeave={handlePointerLeave}
     >
-      {keyedLines ? (
-        <Text style={innerTextStyle} dataSet={markdownCopyDataSet.code}>
-          {renderCodeSegments(keyedLines)}
-        </Text>
-      ) : (
-        <Text style={innerTextStyle} dataSet={markdownCopyDataSet.code}>
-          {renderedCode}
-        </Text>
-      )}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        nestedScrollEnabled
+        showsVerticalScrollIndicator
+      >
+        {/* Code never wraps: the inner horizontal scroll carries long lines instead, so
+            indentation and column alignment survive on a phone-width screen. */}
+        <ScrollView
+          horizontal
+          nestedScrollEnabled
+          showsHorizontalScrollIndicator
+          contentContainerStyle={styles.horizontalContent}
+        >
+          <View style={styles.codeLines}>
+            {keyedLines
+              ? renderCodeLines(keyedLines, innerTextStyle)
+              : renderPlainCodeLines(renderedCode, innerTextStyle)}
+          </View>
+        </ScrollView>
+      </ScrollView>
       <CopyButton getCode={getCode} visible={controlsVisible} />
     </View>
   );
 });
 
-function renderCodeSegments(keyedLines: KeyedLine[]): React.ReactNode[] {
-  const segments: React.ReactNode[] = [];
-  for (let lineIndex = 0; lineIndex < keyedLines.length; lineIndex += 1) {
-    const line = keyedLines[lineIndex];
-    if (lineIndex > 0) {
-      segments.push(<CodeTextSpan key={`${line.key}-newline`} text={"\n"} />);
-    }
-    for (const { key, token } of line.tokens) {
-      segments.push(<TokenSpan key={`${line.key}-${key}`} token={token} />);
-    }
-  }
-  return segments;
+// One <Text> per source line, stacked in a column. A single <Text> holding every line
+// would re-wrap its content at the container width, which is exactly what a phone-width
+// screen does to long code; sibling rows never reflow, so they keep their indentation and
+// the horizontal scroll view is the only way to reach what does not fit.
+// Unhighlighted fallback (unknown language, oversized block): one row per line for the
+// same reason as the highlighted path — a single <Text> would wrap at container width.
+function renderPlainCodeLines(
+  code: string,
+  innerTextStyle: StyleProp<TextStyle>,
+): React.ReactNode[] {
+  let offset = 0;
+  return code.split("\n").map((line) => {
+    // Content-derived key, matching the keyed-line keys used by the highlighted path.
+    const key = `${offset}:${line.length}`;
+    offset += line.length + 1;
+    return (
+      <Text key={key} style={innerTextStyle} dataSet={markdownCopyDataSet.code}>
+        {line.length === 0 ? ZERO_WIDTH : line}
+      </Text>
+    );
+  });
+}
+
+function renderCodeLines(
+  keyedLines: KeyedLine[],
+  innerTextStyle: StyleProp<TextStyle>,
+): React.ReactNode[] {
+  return keyedLines.map((line) => (
+    <Text key={line.key} style={innerTextStyle} dataSet={markdownCopyDataSet.code}>
+      {line.tokens.length === 0
+        ? ZERO_WIDTH
+        : line.tokens.map(({ key, token }) => (
+            <TokenSpan key={`${line.key}-${key}`} token={token} />
+          ))}
+    </Text>
+  ));
 }
 
 interface TokenSpanProps {
@@ -139,20 +176,13 @@ const TokenSpan = React.memo(function TokenSpan({ token }: TokenSpanProps) {
   );
 });
 
-interface CodeTextSpanProps {
-  text: string;
-}
-
-const CodeTextSpan = React.memo(function CodeTextSpan({ text }: CodeTextSpanProps) {
-  return <Text>{text}</Text>;
-});
-
 interface SplitStyles {
   containerStyle: StyleProp<ViewStyle>;
   innerTextStyle: StyleProp<TextStyle>;
 }
 
-const CONTAINER_BASE: ViewStyle = { position: "relative" };
+const CONTAINER_BASE: ViewStyle = { position: "relative", overflow: "hidden" };
+const ZERO_WIDTH = "\u200b";
 const WEB_SELECTABLE: TextStyle = isWeb ? ({ userSelect: "text" } as TextStyle) : {};
 
 function splitFenceStyle(inheritedStyles: TextStyle, textStyle: TextStyle): SplitStyles {
@@ -230,6 +260,29 @@ const CopyButton = React.memo(function CopyButton({ getCode, visible }: CopyButt
     </Pressable>
   );
 });
+
+const styles = StyleSheet.create(() => ({
+  container: {
+    overflow: "hidden",
+  },
+  scroll: {
+    flexShrink: 1,
+    minHeight: 0,
+  },
+  scrollContent: {
+    flexDirection: "column" as const,
+  },
+  horizontalContent: {
+    flexDirection: "row" as const,
+  },
+  // `alignSelf: flex-start` keeps the block at its natural width inside the horizontal
+  // scroll view; the line column never shrinks, so nothing is squeezed back into a wrap.
+  codeLines: {
+    alignSelf: "flex-start",
+    flexShrink: 0,
+    flexDirection: "column" as const,
+  },
+}));
 
 const copyButtonStyles = StyleSheet.create((theme) => ({
   container: {
