@@ -30,35 +30,53 @@ upstream/main
    **这一步失败就停下报告用户**，不继续开发，也不要自行改用其他拉取方式绕过。
 2. 判断这个改动属于**基础改动**还是**功能改动**（见下节）。
 3. 在 `main` 上开发。
-4. 提交。功能改动必须是**一条** commit；如果是完善已有功能，见下节。
+4. 提交。一条 commit 只做一件事，按开发完成顺序追加，历史不追溯。
 5. 验证：按下面「验证要求」一节执行，typecheck、测试、出包三项都要过。
 6. **必须 push。** 普通提交 `git push origin main`；凡改写过历史的用
    `git push --force-with-lease origin main`。没有 push 到 `origin/main` 的改动一律不算交付。
 
 ### 完善已有功能
 
-- **不要新增 commit 去叠加。** 哪怕该功能在历史上已是若干条 commit 之前的，也直接改原来那条
-  功能 commit。
-- 定位与改写：
+- **开发期不追溯历史。** 完善某个已有功能时直接改代码，照常新开 commit 追加，哪怕该功能在历史上
+  已是若干条 commit 之前。它到底该并进哪一条，由「整理 Commit」阶段决定。
+- **修自己功能引入的缺陷，同样新开 commit 追加。** 例：TTS 朗读上线后发现 Electron 下语音列表
+  查询不返回，先补一条 `fix(tts)`，不在开发期就把它塞回 TTS 那条。
+- 上面两条带来的代价是开发期历史会变长、同一功能散在多条 commit 上。这是预期的。
 
-  ```bash
-  # 找到那条功能 commit（当前 hash）
-  git log --oneline upstream/main..main
+### 整理 Commit
 
-  # 用 autosquash 把改动并入目标 commit
-  git commit --fixup=<目标 hash>
-  git rebase -i --autosquash upstream/main
-  ```
+**默认不做。** 开发期照常追加 commit，历史收敛由这一节单独完成，且只在用户明确要求「整理
+commit」时启动。
 
-  需要在 rebase 中途改内容时用 `git rebase -i upstream/main` 把目标行标成 `edit`，停下后
-  修改再 `git rebase --continue`。
+**第一步：盘点，不动历史。**
 
-- 因为历史会被重写，**允许 force push** `origin/main`，用 `--force-with-lease` 防止覆盖他人的更新。
-- rebase 之后，`main` 相对 `upstream/main` 的 commit 列表会整体换 hash，这是预期行为。
-- **修自己功能引入的缺陷，同样并入那条功能 commit，不新开 `fix`。** 例：TTS 朗读上线后发现
-  Electron 下语音列表查询不返回，就把修复并进 TTS 那条，而不是加一条 `fix(tts)`。
-- 上述 `--autosquash` 流程以 `upstream/main` 为参照点，只是**比较基线**，不代表允许拉取上游；
-  改写完成后照样只 push 到 `origin/main`。
+先把 `upstream/main..main` 的 commit 按旧→新列成一张表交给用户评审。每一行列全：
+
+| 列             | 内容                                                   |
+| -------------- | ------------------------------------------------------ |
+| hash           | 短 hash                                                |
+| title          | 原 title 全文                                          |
+| body           | 归纳成一句话，说明这条原本想干什么                     |
+| 文件与增删行数 | 改动文件清单，附每个文件的 `+` / `-` 行数              |
+| 真实改动事项   | 读 diff 得出这条实际改了几件事，就写几件，不照抄 title |
+
+盘点阶段只读，不 rebase、不改文件。
+
+**第二步：用户给出新的 scope 名单。**
+
+用户会按功能重新划分，给出「每条新 commit 包含哪些功能」的名单。
+
+**第三步：重写历史。**
+
+一次 `git rebase -i upstream/main` 按名单重新分组：勾选要并入的 commit、拆分要分开的 commit、
+丢弃要删掉的 commit，每条新 commit 重新写 title 和 body。
+
+- **新 commit 当成全新的写。** title 与 body 完全按「Commit 规范」从零撰写，不提旧 hash、不写
+  「由旧 commit 整理而来」「整理自」之类痕迹。只看新历史的人不该知道它是从什么形态归并来的。
+- **排序沿用「Commit 排序」一节。** 基础改动在前，功能改动按添加顺序在后。
+- **现有两条 merge commit 压平。** `4348a543e` 与 `d69d6dfc7` 两条 `Merge branch 'main'` 压成
+  普通提交，其内容并进当时引入的那几条，之后不再有 merge commit。
+- 重写后按「验证要求」验证，再 `git push --force-with-lease origin main`。
 
 ### 同步上游（仅在用户明确要求时）
 
@@ -72,6 +90,10 @@ git rebase upstream/main        # 把我们的 commit 重放到新的上游之�
 # 按「验证要求」一节验证
 git push --force-with-lease origin main
 ```
+
+**同步只走 rebase，`main` 上不允许出现 merge commit。** 不使用 `git merge upstream/main`，也不
+用 `git pull` 产生合并。`main` 的历史必须始终是一条线性的功能序列；任何一次同步后
+`git log --oneline upstream/main..main` 里出现 `Merge branch` 都是事故，要压平。
 
 rebase 我们的 commit 时可能与上游改动冲突。解决原则：**以上游新代码为基准，保留我们功能的
 语义**，不为省事丢弃任一侧的功能。
@@ -139,6 +161,9 @@ rebase 停下来只是第一类问题，另两类根本不会表现为冲突，�
 
 ### 一个功能一个 commit
 
+这是**整理 Commit 阶段的目标形态**，不是开发期的提交约束。开发期照常追加，由整理阶段把散落的
+commit 收敛到下面这个形态。
+
 - **一个独立功能 = 一条 commit。** 一个功能绝不拆成多条；多个功能也绝不塞进同一条。
 - 不按实现步骤切分。示例：TTS 朗读是**一个**功能，只对应**一条** commit，而不是「加依赖 /
   加设置项 / 加 hook / 接入界面」四条。
@@ -187,7 +212,6 @@ rebase 停下来只是第一类问题，另两类根本不会表现为冲突，�
   - **动机**：为解决什么问题，用户的原始要求是什么。
   - **做了什么**：改了哪些模块、加了哪些字段 / hook / 组件 / 设置项、界面上的实际表现。
   - **判断与取舍**：为什么这样实现、排除了哪些方案、有什么前提或约束。
-  - **来源**：若由旧 commit 整理而来，注明 `整理自：<hash>、<hash>`。
 
 ## 🌿 标记
 
