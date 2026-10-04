@@ -1,8 +1,8 @@
 import { memo, useMemo, useCallback, useState, type ReactNode } from "react";
-import { Text, View, type ViewStyle } from "react-native";
-import { StyleSheet, withUnistyles } from "react-native-unistyles";
-import { CircleAlert, Folder, FolderGit2, Monitor } from "lucide-react-native";
+import { Text, View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 import { ProjectStatusIndicator } from "@/components/sidebar/project-leading-visual";
+import { SidebarStatusSlot } from "@/components/sidebar/sidebar-status-slot";
 import type { SidebarSurfaceBackdrop } from "@/styles/surface-backdrop";
 import {
   WorkspaceMetaRow,
@@ -265,25 +265,6 @@ function WorkspaceStatusIndicator({
       {dotColorStyle ? <StatusDotOverlay dotColorStyle={dotColorStyle} /> : null}
     </View>
   );
-}
-
-function StatusDotOverlay({ dotColorStyle }: { dotColorStyle: ViewStyle }) {
-  return <View style={[styles.statusDotOverlay, dotColorStyle]} />;
-}
-
-function getStatusDotColorStyle(bucket: SidebarStateBucket) {
-  switch (bucket) {
-    case "needs_input":
-      return styles.statusDotNeedsInput;
-    case "failed":
-      return styles.statusDotFailed;
-    case "running":
-      return styles.statusDotRunning;
-    case "attention":
-      return styles.statusDotAttention;
-    case "done":
-      return null;
-  }
 }
 
 export const sidebarWorkspaceRowStyles = StyleSheet.create((theme) => ({
@@ -554,21 +535,5 @@ const styles = StyleSheet.create((theme) => ({
   },
   workspaceBranchTextHovered: {
     opacity: 1,
-  },
-  statusDotNeedsInput: {
-    backgroundColor: getStatusDotColor({ theme, bucket: "needs_input" }) ?? undefined,
-    borderColor: theme.colors.surface0,
-  },
-  statusDotFailed: {
-    backgroundColor: getStatusDotColor({ theme, bucket: "failed" }) ?? undefined,
-    borderColor: theme.colors.surface0,
-  },
-  statusDotRunning: {
-    backgroundColor: getStatusDotColor({ theme, bucket: "running" }) ?? undefined,
-    borderColor: theme.colors.surface0,
-  },
-  statusDotAttention: {
-    backgroundColor: getStatusDotColor({ theme, bucket: "attention" }) ?? undefined,
-    borderColor: theme.colors.surface0,
   },
 }));
