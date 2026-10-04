@@ -2035,7 +2035,7 @@ export const zhCN: TranslationResources = {
       },
       ttsEnabled: {
         label: "🌿 朗读回复",
-        description: "🌿 Agent 回复完成时朗读内容",
+        description: "🌿 朗读当前正在查看的 Agent 的回复",
       },
       ttsEngine: {
         label: "🌿 朗读语音",

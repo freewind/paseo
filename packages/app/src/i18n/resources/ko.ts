@@ -2068,7 +2068,7 @@ export const ko: TranslationResources = {
       },
       ttsEnabled: {
         label: "🌿 답변을 소리 내어 읽기",
-        description: "🌿 에이전트 답변이 끝나면 소리 내어 읽습니다",
+        description: "🌿 보고 있는 에이전트의 답변을 소리 내어 읽습니다",
       },
       ttsEngine: {
         label: "🌿 읽기 음성",

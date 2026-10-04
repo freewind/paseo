@@ -15,6 +15,7 @@ import type { StreamItem } from "@/types/stream";
 import { deriveAgentStreamTurnLiveness } from "@/timeline/session-stream-reducers";
 import { useTurnCompleteSound } from "@/hooks/use-turn-complete-sound";
 import { useTts } from "@/hooks/use-tts";
+import { useActiveTtsAgentId } from "@/tts/active-tts-agent";
 import { stripMarkdown } from "@/utils/strip-markdown";
 import { useAppSettings } from "@/hooks/use-settings";
 import { planTimelineTailFetch } from "@/timeline/timeline-sync-plan";
@@ -215,6 +216,11 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
   const playTurnCompleteSound = useTurnCompleteSound();
   const { speak: speakReply, stop: stopTts } = useTts();
   const { settings: appSettings } = useAppSettings();
+  // Read through a ref: the stream subscription below re-registers every daemon feed when this
+  // callback changes, and focus moves between agents constantly.
+  const activeTtsAgentId = useActiveTtsAgentId(serverId);
+  const activeTtsAgentIdRef = useRef<string | null>(activeTtsAgentId);
+  activeTtsAgentIdRef.current = activeTtsAgentId;
   // Tracks turnIds we already played a completion sound for, so one turn completes only once.
   const completedTurnSoundRef = useRef<Set<string>>(new Set());
   const handleTurnCompletion = useCallback(
@@ -237,6 +243,11 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
         }
       }
       if (!appSettings.ttsEnabled) return;
+      if (agentId !== activeTtsAgentIdRef.current) {
+        // Reading follows the agent the user is looking at: a background agent's turn ending
+        // must not talk over the one being watched, and must not interrupt it either.
+        return;
+      }
       if (turnLiveness.some((transition) => transition.type === "stream_open")) {
         // A new turn started — stop any in-progress reading of the previous reply.
         stopTts();
@@ -261,6 +272,15 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
       stopTts,
     ],
   );
+  // Read through a ref: the timeline subscription below recreates its view owner on every
+  // dependency change, and turn completion must not re-register it.
+  const handleTurnCompletionRef = useRef(handleTurnCompletion);
+  handleTurnCompletionRef.current = handleTurnCompletion;
+  // Looking away ends the reading: the reply still belongs to the agent the user just left.
+  useEffect(() => {
+    if (!appSettings.ttsEnabled) return;
+    return () => stopTts();
+  }, [activeTtsAgentId, appSettings.ttsEnabled, stopTts]);
   const voiceRuntime = useVoiceRuntimeOptional();
   const voiceAudioEngine = useVoiceAudioEngineOptional();
   const queryClient = useQueryClient();
@@ -447,7 +467,7 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
         getHostRuntimeStore().applyAgentTurnLiveness(serverId, agentId, turnLiveness);
       }
       // Play a completion sound and read the finished reply aloud (TTS), if enabled.
-      handleTurnCompletion({ agentId, turnLiveness });
+      handleTurnCompletionRef.current({ agentId, turnLiveness });
       sync.enqueueStreamEvent(agentId, {
         event: streamEvent,
         seq,
@@ -787,7 +807,6 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
     toast,
     voiceRuntime,
     voiceAudioEngine,
-    handleTurnCompletion,
   ]);
 
   const _cancelAgentRun = useCallback(

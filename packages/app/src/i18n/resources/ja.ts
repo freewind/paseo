@@ -2078,7 +2078,7 @@ export const ja: TranslationResources = {
       },
       ttsEnabled: {
         label: "🌿 返信を読み上げる",
-        description: "🌿 エージェントの返信が完了したときに読み上げます",
+        description: "🌿 表示しているエージェントの返信を読み上げます",
       },
       ttsEngine: {
         label: "🌿 読み上げの声",

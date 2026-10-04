@@ -2092,7 +2092,7 @@ export const ru: TranslationResources = {
       },
       ttsEnabled: {
         label: "🌿 Читать ответы вслух",
-        description: "🌿 Читать ответы агента вслух, когда они завершаются",
+        description: "🌿 Читать вслух ответы агента, который открыт",
       },
       ttsEngine: {
         label: "🌿 Голос чтения",

@@ -2092,7 +2092,7 @@ export const ptBR: TranslationResources = {
       },
       ttsEnabled: {
         label: "🌿 Ler respostas em voz alta",
-        description: "🌿 Ler em voz alta as respostas do agente quando terminam",
+        description: "🌿 Ler em voz alta as respostas do agente que você está vendo",
       },
       ttsEngine: {
         label: "🌿 Voz de leitura",

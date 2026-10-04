@@ -2112,7 +2112,7 @@ export const fr: TranslationResources = {
       },
       ttsEnabled: {
         label: "🌿 Lire les réponses à voix haute",
-        description: "🌿 Lire à voix haute les réponses de l'agent lorsqu'elles se terminent",
+        description: "🌿 Lire à voix haute les réponses de l'agent affiché",
       },
       ttsEngine: {
         label: "🌿 Voix de lecture",

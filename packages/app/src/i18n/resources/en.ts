@@ -2183,7 +2183,7 @@ export const en = {
       },
       ttsEnabled: {
         label: "🌿 Read replies aloud",
-        description: "🌿 Read agent replies aloud when they finish",
+        description: "🌿 Read the agent you are viewing aloud as its replies finish",
       },
       ttsEngine: {
         label: "🌿 Read-aloud voice",
