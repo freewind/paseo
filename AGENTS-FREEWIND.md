@@ -8,26 +8,32 @@
 只有一条开发分支：
 
 ```
-upstream/main
-      │  跟随上游同步
-      ▼
 origin/main               ← 唯一的开发分支，也是唯一的真源
+      │
+      │  仅在用户明确要求时同步
+      ▼
+upstream/main
 ```
 
 - 所有改动直接落在 `main` 上，远端 `origin/main` 就是当前唯一可信的状态。
 - 历史会被反复重写，换来的是一条线性的、按功能排列的 commit 历史：从旧到新读一遍就知道
   这个 fork 在什么基础上做了哪些功能、为什么做、怎么做的。
+- **`upstream` 默认不碰。** 未经用户明确要求，禁止执行任何会拉取或合并上游代码的操作
+  （`git fetch upstream`、`git pull upstream`、`git rebase upstream/main` 等）。开工前的同步
+  只拉自己的 `origin/main`。
 
 ## 工作流程
 
 ### 新增一个功能
 
-1. `git fetch upstream && git rebase upstream/main`，让 `main` 跟上上游。
+1. `git pull --no-rebase origin main`，把本地同步到自己已推送的状态。
+   **这一步失败就停下报告用户**，不继续开发，也不要自行改用其他拉取方式绕过。
 2. 判断这个改动属于**基础改动**还是**功能改动**（见下节）。
 3. 在 `main` 上开发。
 4. 提交。功能改动必须是**一条** commit；如果是完善已有功能，见下节。
 5. 验证：按下面「验证要求」一节执行，typecheck、测试、出包三项都要过。
-6. `git push --force-with-lease origin main`。
+6. **必须 push。** 普通提交 `git push origin main`；凡改写过历史的用
+   `git push --force-with-lease origin main`。没有 push 到 `origin/main` 的改动一律不算交付。
 
 ### 完善已有功能
 
@@ -51,8 +57,13 @@ origin/main               ← 唯一的开发分支，也是唯一的真源
 - rebase 之后，`main` 相对 `upstream/main` 的 commit 列表会整体换 hash，这是预期行为。
 - **修自己功能引入的缺陷，同样并入那条功能 commit，不新开 `fix`。** 例：TTS 朗读上线后发现
   Electron 下语音列表查询不返回，就把修复并进 TTS 那条，而不是加一条 `fix(tts)`。
+- 上述 `--autosquash` 流程以 `upstream/main` 为参照点，只是**比较基线**，不代表允许拉取上游；
+  改写完成后照样只 push 到 `origin/main`。
 
-### 更新上游
+### 同步上游（仅在用户明确要求时）
+
+**默认禁止。** 除非用户明确要求同步上游，否则不得执行本节任何命令。同步是独立的、需明确
+指令的动作，不在任何开发任务的前置步骤里。
 
 ```bash
 git fetch upstream
@@ -64,6 +75,54 @@ git push --force-with-lease origin main
 
 rebase 我们的 commit 时可能与上游改动冲突。解决原则：**以上游新代码为基准，保留我们功能的
 语义**，不为省事丢弃任一侧的功能。
+
+- 同步后 `packages/protocol`、`packages/plugin`、`packages/client` 的 `dist/` 产物必然落后于
+  刚拉进来的源码，下游包的 typecheck 会报出一片「属性不存在 / 签名不对应」的错误。这不是代码
+  有问题，必须先重建这三个包：
+
+  ```bash
+  npm run build:clean -w @getpaseo/protocol
+  npm run build:clean -w @getpaseo/plugin
+  npm run build:clean -w @getpaseo/client
+  ```
+
+### 同步上游时处理功能冲突
+
+rebase 停下来只是第一类问题，另两类根本不会表现为冲突，必须靠验证主动找出来。三类都要处理，
+漏掉任何一类都会把一个坏状态推到 `origin/main`。
+
+**一、rebase 停下的文本冲突**
+
+- 逐个解决，不许用 `-X ours` / `-X theirs` 整体取一侧。两侧改的是同一处代码，取一侧就等于
+  悄悄丢掉另一侧的功能。
+- 基准是**以上游新代码为写法基准，保留我们功能的语义**：签名、参数、导出结构以上游为准，
+  我们新增的字段和行为接上去；纯粹的重命名、格式化、搬文件以上游为准。
+- 上游重写了我们依赖的内部结构时（例如换了 RPC 名、换了类型导出位置），要顺着上游改我们的
+  调用点，而不是在旧结构上加兼容层。
+
+**二、上游改了某个功能，牵动我们已实现的功能**
+
+- 这类不报冲突。rebase 会干净地通过，坏在之后：全仓 typecheck 报「属性不存在 / 签名不对应」，
+  或测试挂了。这就是为什么同步完必须跑完整验证，不能只看 rebase 是否跑完。
+- 典型：上游给某个函数加了参数并改了返回类型，我们所有调用点仍按旧签名写，于是全仓编译不过。
+- 处理方式是改我们的调用点去适配新签名，改完补一条能证明新行为的测试。不要为了让 typecheck
+  变绿而回退上游的签名，也不要给旧签名留兼容壳。
+
+**三、产物与类型漂移造成的假错误**
+
+- `packages/protocol`、`packages/plugin`、`packages/client` 的 `dist/` 落后于刚拉进来的源码时，
+  下游包（`client`、`server`、`app`）从 `dist/*.d.ts` 取到的还是旧类型，会报出一片看起来很像
+  代码写错的错误。
+- 判断顺序：**先按上一节重建这三个包，再看错误是否消失。** 消失的是假错误，不是本次同步要
+  修的问题；仍然存在的才是真问题，按第二类处理。
+- 反过来，若跳过重建直接改代码，就会照着假错误去改本来正确的调用点，越改越坏。
+
+**验证与交付**
+
+- 同步走完 `git rebase --continue` 后，跑一遍「验证要求」的三项：typecheck、相关测试、出包。
+- rebase 改写了历史，最后一律 `git push --force-with-lease origin main`。
+- 我们自己的 commit 因为重放而整体换 hash，这是预期行为，不算改动；同步本身不产生新 commit，
+  冲突解决和功能适配都并进被重放的那条。
 
 ## Commit 排序
 
@@ -144,8 +203,18 @@ rebase 我们的 commit 时可能与上游改动冲突。解决原则：**以上
 
 每条 commit 都要能通过以下三项，缺一不可：
 
-1. **typecheck 零错误**：先 `npm run build:protocol`（`@getpaseo/website` 的 typecheck 依赖
-   它的产物），再 `npm run typecheck --workspaces --if-present`。
+1. **typecheck 零错误**：先重建被依赖包的产物，再 `npm run typecheck --workspaces --if-present`。
+   下游包（`client`、`server`、`app`）从 `dist/*.d.ts` 取类型，所以 `protocol`、`plugin`、`client`
+   三个包的 `src/` 一旦动过就必须先 `build:clean`，否则报出来的错误是产物陈旧造成的假象：
+
+   ```bash
+   npm run build:clean -w @getpaseo/protocol
+   npm run build:clean -w @getpaseo/plugin
+   npm run build:clean -w @getpaseo/client
+   npm run typecheck --workspaces --if-present
+   ```
+
+   只有网站站点的 typecheck 依赖 `website` 自己的产物；本 fork 不用单独跑 `build:protocol`。
 2. **本次改动实际影响的测试通过**。
 3. **能出包**：Android APK 与本机 Intel 版 mac 应用都要能构建成功。
 
