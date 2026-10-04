@@ -215,6 +215,7 @@ rebase 停下来只是第一类问题，另两类根本不会表现为冲突，�
    ```
 
    只有网站站点的 typecheck 依赖 `website` 自己的产物；本 fork 不用单独跑 `build:protocol`。
+
 2. **本次改动实际影响的测试通过**。
 3. **能出包**：Android APK 与本机 Intel 版 mac 应用都要能构建成功。
 

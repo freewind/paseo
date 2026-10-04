@@ -533,7 +533,7 @@ export function AppearanceSection() {
     [updateSettings],
   );
 
-const handleWorkspaceTitleMultilineChange = useCallback(
+  const handleWorkspaceTitleMultilineChange = useCallback(
     (workspaceTitleMultiline: boolean) => {
       void updateSettings({ workspaceTitleMultiline });
     },
@@ -644,7 +644,7 @@ const handleWorkspaceTitleMultilineChange = useCallback(
           />
         </View>
       </SettingsSection>
-<SettingsSection title={t("settings.appearance.workspaceRows.title")}>
+      <SettingsSection title={t("settings.appearance.workspaceRows.title")}>
         <View style={settingsStyles.card}>
           <SettingsSwitch
             label={t("settings.appearance.workspaceRows.titleLines.label")}
