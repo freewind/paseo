@@ -1,0 +1,315 @@
+/**
+ * @vitest-environment jsdom
+ *
+ * The text outline is the only place a reader scans prompt text instead of
+ * counting dots, so these assert what actually reaches the DOM: one line per
+ * prompt, a gutter taken out of the panel's slack, and a click that jumps.
+ */
+import React, { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createActivePromptPublisher, resolveTextRailWidth } from "./model";
+import { ChatOutlineRail } from "./rail.web";
+
+const CONTENT_MAX_WIDTH = 820;
+/** Wide enough for the gutter to hold a readable line. */
+const PANEL_WIDTH = 1600;
+const NARROW_PANEL_WIDTH = 918;
+/** The width useContainerWidthBelow treats as too narrow to show either form. */
+const HIDDEN_PANEL_WIDTH = 600;
+
+interface MeasuredNode {
+  width: number;
+  height: number;
+}
+
+let measured = new WeakMap<Element, MeasuredNode>();
+const observed = new Set<Element>();
+
+function sizeNode(node: Element, width: number, height = 900) {
+  measured.set(node, { width, height });
+  Object.defineProperty(node, "offsetWidth", { configurable: true, get: () => width });
+  Object.defineProperty(node, "offsetHeight", { configurable: true, get: () => height });
+  Object.defineProperty(node, "offsetLeft", { configurable: true, get: () => 0 });
+  Object.defineProperty(node, "offsetTop", { configurable: true, get: () => 0 });
+  Object.defineProperty(node, "offsetParent", { configurable: true, get: () => null });
+}
+
+/**
+ * react-native-web delivers onLayout through a ResizeObserver plus an async
+ * UIManager.measure, so a jsdom render reports no width until the harness sizes
+ * the node and lets the observer deliver the event.
+ */
+interface LayoutHandlerHost extends Element {
+  __reactLayoutHandler?: (event: unknown) => void;
+}
+
+function installLayoutObserver() {
+  Object.defineProperty(globalThis, "ResizeObserver", {
+    configurable: true,
+    writable: true,
+    value: class TestResizeObserver {
+      constructor(private readonly callback: ResizeObserverCallback) {}
+      observe(target: Element) {
+        observed.add(target);
+      }
+      unobserve(target: Element) {
+        observed.delete(target);
+      }
+      disconnect() {
+        for (const target of observed) observed.delete(target);
+      }
+    },
+  });
+}
+
+/** Resize and deliver the layout event RNW would deliver for that node. */
+async function deliverLayout(node: Element) {
+  const size = measured.get(node);
+  if (!size) return;
+  const handler = (node as LayoutHandlerHost).__reactLayoutHandler;
+  if (typeof handler !== "function") return;
+  await act(async () => {
+    handler({
+      nativeEvent: {
+        layout: { x: 0, y: 0, width: size.width, height: size.height, left: 0, top: 0 },
+      },
+      timeStamp: 0,
+    });
+  });
+}
+
+function prompt(seq: number, preview: string) {
+  return { seq, timestamp: new Date(seq).toISOString(), preview };
+}
+
+/** The default: no reader ever asked for a row's full text. */
+const noPromptText = async () => null;
+
+describe("ChatOutlineRail in its text form", () => {
+  let root: Root | null = null;
+  let container: HTMLDivElement | null = null;
+
+  beforeEach(() => {
+    measured = new WeakMap();
+    observed.clear();
+    installLayoutObserver();
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+  });
+
+  afterEach(() => {
+    act(() => root?.unmount());
+    container?.remove();
+    container = null;
+    root = null;
+  });
+
+  async function renderRail(
+    prompts: ReturnType<typeof prompt>[],
+    options?: {
+      panelWidth?: number;
+      activeSeq?: number;
+      onRequestPromptText?: (seq: number) => Promise<string | null>;
+    },
+  ) {
+    const onJumpToPrompt = vi.fn();
+    const activePrompt = createActivePromptPublisher();
+    if (options?.activeSeq !== undefined) activePrompt.publish(options.activeSeq);
+    const onRequestPromptText = options?.onRequestPromptText ?? noPromptText;
+
+    await act(async () => {
+      root?.render(
+        <ChatOutlineRail
+          prompts={prompts}
+          activePrompt={activePrompt}
+          onJumpToPrompt={onJumpToPrompt}
+          variant="text"
+          contentMaxWidth={CONTENT_MAX_WIDTH}
+          onRequestPromptText={onRequestPromptText}
+        />,
+      );
+    });
+
+    // The rail reads its own width, which RNW only reports after a measurement.
+    // Size whatever the panel measured and let RNW's handler deliver it.
+    const panel = container?.firstElementChild;
+    if (panel) {
+      sizeNode(panel, options?.panelWidth ?? PANEL_WIDTH);
+      await deliverLayout(panel);
+    }
+    return { onJumpToPrompt, panel };
+  }
+
+  it("shows one truncated line per prompt instead of dots", async () => {
+    await renderRail([prompt(1, "First prompt"), prompt(2, "Second prompt")]);
+
+    expect(document.querySelector('[data-testid="chat-outline-text-rail"]')).not.toBeNull();
+    expect(document.querySelectorAll('[role="tab"]')).toHaveLength(2);
+    expect(document.querySelectorAll('[data-testid="chat-outline-tick-1"]')).toHaveLength(0);
+    expect(document.body.textContent).toContain("First prompt");
+    expect(document.body.textContent).toContain("Second prompt");
+  });
+
+  it("takes the gutter out of the panel's slack and leaves the transcript column alone", async () => {
+    await renderRail([prompt(1, "First"), prompt(2, "Second")], { panelWidth: PANEL_WIDTH });
+
+    const rail = document.querySelector('[data-testid="chat-outline-text-rail"]');
+    const expected = resolveTextRailWidth(PANEL_WIDTH, CONTENT_MAX_WIDTH);
+    expect(expected).not.toBeNull();
+    expect(rail?.getAttribute("style") ?? "").toContain(String(expected));
+    // The gutter comes from the space beside the transcript, never from the
+    // transcript's own column, so the rail must not claim the whole panel.
+    expect(rail?.getAttribute("style") ?? "").not.toContain(`width: ${PANEL_WIDTH}px`);
+  });
+
+  it("keeps the dots when the panel leaves no room for a line", async () => {
+    await renderRail([prompt(1, "First"), prompt(2, "Second")], { panelWidth: NARROW_PANEL_WIDTH });
+
+    expect(document.querySelector('[data-testid="chat-outline-text-rail"]')).toBeNull();
+    expect(document.querySelectorAll('[data-testid="chat-outline-tick-1"]')).toHaveLength(1);
+  });
+
+  it("hides both forms on a panel too narrow to navigate", async () => {
+    await renderRail([prompt(1, "First")], { panelWidth: HIDDEN_PANEL_WIDTH });
+
+    expect(document.querySelector('[data-testid="chat-outline-text-rail"]')).toBeNull();
+    expect(document.querySelectorAll('[data-testid="chat-outline-tick-1"]')).toHaveLength(0);
+  });
+
+  it("jumps to the prompt the reader clicks", async () => {
+    const { onJumpToPrompt } = await renderRail([prompt(1, "First"), prompt(2, "Second")]);
+
+    const rows = document.querySelectorAll('[role="tab"]');
+    expect(rows).toHaveLength(2);
+    await act(async () => {
+      (rows[1] as HTMLElement).click();
+    });
+
+    expect(onJumpToPrompt).toHaveBeenCalledWith(2);
+  });
+
+  it("marks the prompt the reader is currently inside", async () => {
+    await renderRail([prompt(1, "First"), prompt(2, "Second")], { activeSeq: 2 });
+
+    const selected = document.querySelectorAll('[role="tab"][aria-selected="true"]');
+    expect(selected).toHaveLength(1);
+    expect(selected[0]?.getAttribute("data-testid")).toBe("chat-outline-text-row-2");
+  });
+
+  it("previews the prompt's full text rather than the index's truncated one", async () => {
+    const fullText = "The whole prompt, well past the index's 120 character preview limit.";
+    const onRequestPromptText = vi.fn(async () => fullText);
+    await renderRail([prompt(1, "truncated preview"), prompt(2, "Second")], {
+      onRequestPromptText,
+    });
+
+    const target = document.querySelector('[data-testid="chat-outline-text-row-1"]');
+    expect(target).not.toBeNull();
+    // Nothing is read until the reader points at or focuses the row: the index
+    // preview is what the rail shows at rest.
+    expect(onRequestPromptText).not.toHaveBeenCalled();
+    expect(document.body.textContent).not.toContain(fullText);
+
+    await act(async () => {
+      (target as HTMLElement).focus();
+    });
+
+    expect(onRequestPromptText).toHaveBeenCalledWith(1);
+    expect(document.querySelector('[data-testid="chat-outline-text-preview"]')).not.toBeNull();
+    expect(document.body.textContent).toContain(fullText);
+  });
+
+  it("keeps the preview rather than the truncated line when the read fails", async () => {
+    await renderRail([prompt(1, "truncated preview"), prompt(2, "Second")], {
+      onRequestPromptText: async () => null,
+    });
+
+    const target = document.querySelector('[data-testid="chat-outline-text-row-1"]');
+    await act(async () => {
+      (target as HTMLElement).focus();
+    });
+
+    expect(document.querySelector('[data-testid="chat-outline-text-preview"]')).not.toBeNull();
+    expect(document.body.textContent).toContain("truncated preview");
+  });
+
+  it("opens the preview when the pointer rests on a row", async () => {
+    const onRequestPromptText = vi.fn(async () => "The full text behind the hover");
+    await renderRail([prompt(1, "First"), prompt(2, "Second")], { onRequestPromptText });
+
+    const row = document.querySelector('[data-testid="chat-outline-text-row-1"]');
+    expect(row).not.toBeNull();
+    expect(onRequestPromptText).not.toHaveBeenCalled();
+
+    await act(async () => {
+      row?.dispatchEvent(new MouseEvent("pointerover", { bubbles: true, relatedTarget: null }));
+      // Hover intent activates on its own delay, so the test has to let it elapse.
+      const { promise, resolve } = Promise.withResolvers<void>();
+      setTimeout(resolve, 200);
+      await promise;
+    });
+
+    expect(onRequestPromptText).toHaveBeenCalledWith(1);
+    expect(document.querySelector('[data-testid="chat-outline-text-preview"]')).not.toBeNull();
+    expect(document.body.textContent).toContain("The full text behind the hover");
+  });
+
+  it("keeps the preview outside the scroller so its overflow cannot crop it", async () => {
+    await renderRail([prompt(1, "First"), prompt(2, "Second")], {
+      onRequestPromptText: async () => "The full text",
+    });
+
+    await act(async () => {
+      (document.querySelector('[data-testid="chat-outline-text-row-1"]') as HTMLElement).focus();
+    });
+
+    const rail = document.querySelector('[data-testid="chat-outline-text-rail"]');
+    const preview = document.querySelector('[data-testid="chat-outline-text-preview"]');
+    expect(rail).not.toBeNull();
+    expect(preview).not.toBeNull();
+    // The scroller forces overflow on itself, so anything inside it is cropped to the
+    // gutter. The card has to be its sibling — a child of a row puts it back inside.
+    expect(preview?.parentElement).toBe(rail);
+    const scroller = rail?.firstElementChild;
+    expect(scroller?.contains(preview)).toBe(false);
+    expect(
+      scroller?.contains(document.querySelector('[data-testid="chat-outline-text-row-1"]')),
+    ).toBe(true);
+  });
+
+  it("drops the preview once the pointer leaves the outline", async () => {
+    await renderRail([prompt(1, "First"), prompt(2, "Second")], {
+      onRequestPromptText: async () => "The full text",
+    });
+
+    await act(async () => {
+      document
+        .querySelector('[data-testid="chat-outline-text-row-1"]')
+        ?.dispatchEvent(new MouseEvent("pointerover", { bubbles: true, relatedTarget: null }));
+      const { promise, resolve } = Promise.withResolvers<void>();
+      setTimeout(resolve, 200);
+      await promise;
+    });
+    expect(document.querySelector('[data-testid="chat-outline-text-preview"]')).not.toBeNull();
+
+    await act(async () => {
+      document.dispatchEvent(new MouseEvent("pointermove", { clientX: 500, clientY: 500 }));
+    });
+
+    expect(document.querySelector('[data-testid="chat-outline-text-preview"]')).toBeNull();
+  });
+
+  it("shows up to three lines of a prompt before truncating", async () => {
+    await renderRail([prompt(1, "First prompt"), prompt(2, "Second prompt")]);
+
+    // RNW clamps through -webkit-line-clamp, which jsdom keeps on the style object
+    // but drops from the serialized attribute. React writes RNW's style key verbatim;
+    // lib.dom only declares the lowercase form. The Text is the row's only child.
+    const label = document.querySelector('[data-testid="chat-outline-text-row-1"]')
+      ?.firstElementChild as HTMLElement | null;
+    const styleWithClamp = label?.style as unknown as { WebkitLineClamp?: string } | undefined;
+    expect(String(styleWithClamp?.WebkitLineClamp)).toBe("3");
+  });
+});

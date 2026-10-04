@@ -2191,6 +2191,10 @@ export const zhCN: TranslationResources = {
         title: "聊天大纲",
         description: "显示用于在提示词之间跳转的大纲",
       },
+      chatOutlineTextLabels: {
+        title: "🌿 文字标签",
+        description: "🌿 用提示词文字代替圆点显示聊天大纲",
+      },
       sidebar: {
         header: {
           title: "顶部",
