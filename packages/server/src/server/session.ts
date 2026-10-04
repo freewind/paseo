@@ -2680,6 +2680,8 @@ export class Session {
       }
       case "agent.fork_context.request":
         return this.handleAgentForkContextRequest(msg);
+      case "agent.fork.request":
+        return this.handleAgentForkRequest(msg, source);
       default:
         return undefined;
     }
@@ -8035,6 +8037,51 @@ export class Session {
           boundaryMessageId: msg.boundaryMessageId ?? null,
           error: error instanceof Error ? error.message : String(error),
         },
+      });
+    }
+  }
+
+  private async handleAgentForkRequest(
+    msg: Extract<SessionInboundMessage, { type: "agent.fork.request" }>,
+    source?: object,
+  ): Promise<void> {
+    const respond = (payload: {
+      newAgentId: string | null;
+      newWorkspaceId?: string;
+      error: string | null;
+    }) => {
+      this.emitForSource(
+        {
+          type: "agent.fork.response",
+          payload: {
+            requestId: msg.requestId,
+            sourceAgentId: msg.sourceAgentId,
+            ...payload,
+          },
+        },
+        source,
+      );
+    };
+    try {
+      await ensureAgentLoaded(msg.sourceAgentId, {
+        agentManager: this.agentManager,
+        agentStorage: this.agentStorage,
+        logger: this.sessionLogger,
+      });
+      const fork = await this.agentManager.forkAgent({
+        sourceAgentId: msg.sourceAgentId,
+        boundaryMessageId: msg.boundaryMessageId,
+        boundaryCursor: msg.boundaryCursor ?? null,
+      });
+      respond({ newAgentId: fork.id, error: null });
+    } catch (error) {
+      this.sessionLogger.error(
+        { err: error, sourceAgentId: msg.sourceAgentId },
+        "Failed to handle agent.fork.request",
+      );
+      respond({
+        newAgentId: null,
+        error: error instanceof Error ? error.message : String(error),
       });
     }
   }

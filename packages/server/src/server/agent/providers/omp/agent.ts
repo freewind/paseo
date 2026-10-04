@@ -101,6 +101,7 @@ import {
 } from "./tool-call-detail.js";
 import { mapOmpAvailableCommandsUpdate, mapOmpRuntimeSlashCommands } from "./commands.js";
 import { readOmpHistoryTodoState, streamOmpHistory } from "./history.js";
+import { forkOmpSessionFile } from "./fork.js";
 import { mapOmpTodoReminderEvent, mapOmpTodoState, mapOmpTodoToolResult } from "./todo-mapper.js";
 import { mapOmpRuntimeEventToTimelineItem } from "./event-mapper.js";
 import { mapOmpAdvisorMessageToToolCall } from "./advisor-message.js";
@@ -2325,6 +2326,25 @@ export class OmpAgentClient implements AgentClient {
       await runtimeSession.close().catch(() => undefined);
       throw error;
     }
+  }
+
+  async forkSession(
+    handle: AgentPersistenceHandle,
+    input: { upToMessageId: string },
+  ): Promise<AgentPersistenceHandle> {
+    const sessionFile = handle.nativeHandle;
+    if (!sessionFile) {
+      throw new Error("OMP fork requires a native session file handle");
+    }
+    const fork = await forkOmpSessionFile({
+      sessionFile,
+      upToEntryId: input.upToMessageId,
+    });
+    return {
+      ...handle,
+      sessionId: fork.sessionId,
+      nativeHandle: fork.sessionFile,
+    };
   }
 
   async resumeSession(
