@@ -74,8 +74,8 @@ commit」时启动。
 - **新 commit 当成全新的写。** title 与 body 完全按「Commit 规范」从零撰写，不提旧 hash、不写
   「由旧 commit 整理而来」「整理自」之类痕迹。只看新历史的人不该知道它是从什么形态归并来的。
 - **排序沿用「Commit 排序」一节。** 基础改动在前，功能改动按添加顺序在后。
-- **现有两条 merge commit 压平。** `4348a543e` 与 `d69d6dfc7` 两条 `Merge branch 'main'` 压成
-  普通提交，其内容并进当时引入的那几条，之后不再有 merge commit。
+- **merge commit 一律压平。** 整理范围 `upstream/main..main` 内若出现 merge commit，把它的内容并进
+  当初引入的那几条，压成普通提交，之后不再有 merge commit。
 - 重写后按「验证要求」验证，再 `git push --force-with-lease origin main`。
 
 ### 同步上游（仅在用户明确要求时）
