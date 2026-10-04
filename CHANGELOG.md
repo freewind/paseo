@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Added a "Hide this agent" action to the agent tab menu, which removes the tab from this client without archiving the agent or stopping its work, and can be reversed by reopening the agent from its parent's subagent track
+
 ## 0.11.0-beta.3 - 2026-10-02
 
 ### Added

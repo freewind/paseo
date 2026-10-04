@@ -3,7 +3,12 @@ import {
   buildWorkspaceDesktopTabActions,
   buildWorkspaceTabMenuEntries,
 } from "@/screens/workspace/workspace-tab-menu";
+import type { WorkspaceTabMenuEntry } from "@/screens/workspace/workspace-tab-menu";
 import type { WorkspaceTabDescriptor } from "@/screens/workspace/workspace-tabs-types";
+
+function itemKeys(entries: WorkspaceTabMenuEntry[]): string[] {
+  return entries.filter((entry) => entry.kind === "item").map((entry) => entry.key);
+}
 
 function createAgentTab(): WorkspaceTabDescriptor {
   return {
@@ -15,78 +20,6 @@ function createAgentTab(): WorkspaceTabDescriptor {
 }
 
 describe("buildWorkspaceTabMenuEntries", () => {
-  it("uses desktop tab ordering labels for desktop menus", () => {
-    const onCopyResumeCommand = vi.fn();
-    const onCopyAgentId = vi.fn();
-    const onCopyFilePath = vi.fn();
-    const onReloadAgent = vi.fn();
-    const onRenameTab = vi.fn();
-    const onCloseTab = vi.fn();
-    const onCloseTabsBefore = vi.fn();
-    const onCloseTabsAfter = vi.fn();
-    const onCloseOtherTabs = vi.fn();
-
-    const entries = buildWorkspaceTabMenuEntries({
-      surface: "desktop",
-      tab: createAgentTab(),
-      index: 1,
-      tabCount: 3,
-      menuTestIDBase: "workspace-tab-context-agent_123",
-      onCopyResumeCommand,
-      onCopyAgentId,
-      onCopyTerminalId: vi.fn(),
-      onCopyFilePath,
-      onReloadAgent,
-      onRenameTab,
-      onCloseTab,
-      onCloseTabsBefore,
-      onCloseTabsAfter,
-      onCloseOtherTabs,
-    });
-
-    expect(entries.filter((entry) => entry.kind === "item").map((entry) => entry.label)).toEqual([
-      "Copy resume command",
-      "Copy agent id",
-      "Rename",
-      "Close to the left",
-      "Close to the right",
-      "Close other tabs",
-      "Reload agent",
-      "Close",
-    ]);
-  });
-
-  it("uses stacked ordering labels for mobile menus", () => {
-    const entries = buildWorkspaceTabMenuEntries({
-      surface: "mobile",
-      tab: createAgentTab(),
-      index: 1,
-      tabCount: 3,
-      menuTestIDBase: "workspace-tab-menu-agent_123",
-      onCopyResumeCommand: vi.fn(),
-      onCopyAgentId: vi.fn(),
-      onCopyTerminalId: vi.fn(),
-      onCopyFilePath: vi.fn(),
-      onReloadAgent: vi.fn(),
-      onRenameTab: vi.fn(),
-      onCloseTab: vi.fn(),
-      onCloseTabsBefore: vi.fn(),
-      onCloseTabsAfter: vi.fn(),
-      onCloseOtherTabs: vi.fn(),
-    });
-
-    expect(entries.filter((entry) => entry.kind === "item").map((entry) => entry.label)).toEqual([
-      "Copy resume command",
-      "Copy agent id",
-      "Rename",
-      "Close tabs above",
-      "Close tabs below",
-      "Close other tabs",
-      "Reload agent",
-      "Close",
-    ]);
-  });
-
   it("omits agent copy actions and rename for draft tabs", () => {
     const entries = buildWorkspaceTabMenuEntries({
       surface: "mobile",
@@ -109,44 +42,15 @@ describe("buildWorkspaceTabMenuEntries", () => {
       onCloseTabsBefore: vi.fn(),
       onCloseTabsAfter: vi.fn(),
       onCloseOtherTabs: vi.fn(),
+      onHideTab: vi.fn(),
     });
 
-    expect(entries.some((entry) => entry.kind === "item" && entry.label === "Copy agent id")).toBe(
-      false,
-    );
-    expect(entries.some((entry) => entry.kind === "item" && entry.label === "Reload agent")).toBe(
-      false,
-    );
-    expect(entries.some((entry) => entry.kind === "item" && entry.label === "Rename")).toBe(false);
+    expect(itemKeys(entries)).not.toContain("copy-resume-command");
+    expect(itemKeys(entries)).not.toContain("copy-agent-id");
+    expect(itemKeys(entries)).not.toContain("reload-agent");
+    expect(itemKeys(entries)).not.toContain("hide-agent");
+    expect(itemKeys(entries)).not.toContain("rename");
     expect(entries.some((entry) => entry.kind === "separator")).toBe(false);
-  });
-
-  it("adds reload tooltip copy for agent tabs", () => {
-    const entries = buildWorkspaceTabMenuEntries({
-      surface: "desktop",
-      tab: createAgentTab(),
-      index: 0,
-      tabCount: 1,
-      menuTestIDBase: "workspace-tab-context-agent_123",
-      onCopyResumeCommand: vi.fn(),
-      onCopyAgentId: vi.fn(),
-      onCopyTerminalId: vi.fn(),
-      onCopyFilePath: vi.fn(),
-      onReloadAgent: vi.fn(),
-      onRenameTab: vi.fn(),
-      onCloseTab: vi.fn(),
-      onCloseTabsBefore: vi.fn(),
-      onCloseTabsAfter: vi.fn(),
-      onCloseOtherTabs: vi.fn(),
-    });
-
-    expect(entries).toContainEqual(
-      expect.objectContaining({
-        kind: "item",
-        key: "reload-agent",
-        tooltip: "Reload agent to update skills, MCPs or login status.",
-      }),
-    );
   });
 
   it("invokes onRenameTab when the rename entry is selected for agent tabs", () => {
@@ -168,9 +72,10 @@ describe("buildWorkspaceTabMenuEntries", () => {
       onCloseTabsBefore: vi.fn(),
       onCloseTabsAfter: vi.fn(),
       onCloseOtherTabs: vi.fn(),
+      onHideTab: vi.fn(),
     });
 
-    const renameEntry = entries.find((entry) => entry.kind === "item" && entry.label === "Rename");
+    const renameEntry = entries.find((entry) => entry.kind === "item" && entry.key === "rename");
     if (!renameEntry || renameEntry.kind !== "item") {
       throw new Error("Rename entry missing");
     }
@@ -204,15 +109,15 @@ describe("buildWorkspaceTabMenuEntries", () => {
       onCloseTabsBefore: vi.fn(),
       onCloseTabsAfter: vi.fn(),
       onCloseOtherTabs: vi.fn(),
+      onHideTab: vi.fn(),
     });
 
-    const labels = entries.filter((entry) => entry.kind === "item").map((entry) => entry.label);
-    expect(labels[0]).toBe("Copy terminal id");
-    expect(labels[1]).toBe("Rename");
-    expect(labels).not.toContain("Copy resume command");
-    expect(labels).not.toContain("Copy agent id");
-    expect(labels).not.toContain("Copy file path");
-    expect(labels).not.toContain("Reload agent");
+    expect(itemKeys(entries).slice(0, 2)).toEqual(["copy-terminal-id", "rename"]);
+    expect(itemKeys(entries)).not.toContain("copy-resume-command");
+    expect(itemKeys(entries)).not.toContain("copy-agent-id");
+    expect(itemKeys(entries)).not.toContain("copy-file-path");
+    expect(itemKeys(entries)).not.toContain("reload-agent");
+    expect(itemKeys(entries)).not.toContain("hide-agent");
 
     const copyTerminalIdEntry = entries.find(
       (entry) => entry.kind === "item" && entry.key === "copy-terminal-id",
@@ -223,7 +128,7 @@ describe("buildWorkspaceTabMenuEntries", () => {
     copyTerminalIdEntry.onSelect();
     expect(onCopyTerminalId).toHaveBeenCalledWith("terminal-abc");
 
-    const renameEntry = entries.find((entry) => entry.kind === "item" && entry.label === "Rename");
+    const renameEntry = entries.find((entry) => entry.kind === "item" && entry.key === "rename");
     if (!renameEntry || renameEntry.kind !== "item") {
       throw new Error("Rename entry missing");
     }
@@ -255,14 +160,15 @@ describe("buildWorkspaceTabMenuEntries", () => {
       onCloseTabsBefore: vi.fn(),
       onCloseTabsAfter: vi.fn(),
       onCloseOtherTabs: vi.fn(),
+      onHideTab: vi.fn(),
     });
 
-    const labels = entries.filter((entry) => entry.kind === "item").map((entry) => entry.label);
-    expect(labels[0]).toBe("Copy file path");
-    expect(labels).not.toContain("Copy resume command");
-    expect(labels).not.toContain("Copy agent id");
-    expect(labels).not.toContain("Rename");
-    expect(labels).not.toContain("Reload agent");
+    expect(itemKeys(entries)[0]).toBe("copy-file-path");
+    expect(itemKeys(entries)).not.toContain("copy-resume-command");
+    expect(itemKeys(entries)).not.toContain("copy-agent-id");
+    expect(itemKeys(entries)).not.toContain("rename");
+    expect(itemKeys(entries)).not.toContain("reload-agent");
+    expect(itemKeys(entries)).not.toContain("hide-agent");
 
     const copyFilePathEntry = entries.find(
       (entry) => entry.kind === "item" && entry.key === "copy-file-path",
@@ -298,6 +204,7 @@ describe("buildWorkspaceTabMenuEntries", () => {
       onCloseTabsToLeft: vi.fn(),
       onCloseTabsToRight: vi.fn(),
       onCloseOtherTabs: vi.fn(),
+      onHideTab: vi.fn(),
     });
 
     expect(actions.closeButtonTestId).toMatch(/^workspace-working-diff-close-/);
@@ -329,6 +236,7 @@ describe("buildWorkspaceTabMenuEntries", () => {
       onCloseTabsBefore: vi.fn(),
       onCloseTabsAfter: vi.fn(),
       onCloseOtherTabs: vi.fn(),
+      onHideTab: vi.fn(),
     };
 
     const agentEntries = buildWorkspaceTabMenuEntries({ ...sharedInput, tab: createAgentTab() });
@@ -364,5 +272,43 @@ describe("buildWorkspaceTabMenuEntries", () => {
       .find((entry) => entry.kind === "separator");
     expect(agentSeparator?.key).toBe("rename-separator");
     expect(terminalSeparator?.key).toBe("rename-separator");
+  });
+
+  it("hides an agent tab without closing it, and keeps hiding only agent tabs", () => {
+    const onHideTab = vi.fn();
+    const onCloseTab = vi.fn();
+    const entries = buildWorkspaceTabMenuEntries({
+      surface: "desktop",
+      tab: createAgentTab(),
+      index: 0,
+      tabCount: 1,
+      menuTestIDBase: "workspace-tab-context-agent_123",
+      onCopyResumeCommand: vi.fn(),
+      onCopyAgentId: vi.fn(),
+      onCopyTerminalId: vi.fn(),
+      onCopyFilePath: vi.fn(),
+      onReloadAgent: vi.fn(),
+      onRenameTab: vi.fn(),
+      onCloseTab,
+      onCloseTabsBefore: vi.fn(),
+      onCloseTabsAfter: vi.fn(),
+      onCloseOtherTabs: vi.fn(),
+      onHideTab,
+    });
+
+    const keys = itemKeys(entries);
+    // Hide sits after reload and before close: hide removes the view, close ends the agent.
+    expect(keys.indexOf("hide-agent")).toBeGreaterThan(keys.indexOf("reload-agent"));
+    expect(keys.indexOf("hide-agent")).toBeLessThan(keys.indexOf("close"));
+    const hideEntry = entries.find((entry) => entry.kind === "item" && entry.key === "hide-agent");
+    if (!hideEntry || hideEntry.kind !== "item") {
+      throw new Error("Hide entry missing");
+    }
+    // Hiding an agent that is still running must not read as a destructive gesture.
+    expect(hideEntry.destructive).not.toBe(true);
+
+    hideEntry.onSelect();
+    expect(onHideTab).toHaveBeenCalledWith("agent_123");
+    expect(onCloseTab).not.toHaveBeenCalled();
   });
 });

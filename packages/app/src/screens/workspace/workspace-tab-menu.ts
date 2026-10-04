@@ -18,6 +18,7 @@ export interface WorkspaceTabMenuLabels {
   closeOthers: string;
   reloadAgent: string;
   reloadAgentTooltip: string;
+  hideAgent: string;
   close: string;
 }
 
@@ -34,6 +35,7 @@ export const DEFAULT_WORKSPACE_TAB_MENU_LABELS: WorkspaceTabMenuLabels = {
   closeOthers: i18n.t("workspace.tabs.menu.closeOthers"),
   reloadAgent: i18n.t("workspace.tabs.menu.reloadAgent"),
   reloadAgentTooltip: i18n.t("workspace.tabs.menu.reloadAgentTooltip"),
+  hideAgent: i18n.t("workspace.tabs.menu.hideAgent"),
   close: i18n.t("workspace.tabs.menu.close"),
 };
 
@@ -48,6 +50,7 @@ export type WorkspaceTabMenuEntry =
         | "arrow-left-to-line"
         | "arrow-right-to-line"
         | "copy-x"
+        | "eye-off"
         | "pencil"
         | "x";
       hint?: string;
@@ -78,6 +81,7 @@ interface BuildWorkspaceTabMenuEntriesInput {
   onCloseTabsBefore: (tabId: string) => Promise<void> | void;
   onCloseTabsAfter: (tabId: string) => Promise<void> | void;
   onCloseOtherTabs: (tabId: string) => Promise<void> | void;
+  onHideTab: (tabId: string) => Promise<void> | void;
   labels?: WorkspaceTabMenuLabels;
 }
 
@@ -95,6 +99,7 @@ interface BuildWorkspaceDesktopTabActionsInput {
   onCloseTabsToLeft: (tabId: string) => Promise<void> | void;
   onCloseTabsToRight: (tabId: string) => Promise<void> | void;
   onCloseOtherTabs: (tabId: string) => Promise<void> | void;
+  onHideTab: (tabId: string) => Promise<void> | void;
   labels?: WorkspaceTabMenuLabels;
 }
 
@@ -182,6 +187,7 @@ export function buildWorkspaceTabMenuEntries(
     onCloseTabsBefore,
     onCloseTabsAfter,
     onCloseOtherTabs,
+    onHideTab,
   } = input;
   const labels = input.labels ?? DEFAULT_WORKSPACE_TAB_MENU_LABELS;
   const isFirstTab = index === 0;
@@ -306,6 +312,18 @@ export function buildWorkspaceTabMenuEntries(
         void onReloadAgent(agentId);
       },
     });
+    // Hiding is not closing: the agent keeps running and stays reachable from its parent's
+    // subagent track, while this client stops listing the tab. It is never destructive.
+    entries.push({
+      kind: "item",
+      key: "hide-agent",
+      label: labels.hideAgent,
+      icon: "eye-off",
+      testID: `${menuTestIDBase}-hide-agent`,
+      onSelect: () => {
+        void onHideTab(tab.tabId);
+      },
+    });
   }
   entries.push({
     kind: "item",
@@ -343,6 +361,7 @@ export function buildWorkspaceDesktopTabActions(
       onCloseTabsBefore: input.onCloseTabsToLeft,
       onCloseTabsAfter: input.onCloseTabsToRight,
       onCloseOtherTabs: input.onCloseOtherTabs,
+      onHideTab: input.onHideTab,
       labels: input.labels,
     }),
     closeButtonTestId: getCloseButtonTestId(input.tab),

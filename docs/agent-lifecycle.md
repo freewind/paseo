@@ -141,16 +141,26 @@ received.
 
 These are two distinct concepts that used to be conflated:
 
-| Concept                    | Scope      | Triggers                   |
-| -------------------------- | ---------- | -------------------------- |
-| **Tab** (workspace layout) | Per-client | User opens/closes a view   |
-| **Archive** (lifecycle)    | Global     | Explicit lifecycle gesture |
+| Concept                     | Scope      | Triggers                            |
+| --------------------------- | ---------- | ----------------------------------- |
+| **Tab** (workspace layout)  | Per-client | User opens/closes a view            |
+| **Hide** (workspace layout) | Per-client | User hides a view without ending it |
+| **Archive** (lifecycle)     | Global     | Explicit lifecycle gesture          |
 
 Closing a tab on a **root agent** still archives — the tab is the agent's home, so closing it means "I'm done with this agent." A confirm dialog protects against archiving a running agent by accident.
 
 Closing a tab on a **subagent** (any agent with `parentAgentId`) is **layout-only**. The app clears the current client's open-tab label before removing the tab. Another client's open tab remains protected. The agent stays unarchived and stays in its parent's track, so a later parent archive cascades to it when no client still has it open. The user can re-open the tab from the track at any time. Single and bulk tab close apply the same policy.
 
 The asymmetry is intentional: a subagent's persistent relationship lives in the parent's track. Same-workspace subagents are not auto-opened as tabs; the user opens one from that track when needed. A cross-workspace subagent is also auto-opened as a tab in its own workspace so opening that workspace does not appear empty. It remains in the parent's track until it is actually detached.
+
+### Hide
+
+**Hide this agent** in an agent tab's menu removes the tab from this client without ending the agent. Unlike close it never archives, never releases the runtime, and never interrupts a running turn, for a root agent or a subagent alike. Its boundaries are the existing layout-hide boundaries:
+
+- The hide intent is per-client and in-memory. Another client keeps its own tab, and after a reload a root or cross-workspace subagent is auto-opened again.
+- A hidden subagent is released from this client's open-tab label first, so a later parent archive can still cascade to it. If that write fails, the tab stays: a visible tab is what makes the label true.
+- Reopening an agent clears its hide intent, so the parent's subagent track brings a hidden child back the same way it brings back a closed one.
+- Hiding changes no parentage. A detached or detached-during-hide agent is not archived by the hide action itself.
 
 ## Workspace activity
 
