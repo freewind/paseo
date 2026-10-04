@@ -16,12 +16,17 @@ import {
   type LayoutChangeEvent,
   type PointerEvent as RNPointerEvent,
 } from "react-native";
-import { StyleSheet } from "react-native-unistyles";
+import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { useReducedMotion } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
+import { ChevronDown, ChevronUp } from "lucide-react-native";
 import { useContainerWidth, useContainerWidthBelow } from "@/hooks/use-container-width";
 import { useHoverSafeZone } from "@/hooks/use-hover-safe-zone";
 import { inlineUnistylesStyle } from "@/styles/unistyles-inline-style";
+import { mutedIconColorMapping } from "@/components/ui/icon-color";
+import { ICON_SIZE } from "@/styles/theme";
 import { createChatOutlineHoverIntent } from "./hover-intent";
+import { useChatOutlineCollapsed } from "./collapsed-state";
 import { promptTickMagnification, resolveTextRailWidth, type ChatOutlinePrompt } from "./model";
 import type { ChatOutlineRailProps } from "./rail";
 
@@ -43,6 +48,10 @@ const TEXT_ROW_MIN_HEIGHT = 24;
 // The text preview carries a whole prompt, so it gets room and its own scroll.
 const TEXT_PREVIEW_WIDTH = 320;
 const TEXT_PREVIEW_HEIGHT = 180;
+const TOGGLE_SIZE = 20;
+
+const ThemedChevronDown = withUnistyles(ChevronDown, mutedIconColorMapping);
+const ThemedChevronUp = withUnistyles(ChevronUp, mutedIconColorMapping);
 
 export const ChatOutlineRail = memo(function ChatOutlineRail({
   prompts,
@@ -50,6 +59,7 @@ export const ChatOutlineRail = memo(function ChatOutlineRail({
   onJumpToPrompt,
   variant,
   contentMaxWidth,
+  agentId,
   onRequestPromptText,
 }: ChatOutlineRailProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -110,31 +120,13 @@ export const ChatOutlineRail = memo(function ChatOutlineRail({
 
   if (prompts.length < 2) return null;
 
-  // The text outline needs a gutter to sit in. Without one it falls back to the
-  // dots rather than disappearing: this is where navigation matters most.
+  // The text outline rides the gutter on the right, beside the dots rather than
+  // instead of them, so the two navigations never contend for the same edge.
   const textRailWidth =
     variant === "text" ? resolveTextRailWidth(panelWidth, contentMaxWidth) : null;
 
   if (isPanelNarrow) {
     return <View style={styles.panelMeasure} pointerEvents="box-none" onLayout={onLayout} />;
-  }
-
-  if (textRailWidth !== null) {
-    return (
-      <View style={styles.panelMeasure} pointerEvents="box-none" onLayout={onLayout}>
-        <ChatOutlineTextRail
-          prompts={prompts}
-          activeSeq={activeSeq}
-          attentionIndex={attentionIndex}
-          width={textRailWidth}
-          onHover={handlePointerEnterTick}
-          onLeave={handlePointerLeaveRail}
-          onFocusChange={handleFocusChange}
-          onJumpToPrompt={onJumpToPrompt}
-          onRequestPromptText={onRequestPromptText}
-        />
-      </View>
-    );
   }
 
   return (
@@ -167,6 +159,23 @@ export const ChatOutlineRail = memo(function ChatOutlineRail({
           />
         ))}
       </View>
+      {textRailWidth === null ? null : (
+        <ChatOutlineTextRail
+          // A different chat is a different outline, so it gets a fresh instance and
+          // re-reads its own collapse rather than inheriting the previous chat's.
+          key={agentId}
+          prompts={prompts}
+          activeSeq={activeSeq}
+          attentionIndex={attentionIndex}
+          width={textRailWidth}
+          agentId={agentId}
+          onHover={handlePointerEnterTick}
+          onLeave={handlePointerLeaveRail}
+          onFocusChange={handleFocusChange}
+          onJumpToPrompt={onJumpToPrompt}
+          onRequestPromptText={onRequestPromptText}
+        />
+      )}
     </View>
   );
 });
@@ -248,6 +257,7 @@ interface ChatOutlineTextRailProps {
   activeSeq: number | null;
   attentionIndex: number | null;
   width: number;
+  agentId: string;
   onHover: (index: number) => void;
   onLeave: () => void;
   onFocusChange: (index: number, focused: boolean) => void;
@@ -260,6 +270,7 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
   activeSeq,
   attentionIndex,
   width,
+  agentId,
   onHover,
   onLeave,
   onFocusChange,
@@ -270,7 +281,15 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
   const previewRef = useRef<View>(null);
   const [previewTop, setPreviewTop] = useState(0);
   const [detail, setDetail] = useState<{ seq: number; text: string } | null>(null);
+  // Collapse is a reading decision, not a preference: it is remembered per chat and never
+  // surfaced in settings. See ./collapsed-state.ts for why this outlives the component.
+  const [isCollapsed, handleToggleCollapsed] = useChatOutlineCollapsed(agentId);
+  const { t } = useTranslation();
   const attentionSeq = attentionIndex !== null ? (prompts[attentionIndex]?.seq ?? null) : null;
+
+  useEffect(() => {
+    if (isCollapsed && attentionIndex !== null) onLeave();
+  }, [attentionIndex, isCollapsed, onLeave]);
 
   // The index only carries a truncated preview, so the full text is read on demand.
   // Keying the state by seq keeps one row's text from flashing inside another row's card.
@@ -330,27 +349,46 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
       role="tablist"
       testID="chat-outline-text-rail"
     >
-      <ScrollView
-        style={styles.textRailScroll}
-        contentContainerStyle={styles.textRailContent}
-        showsVerticalScrollIndicator={false}
-        scrollEventThrottle={16}
-        onScroll={measurePreview}
-      >
-        {prompts.map((prompt, index) => (
-          <ChatOutlineTextRow
-            key={prompt.seq}
-            index={index}
-            seq={prompt.seq}
-            preview={prompt.preview}
-            label={`${index + 1} of ${prompts.length}: ${prompt.preview}`}
-            isActive={prompt.seq === activeSeq}
-            onHover={onHover}
-            onFocusChange={onFocusChange}
-            onJumpToPrompt={onJumpToPrompt}
-          />
-        ))}
-      </ScrollView>
+      <View style={styles.textRailHeader}>
+        <Pressable
+          style={styles.textRailToggle}
+          onPress={handleToggleCollapsed}
+          accessibilityRole="button"
+          accessibilityLabel={t(
+            isCollapsed ? "agentStream.chatOutline.expand" : "agentStream.chatOutline.collapse",
+          )}
+          testID="chat-outline-text-toggle"
+        >
+          {isCollapsed ? (
+            <ThemedChevronDown size={ICON_SIZE.xs} />
+          ) : (
+            <ThemedChevronUp size={ICON_SIZE.xs} />
+          )}
+        </Pressable>
+      </View>
+      {isCollapsed ? null : (
+        <ScrollView
+          style={styles.textRailScroll}
+          contentContainerStyle={styles.textRailContent}
+          showsVerticalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onScroll={measurePreview}
+        >
+          {prompts.map((prompt, index) => (
+            <ChatOutlineTextRow
+              key={prompt.seq}
+              index={index}
+              seq={prompt.seq}
+              preview={prompt.preview}
+              label={`${index + 1} of ${prompts.length}: ${prompt.preview}`}
+              isActive={prompt.seq === activeSeq}
+              onHover={onHover}
+              onFocusChange={onFocusChange}
+              onJumpToPrompt={onJumpToPrompt}
+            />
+          ))}
+        </ScrollView>
+      )}
       {attentionIndex !== null ? (
         <View
           ref={previewRef}
@@ -493,14 +531,28 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.sm,
     color: theme.colors.foreground,
   },
-  // The text outline shares the rail's vertical extent and the panel's left edge, so
-  // switching forms does not move the conversation.
+  // The text outline shares the rail's vertical extent but rides the right gutter, so the
+  // dots keep the left edge and the two never overlap.
   textRail: {
     position: "absolute",
-    left: theme.spacing[2],
+    right: theme.spacing[2],
     top: "10%",
     bottom: "10%",
     zIndex: 2,
+  },
+  // A fixed header row keeps the toggle in the same place whether the list is showing or
+  // collapsed, so collapsing never shifts the rail sideways.
+  textRailHeader: {
+    flexDirection: "row",
+    justifyContent: "flex-start",
+  },
+  textRailToggle: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: TOGGLE_SIZE,
+    height: TOGGLE_SIZE,
+    marginLeft: theme.spacing[2],
+    borderRadius: theme.borderRadius.md,
   },
   textRailScroll: {
     flex: 1,
@@ -527,10 +579,11 @@ const styles = StyleSheet.create((theme) => ({
   textRowLabelActive: {
     color: theme.colors.foreground,
   },
+  // The rail is on the right, so the card opens back over the transcript it describes.
   textPreview: {
     position: "absolute",
-    left: "100%",
-    marginLeft: PREVIEW_GAP,
+    right: "100%",
+    marginRight: PREVIEW_GAP,
     width: TEXT_PREVIEW_WIDTH,
     height: TEXT_PREVIEW_HEIGHT,
     paddingVertical: theme.spacing[2],

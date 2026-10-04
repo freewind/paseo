@@ -230,6 +230,10 @@ export const ar: TranslationResources = {
   agentStream: {
     empty: "ابدأ الدردشة مع هذا الوكيل...",
     scrollToBottom: "قم بالتمرير إلى الأسفل",
+    chatOutline: {
+      collapse: "🌿 طيّ المخطط",
+      expand: "🌿 توسيع المخطط",
+    },
     historyLoadFailed: "تعذر تحميل سجل الوكيل",
     messageCapped: "تم اقتطاع هذه الرسالة ({{bytes}} بايت).",
     permission: {
@@ -2219,7 +2223,7 @@ export const ar: TranslationResources = {
       },
       chatOutlineTextLabels: {
         title: "🌿 تسميات نصية",
-        description: "🌿 عرض كل مطالبة في المخطط كنص بدلاً من نقطة",
+        description: "🌿 عرض كل مطالبة في المخطط كنص بجانب النقاط",
       },
       workspaceRows: {
         title: "🌿 صفوف مساحات العمل",

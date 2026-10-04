@@ -230,6 +230,10 @@ export const zhCN: TranslationResources = {
   agentStream: {
     empty: "开始和这个 Agent 对话...",
     scrollToBottom: "滚动到底部",
+    chatOutline: {
+      collapse: "🌿 收起大纲",
+      expand: "🌿 展开大纲",
+    },
     historyLoadFailed: "无法加载智能体历史记录",
     messageCapped: "此消息已被截断（{{bytes}} 字节）。",
     permission: {
@@ -2194,7 +2198,7 @@ export const zhCN: TranslationResources = {
       },
       chatOutlineTextLabels: {
         title: "🌿 文字标签",
-        description: "🌿 用提示词文字代替圆点显示聊天大纲",
+        description: "🌿 在圆点旁用提示词文字显示聊天大纲",
       },
       workspaceRows: {
         title: "🌿 工作区行",

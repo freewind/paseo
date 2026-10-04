@@ -231,6 +231,10 @@ export const ptBR: TranslationResources = {
   agentStream: {
     empty: "Comece a conversar com este agente...",
     scrollToBottom: "Rolar para o fim",
+    chatOutline: {
+      collapse: "🌿 Recolher_sumário",
+      expand: "🌿 Expandir sumário",
+    },
     historyLoadFailed: "Não foi possível carregar o histórico do agente",
     messageCapped: "Esta mensagem foi truncada ({{bytes}} bytes).",
     permission: {
@@ -2254,7 +2258,7 @@ export const ptBR: TranslationResources = {
       },
       chatOutlineTextLabels: {
         title: "🌿 Rótulos de texto",
-        description: "🌿 Mostrar cada prompt da estrutura como texto em vez de um ponto",
+        description: "🌿 Mostrar cada prompt da estrutura como texto ao lado dos pontos",
       },
       workspaceRows: {
         title: "🌿 Linhas de workspace",

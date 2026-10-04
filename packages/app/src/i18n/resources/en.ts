@@ -226,6 +226,10 @@ export const en = {
   agentStream: {
     empty: "Start chatting with this agent...",
     scrollToBottom: "Scroll to bottom",
+    chatOutline: {
+      collapse: "🌿 Collapse outline",
+      expand: "🌿 Expand outline",
+    },
     historyLoadFailed: "Couldn't load agent history",
     messageCapped: "This message was capped ({{bytes}} bytes).",
     permission: {
@@ -2343,7 +2347,7 @@ export const en = {
       },
       chatOutlineTextLabels: {
         title: "🌿 Text labels",
-        description: "🌿 Show each prompt in the outline as text instead of a dot",
+        description: "🌿 Show each prompt in the outline as text beside the dots",
       },
       workspaceRows: {
         title: "🌿 Workspace rows",
