@@ -236,6 +236,10 @@ export const fr: TranslationResources = {
   agentStream: {
     empty: "Commencez à discuter avec cet agent…",
     scrollToBottom: "Faire défiler vers le bas",
+    chatOutline: {
+      collapse: "🌿 Réduire le plan",
+      expand: "🌿 Déplier le plan",
+    },
     historyLoadFailed: "Impossible de charger l’historique de l’agent",
     messageCapped: "Ce message a été tronqué ({{bytes}} octets).",
     permission: {
@@ -2463,7 +2467,7 @@ export const fr: TranslationResources = {
       },
       chatOutlineTextLabels: {
         title: "🌿 Libellés textuels",
-        description: "🌿 Afficher chaque requête du plan sous forme de texte plutôt que de point",
+        description: "🌿 Afficher chaque requête du plan sous forme de texte à côté des points",
       },
       workspaceRows: {
         title: "🌿 Lignes des espaces de travail",

@@ -57,7 +57,9 @@ async function waitFor(predicate: () => boolean, what: string, timeoutMs = 8_000
 async function mountRail(options?: { onRequestPromptText?: (seq: number) => Promise<string> }) {
   const container = document.createElement("div");
   container.style.position = "relative";
-  container.style.width = "1600px";
+  // The rail now lives in the right gutter, so the panel has to fit the viewport or
+  // the rail — and the card that opens from it — land off-screen.
+  container.style.width = "1200px";
   container.style.height = "700px";
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -71,6 +73,7 @@ async function mountRail(options?: { onRequestPromptText?: (seq: number) => Prom
         onJumpToPrompt={onJumpToPrompt}
         variant="text"
         contentMaxWidth={820}
+        agentId="agent-1"
         onRequestPromptText={options?.onRequestPromptText ?? defaultPromptText}
       />,
     );
@@ -101,7 +104,7 @@ async function hoverRow(seq: number) {
 describe("ChatOutlineRail text preview in a real browser", () => {
   it("shows the hover preview on screen with no ancestor clipping it", async () => {
     // The default test viewport is narrower than a real panel, and the card is
-    // anchored to a 1600px panel's gutter — size the viewport like the app's.
+    // anchored to a panel's gutter — size the viewport like the app's.
     await page.viewport(1280, 800);
     await mountRail({
       onRequestPromptText: async () => "The full text the reader hovered for",
@@ -117,7 +120,10 @@ describe("ChatOutlineRail text preview in a real browser", () => {
 
     // The card must sit outside the scroller: the scroller forces overflow on itself,
     // so a nested card is cropped to the gutter in a way jsdom can never observe.
-    expect(rail.firstElementChild?.contains(preview)).toBe(false);
+    const scroller = document.querySelector(
+      '[data-testid="chat-outline-text-row-1"]',
+    )?.parentElement;
+    expect(scroller?.contains(preview)).toBe(false);
 
     // Walk the ancestor chain: no element the card renders inside may clip.
     const clippers: string[] = [];
@@ -132,11 +138,13 @@ describe("ChatOutlineRail text preview in a real browser", () => {
     }
     expect(clippers).toEqual([]);
 
-    // The card has a real box and lands inside the viewport, right of the gutter.
+    // The rail sits in the right gutter, so the card opens back over the transcript it
+    // describes: it ends where the rail begins, and it stays on screen doing so.
     const rect = preview.getBoundingClientRect();
+    const railRect = rail.getBoundingClientRect();
     expect(rect.width).toBeGreaterThan(0);
     expect(rect.height).toBeGreaterThan(0);
-    expect(rect.left).toBeGreaterThanOrEqual(rail.getBoundingClientRect().right);
+    expect(rect.right).toBeLessThanOrEqual(railRect.left);
     expect(rect.left).toBeGreaterThanOrEqual(0);
     expect(rect.right).toBeLessThanOrEqual(window.innerWidth);
     expect(rect.top).toBeGreaterThanOrEqual(0);

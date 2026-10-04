@@ -235,6 +235,10 @@ export const ru: TranslationResources = {
   agentStream: {
     empty: "Начните общаться с этим агентом...",
     scrollToBottom: "Прокрутить вниз",
+    chatOutline: {
+      collapse: "🌿 Свернуть план",
+      expand: "🌿 Развернуть план",
+    },
     historyLoadFailed: "Не удалось загрузить историю агента",
     messageCapped: "Это сообщение было обрезано ({{bytes}} байт).",
     permission: {
@@ -2450,7 +2454,7 @@ export const ru: TranslationResources = {
       },
       chatOutlineTextLabels: {
         title: "🌿 Текстовые метки",
-        description: "🌿 Показывать каждый запрос оглавления текстом вместо точки",
+        description: "🌿 Показывать каждый запрос оглавления текстом рядом с точками",
       },
       workspaceRows: {
         title: "🌿 Строки рабочих пространств",

@@ -235,6 +235,10 @@ export const es: TranslationResources = {
   agentStream: {
     empty: "Comience a chatear con este agente...",
     scrollToBottom: "Desplazarse hacia abajo",
+    chatOutline: {
+      collapse: "🌿 Contraer esquema",
+      expand: "🌿 Expandir esquema",
+    },
     historyLoadFailed: "No se pudo cargar el historial del agente",
     messageCapped: "Este mensaje fue truncado ({{bytes}} bytes).",
     permission: {
@@ -2463,7 +2467,7 @@ export const es: TranslationResources = {
       },
       chatOutlineTextLabels: {
         title: "🌿 Etiquetas de texto",
-        description: "🌿 Mostrar cada instrucción del esquema como texto en lugar de un punto",
+        description: "🌿 Mostrar cada instrucción del esquema como texto junto a los puntos",
       },
       workspaceRows: {
         title: "🌿 Filas de espacios de trabajo",

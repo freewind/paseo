@@ -235,6 +235,10 @@ export const ja: TranslationResources = {
   agentStream: {
     empty: "このエージェントとチャットを始めましょう...",
     scrollToBottom: "下にスクロール",
+    chatOutline: {
+      collapse: "🌿 アウトラインを折りたたむ",
+      expand: "🌿 アウトラインを展開",
+    },
     historyLoadFailed: "エージェントの履歴を読み込めませんでした",
     messageCapped: "このメッセージは上限で切り詰められました（{{bytes}}バイト）。",
     permission: {
@@ -2431,7 +2435,7 @@ export const ja: TranslationResources = {
       },
       chatOutlineTextLabels: {
         title: "🌿 テキストラベル",
-        description: "🌿 アウトラインのプロンプトをドットではなくテキストで表示します",
+        description: "🌿 アウトラインのプロンプトをドットの横にテキストで表示します",
       },
       workspaceRows: {
         title: "🌿 ワークスペースの行",
