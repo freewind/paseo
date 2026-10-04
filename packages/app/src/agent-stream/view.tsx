@@ -1143,6 +1143,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
               onJumpToPrompt={chatOutline.jumpToPrompt}
               variant={chatOutlineVariant}
               contentMaxWidth={contentMaxWidth}
+              agentId={agentId}
               onRequestPromptText={chatOutline.fetchPromptText}
             />
             {(!isNearBottom || isTimelineDetached) && (

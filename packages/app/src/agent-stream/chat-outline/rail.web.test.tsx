@@ -111,6 +111,7 @@ describe("ChatOutlineRail in its text form", () => {
     options?: {
       panelWidth?: number;
       activeSeq?: number;
+      agentId?: string;
       onRequestPromptText?: (seq: number) => Promise<string | null>;
     },
   ) {
@@ -127,6 +128,7 @@ describe("ChatOutlineRail in its text form", () => {
           onJumpToPrompt={onJumpToPrompt}
           variant="text"
           contentMaxWidth={CONTENT_MAX_WIDTH}
+          agentId={options?.agentId ?? "agent-1"}
           onRequestPromptText={onRequestPromptText}
         />,
       );
@@ -142,12 +144,15 @@ describe("ChatOutlineRail in its text form", () => {
     return { onJumpToPrompt, panel };
   }
 
-  it("shows one truncated line per prompt instead of dots", async () => {
+  it("shows the words beside the dots, never instead of them", async () => {
     await renderRail([prompt(1, "First prompt"), prompt(2, "Second prompt")]);
 
-    expect(document.querySelector('[data-testid="chat-outline-text-rail"]')).not.toBeNull();
-    expect(document.querySelectorAll('[role="tab"]')).toHaveLength(2);
-    expect(document.querySelectorAll('[data-testid="chat-outline-tick-1"]')).toHaveLength(0);
+    const textRail = document.querySelector('[data-testid="chat-outline-text-rail"]');
+    expect(textRail).not.toBeNull();
+    // The two outlines are separate navigations, so the role query has to be scoped:
+    // the dots on the left keep their own tabs.
+    expect(textRail?.querySelectorAll('[role="tab"]')).toHaveLength(2);
+    expect(document.querySelectorAll('[data-testid="chat-outline-tick-1"]')).toHaveLength(1);
     expect(document.body.textContent).toContain("First prompt");
     expect(document.body.textContent).toContain("Second prompt");
   });
@@ -181,7 +186,7 @@ describe("ChatOutlineRail in its text form", () => {
   it("jumps to the prompt the reader clicks", async () => {
     const { onJumpToPrompt } = await renderRail([prompt(1, "First"), prompt(2, "Second")]);
 
-    const rows = document.querySelectorAll('[role="tab"]');
+    const rows = document.querySelectorAll('[data-testid="chat-outline-text-rail"] [role="tab"]');
     expect(rows).toHaveLength(2);
     await act(async () => {
       (rows[1] as HTMLElement).click();
@@ -193,7 +198,9 @@ describe("ChatOutlineRail in its text form", () => {
   it("marks the prompt the reader is currently inside", async () => {
     await renderRail([prompt(1, "First"), prompt(2, "Second")], { activeSeq: 2 });
 
-    const selected = document.querySelectorAll('[role="tab"][aria-selected="true"]');
+    const selected = document.querySelectorAll(
+      '[data-testid="chat-outline-text-rail"] [role="tab"][aria-selected="true"]',
+    );
     expect(selected).toHaveLength(1);
     expect(selected[0]?.getAttribute("data-testid")).toBe("chat-outline-text-row-2");
   });
@@ -267,16 +274,16 @@ describe("ChatOutlineRail in its text form", () => {
 
     const rail = document.querySelector('[data-testid="chat-outline-text-rail"]');
     const preview = document.querySelector('[data-testid="chat-outline-text-preview"]');
+    const row = document.querySelector('[data-testid="chat-outline-text-row-1"]');
     expect(rail).not.toBeNull();
     expect(preview).not.toBeNull();
     // The scroller forces overflow on itself, so anything inside it is cropped to the
     // gutter. The card has to be its sibling — a child of a row puts it back inside.
     expect(preview?.parentElement).toBe(rail);
-    const scroller = rail?.firstElementChild;
-    expect(scroller?.contains(preview)).toBe(false);
-    expect(
-      scroller?.contains(document.querySelector('[data-testid="chat-outline-text-row-1"]')),
-    ).toBe(true);
+    // The scroller is whichever ancestor holds the rows; the toggle above it is not one.
+    const scroller = row?.parentElement;
+    expect(scroller?.contains(row)).toBe(true);
+    expect(scroller?.contains(preview as Node)).toBe(false);
   });
 
   it("drops the preview once the pointer leaves the outline", async () => {
@@ -311,5 +318,56 @@ describe("ChatOutlineRail in its text form", () => {
       ?.firstElementChild as HTMLElement | null;
     const styleWithClamp = label?.style as unknown as { WebkitLineClamp?: string } | undefined;
     expect(String(styleWithClamp?.WebkitLineClamp)).toBe("3");
+  });
+
+  it("hides the words behind a toggle and shows them again", async () => {
+    await renderRail([prompt(1, "First prompt"), prompt(2, "Second prompt")]);
+    const toggle = () => document.querySelector('[data-testid="chat-outline-text-toggle"]');
+
+    expect(document.querySelector('[data-testid="chat-outline-text-rail"]')).not.toBeNull();
+    await act(async () => {
+      (toggle() as HTMLElement).click();
+    });
+    // Collapsing drops the rows but keeps the rail, so the way back stays reachable.
+    expect(document.querySelectorAll('[data-testid="chat-outline-text-row-1"]')).toHaveLength(0);
+    expect(document.querySelector('[data-testid="chat-outline-text-rail"]')).not.toBeNull();
+
+    await act(async () => {
+      (toggle() as HTMLElement).click();
+    });
+    expect(document.querySelectorAll('[data-testid="chat-outline-text-row-1"]')).toHaveLength(1);
+  });
+
+  it("keeps the dots while the words are collapsed", async () => {
+    await renderRail([prompt(1, "First"), prompt(2, "Second")]);
+
+    await act(async () => {
+      (document.querySelector('[data-testid="chat-outline-text-toggle"]') as HTMLElement).click();
+    });
+
+    // The dots are the primary navigation; collapsing the words must not take them.
+    expect(document.querySelectorAll('[data-testid="chat-outline-tick-1"]')).toHaveLength(1);
+  });
+
+  it("remembers the collapse for that chat, and only that chat", async () => {
+    await renderRail([prompt(1, "First"), prompt(2, "Second")], { agentId: "agent-a" });
+    await act(async () => {
+      (document.querySelector('[data-testid="chat-outline-text-toggle"]') as HTMLElement).click();
+    });
+    expect(document.querySelectorAll('[data-testid="chat-outline-text-row-1"]')).toHaveLength(0);
+
+    // Unmount for real: a re-render keeps component state alive on its own, so only a
+    // fresh instance proves the choice outlived the component that recorded it. A root
+    // cannot be reused once unmounted, so each mount gets its own.
+    act(() => root?.unmount());
+    root = createRoot(container as HTMLDivElement);
+    await renderRail([prompt(1, "First"), prompt(2, "Second")], { agentId: "agent-a" });
+    expect(document.querySelectorAll('[data-testid="chat-outline-text-row-1"]')).toHaveLength(0);
+
+    // Another chat is unaffected.
+    act(() => root?.unmount());
+    root = createRoot(container as HTMLDivElement);
+    await renderRail([prompt(1, "First"), prompt(2, "Second")], { agentId: "agent-b" });
+    expect(document.querySelectorAll('[data-testid="chat-outline-text-row-1"]')).toHaveLength(1);
   });
 });
