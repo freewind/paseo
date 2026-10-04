@@ -103,6 +103,8 @@ export interface AppSettings {
   autoExpandReasoning: boolean;
   toolCallDetailLevel: ToolCallDetailLevel;
   chatOutlineEnabled: boolean;
+  /** Whether the outline shows prompt text instead of dots. Web only; the dots stay the default. */
+  chatOutlineTextLabels: boolean;
   vimKeybindings: boolean;
   filePanelAssociations: Record<string, string>;
   /** Whether the composer shows the voice/dictation button. */
@@ -170,6 +172,7 @@ export const DEFAULT_CLIENT_SETTINGS: AppSettings = {
   autoExpandReasoning: false,
   toolCallDetailLevel: "detailed",
   chatOutlineEnabled: true,
+  chatOutlineTextLabels: false,
   vimKeybindings: false,
   filePanelAssociations: {},
   showVoiceButton: true,
@@ -277,6 +280,7 @@ const StoredAppSettingsSchema = z
     // COMPAT(compactToolCalls): migrated in v0.1.105, remove after 2027-01-12.
     compactToolCalls: z.boolean().optional().catch(undefined),
     chatOutlineEnabled: z.boolean().catch(true),
+    chatOutlineTextLabels: z.boolean().catch(false),
     vimKeybindings: z.boolean().catch(false),
     filePanelAssociations: z.record(z.string(), z.string()).catch({}),
     showVoiceButton: z.boolean().catch(true),

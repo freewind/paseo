@@ -2461,6 +2461,10 @@ export const fr: TranslationResources = {
         title: "Plan de la discussion",
         description: "Afficher un plan pour naviguer entre les prompts",
       },
+      chatOutlineTextLabels: {
+        title: "🌿 Libellés textuels",
+        description: "🌿 Afficher chaque requête du plan sous forme de texte plutôt que de point",
+      },
       workspaceRows: {
         title: "🌿 Lignes des espaces de travail",
         titleLines: {

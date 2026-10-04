@@ -1,5 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import type { AgentTimelinePromptIndexPayload } from "@getpaseo/client/internal/daemon-client";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import type {
+  AgentTimelinePromptIndexPayload,
+  FetchAgentTimelinePayload,
+} from "@getpaseo/client/internal/daemon-client";
 import { isWeb } from "@/constants/platform";
 import { useStableEvent } from "@/hooks/use-stable-event";
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
@@ -43,6 +46,27 @@ export interface ChatOutline {
   activePrompt: ActivePromptSource;
   jumpToPrompt: (seq: number) => void;
   reportReadingPosition: (seq: number | null) => void;
+  /**
+   * The prompt's complete text, for the outline's own preview. The index carries
+   * only a truncated preview, so the full text is read on demand and cached for
+   * the life of this epoch.
+   */
+  fetchPromptText: (seq: number) => Promise<string | null>;
+}
+
+/**
+ * Reads one prompt's text without touching the transcript. The host runtime's
+ * `fetchAgentTimeline` applies the returned page to the viewed timeline, so a
+ * preview request routed through it would rewrite the conversation the reader
+ * is looking at. This goes straight to the client instead.
+ */
+function findPromptTextInPage(page: FetchAgentTimelinePayload, seq: number): string | null {
+  for (const entry of page.entries) {
+    if (entry.item.type !== "user_message") continue;
+    if (entry.seqStart > seq || entry.seqEnd < seq) continue;
+    return entry.item.text;
+  }
+  return null;
 }
 
 function latestPromptSeqIn(items: StreamItem[], timelineEpoch: string | null): number {
@@ -84,6 +108,9 @@ export function useChatOutline({
   // A disabled outline (every native viewport) must not pay for the timeline per delta.
   const loadedTail = enabled ? tail : NO_STREAM_ITEMS;
   const loadedHead = enabled ? (head ?? NO_STREAM_ITEMS) : NO_STREAM_ITEMS;
+  const promptTextCacheRef = useRef(new Map<number, string>());
+  const inFlightPromptTextRef = useRef(new Map<number, Promise<string | null>>());
+  const loadedItems = useMemo(() => [...tail, ...(head ?? NO_STREAM_ITEMS)], [head, tail]);
   const prompts = enabled ? (index?.prompts ?? NO_PROMPTS) : NO_PROMPTS;
 
   // The viewed timeline already owns live delivery and reconnect catch-up. Its complete
@@ -95,7 +122,13 @@ export function useChatOutline({
   );
   const latestPromptSeq = Math.max(tailPromptSeq, latestPromptSeqIn(loadedHead, timelineEpoch));
 
-  useEffect(() => setIndex(null), [agentId, enabled, serverId, timelineEpoch]);
+  useEffect(() => {
+    // Cached text belongs to one epoch. A different timeline means different
+    // prompts at the same sequence numbers.
+    promptTextCacheRef.current.clear();
+    inFlightPromptTextRef.current.clear();
+    setIndex(null);
+  }, [agentId, enabled, serverId, timelineEpoch]);
 
   // Only a timeline the daemon has served can be indexed. A draft's optimistic stream has no
   // epoch, and its id names no agent the daemon knows.
@@ -221,5 +254,55 @@ export function useChatOutline({
       });
   });
 
-  return { prompts, activePrompt, jumpToPrompt, reportReadingPosition };
+  const fetchPromptText = useCallback(
+    async (seq: number): Promise<string | null> => {
+      const cached = promptTextCacheRef.current.get(seq);
+      if (cached !== undefined) return cached;
+
+      const loaded = loadedItems.find(
+        (item) => item.kind === "user_message" && item.timelineCursor?.seq === seq,
+      );
+      if (loaded?.kind === "user_message") {
+        promptTextCacheRef.current.set(seq, loaded.text);
+        return loaded.text;
+      }
+
+      const inFlight = inFlightPromptTextRef.current.get(seq);
+      if (inFlight) return inFlight;
+
+      const client = getHostRuntimeStore().getClient(serverId);
+      if (!client || !index) return null;
+
+      const request = client
+        .fetchAgentTimeline(agentId, {
+          direction: "after",
+          cursor: { epoch: index.epoch, seq: seq - 1 },
+          limit: 1,
+          projection: "projected",
+        })
+        .then((page): string | null => {
+          if (!shouldAcceptPromptIndexEpoch(timelineEpoch ?? index.epoch, page.epoch)) {
+            return null;
+          }
+          return findPromptTextInPage(page, seq);
+        })
+        .catch((error: unknown) => {
+          // A preview is decoration. A failure falls back to the index's
+          // truncated preview rather than surfacing an error the reader cannot act on.
+          console.warn("Failed to read a Chat outline prompt's text", error);
+          return null;
+        })
+        .then((text) => {
+          inFlightPromptTextRef.current.delete(seq);
+          if (text !== null) promptTextCacheRef.current.set(seq, text);
+          return text;
+        });
+
+      inFlightPromptTextRef.current.set(seq, request);
+      return request;
+    },
+    [agentId, index, loadedItems, serverId, timelineEpoch],
+  );
+
+  return { prompts, activePrompt, jumpToPrompt, reportReadingPosition, fetchPromptText };
 }

@@ -2444,6 +2444,10 @@ export const ptBR: TranslationResources = {
         title: "Estrutura do chat",
         description: "Mostrar uma estrutura para navegar entre prompts",
       },
+      chatOutlineTextLabels: {
+        title: "🌿 Rótulos de texto",
+        description: "🌿 Mostrar cada prompt da estrutura como texto em vez de um ponto",
+      },
       workspaceRows: {
         title: "🌿 Linhas de workspace",
         titleLines: {
