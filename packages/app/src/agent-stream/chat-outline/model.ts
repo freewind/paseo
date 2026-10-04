@@ -26,6 +26,36 @@ export function promptTickMagnification(slotDistance: number): number {
 }
 
 /**
+ * The transcript's content column is centred, so the space beside it is
+ * `(panel - content) / 2`. The text outline lives in that gutter rather than
+ * over the transcript.
+ */
+export const TEXT_RAIL_MIN_WIDTH = 120;
+
+/**
+ * The gutter grows without limit on a wide window, and a single line of prompt
+ * text stretched across half the screen reads worse than one that stops. Capping
+ * keeps the outline a marginal note beside the conversation.
+ */
+export const TEXT_RAIL_MAX_WIDTH = 360;
+
+/** Breathing room between the panel edge and the first character. */
+export const TEXT_RAIL_GUTTER_PADDING = 12;
+
+/**
+ * Width available to the text outline, or `null` when the panel has not been
+ * measured yet or the gutter is too narrow to show a readable line. A `null`
+ * tells the caller to fall back to the dot rail; it never hides the outline,
+ * because a long conversation is exactly when navigation matters most.
+ */
+export function resolveTextRailWidth(panelWidth: number, contentMaxWidth: number): number | null {
+  if (!(panelWidth > 0) || !(contentMaxWidth > 0)) return null;
+  const available = (panelWidth - contentMaxWidth) / 2 - TEXT_RAIL_GUTTER_PADDING;
+  if (available < TEXT_RAIL_MIN_WIDTH) return null;
+  return Math.min(available, TEXT_RAIL_MAX_WIDTH);
+}
+
+/**
  * The prompt whose turn the reader is inside: the last indexed prompt at or before the
  * timeline position under the top of the viewport. It reads the complete daemon index,
  * so a prompt outside the loaded window still lights up while its turn is on screen.

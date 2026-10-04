@@ -1,11 +1,28 @@
-import { memo, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { Pressable, Text, View, type PointerEvent as RNPointerEvent } from "react-native";
+import React, {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import {
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+  type LayoutChangeEvent,
+  type PointerEvent as RNPointerEvent,
+} from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { useReducedMotion } from "react-native-reanimated";
-import { useContainerWidthBelow } from "@/hooks/use-container-width";
+import { useContainerWidth, useContainerWidthBelow } from "@/hooks/use-container-width";
+import { useHoverSafeZone } from "@/hooks/use-hover-safe-zone";
 import { inlineUnistylesStyle } from "@/styles/unistyles-inline-style";
 import { createChatOutlineHoverIntent } from "./hover-intent";
-import { promptTickMagnification } from "./model";
+import { promptTickMagnification, resolveTextRailWidth, type ChatOutlinePrompt } from "./model";
 import type { ChatOutlineRailProps } from "./rail";
 
 // Hover tracking lives on the rail and the slots, never on the Pressable inside them:
@@ -21,17 +38,34 @@ const MAGNIFIED_PILL_WIDTH = 26;
 const PREVIEW_WIDTH = 260;
 const PREVIEW_HEIGHT = 48;
 const PREVIEW_GAP = 4;
+// A text row has to be readable and clickable, not as dense as a dot.
+const TEXT_ROW_MIN_HEIGHT = 24;
+// The text preview carries a whole prompt, so it gets room and its own scroll.
+const TEXT_PREVIEW_WIDTH = 320;
+const TEXT_PREVIEW_HEIGHT = 180;
 
 export const ChatOutlineRail = memo(function ChatOutlineRail({
   prompts,
   activePrompt,
   onJumpToPrompt,
+  variant,
+  contentMaxWidth,
+  onRequestPromptText,
 }: ChatOutlineRailProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const activeSeq = useSyncExternalStore(activePrompt.subscribe, activePrompt.getActiveSeq);
   const prefersReducedMotion = useReducedMotion();
-  const { onLayout, isBelow: isPanelNarrow } = useContainerWidthBelow(MIN_PANEL_WIDTH);
+  const { onLayout: onLayoutWidth, width: panelWidth } = useContainerWidth();
+  const { onLayout: onLayoutBelow, isBelow: isPanelNarrow } =
+    useContainerWidthBelow(MIN_PANEL_WIDTH);
+  const onLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      onLayoutWidth(event);
+      onLayoutBelow(event);
+    },
+    [onLayoutBelow, onLayoutWidth],
+  );
 
   const hoverIntent = useMemo(
     () =>
@@ -76,38 +110,63 @@ export const ChatOutlineRail = memo(function ChatOutlineRail({
 
   if (prompts.length < 2) return null;
 
+  // The text outline needs a gutter to sit in. Without one it falls back to the
+  // dots rather than disappearing: this is where navigation matters most.
+  const textRailWidth =
+    variant === "text" ? resolveTextRailWidth(panelWidth, contentMaxWidth) : null;
+
+  if (isPanelNarrow) {
+    return <View style={styles.panelMeasure} pointerEvents="box-none" onLayout={onLayout} />;
+  }
+
+  if (textRailWidth !== null) {
+    return (
+      <View style={styles.panelMeasure} pointerEvents="box-none" onLayout={onLayout}>
+        <ChatOutlineTextRail
+          prompts={prompts}
+          activeSeq={activeSeq}
+          attentionIndex={attentionIndex}
+          width={textRailWidth}
+          onHover={handlePointerEnterTick}
+          onLeave={handlePointerLeaveRail}
+          onFocusChange={handleFocusChange}
+          onJumpToPrompt={onJumpToPrompt}
+          onRequestPromptText={onRequestPromptText}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.panelMeasure} pointerEvents="box-none" onLayout={onLayout}>
-      {isPanelNarrow ? null : (
-        <View
-          style={styles.rail}
-          role="tablist"
-          testID="chat-outline-rail"
-          onPointerEnter={handlePointerEnterRail}
-          onPointerMove={handlePointerMoveRail}
-          onPointerLeave={handlePointerLeaveRail}
-        >
-          {prompts.map((prompt, index) => (
-            <ChatOutlineTick
-              key={prompt.seq}
-              index={index}
-              seq={prompt.seq}
-              preview={prompt.preview}
-              label={`${index + 1} of ${prompts.length}: ${prompt.preview}`}
-              isActive={prompt.seq === activeSeq}
-              hasAttention={index === attentionIndex}
-              magnification={
-                prefersReducedMotion || attentionIndex === null
-                  ? 0
-                  : promptTickMagnification(index - attentionIndex)
-              }
-              onHover={handlePointerEnterTick}
-              onFocusChange={handleFocusChange}
-              onJumpToPrompt={onJumpToPrompt}
-            />
-          ))}
-        </View>
-      )}
+      <View
+        style={styles.rail}
+        role="tablist"
+        testID="chat-outline-rail"
+        onPointerEnter={handlePointerEnterRail}
+        onPointerMove={handlePointerMoveRail}
+        onPointerLeave={handlePointerLeaveRail}
+      >
+        {prompts.map((prompt, index) => (
+          <ChatOutlineTick
+            key={prompt.seq}
+            index={index}
+            seq={prompt.seq}
+            preview={prompt.preview}
+            label={`${index + 1} of ${prompts.length}: ${prompt.preview}`}
+            isActive={prompt.seq === activeSeq}
+            hasAttention={index === attentionIndex}
+            magnification={
+              prefersReducedMotion || attentionIndex === null
+                ? 0
+                : promptTickMagnification(index - attentionIndex)
+            }
+            onHover={handlePointerEnterTick}
+            onFocusChange={handleFocusChange}
+            onJumpToPrompt={onJumpToPrompt}
+          />
+        ))}
+      </View>
     </View>
   );
 });
@@ -184,6 +243,188 @@ const ChatOutlineTick = memo(function ChatOutlineTick({
   );
 });
 
+interface ChatOutlineTextRailProps {
+  prompts: ChatOutlinePrompt[];
+  activeSeq: number | null;
+  attentionIndex: number | null;
+  width: number;
+  onHover: (index: number) => void;
+  onLeave: () => void;
+  onFocusChange: (index: number, focused: boolean) => void;
+  onJumpToPrompt: (seq: number) => void;
+  onRequestPromptText: (seq: number) => Promise<string | null>;
+}
+
+const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
+  prompts,
+  activeSeq,
+  attentionIndex,
+  width,
+  onHover,
+  onLeave,
+  onFocusChange,
+  onJumpToPrompt,
+  onRequestPromptText,
+}: ChatOutlineTextRailProps) {
+  const railRef = useRef<View>(null);
+  const previewRef = useRef<View>(null);
+  const [previewTop, setPreviewTop] = useState(0);
+  const [detail, setDetail] = useState<{ seq: number; text: string } | null>(null);
+  const attentionSeq = attentionIndex !== null ? (prompts[attentionIndex]?.seq ?? null) : null;
+
+  // The index only carries a truncated preview, so the full text is read on demand.
+  // Keying the state by seq keeps one row's text from flashing inside another row's card.
+  useEffect(() => {
+    if (attentionSeq === null) return;
+    let active = true;
+    void onRequestPromptText(attentionSeq).then((text) => {
+      if (active && text !== null) setDetail({ seq: attentionSeq, text });
+      return undefined;
+    });
+    return () => {
+      active = false;
+    };
+  }, [attentionSeq, onRequestPromptText]);
+
+  // The card is a sibling of the scroller (a child would be clipped by its
+  // overflow), so it has to follow its row: measured against the rail, then
+  // re-measured as the scroller moves the row underneath a resting pointer.
+  const measurePreview = useCallback(() => {
+    const rail = railRef.current as unknown as Element | null;
+    if (rail === null || attentionIndex === null) return;
+    const seq = prompts[attentionIndex]?.seq;
+    const row = rail.querySelector(`[data-testid="chat-outline-text-row-${seq}"]`);
+    if (!(row instanceof Element)) return;
+    const railBounds = rail.getBoundingClientRect();
+    const rowBounds = row.getBoundingClientRect();
+    const rowCentre = rowBounds.top - railBounds.top + rowBounds.height / 2;
+    const maxTop = Math.max(railBounds.height - TEXT_PREVIEW_HEIGHT, 0);
+    setPreviewTop(Math.min(Math.max(rowCentre - TEXT_PREVIEW_HEIGHT / 2, 0), maxTop));
+  }, [attentionIndex, prompts]);
+
+  useLayoutEffect(() => {
+    if (attentionIndex === null) return;
+    measurePreview();
+  }, [attentionIndex, measurePreview]);
+
+  const handleEnterSafeZone = useCallback(() => {}, []);
+  // The card sits outside the rail's box, and its region passes pointer events through to
+  // the transcript below, so pointerleave on the rail fires exactly while the pointer is
+  // over the card. The rect-based safe zone is therefore the only closer. See docs/hover.md.
+  const handleLeaveSafeZone = useCallback(() => {
+    onLeave();
+    if (attentionIndex !== null) onFocusChange(attentionIndex, false);
+  }, [attentionIndex, onFocusChange, onLeave]);
+  useHoverSafeZone({
+    enabled: attentionIndex !== null,
+    triggerRef: railRef,
+    contentRef: previewRef,
+    onEnterSafeZone: handleEnterSafeZone,
+    onLeaveSafeZone: handleLeaveSafeZone,
+  });
+
+  return (
+    <View
+      ref={railRef}
+      style={[styles.textRail, inlineUnistylesStyle({ width })]}
+      role="tablist"
+      testID="chat-outline-text-rail"
+    >
+      <ScrollView
+        style={styles.textRailScroll}
+        contentContainerStyle={styles.textRailContent}
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={measurePreview}
+      >
+        {prompts.map((prompt, index) => (
+          <ChatOutlineTextRow
+            key={prompt.seq}
+            index={index}
+            seq={prompt.seq}
+            preview={prompt.preview}
+            label={`${index + 1} of ${prompts.length}: ${prompt.preview}`}
+            isActive={prompt.seq === activeSeq}
+            onHover={onHover}
+            onFocusChange={onFocusChange}
+            onJumpToPrompt={onJumpToPrompt}
+          />
+        ))}
+      </ScrollView>
+      {attentionIndex !== null ? (
+        <View
+          ref={previewRef}
+          style={[styles.textPreview, inlineUnistylesStyle({ top: previewTop })]}
+          pointerEvents="none"
+          aria-hidden
+          testID="chat-outline-text-preview"
+        >
+          <ScrollView style={styles.textPreviewScroll} nestedScrollEnabled>
+            <Text style={styles.previewText}>
+              {detail !== null && detail.seq === attentionSeq
+                ? detail.text
+                : (prompts[attentionIndex]?.preview ?? "")}
+            </Text>
+          </ScrollView>
+        </View>
+      ) : null}
+    </View>
+  );
+});
+
+interface ChatOutlineTextRowProps {
+  index: number;
+  seq: number;
+  preview: string;
+  label: string;
+  isActive: boolean;
+  onHover: (index: number) => void;
+  onFocusChange: (index: number, focused: boolean) => void;
+  onJumpToPrompt: (seq: number) => void;
+}
+
+const ChatOutlineTextRow = memo(function ChatOutlineTextRow({
+  index,
+  seq,
+  preview,
+  label,
+  isActive,
+  onHover,
+  onFocusChange,
+  onJumpToPrompt,
+}: ChatOutlineTextRowProps) {
+  const handlePress = useCallback(() => {
+    onJumpToPrompt(seq);
+    onFocusChange(index, false);
+  }, [index, onFocusChange, onJumpToPrompt, seq]);
+  const handlePointerEnter = useCallback(() => onHover(index), [index, onHover]);
+  const handleFocus = useCallback(() => onFocusChange(index, true), [index, onFocusChange]);
+  const handleBlur = useCallback(() => onFocusChange(index, false), [index, onFocusChange]);
+
+  return (
+    <View style={styles.textRow} onPointerEnter={handlePointerEnter}>
+      <Pressable
+        style={styles.textRowTarget}
+        onPress={handlePress}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        accessibilityRole="tab"
+        aria-selected={isActive}
+        accessibilityLabel={label}
+        testID={`chat-outline-text-row-${seq}`}
+      >
+        <Text
+          style={[styles.textRowLabel, isActive && styles.textRowLabelActive]}
+          numberOfLines={3}
+          ellipsizeMode="tail"
+        >
+          {preview}
+        </Text>
+      </Pressable>
+    </View>
+  );
+});
+
 const styles = StyleSheet.create((theme) => ({
   panelMeasure: {
     position: "absolute",
@@ -251,5 +492,56 @@ const styles = StyleSheet.create((theme) => ({
   previewText: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.foreground,
+  },
+  // The text outline shares the rail's vertical extent and the panel's left edge, so
+  // switching forms does not move the conversation.
+  textRail: {
+    position: "absolute",
+    left: theme.spacing[2],
+    top: "10%",
+    bottom: "10%",
+    zIndex: 2,
+  },
+  textRailScroll: {
+    flex: 1,
+  },
+  // Theme-free on purpose: a themed contentContainerStyle on a third-party scroller is
+  // dropped on web. See docs/unistyles.md.
+  textRailContent: {
+    paddingVertical: 0,
+  },
+  textRow: {
+    justifyContent: "center",
+  },
+  // Hover must not change this box's geometry, only its paint. See docs/hover.md.
+  textRowTarget: {
+    justifyContent: "center",
+    minHeight: TEXT_ROW_MIN_HEIGHT,
+    paddingHorizontal: theme.spacing[2],
+    borderRadius: theme.borderRadius.lg,
+  },
+  textRowLabel: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.foregroundMuted,
+  },
+  textRowLabelActive: {
+    color: theme.colors.foreground,
+  },
+  textPreview: {
+    position: "absolute",
+    left: "100%",
+    marginLeft: PREVIEW_GAP,
+    width: TEXT_PREVIEW_WIDTH,
+    height: TEXT_PREVIEW_HEIGHT,
+    paddingVertical: theme.spacing[2],
+    paddingHorizontal: theme.spacing[3],
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: theme.borderWidth[1],
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface2,
+    ...theme.shadow.md,
+  },
+  textPreviewScroll: {
+    flex: 1,
   },
 }));

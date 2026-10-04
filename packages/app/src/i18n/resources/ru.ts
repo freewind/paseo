@@ -2255,6 +2255,10 @@ export const ru: TranslationResources = {
         title: "Оглавление чата",
         description: "Показывать оглавление для перехода между запросами",
       },
+      chatOutlineTextLabels: {
+        title: "🌿 Текстовые метки",
+        description: "🌿 Показывать каждый запрос оглавления текстом вместо точки",
+      },
       workspaceRows: {
         title: "🌿 Строки рабочих пространств",
         titleLines: {

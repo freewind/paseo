@@ -2269,6 +2269,10 @@ export const es: TranslationResources = {
         title: "Esquema del chat",
         description: "Muestra un esquema para saltar entre instrucciones",
       },
+      chatOutlineTextLabels: {
+        title: "🌿 Etiquetas de texto",
+        description: "🌿 Mostrar cada instrucción del esquema como texto en lugar de un punto",
+      },
       workspaceRows: {
         title: "🌿 Filas de espacios de trabajo",
         titleLines: {

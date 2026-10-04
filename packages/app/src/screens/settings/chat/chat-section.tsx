@@ -39,6 +39,7 @@ export function ChatSection() {
             })
             .map((voice) => ({ identifier: voice.identifier, name: voice.name })),
         );
+        return undefined;
       })
       .catch(() => {
         if (!cancelled) setTtsVoices([]);
@@ -68,6 +69,10 @@ export function ChatSection() {
   );
   const changeChatOutline = useCallback(
     (chatOutlineEnabled: boolean) => void updateSettings({ chatOutlineEnabled }),
+    [updateSettings],
+  );
+  const changeChatOutlineTextLabels = useCallback(
+    (chatOutlineTextLabels: boolean) => void updateSettings({ chatOutlineTextLabels }),
     [updateSettings],
   );
   const changeShowVoiceButton = useCallback(
@@ -152,12 +157,21 @@ export function ChatSection() {
             />
           ) : null}
           {isNative ? null : (
-            <SettingsSwitch
-              label={t("settings.appearance.chatOutline.title")}
-              hint={t("settings.appearance.chatOutline.description")}
-              value={settings.chatOutlineEnabled}
-              onValueChange={changeChatOutline}
-            />
+            <>
+              <SettingsSwitch
+                label={t("settings.appearance.chatOutline.title")}
+                hint={t("settings.appearance.chatOutline.description")}
+                value={settings.chatOutlineEnabled}
+                onValueChange={changeChatOutline}
+              />
+              {/* 🌿 A form choice, not a toggle: text only replaces the dots. */}
+              <SettingsSwitch
+                label={t("settings.appearance.chatOutlineTextLabels.title")}
+                hint={t("settings.appearance.chatOutlineTextLabels.description")}
+                value={settings.chatOutlineTextLabels}
+                onValueChange={changeChatOutlineTextLabels}
+              />
+            </>
           )}
         </SettingsCard>
       </SettingsSection>

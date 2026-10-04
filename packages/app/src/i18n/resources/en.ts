@@ -2341,6 +2341,10 @@ export const en = {
         title: "Chat outline",
         description: "Show an outline for jumping between prompts",
       },
+      chatOutlineTextLabels: {
+        title: "🌿 Text labels",
+        description: "🌿 Show each prompt in the outline as text instead of a dot",
+      },
       workspaceRows: {
         title: "🌿 Workspace rows",
         titleLines: {

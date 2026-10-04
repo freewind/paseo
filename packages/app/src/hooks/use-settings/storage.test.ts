@@ -198,6 +198,20 @@ describe("loadAppSettingsFromStorage", () => {
     expect(result.chatOutlineEnabled).toBe(false);
   });
 
+  it("keeps the chat outline as dots until text labels are asked for", async () => {
+    const defaults = await loadAppSettingsFromStorage(makeDeps());
+    expect(defaults.chatOutlineTextLabels).toBe(false);
+
+    const enabled = await loadAppSettingsFromStorage(
+      makeDeps({
+        storage: createInMemoryKeyValueStorage({
+          [APP_SETTINGS_KEY]: JSON.stringify({ chatOutlineTextLabels: true }),
+        }),
+      }),
+    );
+    expect(enabled.chatOutlineTextLabels).toBe(true);
+  });
+
   it("defaults sidebar navigation items to an empty preference list", async () => {
     const deps = makeDeps();
 

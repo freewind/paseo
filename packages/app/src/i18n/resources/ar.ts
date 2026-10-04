@@ -2217,6 +2217,10 @@ export const ar: TranslationResources = {
         title: "مخطط المحادثة",
         description: "عرض مخطط للتنقل بين المطالبات",
       },
+      chatOutlineTextLabels: {
+        title: "🌿 تسميات نصية",
+        description: "🌿 عرض كل مطالبة في المخطط كنص بدلاً من نقطة",
+      },
       workspaceRows: {
         title: "🌿 صفوف مساحات العمل",
         titleLines: {

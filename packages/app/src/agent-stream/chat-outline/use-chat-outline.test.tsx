@@ -9,6 +9,7 @@ import { useChatOutline } from "./use-chat-outline";
 const runtime = vi.hoisted(() => ({
   listAgentTimelinePrompts: vi.fn(),
   fetchAgentTimeline: vi.fn(),
+  clientFetchAgentTimeline: vi.fn(),
   subscribeAgentTimeline: vi.fn(() => {
     throw new Error("The outline must reuse the viewed timeline");
   }),
@@ -17,10 +18,26 @@ const runtime = vi.hoisted(() => ({
 vi.mock("@/constants/platform", () => ({ isWeb: true }));
 vi.mock("@/runtime/host-runtime", () => ({
   getHostRuntimeStore: () => ({
-    getClient: () => runtime,
+    getClient: () => ({
+      listAgentTimelinePrompts: runtime.listAgentTimelinePrompts,
+      fetchAgentTimeline: runtime.clientFetchAgentTimeline,
+    }),
     fetchAgentTimeline: runtime.fetchAgentTimeline,
   }),
 }));
+
+function promptPage(input: { epoch: string; seqStart: number; text: string }) {
+  return {
+    epoch: input.epoch,
+    entries: [
+      {
+        seqStart: input.seqStart,
+        seqEnd: input.seqStart,
+        item: { type: "user_message" as const, text: input.text },
+      },
+    ],
+  };
+}
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -34,6 +51,7 @@ describe("useChatOutline", () => {
   beforeEach(() => {
     runtime.listAgentTimelinePrompts.mockReset();
     runtime.fetchAgentTimeline.mockReset();
+    runtime.clientFetchAgentTimeline.mockReset();
     runtime.subscribeAgentTimeline.mockClear();
   });
 
@@ -400,5 +418,153 @@ describe("useChatOutline", () => {
     await waitFor(() => expect(result.current.prompts).toHaveLength(1));
     await act(async () => result.current.jumpToPrompt(2));
     expect(scrollToMessage).toHaveBeenCalledWith("live-prompt");
+  });
+
+  it("reads a loaded prompt's full text without asking the daemon", async () => {
+    runtime.listAgentTimelinePrompts.mockResolvedValue({
+      epoch: "epoch-1",
+      prompts: [{ seq: 1, timestamp: new Date(1).toISOString(), preview: "truncated preview" }],
+    });
+    const fullText = "A prompt long enough that the index preview had to cut it off.".repeat(6);
+    const tail = [
+      {
+        id: "loaded-prompt",
+        kind: "user_message" as const,
+        text: fullText,
+        timestamp: new Date(1),
+        timelineCursor: { epoch: "epoch-1", seq: 1 },
+      },
+    ];
+    const { result } = renderHook(() =>
+      useChatOutline({
+        agentId: "agent-1",
+        serverId: "server-1",
+        timelineEpoch: "epoch-1",
+        tail,
+        head: [],
+        enabled: true,
+        viewportRef: createRef<StreamViewportHandle>(),
+        onJumpError: vi.fn(),
+      }),
+    );
+
+    await waitFor(() => expect(result.current.prompts).toHaveLength(1));
+    let text: string | null = null;
+    await act(async () => {
+      text = await result.current.fetchPromptText(1);
+    });
+
+    expect(text).toBe(fullText);
+    expect(runtime.clientFetchAgentTimeline).not.toHaveBeenCalled();
+  });
+
+  it("reads an unloaded prompt's full text through a read-only client request", async () => {
+    runtime.listAgentTimelinePrompts.mockResolvedValue({
+      epoch: "epoch-1",
+      prompts: [{ seq: 40, timestamp: new Date(40).toISOString(), preview: "truncated" }],
+    });
+    const fullText = "The complete text of a prompt the index only previewed.";
+    runtime.clientFetchAgentTimeline.mockResolvedValue(
+      promptPage({ epoch: "epoch-1", seqStart: 40, text: fullText }),
+    );
+    const { result } = renderHook(() =>
+      useChatOutline({
+        agentId: "agent-1",
+        serverId: "server-1",
+        timelineEpoch: "epoch-1",
+        tail: [],
+        head: [],
+        enabled: true,
+        viewportRef: createRef<StreamViewportHandle>(),
+        onJumpError: vi.fn(),
+      }),
+    );
+
+    await waitFor(() => expect(result.current.prompts).toHaveLength(1));
+    let text: string | null = null;
+    await act(async () => {
+      text = await result.current.fetchPromptText(40);
+    });
+
+    expect(text).toBe(fullText);
+    // The host runtime's fetch applies the page to the viewed timeline, so a
+    // preview must never be routed through it.
+    expect(runtime.fetchAgentTimeline).not.toHaveBeenCalled();
+    expect(runtime.clientFetchAgentTimeline).toHaveBeenCalledWith("agent-1", {
+      direction: "after",
+      cursor: { epoch: "epoch-1", seq: 39 },
+      limit: 1,
+      projection: "projected",
+    });
+  });
+
+  it("drops a prompt text page that arrives from another epoch", async () => {
+    runtime.listAgentTimelinePrompts.mockResolvedValue({
+      epoch: "epoch-1",
+      prompts: [{ seq: 40, timestamp: new Date(40).toISOString(), preview: "truncated" }],
+    });
+    runtime.clientFetchAgentTimeline.mockResolvedValue(
+      promptPage({ epoch: "epoch-stale", seqStart: 40, text: "stale conversation" }),
+    );
+    const { result } = renderHook(() =>
+      useChatOutline({
+        agentId: "agent-1",
+        serverId: "server-1",
+        timelineEpoch: "epoch-1",
+        tail: [],
+        head: [],
+        enabled: true,
+        viewportRef: createRef<StreamViewportHandle>(),
+        onJumpError: vi.fn(),
+      }),
+    );
+
+    await waitFor(() => expect(result.current.prompts).toHaveLength(1));
+    let text: string | null = "unset";
+    await act(async () => {
+      text = await result.current.fetchPromptText(40);
+    });
+
+    expect(text).toBeNull();
+  });
+
+  it("returns no text and caches nothing when the request fails", async () => {
+    runtime.listAgentTimelinePrompts.mockResolvedValue({
+      epoch: "epoch-1",
+      prompts: [{ seq: 40, timestamp: new Date(40).toISOString(), preview: "truncated" }],
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    runtime.clientFetchAgentTimeline.mockRejectedValue(new Error("disconnected"));
+    const { result } = renderHook(() =>
+      useChatOutline({
+        agentId: "agent-1",
+        serverId: "server-1",
+        timelineEpoch: "epoch-1",
+        tail: [],
+        head: [],
+        enabled: true,
+        viewportRef: createRef<StreamViewportHandle>(),
+        onJumpError: vi.fn(),
+      }),
+    );
+
+    await waitFor(() => expect(result.current.prompts).toHaveLength(1));
+    let failed: string | null = "unset";
+    await act(async () => {
+      failed = await result.current.fetchPromptText(40);
+    });
+    expect(failed).toBeNull();
+
+    // A failed read must not be remembered as an empty prompt, or the preview
+    // would stay blank for the rest of the epoch.
+    runtime.clientFetchAgentTimeline.mockResolvedValue(
+      promptPage({ epoch: "epoch-1", seqStart: 40, text: "recovered" }),
+    );
+    let retried: string | null = null;
+    await act(async () => {
+      retried = await result.current.fetchPromptText(40);
+    });
+    expect(retried).toBe("recovered");
+    warn.mockRestore();
   });
 });

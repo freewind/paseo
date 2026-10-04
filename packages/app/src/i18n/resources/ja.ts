@@ -2236,6 +2236,10 @@ export const ja: TranslationResources = {
         title: "チャットのアウトライン",
         description: "プロンプト間を移動するためのアウトラインを表示します",
       },
+      chatOutlineTextLabels: {
+        title: "🌿 テキストラベル",
+        description: "🌿 アウトラインのプロンプトをドットではなくテキストで表示します",
+      },
       workspaceRows: {
         title: "🌿 ワークスペースの行",
         titleLines: {

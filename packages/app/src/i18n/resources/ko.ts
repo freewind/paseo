@@ -2228,6 +2228,10 @@ export const ko: TranslationResources = {
         title: "채팅 개요",
         description: "프롬프트 사이를 이동하기 위한 개요 표시",
       },
+      chatOutlineTextLabels: {
+        title: "🌿 텍스트 레이블",
+        description: "🌿 개요의 각 프롬프트를 점 대신 텍스트로 표시",
+      },
       workspaceRows: {
         title: "🌿 워크스페이스 행",
         titleLines: {
