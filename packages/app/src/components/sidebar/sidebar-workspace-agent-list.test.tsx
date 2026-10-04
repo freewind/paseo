@@ -6,16 +6,19 @@ import { createRoot, type Root } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { setStringAsyncMock, navigateToAgentMock, selectionRef } = vi.hoisted(() => ({
-  setStringAsyncMock: vi.fn(() => Promise.resolve()),
-  navigateToAgentMock: vi.fn(),
-  selectionRef: {
-    current: { serverId: "server-1", workspaceId: "workspace-a" } as {
-      serverId: string;
-      workspaceId: string;
+const { setStringAsyncMock, navigateToAgentMock, archiveAgentMock, updateAgentMock, selectionRef } =
+  vi.hoisted(() => ({
+    setStringAsyncMock: vi.fn(() => Promise.resolve()),
+    navigateToAgentMock: vi.fn(),
+    archiveAgentMock: vi.fn(() => Promise.resolve()),
+    updateAgentMock: vi.fn(() => Promise.resolve()),
+    selectionRef: {
+      current: { serverId: "server-1", workspaceId: "workspace-a" } as {
+        serverId: string;
+        workspaceId: string;
+      },
     },
-  },
-}));
+  }));
 
 vi.mock("expo-clipboard", () => ({ setStringAsync: setStringAsyncMock }));
 
@@ -40,8 +43,10 @@ vi.mock("@/runtime/host-runtime", () => ({
 }));
 
 vi.mock("@/hooks/use-archive-agent", () => ({
-  useArchiveAgent: () => ({ archiveAgent: vi.fn(() => Promise.resolve()) }),
+  useArchiveAgent: () => ({ archiveAgent: archiveAgentMock }),
 }));
+
+vi.mock("@/utils/client-id", () => ({ getOrCreateClientId: async () => "client-1" }));
 
 // `react-native-unistyles` and `lucide-react-native` are already aliased to the shared test
 // doubles in vitest.config.ts, so this file must not re-stub them.
@@ -92,6 +97,10 @@ vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
 
 import { SidebarWorkspaceAgentList } from "@/components/sidebar/sidebar-workspace-agent-list";
 import { useWorkspaceLayoutStore } from "@/stores/workspace-layout-store";
+import {
+  buildWorkspaceTabSnapshot,
+  deriveWorkspaceAgentVisibility,
+} from "@/workspace-tabs/agent-visibility";
 import { useSessionStore, type Agent } from "@/stores/session-store";
 import type { SidebarWorkspaceEntry } from "@/hooks/sidebar-workspaces-view-model";
 
@@ -124,8 +133,8 @@ function entry(): SidebarWorkspaceEntry {
   } as unknown as SidebarWorkspaceEntry;
 }
 
-function agent(agentId: string, title: string | null): Agent {
-  return { id: agentId, title } as unknown as Agent;
+function agent(agentId: string, title: string | null, extra: Partial<Agent> = {}): Agent {
+  return { id: agentId, title, ...extra } as unknown as Agent;
 }
 
 describe("SidebarWorkspaceAgentList", () => {
@@ -134,6 +143,9 @@ describe("SidebarWorkspaceAgentList", () => {
 
   beforeEach(() => {
     navigateToAgentMock.mockClear();
+    archiveAgentMock.mockClear();
+    updateAgentMock.mockClear();
+    updateAgentMock.mockImplementation(() => Promise.resolve());
     selectionRef.current = { serverId: "server-1", workspaceId: "workspace-a" };
     // The layout store is a module singleton, so tabs opened by an earlier test would otherwise
     // still be there for a test that opens none.
@@ -160,12 +172,13 @@ describe("SidebarWorkspaceAgentList", () => {
     });
   }
 
-  function seedAgents(ids: string[], titleFor: (id: string) => string | null = () => null) {
+  function seedAgents(agents: Agent[], options: { withClient?: boolean } = {}): void {
     act(() => {
       useSessionStore.setState({
         sessions: {
           "server-1": {
-            agents: new Map(ids.map((id) => [id, agent(id, titleFor(id))])),
+            agents: new Map(agents.map((seeded) => [seeded.id, seeded])),
+            client: options.withClient ? { updateAgent: updateAgentMock } : null,
           },
         } as never,
       });
@@ -193,7 +206,7 @@ describe("SidebarWorkspaceAgentList", () => {
 
   it("renders one row per agent tab, in tab order", () => {
     openAgentTabs(["agent-a", "agent-b"]);
-    seedAgents(["agent-a", "agent-b"]);
+    seedAgents([agent("agent-a", null), agent("agent-b", null)]);
     render();
 
     expect(agentRows()).toHaveLength(2);
@@ -202,7 +215,7 @@ describe("SidebarWorkspaceAgentList", () => {
 
   it("shows the agent's own title rather than its id", () => {
     openAgentTabs(["agent-a"]);
-    seedAgents(["agent-a"], () => "Rewrite the sidebar");
+    seedAgents([agent("agent-a", "Rewrite the sidebar")]);
     render();
 
     expect(agentRows().map((row) => row.textContent)).toEqual(["Rewrite the sidebar"]);
@@ -210,14 +223,14 @@ describe("SidebarWorkspaceAgentList", () => {
 
   it("falls back to the agent id when the title is the untitled placeholder", () => {
     openAgentTabs(["agent-a"]);
-    seedAgents(["agent-a"], () => "New agent");
+    seedAgents([agent("agent-a", "New agent")]);
     render();
 
     expect(agentRows().map((row) => row.textContent)).toEqual(["agent-a"]);
   });
 
   it("renders nothing when the workspace has no agent tabs", () => {
-    seedAgents(["agent-a"]);
+    seedAgents([agent("agent-a", null)]);
     render();
 
     expect(agentRows()).toHaveLength(0);
@@ -225,7 +238,7 @@ describe("SidebarWorkspaceAgentList", () => {
 
   it("selects only the focused tab of the active workspace", () => {
     openAgentTabs(["agent-a", "agent-b"]);
-    seedAgents(["agent-a", "agent-b"]);
+    seedAgents([agent("agent-a", null), agent("agent-b", null)]);
     render();
 
     const selected = agentRows().filter((row) => row.getAttribute("aria-selected") === "true");
@@ -235,7 +248,7 @@ describe("SidebarWorkspaceAgentList", () => {
 
   it("selects no row when another workspace is the active one", () => {
     openAgentTabs(["agent-a"]);
-    seedAgents(["agent-a"]);
+    seedAgents([agent("agent-a", null)]);
     render();
     selectionRef.current = { serverId: "server-2", workspaceId: "workspace-zzz" };
     render();
@@ -246,7 +259,7 @@ describe("SidebarWorkspaceAgentList", () => {
 
   it("navigates to the agent when its row is pressed", () => {
     openAgentTabs(["agent-a"]);
-    seedAgents(["agent-a"]);
+    seedAgents([agent("agent-a", null)]);
     render();
 
     const row = agentRows()[0];
@@ -260,5 +273,142 @@ describe("SidebarWorkspaceAgentList", () => {
       agentId: "agent-a",
       workspaceId: "workspace-a",
     });
+  });
+
+  function hideButton(): HTMLElement {
+    const button = container!.querySelector<HTMLElement>('[data-testid$="-hide-agent"]');
+    if (!button) throw new Error("Hide agent entry missing");
+    return button;
+  }
+
+  async function hideFirstAgent(): Promise<void> {
+    const button = hideButton();
+    await act(async () => {
+      button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+  }
+
+  function reconcile(workspaceId: string, workspaceKey: string): void {
+    act(() => {
+      useWorkspaceLayoutStore.getState().reconcileTabs(
+        workspaceKey,
+        buildWorkspaceTabSnapshot({
+          agentVisibility: deriveWorkspaceAgentVisibility({
+            sessionAgents: useSessionStore.getState().sessions["server-1"]?.agents,
+            workspaceId,
+          }),
+          agentsHydrated: true,
+          terminalsHydrated: true,
+          knownTerminalIds: [],
+          standaloneTerminalIds: [],
+          hasActivePendingTerminalCreate: false,
+          hasActivePendingDraftCreate: false,
+        }),
+      );
+    });
+  }
+
+  it("hides a running agent tab without archiving or closing the agent", async () => {
+    openAgentTabs(["agent-a"]);
+    seedAgents([
+      agent("agent-a", "Running agent", { status: "running", workspaceId: "workspace-a" }),
+    ]);
+    render();
+
+    await hideFirstAgent();
+
+    expect(agentRows()).toHaveLength(0);
+    expect(archiveAgentMock).not.toHaveBeenCalled();
+    // A root agent is only unlisted, not stopped: no lifecycle RPC is sent at all.
+    expect(updateAgentMock).not.toHaveBeenCalled();
+    expect(useSessionStore.getState().sessions["server-1"]?.agents.get("agent-a")?.status).toBe(
+      "running",
+    );
+
+    // Reconciliation must not put the tab back while the agent is still active.
+    reconcile("workspace-a", WORKSPACE_KEY);
+    expect(agentRows()).toHaveLength(0);
+  });
+
+  it("hides a subagent tab, releasing this client's open-tab label and reopening from the parent's track", async () => {
+    openAgentTabs(["agent-a"]);
+    seedAgents(
+      [
+        agent("agent-a", null, {
+          parentAgentId: "parent-1",
+          status: "running",
+          workspaceId: "workspace-a",
+        }),
+      ],
+      { withClient: true },
+    );
+    render();
+
+    await hideFirstAgent();
+
+    expect(agentRows()).toHaveLength(0);
+    expect(updateAgentMock).toHaveBeenCalledWith("agent-a", {
+      labels: { "paseo.open-agent-tab.client-1": "false" },
+    });
+    expect(archiveAgentMock).not.toHaveBeenCalled();
+
+    // The child stays unarchived and still parented, so the parent's track can bring it back.
+    const stored = useSessionStore.getState().sessions["server-1"]?.agents.get("agent-a");
+    expect(stored?.parentAgentId).toBe("parent-1");
+    expect(stored?.archivedAt ?? null).toBeNull();
+
+    act(() => {
+      useWorkspaceLayoutStore.getState().openTab({
+        workspaceKey: WORKSPACE_KEY,
+        target: { kind: "agent", agentId: "agent-a" },
+        intent: "reveal",
+      });
+    });
+    reconcile("workspace-a", WORKSPACE_KEY);
+    render();
+
+    expect(agentRows().map((row) => row.textContent)).toEqual(["agent-a"]);
+  });
+
+  it("keeps a subagent tab when the open-tab label cannot be released", async () => {
+    updateAgentMock.mockImplementation(() => Promise.reject(new Error("daemon unreachable")));
+    openAgentTabs(["agent-a"]);
+    seedAgents(
+      [agent("agent-a", null, { parentAgentId: "parent-1", workspaceId: "workspace-a" })],
+      { withClient: true },
+    );
+    render();
+
+    await hideFirstAgent();
+
+    expect(agentRows()).toHaveLength(1);
+    expect(archiveAgentMock).not.toHaveBeenCalled();
+  });
+
+  it("does not hide the same agent in another workspace", async () => {
+    const otherKey = "server-1:workspace-b";
+    openAgentTabs(["agent-a"]);
+    act(() => {
+      useWorkspaceLayoutStore.getState().openTab({
+        workspaceKey: otherKey,
+        target: { kind: "agent", agentId: "agent-a" },
+        intent: "reveal",
+      });
+    });
+    seedAgents([agent("agent-a", null, { workspaceId: "workspace-a" })]);
+    render();
+
+    await hideFirstAgent();
+
+    expect(agentRows()).toHaveLength(0);
+    expect(
+      useWorkspaceLayoutStore
+        .getState()
+        .getWorkspaceTabs(otherKey)
+        .some((tab) => tab.target.kind === "agent" && tab.target.agentId === "agent-a"),
+    ).toBe(true);
+    expect(
+      Array.from(useWorkspaceLayoutStore.getState().hiddenAgentIdsByWorkspace[otherKey] ?? []),
+    ).toEqual([]);
   });
 });

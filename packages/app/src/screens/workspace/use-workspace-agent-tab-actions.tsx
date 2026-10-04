@@ -33,6 +33,98 @@ const NO_TERMINALS_QUERY_KEY: readonly unknown[] = ["workspace-agent-tab-rename"
 
 type BulkCloseTitleKey = "closeTabsLeftTitle" | "closeTabsRightTitle" | "closeOtherTabsTitle";
 
+export interface HideWorkspaceAgentTabActions {
+  onHideTab: (tabId: string) => Promise<void>;
+}
+
+function readAgentIdForTab(workspaceKey: string, tabId: string): string | null {
+  const tab = useWorkspaceLayoutStore
+    .getState()
+    .getWorkspaceTabs(workspaceKey)
+    .find((candidate) => candidate.tabId === tabId);
+  return tab?.target.kind === "agent" ? tab.target.agentId : null;
+}
+
+/**
+ * Hide an agent tab without ending the agent.
+ *
+ * The agent keeps running, stays unarchived, and a subagent stays listed in its parent's track so
+ * the user can reopen it from there. Only this client stops showing the tab, which is why the tab is
+ * hidden rather than merely closed: reconciliation would otherwise add a root agent back.
+ *
+ * A subagent's open-tab label is this client's claim that it is still open, so it is released
+ * before the tab disappears. When that write fails the tab stays: leaving it visible keeps the label
+ * truthful, and a later parent archive must not treat a hidden-but-open child as closed. Nothing
+ * here archives, stops, or reloads the agent, whatever its parent relationship is at the time.
+ */
+export function useHideWorkspaceAgentTab({
+  serverId,
+  workspaceId,
+}: {
+  serverId: string;
+  workspaceId: string;
+}): HideWorkspaceAgentTabActions {
+  const { t } = useTranslation();
+  const toast = useToast();
+  const { closeTab } = useCloseTabs();
+  const client = useSessionStore((state) => state.sessions[serverId]?.client ?? null);
+  const closeWorkspaceTab = useWorkspaceLayoutStore((state) => state.closeTab);
+  const unpinWorkspaceAgent = useWorkspaceLayoutStore((state) => state.unpinAgent);
+  const hideWorkspaceAgent = useWorkspaceLayoutStore((state) => state.hideAgent);
+
+  const workspaceKey = useMemo(
+    () => buildWorkspaceTabPersistenceKey({ serverId, workspaceId }),
+    [serverId, workspaceId],
+  );
+
+  const onHideTab = useCallback(
+    async (tabId: string) => {
+      if (!workspaceKey) return;
+      const agentId = readAgentIdForTab(workspaceKey, tabId);
+      if (!agentId) return;
+      await closeTab(tabId, async () => {
+        const session = useSessionStore.getState().sessions[serverId];
+        const agent = session?.agents.get(agentId) ?? session?.agentDetails.get(agentId) ?? null;
+        if (agent?.parentAgentId) {
+          if (!client) {
+            toast.error(t("common.errors.daemonClientUnavailable"));
+            return;
+          }
+          try {
+            const clientId = await getOrCreateClientId();
+            await client.updateAgent(agentId, {
+              labels: { [getOpenAgentTabLabel(clientId)]: "false" },
+            });
+          } catch (error) {
+            console.error("[HideAgentTab] Failed to release hidden subagent tab", {
+              error,
+              agentId,
+            });
+            toast.error(t("workspace.tabs.toasts.failedToHideAgent"));
+            return;
+          }
+        }
+        unpinWorkspaceAgent(workspaceKey, agentId);
+        hideWorkspaceAgent(workspaceKey, agentId);
+        closeWorkspaceTab(workspaceKey, tabId);
+      });
+    },
+    [
+      client,
+      closeTab,
+      closeWorkspaceTab,
+      hideWorkspaceAgent,
+      serverId,
+      t,
+      toast,
+      unpinWorkspaceAgent,
+      workspaceKey,
+    ],
+  );
+
+  return { onHideTab };
+}
+
 export interface UseWorkspaceAgentTabActionsInput {
   serverId: string;
   workspaceId: string;
@@ -54,6 +146,7 @@ export interface WorkspaceAgentTabActions {
   onCloseTabsBefore: (tabId: string) => Promise<void>;
   onCloseTabsAfter: (tabId: string) => Promise<void>;
   onCloseOtherTabs: (tabId: string) => Promise<void>;
+  onHideTab: (tabId: string) => Promise<void>;
   /** Rendered once by the list that owns this hook, so the modal is not repeated per row. */
   renameModal: ReactElement | null;
 }
@@ -86,6 +179,8 @@ export function useWorkspaceAgentTabActions({
     () => buildWorkspaceTabPersistenceKey({ serverId, workspaceId }),
     [serverId, workspaceId],
   );
+
+  const hideAgentTab = useHideWorkspaceAgentTab({ serverId, workspaceId });
 
   const { renamingTab, handleRenameTab, handleRenameModalSubmit, handleRenameModalClose } =
     useWorkspaceTabRename({
@@ -413,6 +508,7 @@ export function useWorkspaceAgentTabActions({
     onCloseTabsBefore,
     onCloseTabsAfter,
     onCloseOtherTabs,
+    onHideTab: hideAgentTab.onHideTab,
     renameModal,
   };
 }

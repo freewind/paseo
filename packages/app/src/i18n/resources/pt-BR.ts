@@ -645,6 +645,7 @@ export const ptBR: TranslationResources = {
         moveToMain: "Mover para o painel principal",
         reloadAgent: "Recarregar agente",
         reloadAgentTooltip: "Recarregue o agente para atualizar skills, MCPs ou status de login.",
+        hideAgent: "Ocultar este agente",
         close: "Fechar",
         renameTerminal: "Renomear terminal",
         renameAgent: "Renomear agente",
@@ -687,6 +688,7 @@ export const ptBR: TranslationResources = {
         reloadedAgent: "Agente recarregado",
         failedToReloadAgent: "Falha ao recarregar agente",
         failedToCloseAgent: "Falha ao fechar agente",
+        failedToHideAgent: "Falha ao ocultar agente",
       },
       confirmations: {
         unsavedTitle: "Alterações não salvas",

@@ -647,6 +647,7 @@ export const fr: TranslationResources = {
         reloadAgent: "Agent de rechargement",
         reloadAgentTooltip:
           "Rechargez l'agent pour mettre à jour les compétences, les MCP ou le statut de connexion.",
+        hideAgent: "Masquer cet agent",
         close: "Fermer",
         renameTerminal: "Renommer le terminal",
         renameAgent: "Renommer l'agent",
@@ -689,6 +690,7 @@ export const fr: TranslationResources = {
         reloadedAgent: "Agent rechargé",
         failedToReloadAgent: "Échec du rechargement de l'agent",
         failedToCloseAgent: "Échec de la fermeture de l'agent",
+        failedToHideAgent: "Échec du masquage de l'agent",
       },
       confirmations: {
         unsavedTitle: "Modifications non enregistrées",

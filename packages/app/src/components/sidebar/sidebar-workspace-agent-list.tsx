@@ -87,6 +87,7 @@ export const SidebarWorkspaceAgentList = memo(function SidebarWorkspaceAgentList
         onCloseTabsBefore: actions.onCloseTabsBefore,
         onCloseTabsAfter: actions.onCloseTabsAfter,
         onCloseOtherTabs: actions.onCloseOtherTabs,
+        onHideTab: actions.onHideTab,
       }),
     [actions, descriptors.length],
   );
