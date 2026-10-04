@@ -97,14 +97,19 @@ vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
 
 import { SidebarWorkspaceAgentList } from "@/components/sidebar/sidebar-workspace-agent-list";
 import { useWorkspaceLayoutStore } from "@/stores/workspace-layout-store";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { loadAppSettingsFromStorage } from "@/hooks/use-settings";
-import { APP_SETTINGS_KEY, APP_SETTINGS_QUERY_KEY } from "@/hooks/use-settings/storage";
+import { createFakeDesktopBridge, createInMemoryKeyValueStorage } from "@/hooks/use-settings/fakes";
+import {
+  APP_SETTINGS_KEY,
+  APP_SETTINGS_QUERY_KEY,
+  loadAppSettingsFromStorage,
+} from "@/hooks/use-settings/storage";
 import {
   buildWorkspaceTabSnapshot,
   deriveWorkspaceAgentVisibility,
 } from "@/workspace-tabs/agent-visibility";
 import { useSessionStore, type Agent } from "@/stores/session-store";
+import type { MessageSubmissionRecord } from "@/composer/submission/model";
+import { TURN_LIVENESS_IDLE } from "@/timeline/turn-liveness";
 import type { SidebarWorkspaceEntry } from "@/hooks/sidebar-workspaces-view-model";
 
 const WORKSPACE_KEY = "server-1:workspace-a";
@@ -137,14 +142,21 @@ function entry(): SidebarWorkspaceEntry {
 }
 
 function agent(agentId: string, title: string | null, extra: Partial<Agent> = {}): Agent {
-  return { id: agentId, title, ...extra } as unknown as Agent;
+  return {
+    id: agentId,
+    title,
+    status: "idle",
+    pendingPermissions: [],
+    turn: TURN_LIVENESS_IDLE,
+    ...extra,
+  } as unknown as Agent;
 }
 
 describe("SidebarWorkspaceAgentList", () => {
   let root: Root | null = null;
   let container: HTMLElement | null = null;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     navigateToAgentMock.mockClear();
     archiveAgentMock.mockClear();
     updateAgentMock.mockClear();
@@ -153,9 +165,6 @@ describe("SidebarWorkspaceAgentList", () => {
     // The layout store is a module singleton, so tabs opened by an earlier test would otherwise
     // still be there for a test that opens none.
     useWorkspaceLayoutStore.setState({ layoutByWorkspace: {} });
-    // The persisted app settings drive the "Title lines" switch, so a test that seeds it must not
-    // leak that value into the next test.
-    await AsyncStorage.clear();
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -178,12 +187,20 @@ describe("SidebarWorkspaceAgentList", () => {
     });
   }
 
-  function seedAgents(agents: Agent[], options: { withClient?: boolean } = {}): void {
+  function seedAgents(
+    agents: Agent[],
+    options: {
+      withClient?: boolean;
+      messageSubmissions?: Map<string, MessageSubmissionRecord[]>;
+    } = {},
+  ): void {
     act(() => {
       useSessionStore.setState({
         sessions: {
           "server-1": {
             agents: new Map(agents.map((seeded) => [seeded.id, seeded])),
+            agentDetails: new Map(),
+            messageSubmissions: options.messageSubmissions ?? new Map(),
             client: options.withClient ? { updateAgent: updateAgentMock } : null,
           },
         } as never,
@@ -217,13 +234,17 @@ describe("SidebarWorkspaceAgentList", () => {
   }
 
   // `useAppSettings` resolves the persisted blob through react-query, so a plain first paint lands
-  // before the switch arrives. Prefetching under the same key means the component reads a settled
-  // cache instead of racing the query.
-  async function renderWithSettings() {
+  // before the switch arrives. Reading the seeded blob into that same query key up front means the
+  // component renders against a settled cache instead of racing the query.
+  async function renderWithStoredSettings(stored: Record<string, unknown> = {}) {
     const client = new QueryClient();
     await client.prefetchQuery({
       queryKey: APP_SETTINGS_QUERY_KEY,
-      queryFn: () => loadAppSettingsFromStorage(),
+      queryFn: () =>
+        loadAppSettingsFromStorage({
+          storage: createInMemoryKeyValueStorage({ [APP_SETTINGS_KEY]: JSON.stringify(stored) }),
+          desktop: createFakeDesktopBridge(),
+        }),
     });
     act(() => {
       root?.render(
@@ -234,13 +255,6 @@ describe("SidebarWorkspaceAgentList", () => {
     });
   }
 
-  async function seedMultilineTitleSetting(enabled: boolean) {
-    await AsyncStorage.setItem(
-      APP_SETTINGS_KEY,
-      JSON.stringify({ workspaceTitleMultiline: enabled }),
-    );
-  }
-
   it("renders one row per agent tab, in tab order", () => {
     openAgentTabs(["agent-a", "agent-b"]);
     seedAgents([agent("agent-a", null), agent("agent-b", null)]);
@@ -248,6 +262,88 @@ describe("SidebarWorkspaceAgentList", () => {
 
     expect(agentRows()).toHaveLength(2);
     expect(agentRows().map((row) => row.textContent)).toEqual(["agent-a", "agent-b"]);
+  });
+
+  function rowStatus(index: number): string | null {
+    const slot = agentRows()[index]?.querySelector<HTMLElement>(
+      '[data-testid^="sidebar-workspace-agent-status-"]',
+    );
+    // The tab id carries hyphens, the bucket never does, so the bucket is the trailing segment.
+    const testID = slot?.dataset.testid;
+    return testID ? testID.slice(testID.lastIndexOf("-") + 1) : null;
+  }
+
+  it("shows an open turn as running, even when the lifecycle status has not caught up", () => {
+    openAgentTabs(["agent-a"]);
+    seedAgents([
+      agent("agent-a", null, {
+        status: "idle",
+        turn: {
+          phase: "open",
+          turnId: "turn-1",
+          startedAt: new Date(),
+          cancellationRequestId: null,
+        },
+      }),
+    ]);
+    render();
+
+    expect(rowStatus(0)).toBe("running");
+  });
+
+  it("shows an unacknowledged message submission as running before the turn opens", () => {
+    openAgentTabs(["agent-a"]);
+    seedAgents([agent("agent-a", null)], {
+      messageSubmissions: new Map([
+        ["agent-a", [{ clientMessageId: "m1", providerAcknowledged: false, rpcSettled: false }]],
+      ]),
+    });
+    render();
+
+    expect(rowStatus(0)).toBe("running");
+  });
+
+  it("shows a pending permission as needing input", () => {
+    openAgentTabs(["agent-a"]);
+    seedAgents([
+      agent("agent-a", null, {
+        status: "running",
+        pendingPermissions: [
+          { id: "perm-1", provider: "codex", name: "shell", input: {}, requestedAt: new Date() },
+        ] as unknown as Agent["pendingPermissions"],
+      }),
+    ]);
+    render();
+
+    expect(rowStatus(0)).toBe("needs_input");
+  });
+
+  it("shows an agent waiting on the user as attention and an idle one as done", () => {
+    openAgentTabs(["agent-a", "agent-b"]);
+    seedAgents([
+      agent("agent-a", null, { requiresAttention: true, attentionReason: "finished" }),
+      agent("agent-b", null),
+    ]);
+    render();
+
+    expect(rowStatus(0)).toBe("attention");
+    expect(rowStatus(1)).toBe("done");
+  });
+
+  it("shows a failed agent as failed", () => {
+    openAgentTabs(["agent-a"]);
+    seedAgents([agent("agent-a", null, { status: "error" })]);
+    render();
+
+    expect(rowStatus(0)).toBe("failed");
+  });
+
+  it("reserves the leading slot for a tab whose agent the session has not hydrated", () => {
+    openAgentTabs(["agent-a"]);
+    seedAgents([]);
+    render();
+
+    expect(rowStatus(0)).toBe("unknown");
   });
 
   it("shows the agent's own title rather than its id", () => {
@@ -286,10 +382,9 @@ describe("SidebarWorkspaceAgentList", () => {
   });
 
   it("lets the agent title wrap when the workspace title lines setting is on", async () => {
-    await seedMultilineTitleSetting(true);
     openAgentTabs(["agent-a"]);
     seedAgents([agent("agent-a", "Rewrite the sidebar")]);
-    await renderWithSettings();
+    await renderWithStoredSettings({ workspaceTitleMultiline: true });
 
     const [title] = agentTitles();
     expect(getComputedStyle(title).whiteSpace).not.toBe("nowrap");

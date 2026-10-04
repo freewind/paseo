@@ -66,6 +66,15 @@ if (typeof globalThis.cancelAnimationFrame !== "function") {
   };
 }
 
+// JSDOM implements no Web Animations API, so a component that drives a CSS animation through
+// element.animate() throws on mount and takes the rest of that render down with it. The stub
+// keeps the animation inert: the properties the callers touch are all they get back.
+if (typeof Element !== "undefined" && typeof Element.prototype.animate !== "function") {
+  Element.prototype.animate = function animate() {
+    return { startTime: 0, cancel() {} };
+  };
+}
+
 // The unistyles test double lives in test-stubs/react-native-unistyles.ts and
 // reaches every vitest project through the resolve.alias in vitest.config.ts —
 // no vi.mock here, so there is a single copy of the fixture theme.

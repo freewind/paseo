@@ -5,9 +5,13 @@ import { StyleSheet } from "react-native-unistyles";
 import { navigateToAgent } from "@/utils/navigate-to-agent";
 import { useActiveWorkspaceSelection } from "@/stores/navigation-active-workspace-store";
 import { useAppSettings } from "@/hooks/use-settings";
-import { useSessionStore } from "@/stores/session-store";
+import { useShallow } from "zustand/shallow";
+import { useSessionStore, selectAgentTurnPresentation } from "@/stores/session-store";
+import type { Agent, SessionState } from "@/stores/session-store";
 import { useWorkspaceLayoutStore } from "@/stores/workspace-layout-store";
 import { findFocusedWorkspaceTabId } from "@/components/sidebar/sidebar-workspace-agent-rows";
+import { SidebarStatusSlot } from "@/components/sidebar/sidebar-status-slot";
+import { deriveSidebarStateBucket, type SidebarStateBucket } from "@/utils/sidebar-agent-state";
 import { useWorkspaceAgentTabActions } from "@/screens/workspace/use-workspace-agent-tab-actions";
 import { MobileTabTrailingAccessory } from "@/screens/workspace/workspace-tab-trailing-accessory";
 import {
@@ -23,6 +27,8 @@ import {
 
 const noopAsync = () => Promise.resolve();
 
+const EMPTY_AGENT_STATUS_BUCKETS: ReadonlyMap<string, SidebarStateBucket> = new Map();
+
 export interface SidebarWorkspaceAgentListProps {
   workspace: SidebarWorkspaceEntry;
 }
@@ -31,6 +37,8 @@ interface SidebarWorkspaceAgentRowItemProps {
   row: SidebarWorkspaceAgentRow;
   isActive: boolean;
   label: string;
+  /** The agent's own state, read exactly as the tab strip's icon reads it. */
+  statusBucket: SidebarStateBucket | null;
   menuEntries: WorkspaceTabMenuEntry[];
   /** The "Title lines" setting: when on, a long agent title wraps instead of ending in an ellipsis. */
   multilineTitle: boolean;
@@ -58,6 +66,7 @@ export const SidebarWorkspaceAgentList = memo(function SidebarWorkspaceAgentList
   const focusedTabId = useFocusedWorkspaceTabId(workspaceKey);
   const isWorkspaceActive = useActiveWorkspaceKey(serverId, workspaceId);
   const titles = useSessionStore((state) => state.sessions[serverId]?.agents ?? null);
+  const statusBuckets = useSidebarWorkspaceAgentStatusBuckets(serverId);
   // The same "Title lines" setting that lets a workspace title wrap governs the agent rows nested
   // under it, so a long agent title stops ending in a lone ellipsis under the ⋯ menu.
   const {
@@ -117,6 +126,7 @@ export const SidebarWorkspaceAgentList = memo(function SidebarWorkspaceAgentList
           row={row}
           isActive={isWorkspaceActive && focusedTabId === row.tabId}
           label={agentTabLabel(titles?.get(row.agentId)?.title, row.agentId)}
+          statusBucket={statusBuckets.get(row.agentId) ?? null}
           menuEntries={menuEntriesFor(descriptors[index], index)}
           multilineTitle={workspaceTitleMultiline}
           onPress={openAgent(row.agentId)}
@@ -131,6 +141,7 @@ const SidebarWorkspaceAgentRowItem = memo(function SidebarWorkspaceAgentRowItem(
   row,
   isActive,
   label,
+  statusBucket,
   menuEntries,
   multilineTitle,
   onPress,
@@ -147,7 +158,7 @@ const SidebarWorkspaceAgentRowItem = memo(function SidebarWorkspaceAgentRowItem(
       testID={`sidebar-workspace-agent-${row.tabId}`}
       onPointerEnter={handlePointerEnter}
       onPointerLeave={handlePointerLeave}
-      style={[styles.row, (isHovered || isActive) && styles.rowActive]}
+      style={[styles.row, isHovered && styles.rowHovered, isActive && styles.rowActive]}
     >
       <Pressable
         testID={`sidebar-workspace-agent-open-${row.tabId}`}
@@ -158,6 +169,10 @@ const SidebarWorkspaceAgentRowItem = memo(function SidebarWorkspaceAgentRowItem(
         onPress={onPress}
         style={styles.openTarget}
       >
+        <SidebarStatusSlot
+          bucket={statusBucket}
+          testID={`sidebar-workspace-agent-status-${row.tabId}`}
+        />
         <Text
           numberOfLines={multilineTitle ? undefined : 1}
           style={[styles.label, isActive && styles.labelActive]}
@@ -175,6 +190,43 @@ const SidebarWorkspaceAgentRowItem = memo(function SidebarWorkspaceAgentRowItem(
   );
 });
 
+/**
+ * Each agent's own state, keyed by agent id.
+ *
+ * Read from the same fields the tab strip's icon reads, so a row and the tab it stands for never
+ * disagree about whether that agent is working or waiting on the user. The selector is shallow
+ * because the map is rebuilt whenever an agent changes; returning a fresh object every call would
+ * re-render the whole list on every store tick.
+ */
+function useSidebarWorkspaceAgentStatusBuckets(
+  serverId: string,
+): ReadonlyMap<string, SidebarStateBucket> {
+  return useSessionStore(
+    useShallow((state) => {
+      const session = state.sessions[serverId];
+      if (!session) return EMPTY_AGENT_STATUS_BUCKETS;
+      const next = new Map<string, SidebarStateBucket>();
+      for (const agent of session.agents.values()) {
+        next.set(agent.id, deriveAgentStatusBucket(session, agent));
+      }
+      return next;
+    }),
+  );
+}
+
+function deriveAgentStatusBucket(session: SessionState, agent: Agent): SidebarStateBucket {
+  // An open turn is what "working" means here: the daemon can leave `status` at running after the
+  // turn is over, and the tab strip already prefers the turn's liveness over the raw status for
+  // exactly that reason.
+  const isTurnActive = selectAgentTurnPresentation(session, agent.id).isActive;
+  return deriveSidebarStateBucket({
+    status: isTurnActive ? "running" : agent.status,
+    pendingPermissionCount: agent.pendingPermissions.length,
+    requiresAttention: agent.requiresAttention ?? false,
+    attentionReason: agent.attentionReason ?? null,
+  });
+}
+
 function useSidebarWorkspaceAgentRows(workspaceKey: string): SidebarWorkspaceAgentRow[] {
   const layout = useWorkspaceLayoutStore((state) => state.layoutByWorkspace[workspaceKey] ?? null);
   return useMemo(() => buildSidebarWorkspaceAgentRows(layout), [layout]);
@@ -191,23 +243,43 @@ function useActiveWorkspaceKey(serverId: string, workspaceId: string): boolean {
 }
 
 const styles = StyleSheet.create((theme) => ({
+  // Pulled in on the left only. A row's own padding lives inside its background box, so without
+  // this the agent row's selection surface would start at the same x as the workspace row's above
+  // it and the two would read as one block. The right edge is left flush with the workspace row
+  // so the ⋯ menu column stays a single vertical rail down the sidebar.
   list: {
-    marginLeft: 28,
+    marginLeft: theme.spacing[1],
     paddingVertical: theme.spacing[1],
   },
+  // One step deeper than the workspace row's own padding, so an agent reads as belonging to the
+  // workspace above it rather than as a workspace in its own right. The whole step goes to the
+  // left of the status slot, keeping the dot and the title on the same pair of rails.
   row: {
     flexDirection: "row",
     alignItems: "center",
     gap: theme.spacing[1],
     paddingVertical: theme.spacing[1],
     paddingRight: theme.spacing[1],
-    paddingLeft: theme.spacing[2],
+    paddingLeft: theme.spacing[4],
+    // The workspace row above rounds its own background, so an agent row that kept square
+    // corners read as a different kind of thing rather than as a child of that row.
+    borderRadius: theme.borderRadius.lg,
   },
-  rowActive: {
+  rowHovered: {
     backgroundColor: theme.colors.surfaceSidebarHover,
   },
+  // The same surface the workspace row's own selection uses, one step above hover. An accent
+  // tint would read as state, and running is the state this row's ring already claims.
+  rowActive: {
+    backgroundColor: theme.colors.surfaceSidebarSelected,
+  },
+  // Row layout, not column: the slot shares the workspace row's gap, so an agent title starts
+  // directly under the workspace title above it.
   openTarget: {
     flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing[2],
   },
   label: {
     flex: 1,
