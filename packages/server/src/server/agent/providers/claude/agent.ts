@@ -1571,6 +1571,23 @@ export class ClaudeAgentClient implements AgentClient {
     });
   }
 
+  async forkSession(
+    handle: AgentPersistenceHandle,
+    input: { upToMessageId: string },
+  ): Promise<AgentPersistenceHandle> {
+    if (!handle.sessionId) {
+      throw new Error("Cannot fork: persistence handle has no sessionId");
+    }
+    const fork = await this.rewindSdk.forkSession(handle.sessionId, {
+      upToMessageId: input.upToMessageId,
+    });
+    return {
+      ...handle,
+      sessionId: fork.sessionId,
+      nativeHandle: fork.sessionId,
+    };
+  }
+
   async getCatalogCacheKey(_options: FetchCatalogOptions): Promise<string> {
     // This client discovers through host configuration, independent of project cwd.
     return "host";

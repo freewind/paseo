@@ -3196,6 +3196,90 @@ export class AgentManager {
     }
   }
 
+  /**
+   * Forks the source agent into a brand new agent id, carrying the full provider
+   * history up to `boundary`. The source agent, its session, and its timeline are
+   * never touched: the provider forks a copy of its persisted session, and the
+   * new agent resumes that copy, so its timeline replays the provider history
+   * rather than a summary.
+   */
+  async forkAgent(input: {
+    sourceAgentId: string;
+    boundaryMessageId?: string;
+    boundaryCursor?: { epoch: string; seq: number } | null;
+  }): Promise<ManagedAgent> {
+    const source = this.requireSessionAgent(input.sourceAgentId);
+    const boundaryMessageId = input.boundaryMessageId?.trim() || null;
+    if (!boundaryMessageId) {
+      throw new Error("Agent fork requires a boundary message id");
+    }
+    // Same target resolution as rewind: a locally submitted prompt matches only
+    // after the provider acknowledged it, while replayed history carries the
+    // provider's own id directly.
+    const submittedRow = this.timelineStore
+      .getRows(input.sourceAgentId)
+      .find(
+        (row) =>
+          row.item.type === "user_message" &&
+          row.item.messageId === boundaryMessageId &&
+          row.item.clientMessageId === boundaryMessageId,
+      );
+    if (submittedRow && !submittedRow.providerMessageId) {
+      throw new Error("Cannot fork before the provider acknowledges the submitted prompt");
+    }
+    const providerMessageId = submittedRow?.providerMessageId ?? boundaryMessageId;
+
+    const handle = source.session.describePersistence();
+    if (!handle) {
+      throw new Error(`Provider '${source.provider}' has no persisted session to fork`);
+    }
+    const client = this.requireClient(source.provider);
+    if (!client.forkSession) {
+      throw new Error(`Provider '${source.provider}' does not support forking a session`);
+    }
+    if (input.boundaryCursor) {
+      const epoch = this.timelineStore.getEpoch(input.sourceAgentId);
+      if (input.boundaryCursor.epoch !== epoch) {
+        throw new Error("Selected timeline position is no longer available.");
+      }
+    }
+
+    this.logger.info(
+      {
+        sourceAgentId: input.sourceAgentId,
+        provider: source.provider,
+        providerMessageId,
+      },
+      "agent.fork.start",
+    );
+    const forkedHandle = await client.forkSession(handle, { upToMessageId: providerMessageId });
+    const overrides: Partial<AgentSessionConfig> = {
+      provider: source.provider,
+      cwd: source.cwd,
+    };
+    if (source.config.modeId) overrides.modeId = source.config.modeId;
+    if (source.config.model) overrides.model = source.config.model;
+    if (source.config.thinkingOptionId) {
+      overrides.thinkingOptionId = source.config.thinkingOptionId;
+    }
+    if (source.config.featureValues) overrides.featureValues = source.config.featureValues;
+    if (source.config.providerOptions) overrides.providerOptions = source.config.providerOptions;
+    if (source.config.toolPolicy) overrides.toolPolicy = source.config.toolPolicy;
+    if (source.config.systemPrompt) overrides.systemPrompt = source.config.systemPrompt;
+    if (source.config.mcpServers) overrides.mcpServers = source.config.mcpServers;
+    const fork = await this.resumeAgentFromPersistence(forkedHandle, overrides, undefined, {
+      labels: source.labels,
+      workspaceId: source.workspaceId,
+      owner: source.owner,
+    });
+    await this.hydrateTimelineFromProvider(fork.id, { force: true, broadcast: true });
+    this.logger.info(
+      { sourceAgentId: input.sourceAgentId, newAgentId: fork.id, provider: source.provider },
+      "agent.fork.complete",
+    );
+    return fork;
+  }
+
   async deleteAgentState(agentId: string): Promise<void> {
     this.discardRetainedAgentState(agentId);
     await this.deleteCommittedTimeline(agentId);

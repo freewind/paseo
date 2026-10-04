@@ -788,6 +788,17 @@ export interface AgentClient {
    * Returns true if available, false otherwise.
    */
   isAvailable(signal?: AbortSignal, options?: FetchCatalogOptions): Promise<boolean>;
+  /**
+   * Create an independent copy of a persisted session, sliced at a boundary, without
+   * touching the source session. The returned handle is resumable like any other:
+   * `resumeAgentFromPersistence` on it yields an agent carrying the full history.
+   * Providers that cannot fork offline must omit this; callers surface the absence
+   * instead of falling back to a lossy summary.
+   */
+  forkSession?(
+    handle: AgentPersistenceHandle,
+    input: { upToMessageId: string },
+  ): Promise<AgentPersistenceHandle>;
   getDiagnostic?(): Promise<{ diagnostic: string }>;
   /**
    * Archive a durable native session (best-effort). Runtime release belongs to AgentSession.close().
