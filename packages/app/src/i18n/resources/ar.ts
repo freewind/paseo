@@ -2291,7 +2291,7 @@ export const ar: TranslationResources = {
       },
       ttsEnabled: {
         label: "🌿 تمكين القراءة الصوتية",
-        description: "🌿 قراءة ردود الوكيل بصوت عالٍ عند اكتمال الرد",
+        description: "🌿 قراءة ردود الوكيل الذي تشاهده بصوت عالٍ",
       },
       ttsEngine: {
         label: "🌿 صوت القراءة",

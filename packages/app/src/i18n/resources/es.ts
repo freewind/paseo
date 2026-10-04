@@ -2305,7 +2305,7 @@ export const es: TranslationResources = {
       },
       ttsEnabled: {
         label: "🌿 Leer respuestas en voz alta",
-        description: "🌿 Leer en voz alta las respuestas del agente cuando terminan",
+        description: "🌿 Leer en voz alta las respuestas del agente que estás viendo",
       },
       ttsEngine: {
         label: "🌿 Voz de lectura",
