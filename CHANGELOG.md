@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Added a "Hide this agent" action to the agent tab menu, which removes the tab from this client without archiving the agent or stopping its work, and can be reversed by reopening the agent from its parent's subagent track
+
 ## 0.13.0-beta.1 - 2026-10-22
 
 Foldable phone layouts, agents that delegate work to other machines, plugin file panels, and plugin translations.

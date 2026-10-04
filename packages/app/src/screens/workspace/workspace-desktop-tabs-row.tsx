@@ -17,6 +17,7 @@ import {
   ArrowLeftToLine,
   ArrowRightToLine,
   Copy,
+  EyeOff,
   Pencil,
   RotateCw,
   Columns2,
@@ -81,6 +82,7 @@ import { formatCompactTimeAgoAsProse } from "@/utils/time";
 import { buildWorkspaceKeyboardHandlerId } from "@/keyboard/handler-id";
 import type { KeyboardActionDefinition } from "@/keyboard/keyboard-action-dispatcher";
 import { WorkspaceNewTabMenuContent } from "@/screens/workspace/workspace-new-tab-menu";
+import { useHideWorkspaceAgentTab } from "@/screens/workspace/use-workspace-agent-tab-actions";
 import {
   paneContentToolbarTrailingPadding,
   ToolbarButton,
@@ -128,6 +130,7 @@ const ThemedCopy = withUnistyles(Copy);
 const ThemedRotateCw = withUnistyles(RotateCw);
 const ThemedArrowLeftToLine = withUnistyles(ArrowLeftToLine);
 const ThemedArrowRightToLine = withUnistyles(ArrowRightToLine);
+const ThemedEyeOff = withUnistyles(EyeOff);
 const ThemedCopyX = withUnistyles(CopyX);
 const ThemedPencil = withUnistyles(Pencil);
 const ThemedPlus = withUnistyles(Plus);
@@ -432,6 +435,8 @@ function TabContextMenuItem({
         return <ThemedArrowRightToLine size={16} uniProps={mutedColorMapping} />;
       case "copy-x":
         return <ThemedCopyX size={16} uniProps={mutedColorMapping} />;
+      case "eye-off":
+        return <ThemedEyeOff size={16} uniProps={mutedColorMapping} />;
       case "pencil":
         return <ThemedPencil size={16} uniProps={mutedColorMapping} />;
       case "x":
@@ -1054,6 +1059,10 @@ function ResolvedWorkspaceDesktopTabsRow({
 }: ResolvedWorkspaceDesktopTabsRowProps) {
   const { t } = useTranslation();
   const isCompact = useIsCompactFormFactor();
+  const { onHideTab } = useHideWorkspaceAgentTab({
+    serverId: normalizedServerId,
+    workspaceId: normalizedWorkspaceId,
+  });
   const newTabKeys = useShortcutKeys("workspace-tab-new");
   const [tabsContainerWidth, setTabsContainerWidth] = useState<number>(0);
   const tabsScrollRef = useRef<ScrollView>(null);
@@ -1123,6 +1132,7 @@ function ResolvedWorkspaceDesktopTabsRow({
       closeOthers: t("workspace.tabs.menu.closeOthers"),
       reloadAgent: t("workspace.tabs.menu.reloadAgent"),
       reloadAgentTooltip: t("workspace.tabs.menu.reloadAgentTooltip"),
+      hideAgent: t("workspace.tabs.menu.hideAgent"),
       close: t("workspace.tabs.menu.close"),
     }),
     [t],
@@ -1318,6 +1328,7 @@ function ResolvedWorkspaceDesktopTabsRow({
           setHoveredCloseTabKey={setHoveredCloseTabKey}
           onNavigateTab={onNavigateTab}
           onCloseTab={onCloseTab}
+          onHideTab={onHideTab}
           labels={tabMenuLabels}
           dragHandleProps={dragHandleProps}
           showDropIndicatorBefore={showDropIndicatorBefore}
@@ -1341,6 +1352,7 @@ function ResolvedWorkspaceDesktopTabsRow({
       onCopyFilePath,
       onCopyResumeCommand,
       onNavigateTab,
+      onHideTab,
       onReloadAgent,
       onRenameTab,
       rail,
@@ -1476,6 +1488,7 @@ function ResolvedDesktopTabChip({
   setHoveredCloseTabKey,
   onNavigateTab,
   onCloseTab,
+  onHideTab,
   labels,
   dragHandleProps,
   showDropIndicatorBefore,
@@ -1504,6 +1517,7 @@ function ResolvedDesktopTabChip({
   setHoveredCloseTabKey: Dispatch<SetStateAction<string | null>>;
   onNavigateTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => Promise<void> | void;
+  onHideTab: (tabId: string) => Promise<void>;
   labels: WorkspaceTabMenuLabels;
   dragHandleProps: DraggableListDragHandleProps | undefined;
   showDropIndicatorBefore: boolean;
@@ -1527,6 +1541,7 @@ function ResolvedDesktopTabChip({
         onCloseTabsToLeft,
         onCloseTabsToRight,
         onCloseOtherTabs,
+        onHideTab,
         labels,
       }),
     [
@@ -1540,6 +1555,7 @@ function ResolvedDesktopTabChip({
       onCopyTerminalId,
       onCopyFilePath,
       onCopyResumeCommand,
+      onHideTab,
       labels,
       onReloadAgent,
       onRenameTab,

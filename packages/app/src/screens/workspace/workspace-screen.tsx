@@ -144,6 +144,8 @@ import {
   useWorkspaceTabRename,
   WorkspaceTabRenameModal,
 } from "@/screens/workspace/use-workspace-tab-rename";
+import { MobileTabTrailingAccessory } from "@/screens/workspace/workspace-tab-trailing-accessory";
+import { useHideWorkspaceAgentTab } from "@/screens/workspace/use-workspace-agent-tab-actions";
 import {
   WorkspaceDesktopTabsRow,
   type WorkspaceDesktopTabRowItem,
@@ -352,6 +354,188 @@ function useSyncWorkspaceActiveBrowser(input: {
   }, [focusedBrowserId, input.workspaceId]);
 }
 
+function getFallbackTabOptionLabel(
+  tab: WorkspaceTabDescriptor,
+  labels: {
+    newTab: string;
+    newAgent: string;
+    setup: string;
+    terminal: string;
+    browser: string;
+    agent: string;
+    changes: string;
+    files: string;
+    pullRequest: string;
+  },
+): string {
+  if (tab.target.kind === "new_tab") {
+    return labels.newTab;
+  }
+  if (tab.target.kind === "draft") {
+    return labels.newAgent;
+  }
+  if (tab.target.kind === "setup") {
+    return labels.setup;
+  }
+  if (tab.target.kind === "terminal") {
+    return labels.terminal;
+  }
+  if (tab.target.kind === "browser") {
+    return labels.browser;
+  }
+  if (tab.target.kind === "file") {
+    return tab.target.path.split("/").findLast(Boolean) ?? tab.target.path;
+  }
+  if (tab.target.kind === "working_diff" || tab.target.kind === "changes_tree") {
+    return labels.changes;
+  }
+  if (tab.target.kind === "files") {
+    return labels.files;
+  }
+  if (tab.target.kind === "pull_request") {
+    return labels.pullRequest;
+  }
+  if (tab.target.kind === "commit_diff") {
+    return tab.target.sha.slice(0, 7);
+  }
+  return labels.agent;
+}
+
+function getFallbackTabOptionDescription(
+  tab: WorkspaceTabDescriptor,
+  labels: {
+    newTab: string;
+    newAgent: string;
+    workspaceSetup: string;
+    agent: string;
+    terminal: string;
+    browser: string;
+    changes: string;
+    files: string;
+    pullRequest: string;
+  },
+): string {
+  if (tab.target.kind === "new_tab") {
+    return labels.newTab;
+  }
+  if (tab.target.kind === "draft") {
+    return labels.newAgent;
+  }
+  if (tab.target.kind === "setup") {
+    return labels.workspaceSetup;
+  }
+  if (tab.target.kind === "agent") {
+    return labels.agent;
+  }
+  if (tab.target.kind === "terminal") {
+    return labels.terminal;
+  }
+  if (tab.target.kind === "browser") {
+    return labels.browser;
+  }
+  if (tab.target.kind === "provider_subagent") {
+    return labels.agent;
+  }
+  if (tab.target.kind === "commit_diff") {
+    return tab.target.sha.slice(0, 7);
+  }
+  if (tab.target.kind === "working_diff" || tab.target.kind === "changes_tree") {
+    return labels.changes;
+  }
+  if (tab.target.kind === "files") {
+    return labels.files;
+  }
+  if (tab.target.kind === "pull_request") {
+    return labels.pullRequest;
+  }
+  if (tab.target.kind === "plugin") {
+    return tab.target.panelId;
+  }
+  return tab.target.path;
+}
+
+interface MobileWorkspaceTabSwitcherProps {
+  tabs: WorkspaceTabDescriptor[];
+  activeTabKey: string;
+  activeTab: WorkspaceTabDescriptor | null;
+  tabSwitcherOptions: ComboboxOption[];
+  tabByKey: Map<string, WorkspaceTabDescriptor>;
+  normalizedServerId: string;
+  normalizedWorkspaceId: string;
+  onSelectSwitcherTab: (key: string) => void;
+  onCopyResumeCommand: (agentId: string) => Promise<void> | void;
+  onCopyAgentId: (agentId: string) => Promise<void> | void;
+  onCopyTerminalId: (terminalId: string) => Promise<void> | void;
+  onCopyFilePath: (path: string) => Promise<void> | void;
+  onReloadAgent: (agentId: string) => Promise<void> | void;
+  onRenameTab: (tab: WorkspaceTabDescriptor) => void;
+  onCloseTab: (tabId: string) => Promise<void> | void;
+  onCloseTabsAbove: (tabId: string) => Promise<void> | void;
+  onCloseTabsBelow: (tabId: string) => Promise<void> | void;
+  onCloseOtherTabs: (tabId: string) => Promise<void> | void;
+  onHideTab: (tabId: string) => Promise<void>;
+}
+
+function MobileActiveTabTrigger({
+  activeTab,
+  normalizedServerId,
+  normalizedWorkspaceId,
+  backdrop,
+}: {
+  activeTab: WorkspaceTabDescriptor | null;
+  normalizedServerId: string;
+  normalizedWorkspaceId: string;
+  backdrop: SurfaceBackdrop;
+}) {
+  if (!activeTab) {
+    return null;
+  }
+
+  return (
+    <ResolvedMobileActiveTabTrigger
+      activeTab={activeTab}
+      normalizedServerId={normalizedServerId}
+      normalizedWorkspaceId={normalizedWorkspaceId}
+      backdrop={backdrop}
+    />
+  );
+}
+
+function ResolvedMobileActiveTabTrigger({
+  activeTab,
+  normalizedServerId,
+  normalizedWorkspaceId,
+  backdrop,
+}: {
+  activeTab: WorkspaceTabDescriptor;
+  normalizedServerId: string;
+  normalizedWorkspaceId: string;
+  backdrop: SurfaceBackdrop;
+}) {
+  const { t } = useTranslation();
+  return (
+    <WorkspaceTabPresentationResolver
+      tab={activeTab}
+      serverId={normalizedServerId}
+      workspaceId={normalizedWorkspaceId}
+    >
+      {(presentation) => (
+        <>
+          <View style={styles.switcherTriggerIcon} testID="workspace-active-tab-icon">
+            <WorkspaceTabIcon presentation={presentation} active backdrop={backdrop} />
+          </View>
+
+          <Text style={styles.switcherTriggerText} numberOfLines={1}>
+            {presentation.titleState === "loading"
+              ? t("workspace.tabs.loading")
+              : presentation.label}
+          </Text>
+        </>
+      )}
+    </WorkspaceTabPresentationResolver>
+  );
+}
+
 function WorkspaceDocumentTitleEffect({
   label,
   titleState,
@@ -397,6 +581,7 @@ function MobileWorkspaceTabOption({
   onCloseTabsAbove,
   onCloseTabsBelow,
   onCloseOtherTabs,
+  onHideTab,
 }: {
   tab: WorkspaceTabDescriptor;
   tabIndex: number;
@@ -416,6 +601,7 @@ function MobileWorkspaceTabOption({
   onCloseTabsAbove: (tabId: string) => Promise<void> | void;
   onCloseTabsBelow: (tabId: string) => Promise<void> | void;
   onCloseOtherTabs: (tabId: string) => Promise<void> | void;
+  onHideTab: (tabId: string) => Promise<void>;
 }) {
   const { t } = useTranslation();
   const tabMenuLabels = useMemo<WorkspaceTabMenuLabels>(
@@ -432,6 +618,7 @@ function MobileWorkspaceTabOption({
       closeOthers: t("workspace.tabs.menu.closeOthers"),
       reloadAgent: t("workspace.tabs.menu.reloadAgent"),
       reloadAgentTooltip: t("workspace.tabs.menu.reloadAgentTooltip"),
+      hideAgent: t("workspace.tabs.menu.hideAgent"),
       close: t("workspace.tabs.menu.close"),
     }),
     [t],
@@ -453,6 +640,7 @@ function MobileWorkspaceTabOption({
     onCloseTabsBefore: onCloseTabsAbove,
     onCloseTabsAfter: onCloseTabsBelow,
     onCloseOtherTabs,
+    onHideTab,
     labels: tabMenuLabels,
   });
 
@@ -525,6 +713,7 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
   onCloseTabsAbove,
   onCloseTabsBelow,
   onCloseOtherTabs,
+  onHideTab,
 }: MobileWorkspaceTabSwitcherProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -590,6 +779,7 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
           onCloseTabsAbove={onCloseTabsAbove}
           onCloseTabsBelow={onCloseTabsBelow}
           onCloseOtherTabs={onCloseOtherTabs}
+          onHideTab={onHideTab}
         />
       );
     },
@@ -609,6 +799,7 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
       onCloseTabsAbove,
       onCloseTabsBelow,
       onCloseOtherTabs,
+      onHideTab,
     ],
   );
 
@@ -662,7 +853,6 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
   );
 });
 
->>>>>>> a5cd1e7b4 (feat(workspace): tab 切换器显示标签数量并记录埋点)
 interface MobileMountedTabSlotProps {
   tabDescriptor: WorkspaceTabDescriptor;
   isVisible: boolean;
@@ -928,7 +1118,6 @@ function WorkspaceHeaderTitleBar({
             presentation="ghost"
           />
         ) : null}
->>>>>>> 83e086c6c (feat(workspace): 头部菜单加 Rename 入口并接上重命名弹窗)
       </View>
     </View>
   );
@@ -2516,6 +2705,18 @@ function WorkspaceScreenContent({
     ],
   );
 
+  const { onHideTab: hideAgentTab } = useHideWorkspaceAgentTab({
+    serverId: normalizedServerId,
+    workspaceId: normalizedWorkspaceId,
+  });
+  const handleHideTab = useCallback(
+    async (tabId: string) => {
+      await hideAgentTab(tabId);
+      setHoveredCloseTabKey((current) => (current === tabId ? null : current));
+    },
+    [hideAgentTab],
+  );
+
   const handleClosePassiveTab = useCallback(
     function handleClosePassiveTab(input: { tabId: string; target?: WorkspaceTabTarget | null }) {
       setHoveredCloseTabKey((current) => (current === input.tabId ? null : current));
@@ -4089,6 +4290,30 @@ function WorkspaceScreenContent({
   ) : (
     <View style={styles.centerColumn}>
       {rendersDesktopSplitContent ? null : renderWorkspaceScreenHeader()}
+
+      {isMobile ? (
+        <MobileWorkspaceTabSwitcher
+          tabs={tabs}
+          activeTabKey={activeTabKey}
+          activeTab={activeTabDescriptor}
+          tabSwitcherOptions={tabSwitcherOptions}
+          tabByKey={tabByKey}
+          normalizedServerId={normalizedServerId}
+          normalizedWorkspaceId={normalizedWorkspaceId}
+          onSelectSwitcherTab={handleSelectSwitcherTab}
+          onCopyResumeCommand={handleCopyResumeCommand}
+          onCopyAgentId={handleCopyAgentId}
+          onCopyTerminalId={handleCopyTerminalId}
+          onCopyFilePath={handleCopyFilePath}
+          onReloadAgent={handleReloadAgent}
+          onRenameTab={handleRenameTab}
+          onCloseTab={handleCloseTabById}
+          onCloseTabsAbove={handleCloseTabsToLeft}
+          onCloseTabsBelow={handleCloseTabsToRight}
+          onCloseOtherTabs={handleCloseOtherTabs}
+          onHideTab={handleHideTab}
+        />
+      ) : null}
 
       {shouldRenderDesktopPaneFallback ? (
         <NewTabLauncherProvider value={newTabLauncher}>

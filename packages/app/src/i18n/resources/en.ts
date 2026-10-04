@@ -652,6 +652,7 @@ export const en = {
         moveToMain: "Move to main panel",
         reloadAgent: "Reload agent",
         reloadAgentTooltip: "Reload agent to update skills, MCPs or login status.",
+        hideAgent: "Hide this agent",
         close: "Close",
         renameTerminal: "Rename terminal",
         renameAgent: "Rename agent",
@@ -694,6 +695,7 @@ export const en = {
         reloadedAgent: "Reloaded agent",
         failedToReloadAgent: "Failed to reload agent",
         failedToCloseAgent: "Failed to close agent",
+        failedToHideAgent: "Failed to hide agent",
       },
       confirmations: {
         close: "Close",
