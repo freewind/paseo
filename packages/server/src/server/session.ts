@@ -8063,17 +8063,26 @@ export class Session {
       );
     };
     try {
-      await ensureAgentLoaded(msg.sourceAgentId, {
+      const sourceAgent = await ensureAgentLoaded(msg.sourceAgentId, {
         agentManager: this.agentManager,
         agentStorage: this.agentStorage,
         logger: this.sessionLogger,
       });
+      let newWorkspaceId: string | undefined;
+      if (msg.targetWorkspace === "new") {
+        newWorkspaceId = await this.createForkWorkspace(sourceAgent);
+      }
       const fork = await this.agentManager.forkAgent({
         sourceAgentId: msg.sourceAgentId,
         boundaryMessageId: msg.boundaryMessageId,
         boundaryCursor: msg.boundaryCursor ?? null,
+        workspaceId: newWorkspaceId,
       });
-      respond({ newAgentId: fork.id, error: null });
+      respond({
+        newAgentId: fork.id,
+        ...(newWorkspaceId ? { newWorkspaceId } : {}),
+        error: null,
+      });
     } catch (error) {
       this.sessionLogger.error(
         { err: error, sourceAgentId: msg.sourceAgentId },
@@ -8084,6 +8093,26 @@ export class Session {
         error: error instanceof Error ? error.message : String(error),
       });
     }
+  }
+
+  /**
+   * Opens a second workspace on the source agent's directory so a fork can run
+   * beside the original instead of inside it. The fork joins the same project, so
+   * the new workspace shows up next to the original in the sidebar.
+   */
+  private async createForkWorkspace(source: ManagedAgent): Promise<string> {
+    const sourceWorkspace = source.workspaceId
+      ? await this.workspaceRegistry.get(source.workspaceId)
+      : null;
+    const stored = await this.agentStorage.get(source.id);
+    const workspace = await this.workspaceProvisioning.createWorkspaceForDirectory(
+      source.cwd,
+      `${stored?.title ?? "Workspace"} (fork)`,
+      sourceWorkspace?.projectId ?? undefined,
+    );
+    await this.syncWorkspaceGitObserverForWorkspace(workspace);
+    await this.emitCreatedWorkspaceUpdate(await this.describeWorkspaceRecord(workspace));
+    return workspace.workspaceId;
   }
 
   private async prepareAgentMessage(agentId: string, text: string): Promise<void> {

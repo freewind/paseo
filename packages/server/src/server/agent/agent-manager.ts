@@ -3207,27 +3207,18 @@ export class AgentManager {
     sourceAgentId: string;
     boundaryMessageId?: string;
     boundaryCursor?: { epoch: string; seq: number } | null;
+    /** Overrides the source's workspace, so a fork can land in a fresh one. */
+    workspaceId?: string;
   }): Promise<ManagedAgent> {
     const source = this.requireSessionAgent(input.sourceAgentId);
     const boundaryMessageId = input.boundaryMessageId?.trim() || null;
     if (!boundaryMessageId) {
       throw new Error("Agent fork requires a boundary message id");
     }
-    // Same target resolution as rewind: a locally submitted prompt matches only
-    // after the provider acknowledged it, while replayed history carries the
-    // provider's own id directly.
-    const submittedRow = this.timelineStore
-      .getRows(input.sourceAgentId)
-      .find(
-        (row) =>
-          row.item.type === "user_message" &&
-          row.item.messageId === boundaryMessageId &&
-          row.item.clientMessageId === boundaryMessageId,
-      );
-    if (submittedRow && !submittedRow.providerMessageId) {
-      throw new Error("Cannot fork before the provider acknowledges the submitted prompt");
-    }
-    const providerMessageId = submittedRow?.providerMessageId ?? boundaryMessageId;
+    const providerMessageId = this.resolveForkBoundaryMessageId(
+      input.sourceAgentId,
+      boundaryMessageId,
+    );
 
     const handle = source.session.describePersistence();
     if (!handle) {
@@ -3269,7 +3260,7 @@ export class AgentManager {
     if (source.config.mcpServers) overrides.mcpServers = source.config.mcpServers;
     const fork = await this.resumeAgentFromPersistence(forkedHandle, overrides, undefined, {
       labels: source.labels,
-      workspaceId: source.workspaceId,
+      workspaceId: input.workspaceId ?? source.workspaceId,
       owner: source.owner,
     });
     await this.hydrateTimelineFromProvider(fork.id, { force: true, broadcast: true });
@@ -3278,6 +3269,26 @@ export class AgentManager {
       "agent.fork.complete",
     );
     return fork;
+  }
+
+  /**
+   * Maps a timeline message id to the provider's own id for it, following rewind's
+   * rule: a locally submitted prompt matches only after the provider acknowledged
+   * it, while replayed history carries the provider id directly.
+   */
+  private resolveForkBoundaryMessageId(agentId: string, messageId: string): string {
+    const submittedRow = this.timelineStore
+      .getRows(agentId)
+      .find(
+        (row) =>
+          row.item.type === "user_message" &&
+          row.item.messageId === messageId &&
+          row.item.clientMessageId === messageId,
+      );
+    if (submittedRow && !submittedRow.providerMessageId) {
+      throw new Error("Cannot fork before the provider acknowledges the submitted prompt");
+    }
+    return submittedRow?.providerMessageId ?? messageId;
   }
 
   async deleteAgentState(agentId: string): Promise<void> {

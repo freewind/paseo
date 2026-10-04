@@ -222,6 +222,27 @@ describe("AgentManager forkAgent", () => {
     );
   });
 
+  test("lands the fork in a new workspace when one is supplied", async () => {
+    const client = new ForkingClient(TURNS);
+    const workdir = mkdtempSync(join(tmpdir(), "agent-fork-test-"));
+    const manager = new AgentManager({ clients: { claude: client }, logger: createTestLogger() });
+    const source = await manager.createAgent(
+      { provider: "claude", cwd: workdir, workspaceId: "workspace-source" },
+      undefined,
+      { workspaceId: "workspace-source" },
+    );
+    await manager.hydrateTimelineFromProvider(source.id, { force: true });
+
+    const fork = await manager.forkAgent({
+      sourceAgentId: source.id,
+      boundaryMessageId: "user-1",
+      workspaceId: "workspace-fork",
+    });
+
+    expect(fork.workspaceId).toBe("workspace-fork");
+    expect(manager.requireAgent(source.id).workspaceId).toBe("workspace-source");
+  });
+
   test("refuses to fork when the provider cannot fork sessions", async () => {
     const workdir = mkdtempSync(join(tmpdir(), "agent-fork-test-"));
     const nonForkingManager = new AgentManager({
