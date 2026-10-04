@@ -97,6 +97,9 @@ vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
 
 import { SidebarWorkspaceAgentList } from "@/components/sidebar/sidebar-workspace-agent-list";
 import { useWorkspaceLayoutStore } from "@/stores/workspace-layout-store";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { loadAppSettingsFromStorage } from "@/hooks/use-settings";
+import { APP_SETTINGS_KEY, APP_SETTINGS_QUERY_KEY } from "@/hooks/use-settings/storage";
 import {
   buildWorkspaceTabSnapshot,
   deriveWorkspaceAgentVisibility,
@@ -141,7 +144,7 @@ describe("SidebarWorkspaceAgentList", () => {
   let root: Root | null = null;
   let container: HTMLElement | null = null;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     navigateToAgentMock.mockClear();
     archiveAgentMock.mockClear();
     updateAgentMock.mockClear();
@@ -150,6 +153,9 @@ describe("SidebarWorkspaceAgentList", () => {
     // The layout store is a module singleton, so tabs opened by an earlier test would otherwise
     // still be there for a test that opens none.
     useWorkspaceLayoutStore.setState({ layoutByWorkspace: {} });
+    // The persisted app settings drive the "Title lines" switch, so a test that seeds it must not
+    // leak that value into the next test.
+    await AsyncStorage.clear();
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -204,6 +210,37 @@ describe("SidebarWorkspaceAgentList", () => {
     );
   }
 
+  function agentTitles(): HTMLElement[] {
+    return Array.from(
+      container!.querySelectorAll<HTMLElement>('[data-testid^="sidebar-workspace-agent-title-"]'),
+    );
+  }
+
+  // `useAppSettings` resolves the persisted blob through react-query, so a plain first paint lands
+  // before the switch arrives. Prefetching under the same key means the component reads a settled
+  // cache instead of racing the query.
+  async function renderWithSettings() {
+    const client = new QueryClient();
+    await client.prefetchQuery({
+      queryKey: APP_SETTINGS_QUERY_KEY,
+      queryFn: () => loadAppSettingsFromStorage(),
+    });
+    act(() => {
+      root?.render(
+        <QueryClientProvider client={client}>
+          <SidebarWorkspaceAgentList workspace={entry()} />
+        </QueryClientProvider>,
+      );
+    });
+  }
+
+  async function seedMultilineTitleSetting(enabled: boolean) {
+    await AsyncStorage.setItem(
+      APP_SETTINGS_KEY,
+      JSON.stringify({ workspaceTitleMultiline: enabled }),
+    );
+  }
+
   it("renders one row per agent tab, in tab order", () => {
     openAgentTabs(["agent-a", "agent-b"]);
     seedAgents([agent("agent-a", null), agent("agent-b", null)]);
@@ -234,6 +271,29 @@ describe("SidebarWorkspaceAgentList", () => {
     render();
 
     expect(agentRows()).toHaveLength(0);
+  });
+
+  it("keeps the agent title on one line by default", () => {
+    openAgentTabs(["agent-a"]);
+    seedAgents([agent("agent-a", "Rewrite the sidebar")]);
+    render();
+
+    // The RNW one-line style is the only thing that truncates, so assert on the resolved style
+    // rather than on a prop the DOM does not carry.
+    const [title] = agentTitles();
+    expect(getComputedStyle(title).whiteSpace).toBe("nowrap");
+    expect(getComputedStyle(title).textOverflow).toBe("ellipsis");
+  });
+
+  it("lets the agent title wrap when the workspace title lines setting is on", async () => {
+    await seedMultilineTitleSetting(true);
+    openAgentTabs(["agent-a"]);
+    seedAgents([agent("agent-a", "Rewrite the sidebar")]);
+    await renderWithSettings();
+
+    const [title] = agentTitles();
+    expect(getComputedStyle(title).whiteSpace).not.toBe("nowrap");
+    expect(getComputedStyle(title).textOverflow).not.toBe("ellipsis");
   });
 
   it("selects only the focused tab of the active workspace", () => {

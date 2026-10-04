@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { StyleSheet } from "react-native-unistyles";
 import { navigateToAgent } from "@/utils/navigate-to-agent";
 import { useActiveWorkspaceSelection } from "@/stores/navigation-active-workspace-store";
+import { useAppSettings } from "@/hooks/use-settings";
 import { useSessionStore } from "@/stores/session-store";
 import { useWorkspaceLayoutStore } from "@/stores/workspace-layout-store";
 import { findFocusedWorkspaceTabId } from "@/components/sidebar/sidebar-workspace-agent-rows";
@@ -31,6 +32,8 @@ interface SidebarWorkspaceAgentRowItemProps {
   isActive: boolean;
   label: string;
   menuEntries: WorkspaceTabMenuEntry[];
+  /** The "Title lines" setting: when on, a long agent title wraps instead of ending in an ellipsis. */
+  multilineTitle: boolean;
   onPress: () => void;
 }
 
@@ -55,6 +58,11 @@ export const SidebarWorkspaceAgentList = memo(function SidebarWorkspaceAgentList
   const focusedTabId = useFocusedWorkspaceTabId(workspaceKey);
   const isWorkspaceActive = useActiveWorkspaceKey(serverId, workspaceId);
   const titles = useSessionStore((state) => state.sessions[serverId]?.agents ?? null);
+  // The same "Title lines" setting that lets a workspace title wrap governs the agent rows nested
+  // under it, so a long agent title stops ending in a lone ellipsis under the ⋯ menu.
+  const {
+    settings: { workspaceTitleMultiline },
+  } = useAppSettings();
   const actions = useWorkspaceAgentTabActions({ serverId, workspaceId, rows });
 
   const descriptors = useMemo<WorkspaceTabDescriptor[]>(
@@ -110,6 +118,7 @@ export const SidebarWorkspaceAgentList = memo(function SidebarWorkspaceAgentList
           isActive={isWorkspaceActive && focusedTabId === row.tabId}
           label={agentTabLabel(titles?.get(row.agentId)?.title, row.agentId)}
           menuEntries={menuEntriesFor(descriptors[index], index)}
+          multilineTitle={workspaceTitleMultiline}
           onPress={openAgent(row.agentId)}
         />
       ))}
@@ -123,6 +132,7 @@ const SidebarWorkspaceAgentRowItem = memo(function SidebarWorkspaceAgentRowItem(
   isActive,
   label,
   menuEntries,
+  multilineTitle,
   onPress,
 }: SidebarWorkspaceAgentRowItemProps) {
   const { t } = useTranslation();
@@ -148,7 +158,11 @@ const SidebarWorkspaceAgentRowItem = memo(function SidebarWorkspaceAgentRowItem(
         onPress={onPress}
         style={styles.openTarget}
       >
-        <Text numberOfLines={1} style={[styles.label, isActive && styles.labelActive]}>
+        <Text
+          numberOfLines={multilineTitle ? undefined : 1}
+          style={[styles.label, isActive && styles.labelActive]}
+          testID={`sidebar-workspace-agent-title-${row.tabId}`}
+        >
           {label}
         </Text>
       </Pressable>
