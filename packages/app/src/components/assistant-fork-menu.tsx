@@ -7,6 +7,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -14,10 +16,27 @@ import { ICON_SIZE, type Theme } from "@/styles/theme";
 
 export type AssistantForkTarget = "tab" | "workspace";
 
+/**
+ * How the fork is made. A `context` fork copies curated history into a fresh
+ * session; a `session` fork branches the provider's own session, so the copy
+ * carries every tool call and result and keeps the provider's prompt cache warm.
+ */
+export type AssistantForkMode = "context" | "session";
+
+export interface AssistantForkChoice {
+  mode: AssistantForkMode;
+  target: AssistantForkTarget;
+}
+
 interface AssistantForkMenuProps {
-  onFork: (target: AssistantForkTarget) => Promise<void> | void;
+  onFork: (choice: AssistantForkChoice) => Promise<void> | void;
+  /** Session forks need a host that can branch a provider session. */
+  supportsSessionFork: boolean;
   testID?: string;
 }
+
+const CONTEXT_TAB: AssistantForkChoice = { mode: "context", target: "tab" };
+const CONTEXT_WORKSPACE: AssistantForkChoice = { mode: "context", target: "workspace" };
 
 const ThemedSplit = withUnistyles(Split);
 
@@ -26,33 +45,42 @@ const foregroundMutedColorMapping = (theme: Theme) => ({ color: theme.colors.for
 
 export const AssistantForkMenu = memo(function AssistantForkMenu({
   onFork,
+  supportsSessionFork,
   testID = "assistant-fork-menu",
 }: AssistantForkMenuProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const [pendingTarget, setPendingTarget] = useState<AssistantForkTarget | null>(null);
-  const isLocked = pendingTarget !== null;
+  const [pending, setPending] = useState<AssistantForkChoice | null>(null);
+  const isLocked = pending !== null;
 
   const handleOpenChange = useCallback(
     (next: boolean) => {
-      if (!next && pendingTarget !== null) return;
+      if (!next && pending !== null) return;
       setIsOpen(next);
     },
-    [pendingTarget],
+    [pending],
   );
 
   const handleSelect = useCallback(
-    (target: AssistantForkTarget) => async () => {
+    (choice: AssistantForkChoice) => async () => {
       if (isLocked) return;
-      setPendingTarget(target);
+      setPending(choice);
       try {
-        await onFork(target);
+        await onFork(choice);
       } finally {
-        setPendingTarget(null);
+        setPending(null);
         setIsOpen(false);
       }
     },
     [isLocked, onFork],
+  );
+
+  const statusFor = useCallback(
+    (choice: AssistantForkChoice) => {
+      if (pending?.mode !== choice.mode || pending.target !== choice.target) return undefined;
+      return "pending" as const;
+    },
+    [pending],
   );
 
   const triggerStyle = useCallback(
@@ -73,6 +101,15 @@ export const AssistantForkMenu = memo(function AssistantForkMenu({
     () => <ThemedSplit size={ICON_SIZE.sm} uniProps={foregroundColorMapping} />,
     [],
   );
+
+  // A session fork is a different operation, not a different destination, so it
+  // reads as its own labelled group rather than four undifferentiated rows.
+  const sessionItems = supportsSessionFork
+    ? ([
+        { mode: "session", target: "tab" },
+        { mode: "session", target: "workspace" },
+      ] as const satisfies AssistantForkChoice[])
+    : [];
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
@@ -97,23 +134,44 @@ export const AssistantForkMenu = memo(function AssistantForkMenu({
         </TooltipTrigger>
         {tooltipContent}
       </Tooltip>
-      <DropdownMenuContent align="start" minWidth={220} side="bottom" testID={`${testID}-content`}>
+      <DropdownMenuContent align="start" minWidth={240} side="bottom" testID={`${testID}-content`}>
+        {supportsSessionFork ? (
+          <>
+            <DropdownMenuLabel>{t("message.actions.forkSessionGroup")}</DropdownMenuLabel>
+            {sessionItems.map((choice) => (
+              <DropdownMenuItem
+                key={choice.target}
+                closeOnSelect={false}
+                disabled={isLocked && statusFor(choice) === undefined}
+                leading={forkIcon}
+                onSelect={handleSelect(choice)}
+                status={statusFor(choice)}
+                testID={`${testID}-session-${choice.target}`}
+              >
+                {choice.target === "tab"
+                  ? t("message.actions.forkSessionInNewTab")
+                  : t("message.actions.forkSessionInNewWorkspace")}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+          </>
+        ) : null}
         <DropdownMenuItem
           closeOnSelect={false}
-          disabled={isLocked && pendingTarget !== "tab"}
           leading={forkIcon}
-          onSelect={handleSelect("tab")}
-          status={pendingTarget === "tab" ? "pending" : undefined}
+          disabled={isLocked && statusFor(CONTEXT_TAB) === undefined}
+          onSelect={handleSelect(CONTEXT_TAB)}
+          status={statusFor(CONTEXT_TAB)}
           testID={`${testID}-new-tab`}
         >
           {t("message.actions.forkInNewTab")}
         </DropdownMenuItem>
         <DropdownMenuItem
           closeOnSelect={false}
-          disabled={isLocked && pendingTarget !== "workspace"}
           leading={forkIcon}
-          onSelect={handleSelect("workspace")}
-          status={pendingTarget === "workspace" ? "pending" : undefined}
+          disabled={isLocked && statusFor(CONTEXT_WORKSPACE) === undefined}
+          onSelect={handleSelect(CONTEXT_WORKSPACE)}
+          status={statusFor(CONTEXT_WORKSPACE)}
           testID={`${testID}-new-workspace`}
         >
           {t("message.actions.forkInNewWorkspace")}
