@@ -1,6 +1,7 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import * as Speech from "expo-speech";
 import { i18n } from "@/i18n/i18next";
+import { createUtteranceCoordinator, type UtteranceCoordinator } from "@/tts/utterance-coordinator";
 
 export interface SpeakTextInput {
   text: string;
@@ -78,34 +79,38 @@ function lookupVoices(): Promise<TtsVoice[]> {
   return voicesLookup;
 }
 
+/** One coordinator per process: expo-speech has a single output, so reads must not interleave. */
+let coordinator: UtteranceCoordinator | null = null;
+
+function getCoordinator(): UtteranceCoordinator {
+  coordinator ??= createUtteranceCoordinator({
+    speak: (text, voiceId, onSettled) => {
+      // Deliberately never awaiting a voice lookup here: expo-speech resolves the voice itself, and
+      // on web a stalled lookup would otherwise swallow the utterance entirely.
+      Speech.speak(text, {
+        // A user-chosen voice wins on every platform; only fall back to the
+        // current app language when the default voice is used.
+        ...(voiceId ? { voice: voiceId } : { language: i18n.resolvedLanguage ?? "en" }),
+        onDone: onSettled,
+        onStopped: onSettled,
+        onError: onSettled,
+      });
+    },
+    stop: () => {
+      void Speech.stop().catch(() => {});
+    },
+  });
+  return coordinator;
+}
+
 /** TTS reading of agent replies via expo-speech (works on native and web). */
 export function useTts(): UseTtsResult {
-  const speakingRef = useRef(false);
-
   const speak = useCallback(({ text, voiceId }: SpeakTextInput) => {
-    if (!text || speakingRef.current) return;
-    speakingRef.current = true;
-    // Deliberately never awaiting a voice lookup here: expo-speech resolves the voice itself, and
-    // on web a stalled lookup would otherwise swallow the utterance entirely.
-    Speech.speak(text, {
-      // A user-chosen voice wins on every platform; only fall back to the
-      // current app language when the default voice is used.
-      ...(voiceId ? { voice: voiceId } : { language: i18n.resolvedLanguage ?? "en" }),
-      onDone: () => {
-        speakingRef.current = false;
-      },
-      onStopped: () => {
-        speakingRef.current = false;
-      },
-      onError: () => {
-        speakingRef.current = false;
-      },
-    });
+    getCoordinator().speak(text, voiceId ?? null);
   }, []);
 
   const stop = useCallback(() => {
-    speakingRef.current = false;
-    void Speech.stop().catch(() => {});
+    getCoordinator().stop();
   }, []);
 
   const getVoices = useCallback(async () => {
