@@ -3482,6 +3482,46 @@ export class DaemonClient {
     await this.sendAgentMessage(agentId, text, options);
   }
 
+  async forkAgent(
+    sourceAgentId: string,
+    options: {
+      boundaryCursor?: { epoch: string; seq: number };
+      boundaryMessageId?: string;
+      targetWorkspace?: "same" | "new";
+    } = {},
+  ): Promise<{ newAgentId: string; newWorkspaceId?: string }> {
+    const requestId = this.createRequestId();
+    const message = SessionInboundMessageSchema.parse({
+      type: "agent.fork.request",
+      requestId,
+      sourceAgentId,
+      ...(options.boundaryCursor ? { boundaryCursor: options.boundaryCursor } : {}),
+      ...(options.boundaryMessageId ? { boundaryMessageId: options.boundaryMessageId } : {}),
+      ...(options.targetWorkspace ? { targetWorkspace: options.targetWorkspace } : {}),
+    });
+    const payload = await this.sendRequest({
+      requestId,
+      message,
+      options: { skipQueue: true },
+      select: (msg) => {
+        if (msg.type !== "agent.fork.response") {
+          return null;
+        }
+        if (msg.payload.requestId !== requestId) {
+          return null;
+        }
+        return msg.payload;
+      },
+    });
+    if (payload.error) {
+      throw new Error(payload.error);
+    }
+    if (!payload.newAgentId) {
+      throw new Error("Agent fork returned no agent id");
+    }
+    return { newAgentId: payload.newAgentId, newWorkspaceId: payload.newWorkspaceId ?? undefined };
+  }
+
   async rewindAgent(
     agentId: string,
     messageId: string,
