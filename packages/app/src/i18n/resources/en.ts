@@ -2194,6 +2194,11 @@ export const en = {
         label: "🌿 Read replies aloud",
         description: "🌿 Read the agent you are viewing aloud as its replies finish",
       },
+      ttsPreview: {
+        label: "Voice preview",
+        play: "Play sample",
+        sample: "Hello! This is how Paseo reads your agent replies aloud.",
+      },
       ttsEngine: {
         label: "🌿 Read-aloud voice",
         description: "🌿 Choose the voice used to read replies aloud",
@@ -2211,6 +2216,17 @@ export const en = {
       playTurnCompleteSound: {
         label: "🌿 Play sound when an agent finishes",
         description: "🌿 Play a sound when an agent finishes a turn",
+      },
+      turnCompleteSound: {
+        label: "🌿 Turn complete sound",
+        description: "🌿 Which sound to play when an agent finishes a turn",
+        options: {
+          default: "🌿 Default",
+          chime: "🌿 Chime",
+          bell: "🌿 Bell",
+          pop: "🌿 Pop",
+          ding: "🌿 Ding",
+        },
       },
       defaultSend: {
         label: "Default send",
