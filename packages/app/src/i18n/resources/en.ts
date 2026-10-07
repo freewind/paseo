@@ -2195,6 +2195,7 @@ export const en = {
         label: "🌿 Read replies aloud",
         description: "🌿 Read the agent you are viewing aloud as its replies finish",
       },
+      ttsRate: { label: "Read-aloud speed" },
       ttsPreview: {
         label: "Voice preview",
         play: "Play sample",

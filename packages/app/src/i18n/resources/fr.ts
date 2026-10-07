@@ -2124,6 +2124,7 @@ export const fr: TranslationResources = {
         label: "🌿 Lire les réponses à voix haute",
         description: "🌿 Lire à voix haute les réponses de l'agent affiché",
       },
+      ttsRate: { label: "Vitesse de lecture" },
       ttsPreview: {
         label: "Aperçu de la voix",
         play: "Écouter un exemple",

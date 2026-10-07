@@ -2102,6 +2102,7 @@ export const ptBR: TranslationResources = {
         label: "🌿 Ler respostas em voz alta",
         description: "🌿 Ler em voz alta as respostas do agente que você está vendo",
       },
+      ttsRate: { label: "Velocidade de leitura" },
       ttsPreview: {
         label: "Prévia da voz",
         play: "Reproduzir amostra",

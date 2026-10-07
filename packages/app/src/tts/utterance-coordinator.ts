@@ -8,14 +8,14 @@
  */
 export interface UtteranceCoordinatorDeps {
   /** Starts a platform utterance and reports back when it settles for any reason. */
-  speak: (text: string, voiceId: string | null, onSettled: () => void) => void;
+  speak: (text: string, voiceId: string | null, onSettled: () => void, rate: number) => void;
   /** Interrupts the platform utterance currently in progress. */
   stop: () => void;
 }
 
 export interface UtteranceCoordinator {
   /** Reads `text` in `voiceId`, interrupting anything currently being read. */
-  speak: (text: string, voiceId: string | null) => void;
+  speak: (text: string, voiceId: string | null, rate?: number) => void;
   /** Interrupts the current utterance. */
   stop: () => void;
   /** Whether an utterance started here is still in progress. */
@@ -27,7 +27,7 @@ export function createUtteranceCoordinator(deps: UtteranceCoordinatorDeps): Utte
   let speaking = false;
 
   return {
-    speak(text: string, voiceId: string | null) {
+    speak(text: string, voiceId: string | null, rate = 1) {
       if (!text) {
         return;
       }
@@ -37,11 +37,16 @@ export function createUtteranceCoordinator(deps: UtteranceCoordinatorDeps): Utte
         deps.stop();
       }
       speaking = true;
-      deps.speak(text, voiceId, () => {
-        if (own === generation) {
-          speaking = false;
-        }
-      });
+      deps.speak(
+        text,
+        voiceId,
+        () => {
+          if (own === generation) {
+            speaking = false;
+          }
+        },
+        rate,
+      );
     },
     stop() {
       generation += 1;

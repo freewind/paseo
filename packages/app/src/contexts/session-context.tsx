@@ -436,7 +436,11 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
           current.supportsAssistantMessageCompletion &&
           agentId === activeTtsAgentIdRef.current
         ) {
-          speakReply({ text: speechText, voiceId: current.appSettings.ttsEngine });
+          speakReply({
+            text: speechText,
+            voiceId: current.appSettings.ttsEngine,
+            rate: current.appSettings.ttsRate,
+          });
         }
         return;
       }

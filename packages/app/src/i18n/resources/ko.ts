@@ -2078,6 +2078,7 @@ export const ko: TranslationResources = {
         label: "🌿 답변을 소리 내어 읽기",
         description: "🌿 보고 있는 에이전트의 답변을 소리 내어 읽습니다",
       },
+      ttsRate: { label: "읽기 속도" },
       ttsPreview: {
         label: "음성 미리 듣기",
         play: "샘플 재생",

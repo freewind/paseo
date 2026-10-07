@@ -2088,6 +2088,7 @@ export const ja: TranslationResources = {
         label: "🌿 返信を読み上げる",
         description: "🌿 表示しているエージェントの返信を読み上げます",
       },
+      ttsRate: { label: "読み上げ速度" },
       ttsPreview: {
         label: "読み上げ音声の試聴",
         play: "試聴する",

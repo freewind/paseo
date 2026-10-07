@@ -21,14 +21,28 @@ const TOOL_CALL_DETAIL_LEVELS: readonly AppSettings["toolCallDetailLevel"][] = [
 
 /** Sentinel for the `ttsEngine` select, whose value is `string | null` while options are strings. */
 const TTS_ENGINE_DEFAULT = "";
+const TTS_RATE_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map((rate) => ({
+  value: String(rate),
+  label: `${rate}×`,
+}));
 
 export function ChatSection() {
   const { t } = useTranslation();
   const { settings, updateSettings } = useAppSettings();
   const { getVoices, speak } = useTts();
+  const changeTtsRate = useCallback(
+    (rate: string) => {
+      void updateSettings({ ttsRate: Number(rate) });
+    },
+    [updateSettings],
+  );
   const previewVoice = useCallback(() => {
-    speak({ text: t("settings.general.ttsPreview.sample"), voiceId: settings.ttsEngine });
-  }, [speak, settings.ttsEngine, t]);
+    speak({
+      text: t("settings.general.ttsPreview.sample"),
+      voiceId: settings.ttsEngine,
+      rate: settings.ttsRate,
+    });
+  }, [speak, settings.ttsEngine, settings.ttsRate, t]);
   const [ttsVoices, setTtsVoices] = useState<{ identifier: string; name: string }[]>([]);
 
   useEffect(() => {
@@ -183,6 +197,15 @@ export function ChatSection() {
               value={settings.ttsEngine ?? TTS_ENGINE_DEFAULT}
               options={ttsEngineOptions}
               onValueChange={changeTtsEngine}
+            />
+          ) : null}
+          {isNative ? (
+            <SettingsSelect
+              label={t("settings.general.ttsRate.label")}
+              value={String(settings.ttsRate)}
+              options={TTS_RATE_OPTIONS}
+              onValueChange={changeTtsRate}
+              testID="settings-tts-rate"
             />
           ) : null}
           {isNative ? (

@@ -2068,6 +2068,7 @@ export const ar: TranslationResources = {
         label: "🌿 تمكين القراءة الصوتية",
         description: "🌿 قراءة ردود الوكيل الذي تشاهده بصوت عالٍ",
       },
+      ttsRate: { label: "سرعة القراءة" },
       ttsPreview: {
         label: "معاينة الصوت",
         play: "تشغيل عينة",

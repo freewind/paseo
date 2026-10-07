@@ -119,6 +119,8 @@ export interface AppSettings {
   ttsEnabled: boolean;
   /** Android TTS engine id (null = system default). */
   ttsEngine: string | null;
+  /** Device speech rate multiplier, shared by preview and reply reading. */
+  ttsRate: number;
   /** Desktop-only preferences for implicit opens into the ordinary side pane. */
   openInSidePane: OpenInSidePanePreferences;
   pullRequestOpenLocation: PullRequestOpenLocation;
@@ -183,6 +185,7 @@ export const DEFAULT_CLIENT_SETTINGS: AppSettings = {
   turnCompleteSound: "default",
   ttsEnabled: false,
   ttsEngine: null,
+  ttsRate: 1,
   openInSidePane: DEFAULT_OPEN_IN_SIDE_PANE_PREFERENCES,
   pullRequestOpenLocation: "explorer",
 };
@@ -292,6 +295,7 @@ const StoredAppSettingsSchema = z
     turnCompleteSound: z.string().catch("default"),
     ttsEnabled: z.boolean().catch(false),
     ttsEngine: z.string().nullable().catch(null),
+    ttsRate: z.number().min(0.5).max(2).catch(1),
     openInSidePane: z
       .object({
         explorerFiles: z.boolean().catch(false),
