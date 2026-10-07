@@ -2068,6 +2068,11 @@ export const ar: TranslationResources = {
         label: "🌿 تمكين القراءة الصوتية",
         description: "🌿 قراءة ردود الوكيل الذي تشاهده بصوت عالٍ",
       },
+      ttsPreview: {
+        label: "معاينة الصوت",
+        play: "تشغيل عينة",
+        sample: "مرحبًا! هكذا يقرأ Paseo ردود الوكيل بصوت عالٍ.",
+      },
       ttsEngine: {
         label: "🌿 صوت القراءة",
         description: "🌿 اختر صوت القراءة الصوتية",
@@ -2085,6 +2090,17 @@ export const ar: TranslationResources = {
       playTurnCompleteSound: {
         label: "🌿 تشغيل صوت عند اكتمال العمل",
         description: "🌿 تشغيل صوت عند اكتمال الوكيل لعمله",
+      },
+      turnCompleteSound: {
+        label: "🌿 صوت الاكتمال",
+        description: "🌿 الصوت الذي يُشغَّل عند اكتمال دور الوكيل",
+        options: {
+          default: "🌿 الافتراضي",
+          chime: "🌿 رنين",
+          bell: "🌿 جرس",
+          pop: "🌿 فرقعة",
+          ding: "🌿 دينغ",
+        },
       },
       defaultSend: {
         label: "إرسال افتراضي",

@@ -2102,6 +2102,11 @@ export const ptBR: TranslationResources = {
         label: "🌿 Ler respostas em voz alta",
         description: "🌿 Ler em voz alta as respostas do agente que você está vendo",
       },
+      ttsPreview: {
+        label: "Prévia da voz",
+        play: "Reproduzir amostra",
+        sample: "Olá! É assim que o Paseo lê as respostas do seu agente em voz alta.",
+      },
       ttsEngine: {
         label: "🌿 Voz de leitura",
         description: "🌿 Escolha a voz para ler as respostas em voz alta",
@@ -2119,6 +2124,17 @@ export const ptBR: TranslationResources = {
       playTurnCompleteSound: {
         label: "🌿 Tocar som ao terminar",
         description: "🌿 Tocar um som quando o agente termina uma rodada",
+      },
+      turnCompleteSound: {
+        label: "🌿 Som de conclusão",
+        description: "🌿 Som tocado quando o agente termina uma rodada",
+        options: {
+          default: "🌿 Padrão",
+          chime: "🌿 Sino",
+          bell: "🌿 Campainha",
+          pop: "🌿 Pop",
+          ding: "🌿 Ding",
+        },
       },
       defaultSend: {
         label: "Envio padrão",

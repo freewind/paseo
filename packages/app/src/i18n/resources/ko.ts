@@ -2078,6 +2078,11 @@ export const ko: TranslationResources = {
         label: "🌿 답변을 소리 내어 읽기",
         description: "🌿 보고 있는 에이전트의 답변을 소리 내어 읽습니다",
       },
+      ttsPreview: {
+        label: "음성 미리 듣기",
+        play: "샘플 재생",
+        sample: "안녕하세요! Paseo는 이 목소리로 에이전트의 답변을 읽습니다.",
+      },
       ttsEngine: {
         label: "🌿 읽기 음성",
         description: "🌿 답변을 소리 내어 읽을 음성을 선택합니다",
@@ -2095,6 +2100,17 @@ export const ko: TranslationResources = {
       playTurnCompleteSound: {
         label: "🌿 완료 시 소리 재생",
         description: "🌿 에이전트가 턴을 완료할 때 소리를 재생합니다",
+      },
+      turnCompleteSound: {
+        label: "🌿 완료 사운드",
+        description: "🌿 에이전트가 턴을 완료할 때 재생할 사운드",
+        options: {
+          default: "🌿 기본",
+          chime: "🌿 차임",
+          bell: "🌿 벨",
+          pop: "🌿 팝",
+          ding: "🌿 딩",
+        },
       },
       defaultSend: {
         label: "기본 전송",

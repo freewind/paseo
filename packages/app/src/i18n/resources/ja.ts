@@ -2088,6 +2088,11 @@ export const ja: TranslationResources = {
         label: "🌿 返信を読み上げる",
         description: "🌿 表示しているエージェントの返信を読み上げます",
       },
+      ttsPreview: {
+        label: "読み上げ音声の試聴",
+        play: "試聴する",
+        sample: "こんにちは。Paseo はこの声でエージェントの返信を読み上げます。",
+      },
       ttsEngine: {
         label: "🌿 読み上げの声",
         description: "🌿 返信を読み上げる声を選択します",
@@ -2105,6 +2110,17 @@ export const ja: TranslationResources = {
       playTurnCompleteSound: {
         label: "🌿 完了時にサウンドを再生",
         description: "🌿 エージェントがターンを完了したときにサウンドを再生します",
+      },
+      turnCompleteSound: {
+        label: "🌿 完了サウンド",
+        description: "🌿 エージェントがターンを完了したときに再生するサウンド",
+        options: {
+          default: "🌿 デフォルト",
+          chime: "🌿 チャイム",
+          bell: "🌿 ベル",
+          pop: "🌿 ポップ",
+          ding: "🌿 ディン",
+        },
       },
       defaultSend: {
         label: "デフォルトの送信",

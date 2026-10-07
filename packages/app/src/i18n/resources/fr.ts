@@ -2124,6 +2124,11 @@ export const fr: TranslationResources = {
         label: "🌿 Lire les réponses à voix haute",
         description: "🌿 Lire à voix haute les réponses de l'agent affiché",
       },
+      ttsPreview: {
+        label: "Aperçu de la voix",
+        play: "Écouter un exemple",
+        sample: "Bonjour ! Voici comment Paseo lit les réponses de votre agent à voix haute.",
+      },
       ttsEngine: {
         label: "🌿 Voix de lecture",
         description: "🌿 Choisissez la voix de lecture des réponses",
@@ -2141,6 +2146,17 @@ export const fr: TranslationResources = {
       playTurnCompleteSound: {
         label: "🌿 Jouer un son à la fin",
         description: "🌿 Jouer un son lorsqu'un agent termine un tour",
+      },
+      turnCompleteSound: {
+        label: "🌿 Son de fin de tour",
+        description: "🌿 Son joué lorsqu'un agent termine un tour",
+        options: {
+          default: "🌿 Par défaut",
+          chime: "🌿 Carillon",
+          bell: "🌿 Cloche",
+          pop: "🌿 Pop",
+          ding: "🌿 Ding",
+        },
       },
       defaultSend: {
         label: "Envoi par défaut",

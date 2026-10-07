@@ -2102,6 +2102,11 @@ export const ru: TranslationResources = {
         label: "🌿 Читать ответы вслух",
         description: "🌿 Читать вслух ответы агента, который открыт",
       },
+      ttsPreview: {
+        label: "Прослушать голос",
+        play: "Воспроизвести пример",
+        sample: "Здравствуйте! Так Paseo читает ответы вашего агента вслух.",
+      },
       ttsEngine: {
         label: "🌿 Голос чтения",
         description: "🌿 Выберите голос для чтения ответов вслух",
@@ -2119,6 +2124,17 @@ export const ru: TranslationResources = {
       playTurnCompleteSound: {
         label: "🌿 Воспроизводить звук при завершении",
         description: "🌿 Воспроизводить звук, когда агент завершает ход",
+      },
+      turnCompleteSound: {
+        label: "🌿 Звук завершения",
+        description: "🌿 Звук, воспроизводимый при завершении хода агента",
+        options: {
+          default: "🌿 По умолчанию",
+          chime: "🌿 Перезвон",
+          bell: "🌿 Колокол",
+          pop: "🌿 Хлопок",
+          ding: "🌿 Динь",
+        },
       },
       defaultSend: {
         label: "Отправка по умолчанию",

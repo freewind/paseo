@@ -2045,6 +2045,11 @@ export const zhCN: TranslationResources = {
         label: "🌿 朗读回复",
         description: "🌿 朗读当前正在查看的 Agent 的回复",
       },
+      ttsPreview: {
+        label: "试听朗读语音",
+        play: "播放试听",
+        sample: "你好，这是 Paseo 朗读回复的声音。你可以选择喜欢的语音。",
+      },
       ttsEngine: {
         label: "🌿 朗读语音",
         description: "🌿 选择朗读回复时使用的语音",
@@ -2062,6 +2067,17 @@ export const zhCN: TranslationResources = {
       playTurnCompleteSound: {
         label: "🌿 Agent 完成时播放提示音",
         description: "🌿 Agent 完成一个 turn 时播放提示音",
+      },
+      turnCompleteSound: {
+        label: "🌿 完成提示音音效",
+        description: "🌿 Agent 完成一个 turn 时播放的音效",
+        options: {
+          default: "🌿 默认",
+          chime: "🌿 风铃",
+          bell: "🌿 铃声",
+          pop: "🌿 气泡",
+          ding: "🌿 叮咚",
+        },
       },
       defaultSend: {
         label: "默认发送",

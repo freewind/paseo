@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { useTranslation } from "react-i18next";
 import {
   SettingsCard,
+  SettingsAction,
   SettingsSection,
   SettingsSelect,
   SettingsSwitch,
@@ -10,6 +11,8 @@ import {
 import { isNative } from "@/constants/platform";
 import { useAppSettings, type AppSettings } from "@/hooks/use-settings";
 import { useTts } from "@/hooks/use-tts";
+import { useTurnCompleteSound } from "@/hooks/use-turn-complete-sound";
+import { TURN_COMPLETE_SOUND_IDS } from "@/audio/turn-complete-sounds";
 
 const TOOL_CALL_DETAIL_LEVELS: readonly AppSettings["toolCallDetailLevel"][] = [
   "detailed",
@@ -22,7 +25,10 @@ const TTS_ENGINE_DEFAULT = "";
 export function ChatSection() {
   const { t } = useTranslation();
   const { settings, updateSettings } = useAppSettings();
-  const { getVoices } = useTts();
+  const { getVoices, speak } = useTts();
+  const previewVoice = useCallback(() => {
+    speak({ text: t("settings.general.ttsPreview.sample"), voiceId: settings.ttsEngine });
+  }, [speak, settings.ttsEngine, t]);
   const [ttsVoices, setTtsVoices] = useState<{ identifier: string; name: string }[]>([]);
 
   useEffect(() => {
@@ -87,6 +93,22 @@ export function ChatSection() {
     (playTurnCompleteSound: boolean) => void updateSettings({ playTurnCompleteSound }),
     [updateSettings],
   );
+  const playTurnCompleteSoundPreview = useTurnCompleteSound();
+  const changeTurnCompleteSound = useCallback(
+    (turnCompleteSound: string) => {
+      void updateSettings({ turnCompleteSound });
+      playTurnCompleteSoundPreview(turnCompleteSound);
+    },
+    [updateSettings, playTurnCompleteSoundPreview],
+  );
+  const turnCompleteSoundOptions = useMemo(
+    () =>
+      TURN_COMPLETE_SOUND_IDS.map((value) => ({
+        value,
+        label: t(`settings.general.turnCompleteSound.options.${value}`),
+      })),
+    [t],
+  );
   const changeTtsEnabled = useCallback(
     (ttsEnabled: boolean) => void updateSettings({ ttsEnabled }),
     [updateSettings],
@@ -141,6 +163,13 @@ export function ChatSection() {
             value={settings.playTurnCompleteSound}
             onValueChange={changePlayTurnCompleteSound}
           />
+          <SettingsSelect
+            label={t("settings.general.turnCompleteSound.label")}
+            hint={t("settings.general.turnCompleteSound.description")}
+            value={settings.turnCompleteSound}
+            options={turnCompleteSoundOptions}
+            onValueChange={changeTurnCompleteSound}
+          />
           <SettingsSwitch
             label={t("settings.general.ttsEnabled.label")}
             hint={t("settings.general.ttsEnabled.description")}
@@ -154,6 +183,14 @@ export function ChatSection() {
               value={settings.ttsEngine ?? TTS_ENGINE_DEFAULT}
               options={ttsEngineOptions}
               onValueChange={changeTtsEngine}
+            />
+          ) : null}
+          {isNative ? (
+            <SettingsAction
+              label={t("settings.general.ttsPreview.label")}
+              actionLabel={t("settings.general.ttsPreview.play")}
+              onPress={previewVoice}
+              testID="settings-tts-preview"
             />
           ) : null}
           {isNative ? null : (

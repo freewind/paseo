@@ -569,6 +569,10 @@ These small files are not validated as full Zod schemas but are persisted under 
 
 These live in React Native `AsyncStorage` or browser `IndexedDB`, not on the daemon filesystem.
 
+Read-aloud voices belong to the client device, not the daemon's voice-mode TTS provider.
+The native chat settings preview uses the selected device voice even when automatic reading is off;
+changing the daemon's speech configuration does not change that preview.
+
 ### Keying convention: directory-backed vs workspace-owned
 
 Right-sidebar client state splits on whether it is determined by the directory or owned by the workspace (two workspaces can share one `cwd`). The split is enforced by the cache key, so changing a key changes the sharing semantics — see [architecture.md](architecture.md#right-sidebar-boundary-directory-backed-vs-workspace-owned) for the full table.
