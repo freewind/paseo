@@ -440,6 +440,7 @@ export type AgentStreamEvent =
       provider: AgentProvider;
       turnId?: string;
       timestamp?: string;
+      assistantMessageComplete?: true;
     }
   | {
       type: "permission_requested";

@@ -519,7 +519,11 @@ export class FakeOmpSession implements OmpRuntimeSession {
     });
   }
 
-  streamAssistantText(text: string, responseId = "omp-assistant-1"): void {
+  streamAssistantText(
+    text: string,
+    responseId = "omp-assistant-1",
+    options: { complete?: boolean } = {},
+  ): void {
     const message: OmpAgentMessage = {
       role: "assistant",
       content: [],
@@ -530,6 +534,14 @@ export class FakeOmpSession implements OmpRuntimeSession {
       type: "message_update",
       message,
       assistantMessageEvent: { type: "text_delta", delta: text },
+    });
+    if (options.complete !== false) this.emit({ type: "message_end", message });
+  }
+
+  completeAssistantMessage(responseId = "omp-assistant-1"): void {
+    this.emit({
+      type: "message_end",
+      message: { role: "assistant", content: [], responseId },
     });
   }
 

@@ -1951,6 +1951,7 @@ export class VoiceAssistantWebSocketServer {
         relayProtectedSecurity: true,
         usageSources: true,
         ownedSubscriptions: true,
+        assistantMessageCompletion: true,
         agentRequestReceipts: true,
         workspaceRequestReceipts: true,
         creationLifecycle: true,
