@@ -237,11 +237,11 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
           !completedTurnSoundRef.current.has(closed.turnId)
         ) {
           completedTurnSoundRef.current.add(closed.turnId);
-          playTurnCompleteSound();
+          playTurnCompleteSound(appSettings.turnCompleteSound);
         }
       }
     },
-    [appSettings.playTurnCompleteSound, playTurnCompleteSound],
+    [appSettings.playTurnCompleteSound, appSettings.turnCompleteSound, playTurnCompleteSound],
   );
   const handleTurnCompletionRef = useRef(handleTurnCompletion);
   handleTurnCompletionRef.current = handleTurnCompletion;
