@@ -577,6 +577,9 @@ Changing the daemon's speech configuration does not change either client prefere
 Global read-aloud enables the feature, not every conversation. The composer owns a separate opt-in
 for each `(serverId, agentId)` on this device; new conversations are silent. Closing the active
 conversation's opt-in stops its utterance without changing other conversations' saved choices.
+Explicit cancellation, dictation start, and realtime speech onset also stop device read-aloud.
+The interrupted turn stays silent through provider teardown, including late text; a new turn may
+read again under the same saved conversation opt-in. Interruption is transient, not a preference change.
 
 ### Keying convention: directory-backed vs workspace-owned
 

@@ -3,6 +3,8 @@ import type { DaemonServerInfo } from "@/stores/session-store";
 import type { AudioEngine } from "@/audio";
 import { createVoiceRuntime, type VoiceSessionAdapter } from "@/voice/voice-runtime";
 import { REALTIME_VOICE_VAD_CONFIG } from "@/voice/realtime-voice-config";
+import { observeSpeechInterruptions } from "@/tts/speech-interruption";
+import { createUtteranceCoordinator } from "@/tts/utterance-coordinator";
 
 const CUE_MIME_TYPE = "audio/pcm;rate=16000;bits=16";
 const THINKING_TONE_MIN_SILENCE_MS = 1500;
@@ -88,6 +90,34 @@ describe("voice runtime", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it("silences device read-aloud on speech onset without interrupting for repeated speech updates or another host", async () => {
+    const { runtime } = createRuntime();
+    runtime.registerSession(createSessionAdapter());
+    await runtime.startVoice("server-1", "agent-1");
+    let stops = 0;
+    const player = createUtteranceCoordinator({
+      speak: () => {},
+      stop: () => {
+        stops += 1;
+      },
+    });
+    player.speak("正在朗读", null);
+    const unsubscribe = observeSpeechInterruptions("server-1", (agentId) => {
+      if (agentId === "agent-1") player.stop();
+    });
+    try {
+      runtime.onServerSpeechStateChanged("server-2", true);
+      expect(player.isSpeaking()).toBe(true);
+      runtime.onServerSpeechStateChanged("server-1", true);
+      expect(player.isSpeaking()).toBe(false);
+      runtime.onServerSpeechStateChanged("server-1", true);
+      expect(stops).toBe(1);
+    } finally {
+      unsubscribe();
+      await runtime.stopVoice();
+    }
   });
 
   it("starts voice when adapter is ready", async () => {
