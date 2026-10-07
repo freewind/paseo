@@ -36,6 +36,75 @@ function harness(): Harness {
 }
 
 describe("live assistant speech", () => {
+  it("discards interrupted turn content including late replies without muting another agent or a new turn", () => {
+    const sender = createAssistantSpeechSender();
+    const event = (text: string, turnId: string, complete = false): AgentStreamEventPayload => ({
+      type: "timeline",
+      provider: "omp",
+      turnId,
+      item: { type: "assistant_message", text, messageId: turnId },
+      ...(complete ? { assistantMessageComplete: true as const } : {}),
+    });
+    sender.consume("a", event("尚未读完", "old"));
+    sender.consume("b", event("其他对话", "other"));
+    sender.interrupt("a");
+    sender.consume("a", event("残留文字", "old"));
+    expect(sender.consume("a", event("", "old", true))).toBeNull();
+    expect(sender.consume("b", event("", "other", true))).toBe("其他对话");
+    sender.consume("a", { type: "turn_started", provider: "omp", turnId: "new" });
+    sender.consume("a", event("新回复", "new"));
+    sender.consume("a", {
+      type: "turn_canceled",
+      provider: "omp",
+      turnId: "old",
+      reason: "interrupted",
+    });
+    sender.consume("a", event("迟到旧回复", "old"));
+    expect(sender.consume("a", event("", "old", true))).toBeNull();
+    expect(sender.consume("a", event("", "new", true))).toBe("新回复");
+  });
+
+  it("keeps no-ID replies silent until an explicit new turn begins", () => {
+    const sender = createAssistantSpeechSender();
+    const chunk = (text: string, complete = false): AgentStreamEventPayload => ({
+      type: "timeline",
+      provider: "claude",
+      item: { type: "assistant_message", text },
+      ...(complete ? { assistantMessageComplete: true as const } : {}),
+    });
+    sender.consume("a", chunk("旧回复"));
+    sender.interrupt("a");
+    sender.consume("a", chunk("残留"));
+    expect(sender.consume("a", chunk("", true))).toBeNull();
+    sender.consume("a", { type: "turn_started", provider: "claude" });
+    sender.consume("a", chunk("新回复"));
+    expect(sender.consume("a", chunk("", true))).toBe("新回复");
+  });
+
+  it("suppresses canceled turns even when no local cancellation callback fired", () => {
+    const sender = createAssistantSpeechSender();
+    sender.consume("a", {
+      type: "turn_canceled",
+      provider: "omp",
+      turnId: "canceled",
+      reason: "interrupted",
+    });
+    sender.consume("a", {
+      type: "timeline",
+      provider: "omp",
+      turnId: "canceled",
+      item: { type: "assistant_message", text: "teardown" },
+    });
+    expect(
+      sender.consume("a", {
+        type: "timeline",
+        provider: "omp",
+        turnId: "canceled",
+        assistantMessageComplete: true,
+        item: { type: "assistant_message", text: "" },
+      }),
+    ).toBeNull();
+  });
   it("reads completed progress before the turn ends without restarting for deltas or empty replies", () => {
     const h = harness();
     const sender = createAssistantSpeechSender();

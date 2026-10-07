@@ -49,6 +49,7 @@ import {
 } from "@/composer/agent-controls";
 import { ContextWindowMeter } from "@/components/context-window-meter";
 import { ConversationSpeechToggle } from "@/tts/conversation-speech-toggle";
+import { interruptConversationSpeech } from "@/tts/speech-interruption";
 import { useImageAttachmentPicker } from "@/hooks/use-image-attachment-picker";
 import { selectAgentTurnPresentation, useSessionStore } from "@/stores/session-store";
 import { useFilePicker } from "@/hooks/use-file-picker";
@@ -1904,6 +1905,7 @@ function ComposerContentImpl({
 
   const handleCancelAgent = useCallback(() => {
     const targetAgentId = agentIdRef.current;
+    interruptConversationSpeech(serverId, targetAgentId);
     const cancellation = cancelComposerAgent({
       client,
       agentId: targetAgentId,

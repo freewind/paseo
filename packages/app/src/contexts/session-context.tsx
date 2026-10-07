@@ -17,6 +17,7 @@ import { useTurnCompleteSound } from "@/hooks/use-turn-complete-sound";
 import { useTts } from "@/hooks/use-tts";
 import { useActiveTtsAgentId } from "@/tts/active-tts-agent";
 import { createAssistantSpeechSender } from "@/tts/assistant-message-completion";
+import { observeSpeechInterruptions } from "@/tts/speech-interruption";
 import { useHostFeature } from "@/runtime/host-features";
 import { useAppSettings } from "@/hooks/use-settings";
 import { planTimelineTailFetch } from "@/timeline/timeline-sync-plan";
@@ -427,11 +428,25 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
   useEffect(() => {
     const setAgentInitializing = createSetAgentInitializing(serverId, setInitializingAgents);
     const speechSender = createAssistantSpeechSender();
+    let spokenTurn: { agentId: string; turnId?: string } | null = null;
+    const stopObservingSpeechInterruptions = observeSpeechInterruptions(serverId, (agentId) => {
+      speechSender.interrupt(agentId);
+      if (agentId === activeTtsAgentIdRef.current) stopTts();
+    });
     const onStream = (message: SessionOutboundMessage) => {
       if (message.type !== "agent_stream") return;
       const { agentId, event, timestamp, seq, epoch } = message.payload;
       const parsedTimestamp = new Date(timestamp);
       const speechText = speechSender.consume(agentId, event);
+      if (
+        event.type === "turn_canceled" &&
+        agentId === activeTtsAgentIdRef.current &&
+        spokenTurn?.agentId === agentId &&
+        spokenTurn.turnId === event.turnId
+      ) {
+        stopTts();
+        spokenTurn = null;
+      }
       if (event.type === "timeline" && event.assistantMessageComplete) {
         const current = speechSettingsRef.current;
         if (
@@ -441,6 +456,7 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
           current.supportsAssistantMessageCompletion &&
           agentId === activeTtsAgentIdRef.current
         ) {
+          spokenTurn = { agentId, turnId: event.turnId };
           speakReply({
             text: speechText,
             voiceId: current.appSettings.ttsEngine,
@@ -557,6 +573,7 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
     );
 
     return () => {
+      stopObservingSpeechInterruptions();
       stopObservingOpenChats();
       if (viewedTimelineSyncRef.current === sync) {
         viewedTimelineSyncRef.current = null;
@@ -564,7 +581,15 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
       setViewedTimelineSync(serverId, null);
       sync.dispose();
     };
-  }, [client, serverId, setInitializingAgents, setViewedTimelineSync, speakReply, voiceRuntime]);
+  }, [
+    client,
+    serverId,
+    setInitializingAgents,
+    setViewedTimelineSync,
+    speakReply,
+    stopTts,
+    voiceRuntime,
+  ]);
 
   useEffect(() => {
     viewedTimelineSyncRef.current?.setConnected(isConnected);
