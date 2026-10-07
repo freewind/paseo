@@ -396,6 +396,7 @@ export const ar: TranslationResources = {
       withTokens: "تم ضغط السياق (رموز{{tokens}}K)",
       completed: "تم ضغط السياق",
     },
+    tts: { updateHost: "حدّث المضيف لقراءة ردود المساعد عند وصولها." },
   },
   importSession: {
     chooseHostTitle: en.importSession.chooseHostTitle,

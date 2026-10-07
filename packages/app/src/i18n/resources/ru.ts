@@ -400,6 +400,7 @@ export const ru: TranslationResources = {
       withTokens: "Контекст сжат ({{tokens}} тыс. токенов)",
       completed: "Контекст сжат",
     },
+    tts: { updateHost: "Обновите хост, чтобы читать ответы помощника по мере поступления." },
   },
   importSession: {
     chooseHostTitle: en.importSession.chooseHostTitle,

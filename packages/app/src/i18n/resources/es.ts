@@ -401,6 +401,9 @@ export const es: TranslationResources = {
       withTokens: "Contexto compactado (tokens{{tokens}}K)",
       completed: "Contexto compactado",
     },
+    tts: {
+      updateHost: "Actualiza el host para leer las respuestas del asistente a medida que llegan.",
+    },
   },
   importSession: {
     chooseHostTitle: en.importSession.chooseHostTitle,

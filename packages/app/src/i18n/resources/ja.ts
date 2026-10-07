@@ -401,6 +401,7 @@ export const ja: TranslationResources = {
       withTokens: "コンテキストを圧縮しました（{{tokens}}Kトークン）",
       completed: "コンテキストを圧縮しました",
     },
+    tts: { updateHost: "返信が届いた時に読み上げるにはホストを更新してください。" },
   },
   importSession: {
     chooseHostTitle: en.importSession.chooseHostTitle,

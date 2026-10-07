@@ -1978,7 +1978,18 @@ export class OmpAgentSession implements AgentSession {
     turnId: string | undefined,
   ): void {
     if (event.message.role === "assistant") {
-      this.activeAssistantMessageId = null;
+      const messageId = this.activeAssistantMessageId ?? event.message.responseId;
+      if (messageId) {
+        this.activeAssistantMessageId = messageId;
+        this.emit({
+          type: "timeline",
+          provider: this.provider,
+          turnId,
+          assistantMessageComplete: true,
+          item: { type: "assistant_message", text: "", messageId },
+        });
+        this.activeAssistantMessageId = null;
+      }
       this.questionUi.observeMessage(event.message);
       if (turnId) {
         this.activeTurnTerminalAssistantMessage = event.message;

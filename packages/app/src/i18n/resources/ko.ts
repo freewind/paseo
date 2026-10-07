@@ -397,6 +397,7 @@ export const ko: TranslationResources = {
       withTokens: "컨텍스트가 압축되었습니다 ({{tokens}}K 토큰)",
       completed: "컨텍스트가 압축되었습니다",
     },
+    tts: { updateHost: "답변이 도착할 때 읽으려면 호스트를 업데이트하세요." },
   },
   importSession: {
     chooseHostTitle: en.importSession.chooseHostTitle,

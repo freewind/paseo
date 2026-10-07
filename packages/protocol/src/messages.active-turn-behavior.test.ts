@@ -57,6 +57,36 @@ describe("canonical timeline turn ID compatibility", () => {
   });
 });
 
+describe("assistant message completion compatibility", () => {
+  it("accepts optional completion markers without adding visible assistant text", () => {
+    const marker = AgentStreamEventPayloadSchema.parse({
+      type: "timeline",
+      provider: "omp",
+      turnId: "turn-1",
+      assistantMessageComplete: true,
+      item: { type: "assistant_message", text: "", messageId: "message-1" },
+    });
+    expect(marker).toMatchObject({ assistantMessageComplete: true });
+
+    const LegacyTimelineSchema = z.object({
+      type: z.literal("timeline"),
+      provider: z.string(),
+      item: z.object({
+        type: z.literal("assistant_message"),
+        text: z.string(),
+        messageId: z.string().optional(),
+      }),
+      turnId: z.string().optional(),
+    });
+    expect(LegacyTimelineSchema.parse(marker)).toEqual({
+      type: "timeline",
+      provider: "omp",
+      turnId: "turn-1",
+      item: { type: "assistant_message", text: "", messageId: "message-1" },
+    });
+  });
+});
+
 describe("legacy daemon send request schema compatibility", () => {
   const LegacySendAgentMessageRequestSchema = z.object({
     type: z.literal("send_agent_message_request"),

@@ -400,6 +400,7 @@ export const ptBR: TranslationResources = {
       withTokens: "Contexto compactado ({{tokens}}K tokens)",
       completed: "Contexto compactado",
     },
+    tts: { updateHost: "Atualize o host para ler as respostas do assistente à medida que chegam." },
   },
   importSession: {
     chooseHostTitle: en.importSession.chooseHostTitle,

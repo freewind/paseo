@@ -3,6 +3,7 @@ import { Buffer } from "buffer";
 import { AppState } from "react-native";
 import { observeOpenWorkspaceAgentIds } from "@/stores/workspace-layout-store";
 import { useQueryClient } from "@tanstack/react-query";
+import type { StreamItem } from "@/types/stream";
 import { useTranslation } from "react-i18next";
 import { useClientActivity } from "@/hooks/use-client-activity";
 import { useAppVisible } from "@/hooks/use-app-visible";
@@ -11,12 +12,12 @@ import {
   createSetAgentInitializing,
   refreshAgentInitializationTimeout,
 } from "@/hooks/use-agent-initialization";
-import type { StreamItem } from "@/types/stream";
 import { deriveAgentStreamTurnLiveness } from "@/timeline/session-stream-reducers";
 import { useTurnCompleteSound } from "@/hooks/use-turn-complete-sound";
 import { useTts } from "@/hooks/use-tts";
 import { useActiveTtsAgentId } from "@/tts/active-tts-agent";
-import { stripMarkdown } from "@/utils/strip-markdown";
+import { createAssistantSpeechSender } from "@/tts/assistant-message-completion";
+import { useHostFeature } from "@/runtime/host-features";
 import { useAppSettings } from "@/hooks/use-settings";
 import { planTimelineTailFetch } from "@/timeline/timeline-sync-plan";
 import { requestTimelineReplacement } from "@/timeline/timeline-replacement";
@@ -82,6 +83,14 @@ function decodeBase64Chunk(base64: string): Uint8Array {
   return Buffer.from(base64, "base64");
 }
 
+const findLatestAssistantMessageText = (items: StreamItem[]): string | null => {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    const item = items[index];
+    if (item?.kind === "assistant_message") return item.text;
+  }
+  return null;
+};
+
 function buildAudioPlaybackSource(chunks: BufferedAudioChunk[]): AudioPlaybackSource {
   const decodedChunks = chunks.map((chunk) => decodeBase64Chunk(chunk.audio));
   const totalSize = decodedChunks.reduce((sum, chunk) => sum + chunk.length, 0);
@@ -107,16 +116,6 @@ function buildAudioPlaybackSource(chunks: BufferedAudioChunk[]): AudioPlaybackSo
     },
   };
 }
-
-const findLatestAssistantMessageText = (items: StreamItem[]): string | null => {
-  for (let i = items.length - 1; i >= 0; i -= 1) {
-    const item = items[i];
-    if (item.kind === "assistant_message") {
-      return item.text;
-    }
-  }
-  return null;
-};
 
 const getLatestPermissionRequest = (
   session: SessionState | undefined,
@@ -216,19 +215,18 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
   const playTurnCompleteSound = useTurnCompleteSound();
   const { speak: speakReply, stop: stopTts } = useTts();
   const { settings: appSettings } = useAppSettings();
-  // Read through a ref: the stream subscription below re-registers every daemon feed when this
-  // callback changes, and focus moves between agents constantly.
+  // Read through a ref so the stream subscription can keep following focus without re-registering.
   const activeTtsAgentId = useActiveTtsAgentId(serverId);
   const activeTtsAgentIdRef = useRef<string | null>(activeTtsAgentId);
   activeTtsAgentIdRef.current = activeTtsAgentId;
+  const supportsAssistantMessageCompletion = useHostFeature(serverId, "assistantMessageCompletion");
   // Tracks turnIds we already played a completion sound for, so one turn completes only once.
   const completedTurnSoundRef = useRef<Set<string>>(new Set());
+  const speechSettingsRef = useRef({ appSettings, supportsAssistantMessageCompletion });
+  speechSettingsRef.current = { appSettings, supportsAssistantMessageCompletion };
+  const assistantCompletionUnavailableToastRef = useRef(false);
   const handleTurnCompletion = useCallback(
-    (input: {
-      agentId: string;
-      turnLiveness: ReturnType<typeof deriveAgentStreamTurnLiveness>;
-    }) => {
-      const { agentId, turnLiveness } = input;
+    (turnLiveness: ReturnType<typeof deriveAgentStreamTurnLiveness>) => {
       const closedTurns = turnLiveness.filter(
         (transition) => transition.type === "stream_close" && transition.turnId !== null,
       );
@@ -242,41 +240,12 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
           playTurnCompleteSound();
         }
       }
-      if (!appSettings.ttsEnabled) return;
-      if (agentId !== activeTtsAgentIdRef.current) {
-        // Reading follows the agent the user is looking at: a background agent's turn ending
-        // must not talk over the one being watched, and must not interrupt it either.
-        return;
-      }
-      if (turnLiveness.some((transition) => transition.type === "stream_open")) {
-        // A new turn started — stop any in-progress reading of the previous reply.
-        stopTts();
-      }
-      if (closedTurns.length === 0) return;
-      const session = useSessionStore.getState().sessions[serverId];
-      const head = session?.agentStreamHead.get(agentId) ?? [];
-      const tail = session?.agentStreamTail.get(agentId) ?? [];
-      const replyText =
-        findLatestAssistantMessageText(head) ?? findLatestAssistantMessageText(tail);
-      if (replyText) {
-        speakReply({ text: stripMarkdown(replyText), voiceId: appSettings.ttsEngine });
-      }
     },
-    [
-      appSettings.playTurnCompleteSound,
-      appSettings.ttsEnabled,
-      appSettings.ttsEngine,
-      playTurnCompleteSound,
-      serverId,
-      speakReply,
-      stopTts,
-    ],
+    [appSettings.playTurnCompleteSound, playTurnCompleteSound],
   );
-  // Read through a ref: the timeline subscription below recreates its view owner on every
-  // dependency change, and turn completion must not re-register it.
   const handleTurnCompletionRef = useRef(handleTurnCompletion);
   handleTurnCompletionRef.current = handleTurnCompletion;
-  // Looking away ends the reading: the reply still belongs to the agent the user just left.
+  // Looking away or disabling auto-read explicitly ends the active utterance.
   useEffect(() => {
     if (!appSettings.ttsEnabled) return;
     return () => stopTts();
@@ -286,6 +255,12 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
   const queryClient = useQueryClient();
   const isConnected = useHostRuntimeIsConnected(serverId);
   const toast = useToast();
+  useEffect(() => {
+    if (!appSettings.ttsEnabled || !isConnected || supportsAssistantMessageCompletion) return;
+    if (assistantCompletionUnavailableToastRef.current) return;
+    assistantCompletionUnavailableToastRef.current = true;
+    toast.show(t("message.tts.updateHost"), { variant: "info" });
+  }, [appSettings.ttsEnabled, isConnected, supportsAssistantMessageCompletion, t, toast]);
 
   // Zustand store actions
   const setIsPlayingAudio = useSessionStore((state) => state.setIsPlayingAudio);
@@ -447,10 +422,24 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
 
   useEffect(() => {
     const setAgentInitializing = createSetAgentInitializing(serverId, setInitializingAgents);
+    const speechSender = createAssistantSpeechSender();
     const onStream = (message: SessionOutboundMessage) => {
       if (message.type !== "agent_stream") return;
       const { agentId, event, timestamp, seq, epoch } = message.payload;
       const parsedTimestamp = new Date(timestamp);
+      const speechText = speechSender.consume(agentId, event);
+      if (event.type === "timeline" && event.assistantMessageComplete) {
+        const current = speechSettingsRef.current;
+        if (
+          speechText &&
+          current.appSettings.ttsEnabled &&
+          current.supportsAssistantMessageCompletion &&
+          agentId === activeTtsAgentIdRef.current
+        ) {
+          speakReply({ text: speechText, voiceId: current.appSettings.ttsEngine });
+        }
+        return;
+      }
       const streamEvent = event;
       if (
         event.type === "turn_started" ||
@@ -466,8 +455,7 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
       if (turnLiveness.length > 0) {
         getHostRuntimeStore().applyAgentTurnLiveness(serverId, agentId, turnLiveness);
       }
-      // Play a completion sound and read the finished reply aloud (TTS), if enabled.
-      handleTurnCompletionRef.current({ agentId, turnLiveness });
+      handleTurnCompletionRef.current(turnLiveness);
       sync.enqueueStreamEvent(agentId, {
         event: streamEvent,
         seq,
@@ -567,7 +555,7 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
       setViewedTimelineSync(serverId, null);
       sync.dispose();
     };
-  }, [client, serverId, setInitializingAgents, setViewedTimelineSync, voiceRuntime]);
+  }, [client, serverId, setInitializingAgents, setViewedTimelineSync, speakReply, voiceRuntime]);
 
   useEffect(() => {
     viewedTimelineSyncRef.current?.setConnected(isConnected);

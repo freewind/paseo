@@ -402,6 +402,9 @@ export const fr: TranslationResources = {
       withTokens: "Contexte compacté (jetons{{tokens}}K)",
       completed: "Contexte compacté",
     },
+    tts: {
+      updateHost: "Mettez à jour l’hôte pour lire les réponses de l’assistant dès leur arrivée.",
+    },
   },
   importSession: {
     chooseHostTitle: en.importSession.chooseHostTitle,
