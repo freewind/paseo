@@ -2300,6 +2300,7 @@ export const ru: TranslationResources = {
         label: "🌿 Читать ответы вслух",
         description: "🌿 Читать вслух ответы агента, который открыт",
       },
+      ttsRate: { label: "Скорость чтения" },
       ttsPreview: {
         label: "Прослушать голос",
         play: "Воспроизвести пример",

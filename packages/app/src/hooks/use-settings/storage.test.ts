@@ -44,6 +44,7 @@ function makeDeps(
 }
 
 describe("loadAppSettingsFromStorage", () => {
+<<<<<<< HEAD
   it("persists file panel associations, including panels absent from this host", async () => {
     const deps = makeDeps();
     const queryClient = new QueryClient();
@@ -71,6 +72,22 @@ describe("loadAppSettingsFromStorage", () => {
     },
   );
 
+  it("persists the selected speech speed and recovers invalid or older settings", async () => {
+    const deps = makeDeps();
+    await saveAppSettings({ queryClient: new QueryClient(), updates: { ttsRate: 1.5 }, deps });
+    expect((await loadAppSettingsFromStorage(deps)).ttsRate).toBe(1.5);
+    for (const rate of [0, 3, "fast", null]) {
+      const invalid = makeDeps({
+        storage: createInMemoryKeyValueStorage({
+          [APP_SETTINGS_KEY]: JSON.stringify({ ttsRate: rate, ttsEngine: "voice-zh" }),
+        }),
+      });
+      const settings = await loadAppSettingsFromStorage(invalid);
+      expect(settings.ttsRate).toBe(1);
+      expect(settings.ttsEngine).toBe("voice-zh");
+    }
+    expect((await loadAppSettingsFromStorage(makeDeps())).ttsRate).toBe(1);
+  });
   it("preserves a persisted steer send behavior", async () => {
     const deps = makeDeps({
       storage: createInMemoryKeyValueStorage({

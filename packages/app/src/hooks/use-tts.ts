@@ -6,6 +6,7 @@ import { createUtteranceCoordinator, type UtteranceCoordinator } from "@/tts/utt
 export interface SpeakTextInput {
   text: string;
   voiceId?: string | null;
+  rate?: number;
 }
 
 export interface TtsVoice {
@@ -84,13 +85,14 @@ let coordinator: UtteranceCoordinator | null = null;
 
 function getCoordinator(): UtteranceCoordinator {
   coordinator ??= createUtteranceCoordinator({
-    speak: (text, voiceId, onSettled) => {
+    speak: (text, voiceId, onSettled, rate) => {
       // Deliberately never awaiting a voice lookup here: expo-speech resolves the voice itself, and
       // on web a stalled lookup would otherwise swallow the utterance entirely.
       Speech.speak(text, {
         // A user-chosen voice wins on every platform; only fall back to the
         // current app language when the default voice is used.
         ...(voiceId ? { voice: voiceId } : { language: i18n.resolvedLanguage ?? "en" }),
+        rate,
         onDone: onSettled,
         onStopped: onSettled,
         onError: onSettled,
@@ -105,8 +107,8 @@ function getCoordinator(): UtteranceCoordinator {
 
 /** TTS reading of agent replies via expo-speech (works on native and web). */
 export function useTts(): UseTtsResult {
-  const speak = useCallback(({ text, voiceId }: SpeakTextInput) => {
-    getCoordinator().speak(text, voiceId ?? null);
+  const speak = useCallback(({ text, voiceId, rate }: SpeakTextInput) => {
+    getCoordinator().speak(text, voiceId ?? null, rate);
   }, []);
 
   const stop = useCallback(() => {
