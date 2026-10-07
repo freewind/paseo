@@ -2044,6 +2044,7 @@ export const zhCN: TranslationResources = {
         label: "🌿 朗读回复",
         description: "🌿 朗读当前正在查看的 Agent 的回复",
       },
+      ttsRate: { label: "朗读语速" },
       ttsPreview: {
         label: "试听朗读语音",
         play: "播放试听",
