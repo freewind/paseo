@@ -738,6 +738,14 @@ export class AgentManager {
   private readonly reloadedSessionCloses = new WeakMap<AgentSession, Promise<void>>();
   private readonly lifecycleMutationTails = new Map<string, Promise<void>>();
   private readonly agentStreamCoalescer: AgentStreamCoalescer;
+  private readonly pendingAssistantMessages = new Map<
+    string,
+    {
+      provider: AgentProvider;
+      turnId: string | undefined;
+      messageId: string | undefined;
+    }
+  >();
   private mcpBaseUrl: string | null;
   private readonly mcpAuthToken: string | null;
   private paseoToolsEnabled = true;
@@ -3793,6 +3801,7 @@ export class AgentManager {
     cancelReason: string,
   ): ManagedAgentClosed {
     this.agentStreamCoalescer.flushAndDiscard(agent.id);
+    this.pendingAssistantMessages.delete(agent.id);
     this.agents.delete(agent.id);
     this.previousStatuses.delete(agent.id);
     if (agent.unsubscribeSession) {
@@ -4285,8 +4294,9 @@ export class AgentManager {
       return false;
     }
 
-    // Only update timestamp for live events, not history replay
     if (!options?.fromHistory) {
+      if (this.observeAssistantMessageBoundary(agent.id, event)) return false;
+
       this.touchUpdatedAt(agent);
       if (this.agentStreamCoalescer.handle(agent.id, event)) {
         this.traceCoalescerBuffered(agent, event, eventTurnId);
@@ -4508,6 +4518,89 @@ export class AgentManager {
     }
   }
 
+  private observeAssistantMessageBoundary(agentId: string, event: AgentStreamEvent): boolean {
+    if (event.type === "timeline" && event.assistantMessageComplete) {
+      this.agentStreamCoalescer.flushFor(agentId);
+      this.closePendingAssistantMessage(agentId, {
+        provider: event.provider,
+        turnId: event.turnId,
+        messageId: event.item.type === "assistant_message" ? event.item.messageId : undefined,
+      });
+      return true;
+    }
+
+    if (event.type === "turn_started") {
+      const pending = this.pendingAssistantMessages.get(agentId);
+      if (pending && pending.turnId !== event.turnId) {
+        this.agentStreamCoalescer.flushFor(agentId);
+        this.closePendingAssistantMessage(agentId);
+      }
+    }
+
+    if (event.type === "timeline" && event.item.type === "assistant_message") {
+      const pending = this.pendingAssistantMessages.get(agentId);
+      if (
+        pending &&
+        (pending.provider !== event.provider ||
+          pending.turnId !== event.turnId ||
+          pending.messageId !== event.item.messageId)
+      ) {
+        this.agentStreamCoalescer.flushFor(agentId);
+        this.closePendingAssistantMessage(agentId);
+      }
+      if (event.item.text.length > 0) {
+        this.pendingAssistantMessages.set(agentId, {
+          provider: event.provider,
+          turnId: event.turnId,
+          messageId: event.item.messageId,
+        });
+      }
+    } else if (
+      (event.type === "timeline" && event.item.type !== "assistant_message") ||
+      isTurnTerminalEvent(event)
+    ) {
+      const pending = this.pendingAssistantMessages.get(agentId);
+      if (pending) {
+        this.agentStreamCoalescer.flushFor(agentId);
+        this.closePendingAssistantMessage(agentId);
+      }
+    }
+
+    return false;
+  }
+
+  private closePendingAssistantMessage(
+    agentId: string,
+    expected?: {
+      provider: AgentProvider;
+      turnId: string | undefined;
+      messageId: string | undefined;
+    },
+  ): void {
+    const pending = this.pendingAssistantMessages.get(agentId);
+    if (
+      !pending ||
+      (expected &&
+        (pending.provider !== expected.provider ||
+          pending.turnId !== expected.turnId ||
+          (expected.messageId !== undefined && pending.messageId !== expected.messageId)))
+    ) {
+      return;
+    }
+    this.pendingAssistantMessages.delete(agentId);
+    this.dispatchStream(agentId, {
+      type: "timeline",
+      provider: pending.provider,
+      ...(pending.turnId ? { turnId: pending.turnId } : {}),
+      assistantMessageComplete: true,
+      item: {
+        type: "assistant_message",
+        text: "",
+        ...(pending.messageId ? { messageId: pending.messageId } : {}),
+      },
+    });
+  }
+
   private async onStreamTimelineEvent(params: {
     agent: ActiveManagedAgent;
     event: Extract<AgentStreamEvent, { type: "timeline" }>;
@@ -4515,6 +4608,11 @@ export class AgentManager {
     flags: StreamEventFlags;
   }): Promise<void> {
     const { agent, event, options, flags } = params;
+    if (event.assistantMessageComplete) {
+      flags.shouldDispatchEvent = false;
+      flags.shouldNotifyWaiters = false;
+      return;
+    }
 
     if (event.item.type === "user_message" && isSystemInjectedEnvelope(event.item.text)) {
       flags.shouldDispatchEvent = false;

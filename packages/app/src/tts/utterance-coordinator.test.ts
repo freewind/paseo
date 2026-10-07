@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { AgentStreamEventPayload } from "@getpaseo/protocol/messages";
+import { createAssistantSpeechSender } from "./assistant-message-completion";
 import {
   createUtteranceCoordinator,
   type UtteranceCoordinator,
@@ -32,6 +34,59 @@ function harness(): Harness {
     settle: (index) => pending[index]?.(),
   };
 }
+
+describe("live assistant speech", () => {
+  it("reads completed progress before the turn ends without restarting for deltas or empty replies", () => {
+    const h = harness();
+    const sender = createAssistantSpeechSender();
+    const consume = (text: string, messageId: string, complete = false) => {
+      const event: AgentStreamEventPayload = {
+        type: "timeline",
+        provider: "omp",
+        turnId: "turn-1",
+        item: { type: "assistant_message", text, messageId },
+        ...(complete ? { assistantMessageComplete: true as const } : {}),
+      };
+      const content = sender.consume("agent-1", event);
+      if (content) h.coordinator.speak(content, null);
+    };
+    consume("正在", "progress");
+    consume("检查", "progress");
+    expect(h.started).toEqual([]);
+    consume("", "progress", true);
+    expect(h.started).toEqual([{ text: "正在检查", voiceId: null }]);
+    consume("", "progress", true);
+    sender.consume("agent-1", { type: "turn_started", provider: "omp", turnId: "turn-2" });
+    consume("![图片](image.png)  ", "empty");
+    consume("", "empty", true);
+    expect(h.stopCount()).toBe(0);
+    expect(h.coordinator.isSpeaking()).toBe(true);
+    consume("检查完成", "result");
+    consume("", "result", true);
+    expect(h.stopCount()).toBe(1);
+    expect(h.started.map((read) => read.text)).toEqual(["正在检查", "检查完成"]);
+    sender.consume("agent-1", { type: "turn_completed", provider: "omp", turnId: "turn-1" });
+    expect(h.started.map((read) => read.text)).toEqual(["正在检查", "检查完成"]);
+  });
+
+  it("keeps agents and turns isolated and permits consecutive messages without native IDs", () => {
+    const sender = createAssistantSpeechSender();
+    const chunk = (text: string, turnId = "turn-1", complete = false): AgentStreamEventPayload => ({
+      type: "timeline",
+      provider: "claude",
+      turnId,
+      item: { type: "assistant_message", text },
+      ...(complete ? { assistantMessageComplete: true as const } : {}),
+    });
+    sender.consume("a", chunk("第一段"));
+    sender.consume("b", chunk("后台回复"));
+    expect(sender.consume("a", chunk("", "turn-2", true))).toBeNull();
+    expect(sender.consume("a", chunk("", "turn-1", true))).toBe("第一段");
+    sender.consume("a", chunk("第二段"));
+    expect(sender.consume("a", chunk("", "turn-1", true))).toBe("第二段");
+    expect(sender.consume("b", chunk("", "turn-1", true))).toBe("后台回复");
+  });
+});
 
 describe("utterance coordinator", () => {
   it("interrupts the current utterance instead of dropping the new reply", () => {

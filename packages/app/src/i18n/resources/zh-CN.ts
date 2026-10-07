@@ -396,6 +396,7 @@ export const zhCN: TranslationResources = {
       withTokens: "上下文已压缩（{{tokens}}K tokens）",
       completed: "上下文已压缩",
     },
+    tts: { updateHost: "请更新主机以实时朗读助手回复。" },
   },
   importSession: {
     chooseHostTitle: en.importSession.chooseHostTitle,

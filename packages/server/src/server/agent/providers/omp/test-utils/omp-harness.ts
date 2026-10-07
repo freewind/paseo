@@ -410,7 +410,13 @@ export class OmpHarness {
   }
 
   timeline(): AgentTimelineItem[] {
-    return this.events.flatMap((event) => (event.type === "timeline" ? [event.item] : []));
+    return this.events.flatMap((event) =>
+      event.type === "timeline" && !event.assistantMessageComplete ? [event.item] : [],
+    );
+  }
+
+  eventsSnapshot(): AgentStreamEvent[] {
+    return [...this.events];
   }
 
   eventTypes(): AgentStreamEvent["type"][] {

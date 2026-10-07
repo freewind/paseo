@@ -393,6 +393,9 @@ export const en = {
       withTokens: "Context compacted ({{tokens}}K tokens)",
       completed: "Context compacted",
     },
+    tts: {
+      updateHost: "Update the host to read assistant replies as they arrive.",
+    },
   },
   importSession: {
     title: "Import session",

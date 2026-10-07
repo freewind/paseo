@@ -633,6 +633,31 @@ describe("OMP agent client and session", () => {
     expect(resumed.runtime().getStateRequestCount).toBe(1);
   });
 
+  test("exposes assistant message_end before the turn finishes", async () => {
+    const omp = new OmpHarness();
+    await omp.start();
+    await omp.requireStartTurn("prompt");
+    const start = omp.eventsSnapshot().length;
+    omp.runtime().beginTurn();
+    omp.runtime().streamAssistantText("progress", "omp-progress");
+    await waitForImmediate();
+
+    const emitted = omp
+      .eventsSnapshot()
+      .slice(start)
+      .filter((event) => event.type === "timeline");
+    expect(emitted[0]).toMatchObject({
+      type: "timeline",
+      item: { type: "assistant_message", text: "progress", messageId: "omp-progress" },
+    });
+    expect(emitted[1]).toMatchObject({
+      type: "timeline",
+      assistantMessageComplete: true,
+      item: { type: "assistant_message", text: "", messageId: "omp-progress" },
+    });
+    expect(omp.completedTurnCount()).toBe(0);
+  });
+
   test("does not complete on OMP's extension-notice agent_end", async () => {
     const omp = new OmpHarness();
     await omp.start();
