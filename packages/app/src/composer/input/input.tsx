@@ -31,6 +31,7 @@ import { ICON_SIZE, type Theme } from "@/styles/theme";
 import { ArrowUp, Mic, MicOff, CornerDownLeft, Plus, Square } from "lucide-react-native";
 import { useDictation } from "@/hooks/use-dictation";
 import { hasFinePointer } from "@/hooks/use-fine-pointer";
+import { interruptConversationSpeech } from "@/tts/speech-interruption";
 import { DictationOverlay } from "@/components/dictation-controls";
 import { RealtimeVoiceOverlay } from "@/components/realtime-voice-overlay";
 import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
@@ -912,6 +913,8 @@ function toggleRealtimeVoiceImpl(ctx: ToggleRealtimeVoiceContext): void {
 }
 
 interface StartDictationContext {
+  serverId?: string;
+  agentId?: string;
   dictationUnavailableMessage: string | null | undefined;
   canStartDictation: () => boolean;
   toast: { error: (msg: string) => void };
@@ -928,6 +931,7 @@ async function startDictationIfAvailableImpl(ctx: StartDictationContext): Promis
     return;
   }
   ctx.exitFullscreen();
+  if (ctx.serverId && ctx.agentId) interruptConversationSpeech(ctx.serverId, ctx.agentId);
   await ctx.startDictation();
 }
 
@@ -1561,13 +1565,23 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
     const startDictationIfAvailable = useCallback(
       () =>
         startDictationIfAvailableImpl({
+          serverId: voiceServerId ?? undefined,
+          agentId: voiceAgentId ?? undefined,
           dictationUnavailableMessage,
           canStartDictation,
           toast,
           startDictation,
           exitFullscreen,
         }),
-      [canStartDictation, dictationUnavailableMessage, startDictation, toast, exitFullscreen],
+      [
+        canStartDictation,
+        dictationUnavailableMessage,
+        startDictation,
+        toast,
+        exitFullscreen,
+        voiceServerId,
+        voiceAgentId,
+      ],
     );
 
     const handleVoicePress = useCallback(
