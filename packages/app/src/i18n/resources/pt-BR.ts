@@ -116,6 +116,7 @@ export const ptBR: TranslationResources = {
     },
   },
   composer: {
+    readAloud: { start: "Ativar leitura desta conversa", stop: "Desativar leitura desta conversa" },
     placeholders: {
       desktop: "Envie uma mensagem ao agente, marque @files ou use /commands e /skills",
       mobile: "Mensagem, @files, /commands",
@@ -2296,8 +2297,8 @@ export const ptBR: TranslationResources = {
         error: "Não foi possível limpar os dados do navegador.",
       },
       ttsEnabled: {
-        label: "🌿 Ler respostas em voz alta",
-        description: "🌿 Ler em voz alta as respostas do agente que você está vendo",
+        label: "🌿 Habilitar leitura em voz alta",
+        description: "🌿 Ative ou desative a leitura em cada conversa",
       },
       ttsRate: { label: "Velocidade de leitura" },
       ttsPreview: {

@@ -117,6 +117,10 @@ export const fr: TranslationResources = {
     },
   },
   composer: {
+    readAloud: {
+      start: "Activer la lecture de cette conversation",
+      stop: "Désactiver la lecture de cette conversation",
+    },
     placeholders: {
       desktop: "Écrivez à l’agent, mentionnez des @fichiers ou utilisez les /commandes et /skills",
       mobile: "Message, @fichiers, /commandes",
@@ -2313,8 +2317,8 @@ export const fr: TranslationResources = {
         error: "Impossible d’effacer les données du navigateur.",
       },
       ttsEnabled: {
-        label: "🌿 Lire les réponses à voix haute",
-        description: "🌿 Lire à voix haute les réponses de l'agent affiché",
+        label: "🌿 Activer la lecture à voix haute",
+        description: "🌿 Activez ou désactivez la lecture dans chaque conversation",
       },
       ttsRate: { label: "Vitesse de lecture" },
       ttsPreview: {

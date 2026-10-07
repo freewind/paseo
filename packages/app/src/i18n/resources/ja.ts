@@ -116,6 +116,7 @@ export const ja: TranslationResources = {
     },
   },
   composer: {
+    readAloud: { start: "この会話の読み上げを開始", stop: "この会話の読み上げを停止" },
     placeholders: {
       desktop: "エージェントにメッセージ、@ファイル、/コマンドや/スキルを入力",
       mobile: "メッセージ、@ファイル、/コマンド",
@@ -2283,8 +2284,8 @@ export const ja: TranslationResources = {
         error: "ブラウザーデータを消去できませんでした。",
       },
       ttsEnabled: {
-        label: "🌿 返信を読み上げる",
-        description: "🌿 表示しているエージェントの返信を読み上げます",
+        label: "🌿 読み上げ機能を有効にする",
+        description: "🌿 各会話で読み上げを個別に切り替えます",
       },
       ttsRate: { label: "読み上げ速度" },
       ttsPreview: {
