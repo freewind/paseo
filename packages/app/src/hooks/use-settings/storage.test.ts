@@ -43,6 +43,25 @@ function makeDeps(
 }
 
 describe("loadAppSettingsFromStorage", () => {
+  it("keeps conversation speech opt-ins isolated by host and agent across reload", async () => {
+    const deps = makeDeps();
+    const key = JSON.stringify(["host-a", "agent-1"]);
+    await saveAppSettings({
+      queryClient: new QueryClient(),
+      updates: { ttsEnabled: true, ttsConversations: { [key]: true } },
+      deps,
+    });
+    const settings = await loadAppSettingsFromStorage(deps);
+    expect(settings.ttsConversations[key]).toBe(true);
+    expect(settings.ttsConversations[JSON.stringify(["host-b", "agent-1"])]).toBeUndefined();
+    expect(settings.ttsConversations[JSON.stringify(["host-a", "agent-2"])]).toBeUndefined();
+    await saveAppSettings({
+      queryClient: new QueryClient(),
+      updates: { ttsConversations: { [key]: false } },
+      deps,
+    });
+    expect((await loadAppSettingsFromStorage(deps)).ttsConversations[key]).toBe(false);
+  });
   it("persists the selected speech speed and recovers invalid or older settings", async () => {
     const deps = makeDeps();
     await saveAppSettings({ queryClient: new QueryClient(), updates: { ttsRate: 1.5 }, deps });

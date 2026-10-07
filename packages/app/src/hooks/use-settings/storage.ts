@@ -120,6 +120,8 @@ export interface AppSettings {
   ttsEngine: string | null;
   /** Device speech rate multiplier, shared by preview and reply reading. */
   ttsRate: number;
+  /** Local conversation opt-ins, keyed by host and agent identity. */
+  ttsConversations: Record<string, boolean>;
   /** Desktop-only preferences for implicit opens into the ordinary side pane. */
   openInSidePane: OpenInSidePanePreferences;
   pullRequestOpenLocation: PullRequestOpenLocation;
@@ -184,6 +186,7 @@ export const DEFAULT_CLIENT_SETTINGS: AppSettings = {
   ttsEnabled: false,
   ttsEngine: null,
   ttsRate: 1,
+  ttsConversations: {},
   openInSidePane: DEFAULT_OPEN_IN_SIDE_PANE_PREFERENCES,
   pullRequestOpenLocation: "explorer",
 };
@@ -293,6 +296,7 @@ const StoredAppSettingsSchema = z
     ttsEnabled: z.boolean().catch(false),
     ttsEngine: z.string().nullable().catch(null),
     ttsRate: z.number().min(0.5).max(2).catch(1),
+    ttsConversations: z.record(z.string(), z.boolean()).catch({}),
     openInSidePane: z
       .object({
         explorerFiles: z.boolean().catch(false),
