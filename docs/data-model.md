@@ -574,6 +574,10 @@ The native chat settings preview uses the selected device voice even when automa
 The client's saved speech rate applies to both previews and reply reading; old settings use normal speed.
 Changing the daemon's speech configuration does not change either client preference.
 
+Global read-aloud enables the feature, not every conversation. The composer owns a separate opt-in
+for each `(serverId, agentId)` on this device; new conversations are silent. Closing the active
+conversation's opt-in stops its utterance without changing other conversations' saved choices.
+
 ### Keying convention: directory-backed vs workspace-owned
 
 Right-sidebar client state splits on whether it is determined by the directory or owned by the workspace (two workspaces can share one `cwd`). The split is enforced by the cache key, so changing a key changes the sharing semantics — see [architecture.md](architecture.md#right-sidebar-boundary-directory-backed-vs-workspace-owned) for the full table.

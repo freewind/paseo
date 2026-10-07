@@ -114,6 +114,7 @@ export const zhCN: TranslationResources = {
     },
   },
   composer: {
+    readAloud: { start: "开启此对话朗读", stop: "关闭此对话朗读" },
     placeholders: {
       desktop: "给 Agent 发消息，标记 @files，或使用 /commands 和 /skills",
       mobile: "发消息，@files，/commands",
@@ -2042,8 +2043,8 @@ export const zhCN: TranslationResources = {
         error: "无法清除浏览器数据。",
       },
       ttsEnabled: {
-        label: "🌿 朗读回复",
-        description: "🌿 朗读当前正在查看的 Agent 的回复",
+        label: "🌿 启用朗读功能",
+        description: "🌿 在每个对话中单独开启或关闭朗读",
       },
       ttsRate: { label: "朗读语速" },
       ttsPreview: {

@@ -110,6 +110,10 @@ export const en = {
     },
   },
   composer: {
+    readAloud: {
+      start: "Start reading this conversation aloud",
+      stop: "Stop reading this conversation aloud",
+    },
     placeholders: {
       desktop: "Message the agent, tag @files, or use /commands and /skills",
       mobile: "Message, @files, /commands",
@@ -2192,8 +2196,8 @@ export const en = {
         error: "Couldn't clear browser data.",
       },
       ttsEnabled: {
-        label: "🌿 Read replies aloud",
-        description: "🌿 Read the agent you are viewing aloud as its replies finish",
+        label: "🌿 Enable read-aloud",
+        description: "🌿 Turn reading on or off separately in each conversation",
       },
       ttsRate: { label: "Read-aloud speed" },
       ttsPreview: {

@@ -115,6 +115,10 @@ export const es: TranslationResources = {
     },
   },
   composer: {
+    readAloud: {
+      start: "Activar lectura de esta conversación",
+      stop: "Desactivar lectura de esta conversación",
+    },
     placeholders: {
       desktop: "Envíe un mensaje al agente, etiquete@fileso use/commandsy/skills",
       mobile: "Mensaje,@files,/commands",
@@ -2117,8 +2121,8 @@ export const es: TranslationResources = {
         error: "No se pudieron borrar los datos del navegador.",
       },
       ttsEnabled: {
-        label: "🌿 Leer respuestas en voz alta",
-        description: "🌿 Leer en voz alta las respuestas del agente que estás viendo",
+        label: "🌿 Habilitar lectura en voz alta",
+        description: "🌿 Activa o desactiva la lectura en cada conversación",
       },
       ttsRate: { label: "Velocidad de lectura" },
       ttsPreview: {

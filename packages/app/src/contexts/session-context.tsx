@@ -245,11 +245,15 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
   );
   const handleTurnCompletionRef = useRef(handleTurnCompletion);
   handleTurnCompletionRef.current = handleTurnCompletion;
-  // Looking away or disabling auto-read explicitly ends the active utterance.
+  const activeConversationSpeechEnabled =
+    appSettings.ttsEnabled &&
+    activeTtsAgentId !== null &&
+    appSettings.ttsConversations[JSON.stringify([serverId, activeTtsAgentId])] === true;
+  // Stop only the conversation that owned playback, not an unrelated host's preference update.
   useEffect(() => {
-    if (!appSettings.ttsEnabled) return;
+    if (!activeConversationSpeechEnabled) return;
     return () => stopTts();
-  }, [activeTtsAgentId, appSettings.ttsEnabled, stopTts]);
+  }, [activeTtsAgentId, activeConversationSpeechEnabled, stopTts]);
   const voiceRuntime = useVoiceRuntimeOptional();
   const voiceAudioEngine = useVoiceAudioEngineOptional();
   const queryClient = useQueryClient();
@@ -433,6 +437,7 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
         if (
           speechText &&
           current.appSettings.ttsEnabled &&
+          current.appSettings.ttsConversations[JSON.stringify([serverId, agentId])] === true &&
           current.supportsAssistantMessageCompletion &&
           agentId === activeTtsAgentIdRef.current
         ) {

@@ -114,6 +114,7 @@ export const ko: TranslationResources = {
     },
   },
   composer: {
+    readAloud: { start: "이 대화 읽기 시작", stop: "이 대화 읽기 중지" },
     placeholders: {
       desktop: "에이전트에게 메시지를 보내거나 @files 태그, /commands, /skills를 사용하세요",
       mobile: "메시지, @files, /commands",
@@ -2075,8 +2076,8 @@ export const ko: TranslationResources = {
         error: "브라우저 데이터를 삭제할 수 없습니다.",
       },
       ttsEnabled: {
-        label: "🌿 답변을 소리 내어 읽기",
-        description: "🌿 보고 있는 에이전트의 답변을 소리 내어 읽습니다",
+        label: "🌿 읽기 기능 활성화",
+        description: "🌿 각 대화에서 읽기를 개별적으로 켜거나 끕니다",
       },
       ttsRate: { label: "읽기 속도" },
       ttsPreview: {

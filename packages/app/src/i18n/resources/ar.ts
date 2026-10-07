@@ -114,6 +114,7 @@ export const ar: TranslationResources = {
     },
   },
   composer: {
+    readAloud: { start: "بدء قراءة هذه المحادثة", stop: "إيقاف قراءة هذه المحادثة" },
     placeholders: {
       desktop: "أرسل رسالة إلى الوكيل أو ضع علامة على @files أو استخدم /commands و /skills",
       mobile: "الرسالة، @files ، /commands",
@@ -2066,7 +2067,7 @@ export const ar: TranslationResources = {
       },
       ttsEnabled: {
         label: "🌿 تمكين القراءة الصوتية",
-        description: "🌿 قراءة ردود الوكيل الذي تشاهده بصوت عالٍ",
+        description: "🌿 فعّل القراءة أو أوقفها لكل محادثة على حدة",
       },
       ttsRate: { label: "سرعة القراءة" },
       ttsPreview: {

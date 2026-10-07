@@ -115,6 +115,7 @@ export const ru: TranslationResources = {
     },
   },
   composer: {
+    readAloud: { start: "Включить чтение этой беседы", stop: "Выключить чтение этой беседы" },
     placeholders: {
       desktop: "Напишите агенту сообщение, отметьте @files или используйте /commands и /skills.",
       mobile: "Сообщение,@files,/commands",
@@ -2099,8 +2100,8 @@ export const ru: TranslationResources = {
         error: "Не удалось очистить данные браузера.",
       },
       ttsEnabled: {
-        label: "🌿 Читать ответы вслух",
-        description: "🌿 Читать вслух ответы агента, который открыт",
+        label: "🌿 Включить функцию чтения",
+        description: "🌿 Включайте или выключайте чтение отдельно в каждой беседе",
       },
       ttsRate: { label: "Скорость чтения" },
       ttsPreview: {
