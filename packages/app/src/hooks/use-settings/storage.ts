@@ -113,6 +113,8 @@ export interface AppSettings {
   doubleBackToExit: boolean;
   /** Whether to play a sound when an agent finishes a turn. */
   playTurnCompleteSound: boolean;
+  /** Which sound to play when an agent finishes a turn. */
+  turnCompleteSound: string;
   /** Whether to read agent replies aloud via TTS. */
   ttsEnabled: boolean;
   /** Android TTS engine id (null = system default). */
@@ -178,6 +180,7 @@ export const DEFAULT_CLIENT_SETTINGS: AppSettings = {
   showVoiceButton: true,
   doubleBackToExit: false,
   playTurnCompleteSound: false,
+  turnCompleteSound: "default",
   ttsEnabled: false,
   ttsEngine: null,
   openInSidePane: DEFAULT_OPEN_IN_SIDE_PANE_PREFERENCES,
@@ -286,6 +289,7 @@ const StoredAppSettingsSchema = z
     showVoiceButton: z.boolean().catch(true),
     doubleBackToExit: z.boolean().catch(false),
     playTurnCompleteSound: z.boolean().catch(false),
+    turnCompleteSound: z.string().catch("default"),
     ttsEnabled: z.boolean().catch(false),
     ttsEngine: z.string().nullable().catch(null),
     openInSidePane: z
