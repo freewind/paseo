@@ -72,6 +72,7 @@ interface SplitContainerProps {
   onCloseTab: (tabId: string) => Promise<void> | void;
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
+  onCopyConversationMarkdown: (agentId: string) => Promise<void> | void;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
@@ -157,6 +158,7 @@ export function SplitContainer({
   onCloseTab,
   onCopyResumeCommand,
   onCopyAgentId,
+  onCopyConversationMarkdown,
   onCopyTerminalId,
   onCopyFilePath,
   onReloadAgent,
@@ -385,6 +387,7 @@ function SplitNodeView({
   onCloseTab,
   onCopyResumeCommand,
   onCopyAgentId,
+  onCopyConversationMarkdown,
   onCopyTerminalId,
   onCopyFilePath,
   onReloadAgent,
@@ -473,6 +476,7 @@ function SplitNodeView({
             onCloseTab={onCloseTab}
             onCopyResumeCommand={onCopyResumeCommand}
             onCopyAgentId={onCopyAgentId}
+            onCopyConversationMarkdown={onCopyConversationMarkdown}
             onCopyTerminalId={onCopyTerminalId}
             onCopyFilePath={onCopyFilePath}
             onReloadAgent={onReloadAgent}
@@ -525,6 +529,7 @@ function SplitNodeView({
               onCloseTab={onCloseTab}
               onCopyResumeCommand={onCopyResumeCommand}
               onCopyAgentId={onCopyAgentId}
+              onCopyConversationMarkdown={onCopyConversationMarkdown}
               onCopyTerminalId={onCopyTerminalId}
               onCopyFilePath={onCopyFilePath}
               onReloadAgent={onReloadAgent}
@@ -585,6 +590,7 @@ const SplitPaneView = memo(function SplitPaneView({
   onCloseTab,
   onCopyResumeCommand,
   onCopyAgentId,
+  onCopyConversationMarkdown,
   onCopyTerminalId,
   onCopyFilePath,
   onReloadAgent,
@@ -721,6 +727,7 @@ const SplitPaneView = memo(function SplitPaneView({
             onCloseTab={onCloseTab}
             onCopyResumeCommand={onCopyResumeCommand}
             onCopyAgentId={onCopyAgentId}
+            onCopyConversationMarkdown={onCopyConversationMarkdown}
             onCopyTerminalId={onCopyTerminalId}
             onCopyFilePath={onCopyFilePath}
             onReloadAgent={onReloadAgent}
