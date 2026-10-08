@@ -640,7 +640,7 @@ export const en = {
         openFor: "Open menu for {{label}}",
         copyResumeCommand: "Copy resume command",
         copyAgentId: "Copy agent id",
-        copyConversationMarkdown: "Copy Markdown conversation",
+        copyConversationMarkdown: "复制 Markdown 对话",
         copyTerminalId: "Copy terminal id",
         copyFilePath: "Copy file path",
         rename: "Rename",
