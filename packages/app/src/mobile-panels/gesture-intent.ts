@@ -1,6 +1,17 @@
 export type MobilePanelGestureDirection = -1 | 1;
 export type MobilePanelGestureIntent = "activate" | "fail" | "wait";
 
+export function isOutsideCompactPanelEdge(
+  touchStartX: number,
+  windowWidth: number,
+  direction: MobilePanelGestureDirection,
+  isCompact: boolean,
+): boolean {
+  "worklet";
+  if (!isCompact) return false;
+  return direction === 1 ? touchStartX > windowWidth / 4 : touchStartX < (windowWidth * 3) / 4;
+}
+
 export function resolveMobilePanelGestureIntent(input: {
   deltaX: number;
   deltaY: number;

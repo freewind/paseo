@@ -1,6 +1,24 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveMobilePanelGestureIntent } from "./gesture-intent";
+import { isOutsideCompactPanelEdge, resolveMobilePanelGestureIntent } from "./gesture-intent";
+
+describe("compact panel gesture edges", () => {
+  it("allows opening from the matching quarter of the screen only", () => {
+    expect([
+      isOutsideCompactPanelEdge(100, 400, 1, true),
+      isOutsideCompactPanelEdge(101, 400, 1, true),
+      isOutsideCompactPanelEdge(299, 400, -1, true),
+      isOutsideCompactPanelEdge(300, 400, -1, true),
+    ]).toEqual([false, true, true, false]);
+  });
+
+  it("does not restrict non-compact layouts", () => {
+    expect([
+      isOutsideCompactPanelEdge(200, 400, 1, false),
+      isOutsideCompactPanelEdge(200, 400, -1, false),
+    ]).toEqual([false, false]);
+  });
+});
 
 describe("mobile panel gesture intent", () => {
   it("blocks both panel-opening directions while the active surface owns horizontal dragging", () => {
