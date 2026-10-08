@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useToast } from "@/contexts/toast-context";
 import { getHostRuntimeStore, useHostRuntimeIsConnected } from "@/runtime/host-runtime";
 import { resolveCloseAgentTabPolicy } from "@/subagents/close-tab-policy";
+import { buildConversationMarkdown } from "@/timeline/conversation-markdown";
 import { useArchiveAgent } from "@/hooks/use-archive-agent";
 import { useSessionStore } from "@/stores/session-store";
 import { useWorkspaceLayoutStore } from "@/stores/workspace-layout-store";
@@ -125,6 +126,54 @@ export function useHideWorkspaceAgentTab({
   return { onHideTab };
 }
 
+/**
+ * Copies a whole agent conversation as Markdown: one unbounded timeline fetch (`limit: 0` asks
+ * for every row in the tail window) keeps the transcript independent of what the user has
+ * scrolled to, and only user and assistant text survives the projection.
+ */
+export function useCopyAgentConversationMarkdown({
+  serverId,
+}: {
+  serverId: string;
+}): (agentId: string) => Promise<void> {
+  const { t } = useTranslation();
+  const toast = useToast();
+  const isConnected = useHostRuntimeIsConnected(serverId);
+  const client = useSessionStore((state) => state.sessions[serverId]?.client ?? null);
+
+  return useCallback(
+    async (agentId: string) => {
+      if (!agentId) return;
+      if (!client || !isConnected) {
+        toast.error(t("workspace.terminal.hostDisconnected"));
+        return;
+      }
+      toast.show(t("workspace.tabs.toasts.copyingConversation"), { durationMs: null });
+      try {
+        const page = await client.fetchAgentTimeline(agentId, {
+          direction: "tail",
+          limit: 0,
+          projection: "projected",
+        });
+        if (page.error) {
+          toast.error(page.error);
+          return;
+        }
+        const markdown = buildConversationMarkdown(page.entries.map((entry) => entry.item));
+        if (!markdown) {
+          toast.error(t("workspace.tabs.toasts.conversationMarkdownEmpty"));
+          return;
+        }
+        await Clipboard.setStringAsync(markdown);
+        toast.copied(t("workspace.tabs.toasts.conversationMarkdownCopiedLabel"));
+      } catch {
+        toast.error(t("workspace.tabs.toasts.copyFailed"));
+      }
+    },
+    [client, isConnected, t, toast],
+  );
+}
+
 export interface UseWorkspaceAgentTabActionsInput {
   serverId: string;
   workspaceId: string;
@@ -140,6 +189,7 @@ export interface UseWorkspaceAgentTabActionsInput {
 export interface WorkspaceAgentTabActions {
   onCopyResumeCommand: (agentId: string) => Promise<void>;
   onCopyAgentId: (agentId: string) => Promise<void>;
+  onCopyConversationMarkdown: (agentId: string) => Promise<void>;
   onReloadAgent: (agentId: string) => Promise<void>;
   onRenameTab: (tab: WorkspaceTabDescriptor) => void;
   onCloseTab: (tabId: string) => Promise<void>;
@@ -262,6 +312,8 @@ export function useWorkspaceAgentTabActions({
     },
     [serverId, t, toast],
   );
+
+  const onCopyConversationMarkdown = useCopyAgentConversationMarkdown({ serverId });
 
   const onReloadAgent = useCallback(
     async (agentId: string) => {
@@ -502,6 +554,7 @@ export function useWorkspaceAgentTabActions({
   return {
     onCopyResumeCommand,
     onCopyAgentId,
+    onCopyConversationMarkdown,
     onReloadAgent,
     onRenameTab: handleRenameTab,
     onCloseTab,

@@ -95,6 +95,7 @@ export const SidebarWorkspaceAgentList = memo(function SidebarWorkspaceAgentList
         menuTestIDBase: `sidebar-workspace-agent-menu-${tab.tabId}`,
         onCopyResumeCommand: actions.onCopyResumeCommand,
         onCopyAgentId: actions.onCopyAgentId,
+        onCopyConversationMarkdown: actions.onCopyConversationMarkdown,
         // Unreachable: the list only holds agent tabs, which the menu never offers these for.
         onCopyTerminalId: noopAsync,
         onCopyFilePath: noopAsync,

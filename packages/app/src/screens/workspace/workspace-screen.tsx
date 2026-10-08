@@ -128,7 +128,10 @@ import {
   WorkspaceTabRenameModal,
 } from "@/screens/workspace/use-workspace-tab-rename";
 import { MobileTabTrailingAccessory } from "@/screens/workspace/workspace-tab-trailing-accessory";
-import { useHideWorkspaceAgentTab } from "@/screens/workspace/use-workspace-agent-tab-actions";
+import {
+  useCopyAgentConversationMarkdown,
+  useHideWorkspaceAgentTab,
+} from "@/screens/workspace/use-workspace-agent-tab-actions";
 import {
   WorkspaceDesktopTabsRow,
   type WorkspaceDesktopTabRowItem,
@@ -450,6 +453,7 @@ interface MobileWorkspaceTabSwitcherProps {
   onSelectSwitcherTab: (key: string) => void;
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
+  onCopyConversationMarkdown: (agentId: string) => Promise<void> | void;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
@@ -558,6 +562,7 @@ function MobileWorkspaceTabOption({
   onPress,
   onCopyResumeCommand,
   onCopyAgentId,
+  onCopyConversationMarkdown,
   onCopyTerminalId,
   onCopyFilePath,
   onReloadAgent,
@@ -578,6 +583,7 @@ function MobileWorkspaceTabOption({
   onPress: () => void;
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
+  onCopyConversationMarkdown: (agentId: string) => Promise<void> | void;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
@@ -593,6 +599,7 @@ function MobileWorkspaceTabOption({
     () => ({
       copyResumeCommand: t("workspace.tabs.menu.copyResumeCommand"),
       copyAgentId: t("workspace.tabs.menu.copyAgentId"),
+      copyConversationMarkdown: t("workspace.tabs.menu.copyConversationMarkdown"),
       copyTerminalId: t("workspace.tabs.menu.copyTerminalId"),
       copyFilePath: t("workspace.tabs.menu.copyFilePath"),
       rename: t("workspace.tabs.menu.rename"),
@@ -617,6 +624,7 @@ function MobileWorkspaceTabOption({
     menuTestIDBase,
     onCopyResumeCommand,
     onCopyAgentId,
+    onCopyConversationMarkdown,
     onCopyTerminalId,
     onCopyFilePath,
     onReloadAgent,
@@ -690,6 +698,7 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
   onSelectSwitcherTab,
   onCopyResumeCommand,
   onCopyAgentId,
+  onCopyConversationMarkdown,
   onCopyTerminalId,
   onCopyFilePath,
   onReloadAgent,
@@ -756,6 +765,7 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
           onPress={onPress}
           onCopyResumeCommand={onCopyResumeCommand}
           onCopyAgentId={onCopyAgentId}
+          onCopyConversationMarkdown={onCopyConversationMarkdown}
           onCopyTerminalId={onCopyTerminalId}
           onCopyFilePath={onCopyFilePath}
           onReloadAgent={onReloadAgent}
@@ -776,6 +786,7 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
       normalizedWorkspaceId,
       onCopyResumeCommand,
       onCopyAgentId,
+      onCopyConversationMarkdown,
       onCopyTerminalId,
       onCopyFilePath,
       onReloadAgent,
@@ -2847,6 +2858,10 @@ function WorkspaceScreenContent({
     [toast, t],
   );
 
+  const handleCopyConversationMarkdown = useCopyAgentConversationMarkdown({
+    serverId: normalizedServerId,
+  });
+
   const handleCopyTerminalId = useCallback(
     async (terminalId: string) => {
       if (!terminalId) return;
@@ -4156,6 +4171,7 @@ function WorkspaceScreenContent({
         onCloseTab={handleCloseTabById}
         onCopyResumeCommand={handleCopyResumeCommand}
         onCopyAgentId={handleCopyAgentId}
+        onCopyConversationMarkdown={handleCopyConversationMarkdown}
         onCopyTerminalId={handleCopyTerminalId}
         onCopyFilePath={handleCopyFilePath}
         onReloadAgent={handleReloadAgent}
@@ -4192,6 +4208,7 @@ function WorkspaceScreenContent({
     handleCloseTabById,
     handleCopyResumeCommand,
     handleCopyAgentId,
+    handleCopyConversationMarkdown,
     handleCopyTerminalId,
     handleCopyFilePath,
     handleReloadAgent,
@@ -4235,6 +4252,7 @@ function WorkspaceScreenContent({
           onSelectSwitcherTab={handleSelectSwitcherTab}
           onCopyResumeCommand={handleCopyResumeCommand}
           onCopyAgentId={handleCopyAgentId}
+          onCopyConversationMarkdown={handleCopyConversationMarkdown}
           onCopyTerminalId={handleCopyTerminalId}
           onCopyFilePath={handleCopyFilePath}
           onReloadAgent={handleReloadAgent}
@@ -4260,6 +4278,7 @@ function WorkspaceScreenContent({
             onCloseTab={handleCloseTabById}
             onCopyResumeCommand={handleCopyResumeCommand}
             onCopyAgentId={handleCopyAgentId}
+            onCopyConversationMarkdown={handleCopyConversationMarkdown}
             onCopyTerminalId={handleCopyTerminalId}
             onCopyFilePath={handleCopyFilePath}
             onReloadAgent={handleReloadAgent}

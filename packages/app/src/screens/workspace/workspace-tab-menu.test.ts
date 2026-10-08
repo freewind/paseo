@@ -34,6 +34,7 @@ describe("buildWorkspaceTabMenuEntries", () => {
       menuTestIDBase: "workspace-tab-menu-draft_123",
       onCopyResumeCommand: vi.fn(),
       onCopyAgentId: vi.fn(),
+      onCopyConversationMarkdown: vi.fn(),
       onCopyTerminalId: vi.fn(),
       onCopyFilePath: vi.fn(),
       onReloadAgent: vi.fn(),
@@ -64,6 +65,7 @@ describe("buildWorkspaceTabMenuEntries", () => {
       menuTestIDBase: "workspace-tab-context-agent_123",
       onCopyResumeCommand: vi.fn(),
       onCopyAgentId: vi.fn(),
+      onCopyConversationMarkdown: vi.fn(),
       onCopyTerminalId: vi.fn(),
       onCopyFilePath: vi.fn(),
       onReloadAgent: vi.fn(),
@@ -84,6 +86,65 @@ describe("buildWorkspaceTabMenuEntries", () => {
     expect(onRenameTab).toHaveBeenCalledWith(tab);
   });
 
+  it("copies the conversation as Markdown for agent tabs and only agent tabs", () => {
+    const onCopyConversationMarkdown = vi.fn();
+    const entries = buildWorkspaceTabMenuEntries({
+      surface: "desktop",
+      tab: createAgentTab(),
+      index: 0,
+      tabCount: 1,
+      menuTestIDBase: "workspace-tab-context-agent_123",
+      onCopyResumeCommand: vi.fn(),
+      onCopyAgentId: vi.fn(),
+      onCopyConversationMarkdown,
+      onCopyTerminalId: vi.fn(),
+      onCopyFilePath: vi.fn(),
+      onReloadAgent: vi.fn(),
+      onRenameTab: vi.fn(),
+      onCloseTab: vi.fn(),
+      onCloseTabsBefore: vi.fn(),
+      onCloseTabsAfter: vi.fn(),
+      onCloseOtherTabs: vi.fn(),
+      onHideTab: vi.fn(),
+    });
+
+    const entry = entries.find(
+      (candidate) => candidate.kind === "item" && candidate.key === "copy-conversation-markdown",
+    );
+    if (!entry || entry.kind !== "item") {
+      throw new Error("Copy conversation entry missing");
+    }
+    expect(entry.testID).toBe("workspace-tab-context-agent_123-copy-conversation-markdown");
+    entry.onSelect();
+    expect(onCopyConversationMarkdown).toHaveBeenCalledWith("agent-123");
+
+    const terminalEntries = buildWorkspaceTabMenuEntries({
+      surface: "desktop",
+      tab: {
+        key: "terminal_abc",
+        tabId: "terminal_abc",
+        kind: "terminal",
+        target: { kind: "terminal", terminalId: "terminal-abc" },
+      },
+      index: 0,
+      tabCount: 1,
+      menuTestIDBase: "workspace-tab-context-terminal_abc",
+      onCopyResumeCommand: vi.fn(),
+      onCopyAgentId: vi.fn(),
+      onCopyConversationMarkdown,
+      onCopyTerminalId: vi.fn(),
+      onCopyFilePath: vi.fn(),
+      onReloadAgent: vi.fn(),
+      onRenameTab: vi.fn(),
+      onCloseTab: vi.fn(),
+      onCloseTabsBefore: vi.fn(),
+      onCloseTabsAfter: vi.fn(),
+      onCloseOtherTabs: vi.fn(),
+      onHideTab: vi.fn(),
+    });
+    expect(itemKeys(terminalEntries)).not.toContain("copy-conversation-markdown");
+  });
+
   it("includes copy id and rename for terminal tabs", () => {
     const onRenameTab = vi.fn();
     const onCopyTerminalId = vi.fn();
@@ -101,6 +162,7 @@ describe("buildWorkspaceTabMenuEntries", () => {
       menuTestIDBase: "workspace-tab-context-terminal_abc",
       onCopyResumeCommand: vi.fn(),
       onCopyAgentId: vi.fn(),
+      onCopyConversationMarkdown: vi.fn(),
       onCopyTerminalId,
       onCopyFilePath: vi.fn(),
       onReloadAgent: vi.fn(),
@@ -152,6 +214,7 @@ describe("buildWorkspaceTabMenuEntries", () => {
       menuTestIDBase: "workspace-tab-context-file_abc",
       onCopyResumeCommand: vi.fn(),
       onCopyAgentId: vi.fn(),
+      onCopyConversationMarkdown: vi.fn(),
       onCopyTerminalId: vi.fn(),
       onCopyFilePath,
       onReloadAgent: vi.fn(),
@@ -196,6 +259,7 @@ describe("buildWorkspaceTabMenuEntries", () => {
       tabCount: 1,
       onCopyResumeCommand: vi.fn(),
       onCopyAgentId: vi.fn(),
+      onCopyConversationMarkdown: vi.fn(),
       onCopyTerminalId: vi.fn(),
       onCopyFilePath: vi.fn(),
       onReloadAgent: vi.fn(),
@@ -228,6 +292,7 @@ describe("buildWorkspaceTabMenuEntries", () => {
       menuTestIDBase,
       onCopyResumeCommand: vi.fn(),
       onCopyAgentId: vi.fn(),
+      onCopyConversationMarkdown: vi.fn(),
       onCopyTerminalId: vi.fn(),
       onCopyFilePath: vi.fn(),
       onReloadAgent: vi.fn(),
@@ -285,6 +350,7 @@ describe("buildWorkspaceTabMenuEntries", () => {
       menuTestIDBase: "workspace-tab-context-agent_123",
       onCopyResumeCommand: vi.fn(),
       onCopyAgentId: vi.fn(),
+      onCopyConversationMarkdown: vi.fn(),
       onCopyTerminalId: vi.fn(),
       onCopyFilePath: vi.fn(),
       onReloadAgent: vi.fn(),
