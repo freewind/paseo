@@ -3,11 +3,12 @@ import { Gesture } from "react-native-gesture-handler";
 import { useSharedValue } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import { isWeb } from "@/constants/platform";
+import { useIsCompactFormFactor } from "@/constants/layout";
 import { useHorizontalScrollOptional } from "@/contexts/horizontal-scroll-context";
 import { usePanelStore } from "@/stores/panel-store";
 import { canBeginMobilePanelGesture, isMobilePanelGestureCurrent } from "./model";
 import { useMobilePanelsRuntime } from "./provider";
-import { resolveMobilePanelGestureIntent } from "./gesture-intent";
+import { resolveMobilePanelGestureIntent, isOutsideCompactPanelEdge } from "./gesture-intent";
 
 const MOBILE_WEB_EDGE_SWIPE_WIDTH = 32;
 
@@ -45,6 +46,7 @@ export function useOpenAgentListGesture(enabled: boolean) {
     updateGesture,
     windowWidth,
   } = useMobilePanelsRuntime();
+  const isCompact = useIsCompactFormFactor();
   const horizontalScroll = useHorizontalScrollOptional();
   const { startedRevision, touchStartX, touchStartY } = useGestureState();
   const showMobileAgentList = usePanelStore((state) => state.showMobileAgentList);
@@ -84,6 +86,7 @@ export function useOpenAgentListGesture(enabled: boolean) {
           if (
             !canBeginMobilePanelGesture(motionState.value, "agent", position.value) ||
             horizontalScroll?.isAnyScrolledRight.value ||
+            isOutsideCompactPanelEdge(touchStartX.value, windowWidth, 1, isCompact) ||
             (isWeb && touchStartX.value > MOBILE_WEB_EDGE_SWIPE_WIDTH) ||
             panIntent === "fail"
           ) {
@@ -117,6 +120,7 @@ export function useOpenAgentListGesture(enabled: boolean) {
       beginGesture,
       finishGesture,
       horizontalScroll?.isAnyScrolledRight,
+      isCompact,
       leftOpenGestureRef,
       motionState,
       openGesturesBlocked,
@@ -240,6 +244,7 @@ export function useOpenFileExplorerGesture({ enabled, onOpen }: OpenFileExplorer
     windowWidth,
   } = useMobilePanelsRuntime();
   const { startedRevision, touchStartX, touchStartY } = useGestureState();
+  const isCompact = useIsCompactFormFactor();
   const commit = useRevisionCommit(onOpen);
 
   return useMemo(
@@ -276,6 +281,7 @@ export function useOpenFileExplorerGesture({ enabled, onOpen }: OpenFileExplorer
           });
           if (
             !canBeginMobilePanelGesture(motionState.value, "agent", position.value) ||
+            isOutsideCompactPanelEdge(touchStartX.value, windowWidth, -1, isCompact) ||
             (isWeb && touchStartX.value < windowWidth - MOBILE_WEB_EDGE_SWIPE_WIDTH) ||
             panIntent === "fail"
           ) {
@@ -310,6 +316,7 @@ export function useOpenFileExplorerGesture({ enabled, onOpen }: OpenFileExplorer
       commit,
       enabled,
       finishGesture,
+      isCompact,
       leftOpenGestureRef,
       motionState,
       openGesturesBlocked,
