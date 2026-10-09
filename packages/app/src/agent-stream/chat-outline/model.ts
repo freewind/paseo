@@ -53,6 +53,16 @@ export const TEXT_ROW_MAX_LINES = 4.5;
 export const TEXT_ROW_MAX_HEIGHT = TEXT_ROW_LINE_HEIGHT * TEXT_ROW_MAX_LINES;
 
 /**
+ * The rail lays a prompt out as one paragraph. Blank lines and hard wraps only buy empty
+ * height in a narrow column the reader is scanning, so any run of whitespace — newlines
+ * included — becomes a single space. The daemon collapses its 120-character preview the
+ * same way; this keeps the full text it sends consistent with that preview.
+ */
+export function collapsePromptWhitespace(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+/**
  * Width available to the text outline, or `null` when the panel has not been
  * measured yet or the gutter is too narrow to show a readable line. A `null`
  * tells the caller to fall back to the dot rail; it never hides the outline,

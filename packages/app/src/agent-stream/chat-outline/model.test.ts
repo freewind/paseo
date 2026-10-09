@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  collapsePromptWhitespace,
   createActivePromptPublisher,
   resolveTextRailWidth,
   shouldAcceptPromptIndexEpoch,
@@ -28,6 +29,19 @@ describe("chat outline row cap", () => {
     expect(TEXT_ROW_MAX_HEIGHT).toBe(TEXT_ROW_LINE_HEIGHT * TEXT_ROW_MAX_LINES);
     // Exactly half a line below the cut: the reader sees there is more to scroll.
     expect(TEXT_ROW_MAX_HEIGHT % TEXT_ROW_LINE_HEIGHT).toBe(TEXT_ROW_LINE_HEIGHT / 2);
+  });
+});
+
+describe("chat outline prompt text", () => {
+  it("folds blank lines and hard wraps into single spaces", () => {
+    expect(collapsePromptWhitespace("first line\nsecond line")).toBe("first line second line");
+    expect(collapsePromptWhitespace("first\n\n\n   second")).toBe("first second");
+    expect(collapsePromptWhitespace("\n  padded  \n")).toBe("padded");
+    expect(collapsePromptWhitespace("tabbed\t\ttext")).toBe("tabbed text");
+  });
+
+  it("leaves a single-line prompt alone", () => {
+    expect(collapsePromptWhitespace("one plain prompt")).toBe("one plain prompt");
   });
 });
 

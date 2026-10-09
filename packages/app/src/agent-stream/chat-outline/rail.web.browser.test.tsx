@@ -33,7 +33,11 @@ function prompt(seq: number, preview: string) {
   return { seq, timestamp: new Date(seq).toISOString(), preview };
 }
 
-const LONG_PROMPT = Array.from({ length: 24 }, (_, index) => `prompt line ${index + 1}`).join(" ");
+// Written with blank lines and hard wraps on purpose: the rail folds them, so the row's
+// height must come from wrapping, never from the prompt's own line breaks.
+const LONG_PROMPT = Array.from({ length: 24 }, (_, index) => `prompt line ${index + 1}`).join(
+  "\n\n",
+);
 
 const defaultPromptText = async () => LONG_PROMPT;
 
@@ -107,6 +111,8 @@ describe("ChatOutlineRail text rows in a real browser", () => {
 
     // The row keeps the prompt whole: nothing in the DOM is elided, the box scrolls.
     expect(scroller.textContent).toContain("prompt line 24");
+    // Blank lines and hard wraps are folded away, so the prompt reads as one paragraph.
+    expect(scroller.textContent).not.toContain("\n");
     expect(scroller.clientHeight).toBe(TEXT_ROW_MAX_HEIGHT);
     expect(scroller.scrollHeight).toBeGreaterThan(TEXT_ROW_MAX_HEIGHT);
 
