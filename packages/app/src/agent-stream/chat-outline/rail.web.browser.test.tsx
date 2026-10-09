@@ -144,9 +144,32 @@ describe("ChatOutlineRail text rows in a real browser", () => {
     expect(rowTwo).not.toBeNull();
     if (!rowOne || !rowTwo) return;
 
-    // The divider belongs to the row below it, so the first row never draws one.
-    expect(getComputedStyle(rowOne).borderTopWidth).toBe("0px");
-    expect(getComputedStyle(rowTwo).borderTopWidth).toBe("1px");
+    // The hairline is an element of its own between two rows; the first row has none.
+    expect(document.querySelector('[data-testid="chat-outline-text-divider-1"]')).toBeNull();
+    const divider = document.querySelector<HTMLElement>(
+      '[data-testid="chat-outline-text-divider-2"]',
+    );
+    expect(divider).not.toBeNull();
+    if (divider) {
+      // Flat and full width: no radius, no box around the prompt.
+      expect(getComputedStyle(divider).height).toBe("1px");
+      expect(getComputedStyle(divider).borderRadius).toBe("0px");
+      expect(divider.getBoundingClientRect().width).toBe(rowTwo.getBoundingClientRect().width);
+    }
+
+    // The rows are separated by space, not by the line alone. Measured on the scrollers:
+    // a capped row's press target is taller than the box that clips it.
+    const scrollerOne = document
+      .querySelector('[data-testid="chat-outline-text-scroll-1"]')
+      ?.getBoundingClientRect();
+    const scrollerTwo = document
+      .querySelector('[data-testid="chat-outline-text-scroll-2"]')
+      ?.getBoundingClientRect();
+    expect(scrollerOne).toBeDefined();
+    expect(scrollerTwo).toBeDefined();
+    if (scrollerOne && scrollerTwo) {
+      expect(scrollerTwo.top - scrollerOne.bottom).toBeGreaterThanOrEqual(16);
+    }
 
     const activeLabel = rowOne.firstElementChild;
     const idleLabel = rowTwo.firstElementChild;
