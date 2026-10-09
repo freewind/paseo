@@ -21,7 +21,6 @@ import { ChevronDown, ChevronUp } from "lucide-react-native";
 import { useContainerWidth, useContainerWidthBelow } from "@/hooks/use-container-width";
 import { inlineUnistylesStyle } from "@/styles/unistyles-inline-style";
 import { Button } from "@/components/ui/button";
-import { baseColors, type Theme } from "@/styles/theme";
 import { createChatOutlineHoverIntent } from "./hover-intent";
 import { useChatOutlineCollapsed } from "./collapsed-state";
 import {
@@ -47,16 +46,6 @@ const MAGNIFIED_PILL_WIDTH = 26;
 const PREVIEW_WIDTH = 260;
 const PREVIEW_HEIGHT = 48;
 const PREVIEW_GAP = 4;
-
-/**
- * The prompt the reader is inside is marked with color, not with a fill, so it never
- * competes with the transcript behind the rail. There is no semantic blue in the theme —
- * accent is green — so the raw scale is the only source of one. It is read from the module,
- * not from the style function's theme argument, which does not carry the raw scales.
- */
-function activePromptColor(theme: Theme): string {
-  return theme.colorScheme === "dark" ? baseColors.blue[400] : baseColors.blue[600];
-}
 
 export const ChatOutlineRail = memo(function ChatOutlineRail({
   prompts,
@@ -553,13 +542,16 @@ const styles = StyleSheet.create((theme) => ({
     height: 1,
     backgroundColor: theme.colors.border,
   },
+  // The prompt the reader is inside is marked with the theme's own foreground pair, the
+  // same way every list marks its selection: the row being read comes forward, the rest
+  // recede. A hue here would have to be hand-picked per scheme and would shout in dark.
   textRowLabel: {
     fontSize: theme.fontSize.base,
     lineHeight: TEXT_ROW_LINE_HEIGHT,
-    color: theme.colors.foreground,
+    color: theme.colors.foregroundMuted,
   },
   textRowLabelActive: {
-    color: activePromptColor(theme),
+    color: theme.colors.foreground,
   },
   // The row owns the whole prompt but never more than a few lines of it; the rest is
   // reachable by scrolling the row itself.
