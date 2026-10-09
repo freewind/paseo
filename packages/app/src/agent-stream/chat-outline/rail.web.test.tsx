@@ -221,6 +221,16 @@ describe("ChatOutlineRail in its text form", () => {
     expect(document.querySelector('[data-testid="chat-outline-text-preview"]')).toBeNull();
   });
 
+  it("folds blank lines and hard wraps out of a prompt", async () => {
+    await renderRail([prompt(1, "First"), prompt(2, "Second")], {
+      onRequestPromptText: async () => "first line\n\n  second line\nthird",
+    });
+
+    const label = document.querySelector('[data-testid="chat-outline-text-row-1"]')
+      ?.firstElementChild as HTMLElement | null;
+    expect(label?.textContent).toBe("first line second line third");
+  });
+
   it("keeps the index preview when the full text cannot be read", async () => {
     await renderRail([prompt(1, "truncated preview"), prompt(2, "Second")], {
       onRequestPromptText: async () => null,
@@ -230,7 +240,7 @@ describe("ChatOutlineRail in its text form", () => {
     expect(document.querySelector('[data-testid="chat-outline-text-preview"]')).toBeNull();
   });
 
-  it("caps a long prompt at four lines and scrolls the rest instead of cutting it", async () => {
+  it("caps a long prompt at four and a half lines and scrolls the rest", async () => {
     const longText = "word ".repeat(80);
     await renderRail([prompt(1, "First prompt"), prompt(2, "Second prompt")], {
       onRequestPromptText: async () => longText,
@@ -244,7 +254,7 @@ describe("ChatOutlineRail in its text form", () => {
       ?.firstElementChild as HTMLElement | null;
     const styleWithClamp = label?.style as unknown as { WebkitLineClamp?: string } | undefined;
     expect(styleWithClamp?.WebkitLineClamp).toBeUndefined();
-    expect(label?.textContent).toBe(longText);
+    expect(label?.textContent).toBe(longText.trim());
   });
 
   it("hides the words behind a toggle and shows them again", async () => {

@@ -25,6 +25,7 @@ import { baseColors, type Theme } from "@/styles/theme";
 import { createChatOutlineHoverIntent } from "./hover-intent";
 import { useChatOutlineCollapsed } from "./collapsed-state";
 import {
+  collapsePromptWhitespace,
   promptTickMagnification,
   resolveTextRailWidth,
   TEXT_ROW_LINE_HEIGHT,
@@ -363,7 +364,7 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
               key={prompt.seq}
               index={index}
               seq={prompt.seq}
-              text={promptTexts.get(prompt.seq) ?? prompt.preview}
+              text={collapsePromptWhitespace(promptTexts.get(prompt.seq) ?? prompt.preview)}
               label={`${index + 1} of ${prompts.length}: ${prompt.preview}`}
               isActive={prompt.seq === activeSeq}
               onHover={onHover}
