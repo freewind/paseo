@@ -46,8 +46,6 @@ const MAGNIFIED_PILL_WIDTH = 26;
 const PREVIEW_WIDTH = 260;
 const PREVIEW_HEIGHT = 48;
 const PREVIEW_GAP = 4;
-// A text row has to be readable and clickable, not as dense as a dot.
-const TEXT_ROW_MIN_HEIGHT = 24;
 
 /**
  * The prompt the reader is inside is marked with color, not with a fill, so it never
@@ -409,29 +407,38 @@ const ChatOutlineTextRow = memo(function ChatOutlineTextRow({
   const handleBlur = useCallback(() => onFocusChange(index, false), [index, onFocusChange]);
 
   return (
-    <View style={styles.textRow} onPointerEnter={handlePointerEnter}>
-      {/* The row scrolls its own overflow, so a long prompt stays readable without
-          hovering and without pushing the next prompt off the rail. The press target sits
-          inside the scroller: a press on the scrollbar must not jump the transcript. */}
-      <ScrollView
-        style={styles.textRowScroll}
-        showsVerticalScrollIndicator
-        testID={`chat-outline-text-scroll-${seq}`}
-      >
-        <Pressable
-          style={[styles.textRowTarget, index > 0 && styles.textRowDivider]}
-          onPress={handlePress}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          accessibilityRole="tab"
-          aria-selected={isActive}
-          accessibilityLabel={label}
-          testID={`chat-outline-text-row-${seq}`}
+    <>
+      {/* A hairline between two prompts, not a border on the row: a bordered row with a
+          radius reads as a box around every prompt. It sits outside the padding so the
+          gap above and below it is the same. */}
+      {index > 0 ? (
+        <View style={styles.textRowDivider} testID={`chat-outline-text-divider-${seq}`} />
+      ) : null}
+      <View style={styles.textRow} onPointerEnter={handlePointerEnter}>
+        {/* The row scrolls its own overflow, so a long prompt stays readable without
+            hovering and without pushing the next prompt off the rail. The press target
+            sits inside the scroller: a press on the scrollbar must not jump the
+            transcript. */}
+        <ScrollView
+          style={styles.textRowScroll}
+          showsVerticalScrollIndicator
+          testID={`chat-outline-text-scroll-${seq}`}
         >
-          <Text style={[styles.textRowLabel, isActive && styles.textRowLabelActive]}>{text}</Text>
-        </Pressable>
-      </ScrollView>
-    </View>
+          <Pressable
+            style={styles.textRowTarget}
+            onPress={handlePress}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            accessibilityRole="tab"
+            aria-selected={isActive}
+            accessibilityLabel={label}
+            testID={`chat-outline-text-row-${seq}`}
+          >
+            <Text style={[styles.textRowLabel, isActive && styles.textRowLabelActive]}>{text}</Text>
+          </Pressable>
+        </ScrollView>
+      </View>
+    </>
   );
 });
 
@@ -526,21 +533,24 @@ const styles = StyleSheet.create((theme) => ({
   textRailContent: {
     paddingVertical: 0,
   },
+  // The padding lives on the row, not on the press target: a capped scroller clips whatever
+  // is inside it, so padding in there would simply disappear on a long prompt and let two
+  // rows touch.
   textRow: {
     justifyContent: "center",
+    paddingVertical: theme.spacing[3],
   },
+  // Nothing here draws a border or a radius: a rounded bordered row reads as a box.
   // Hover must not change this box's geometry, only its paint. See docs/hover.md.
   textRowTarget: {
     justifyContent: "center",
-    minHeight: TEXT_ROW_MIN_HEIGHT,
     paddingHorizontal: theme.spacing[2],
-    borderRadius: theme.borderRadius.lg,
   },
-  // Rows after the first carry one top border, the same divider settings rows use. The
-  // first row follows the header, which is separation enough.
+  // Rows after the first are separated by one full-width hairline, the same divider the
+  // settings rows use. The first row follows the header, which is separation enough.
   textRowDivider: {
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    height: 1,
+    backgroundColor: theme.colors.border,
   },
   textRowLabel: {
     fontSize: theme.fontSize.base,

@@ -9,6 +9,9 @@ import {
   TEXT_RAIL_GUTTER_PADDING,
   TEXT_RAIL_MAX_WIDTH,
   TEXT_RAIL_MIN_WIDTH,
+  TEXT_ROW_LINE_HEIGHT,
+  TEXT_ROW_MAX_HEIGHT,
+  TEXT_ROW_MAX_LINES,
   type ChatOutlinePrompt,
 } from "./model";
 
@@ -16,6 +19,15 @@ describe("chat outline prompt index epoch", () => {
   it("accepts only the authoritative timeline epoch", () => {
     expect(shouldAcceptPromptIndexEpoch("epoch-2", "epoch-2")).toBe(true);
     expect(shouldAcceptPromptIndexEpoch("epoch-2", "epoch-1")).toBe(false);
+  });
+});
+
+describe("chat outline row cap", () => {
+  it("cuts a row at four and a half lines so the next line stays visible", () => {
+    expect(TEXT_ROW_MAX_LINES).toBe(4.5);
+    expect(TEXT_ROW_MAX_HEIGHT).toBe(TEXT_ROW_LINE_HEIGHT * TEXT_ROW_MAX_LINES);
+    // Exactly half a line below the cut: the reader sees there is more to scroll.
+    expect(TEXT_ROW_MAX_HEIGHT % TEXT_ROW_LINE_HEIGHT).toBe(TEXT_ROW_LINE_HEIGHT / 2);
   });
 });
 

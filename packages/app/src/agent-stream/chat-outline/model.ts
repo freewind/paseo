@@ -44,11 +44,12 @@ export const TEXT_RAIL_GUTTER_PADDING = 12;
 
 /**
  * A prompt row shows the whole prompt, capped so one pasted file cannot own the rail.
- * The cap is a line count, so the row sets its own line height — inheriting the
- * platform's would put the cut in the middle of a line. The rest scrolls inside the row.
+ * The cap is four and a half lines: the half line left visible is the cue that the row
+ * scrolls. The cap is a line count, so the row sets its own line height — inheriting the
+ * platform's would put the cut in the middle of a line.
  */
 export const TEXT_ROW_LINE_HEIGHT = 20;
-export const TEXT_ROW_MAX_LINES = 4;
+export const TEXT_ROW_MAX_LINES = 4.5;
 export const TEXT_ROW_MAX_HEIGHT = TEXT_ROW_LINE_HEIGHT * TEXT_ROW_MAX_LINES;
 
 /**
