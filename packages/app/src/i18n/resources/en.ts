@@ -109,6 +109,18 @@ export const en = {
       settingOff: "Off",
     },
   },
+  comment: {
+    menu: {
+      item: "Comment",
+      title: "Comment",
+    },
+    sheet: {
+      title: "Add a comment",
+      quote: "Quoting",
+      placeholder: "Write your comment",
+      attach: "Attach",
+    },
+  },
   composer: {
     readAloud: {
       start: "Start reading this conversation aloud",
