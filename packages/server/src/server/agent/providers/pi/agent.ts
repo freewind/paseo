@@ -50,6 +50,7 @@ import {
   type ResolvedProviderLaunch,
 } from "../../provider-launch-config.js";
 import { renderPromptAttachmentAsText } from "../../prompt-attachments.js";
+import { PASEO_MCP_SERVER_NAME } from "../../runtime-mcp-config.js";
 import { composeSystemPromptParts } from "../../system-prompt.js";
 import {
   buildBinaryDiagnosticRows,
@@ -253,12 +254,16 @@ interface PiResumeConfig {
   config: AgentSessionConfig;
 }
 
+type PiMcpExposure = "codemode" | "deferred" | "direct" | "hidden";
+
 interface PiMcpServerConfig {
   command?: string;
   args?: string[];
   env?: Record<string, string>;
   url?: string;
   headers?: Record<string, string>;
+  /** How Pi exposes the server's tools, see {@link piMcpExposure}. */
+  exposure?: PiMcpExposure;
 }
 
 // Pi's built-in MCP extension takes servers from Paseo's extension; pi-mcp-adapter replaces it
@@ -501,25 +506,41 @@ function buildResumeStartInput(input: {
   };
 }
 
-function toPiMcpConfig(config: McpServerConfig): PiMcpServerConfig {
+/**
+ * How Pi exposes the server's tools. Pi defaults to `codemode`, which neither declares the tools to
+ * the model nor tells it they exist. Paseo's own tools are declared from the first request instead:
+ * loading them later with `tool_search` rewrites the tool array mid-session, and a provider prompt
+ * cache only holds while that array stays byte-identical. Other servers opt in with `alwaysLoad`,
+ * the same flag the Claude provider honors.
+ */
+function piMcpExposure(name: string, config: McpServerConfig): PiMcpExposure | undefined {
+  return name === PASEO_MCP_SERVER_NAME || config.alwaysLoad === true ? "direct" : undefined;
+}
+
+function toPiMcpConfig(name: string, config: McpServerConfig): PiMcpServerConfig {
+  const exposure = piMcpExposure(name, config);
+  const exposureEntry = exposure ? { exposure } : {};
   if (config.type === "stdio") {
     return {
       command: config.command,
       ...(config.args ? { args: config.args } : {}),
       ...(config.env ? { env: config.env } : {}),
+      ...exposureEntry,
     };
   }
 
   return {
     url: config.url,
     ...(config.headers ? { headers: config.headers } : {}),
+    ...exposureEntry,
   };
 }
 
 function toPiMcpAdapterConfig(
+  name: string,
   config: McpServerConfig,
 ): PiMcpServerConfig & { auth?: false; oauth?: false } {
-  const piConfig = toPiMcpConfig(config);
+  const piConfig = toPiMcpConfig(name, config);
   return config.type === "stdio" ? piConfig : { ...piConfig, auth: false, oauth: false };
 }
 
@@ -538,7 +559,7 @@ function toPiBuiltinMcpServers(
         `Pi's built-in MCP cannot register SSE server "${name}": use streamable HTTP or load pi-mcp-adapter.`,
       );
     }
-    piServers[name] = toPiMcpConfig(config);
+    piServers[name] = toPiMcpConfig(name, config);
   }
   return piServers;
 }
@@ -595,7 +616,7 @@ function createPiMcpConfigFile(
   }
   const mcpServers: Record<string, unknown> = { ...configuredServers };
   for (const [name, serverConfig] of Object.entries(servers)) {
-    mcpServers[name] = toPiMcpAdapterConfig(serverConfig);
+    mcpServers[name] = toPiMcpAdapterConfig(name, serverConfig);
   }
 
   const dir = mkdtempSync(join(tmpdir(), "paseo-pi-mcp-"));

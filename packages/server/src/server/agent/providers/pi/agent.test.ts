@@ -5,6 +5,7 @@ import {
   mkdirSync,
   mkdtempSync,
   openSync,
+  readFileSync,
   readSync,
   rmSync,
   writeFileSync,
@@ -3194,6 +3195,7 @@ describe("PiRpcAgentClient", () => {
           url: "http://127.0.0.1:6767/mcp/agents?callerAgentId=agent-1",
           auth: false,
           oauth: false,
+          exposure: "direct",
         },
         localSecret: {
           command: "node",
@@ -3246,6 +3248,7 @@ describe("PiRpcAgentClient", () => {
             headers: { Authorization: "Bearer token" },
           },
           local: { type: "stdio", command: "node", args: ["server.js"], env: { KEY: "`${x}`" } },
+          eager: { type: "stdio", command: "node", args: ["eager.js"], alwaysLoad: true },
         },
       }),
     );
@@ -3258,8 +3261,10 @@ describe("PiRpcAgentClient", () => {
       paseo: {
         url: "http://127.0.0.1:6767/mcp/agents?callerAgentId=agent-1",
         headers: { Authorization: "Bearer token" },
+        exposure: "direct",
       },
       local: { command: "node", args: ["server.js"], env: { KEY: "`${x}`" } },
+      eager: { command: "node", args: ["eager.js"], exposure: "direct" },
     });
 
     await session.close();
@@ -3286,7 +3291,10 @@ describe("PiRpcAgentClient", () => {
     expect(actualLaunch.session).toBe(persistence.nativeHandle);
     expect(actualLaunch.argv).not.toContain("--mcp-config");
     expect(await readRegisteredMcpServers(actualLaunch.extensionPaths[0]!)).toEqual({
-      paseo: { url: "http://127.0.0.1:7777/mcp/agents?callerAgentId=agent-2" },
+      paseo: {
+        url: "http://127.0.0.1:7777/mcp/agents?callerAgentId=agent-2",
+        exposure: "direct",
+      },
     });
   });
 
@@ -3309,6 +3317,13 @@ describe("PiRpcAgentClient", () => {
     const actualLaunch = pi.recordedLaunches[1]!;
     expect(actualLaunch.argv).toContain("--mcp-config");
     expect(await readRegisteredMcpServers(actualLaunch.extensionPaths[0]!)).toEqual({});
+    const configPath = actualLaunch.argv[actualLaunch.argv.indexOf("--mcp-config") + 1]!;
+    expect(JSON.parse(readFileSync(configPath, "utf8")).mcpServers.paseo).toEqual({
+      url: "http://127.0.0.1:6767/mcp/agents",
+      auth: false,
+      oauth: false,
+      exposure: "direct",
+    });
   });
 
   test.each([
