@@ -55,7 +55,10 @@ async function waitFor(predicate: () => boolean, what: string, timeoutMs = 8_000
   await promise;
 }
 
-async function mountRail(options?: { onRequestPromptText?: (seq: number) => Promise<string> }) {
+async function mountRail(options?: {
+  activeSeq?: number;
+  onRequestPromptText?: (seq: number) => Promise<string>;
+}) {
   const container = document.createElement("div");
   container.style.position = "relative";
   // The rail lives in the right gutter, so the panel has to fit the viewport or the rail
@@ -66,6 +69,7 @@ async function mountRail(options?: { onRequestPromptText?: (seq: number) => Prom
   const root = createRoot(container);
   const onJumpToPrompt = vi.fn();
   const activePrompt = createActivePromptPublisher();
+  if (options?.activeSeq !== undefined) activePrompt.publish(options.activeSeq);
   act(() => {
     root.render(
       <ChatOutlineRail
@@ -128,5 +132,28 @@ describe("ChatOutlineRail text rows in a real browser", () => {
 
     expect(document.querySelector('[data-testid="chat-outline-text-preview"]')).toBeNull();
     expect(document.querySelector('[data-testid="chat-outline-preview"]')).toBeNull();
+  });
+
+  it("separates the rows with one hairline and marks the current one in blue", async () => {
+    await page.viewport(1280, 800);
+    await mountRail({ activeSeq: 1 });
+
+    const rowOne = document.querySelector<HTMLElement>('[data-testid="chat-outline-text-row-1"]');
+    const rowTwo = document.querySelector<HTMLElement>('[data-testid="chat-outline-text-row-2"]');
+    expect(rowOne).not.toBeNull();
+    expect(rowTwo).not.toBeNull();
+    if (!rowOne || !rowTwo) return;
+
+    // The divider belongs to the row below it, so the first row never draws one.
+    expect(getComputedStyle(rowOne).borderTopWidth).toBe("0px");
+    expect(getComputedStyle(rowTwo).borderTopWidth).toBe("1px");
+
+    const activeLabel = rowOne.firstElementChild;
+    const idleLabel = rowTwo.firstElementChild;
+    expect(activeLabel).not.toBeNull();
+    expect(idleLabel).not.toBeNull();
+    const activeColor = getComputedStyle(activeLabel as Element).color;
+    expect(activeColor).not.toBe(getComputedStyle(idleLabel as Element).color);
+    expect(activeColor).toBe("rgb(37, 99, 235)");
   });
 });

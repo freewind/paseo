@@ -47,7 +47,7 @@ export const TEXT_RAIL_GUTTER_PADDING = 12;
  * The cap is a line count, so the row sets its own line height — inheriting the
  * platform's would put the cut in the middle of a line. The rest scrolls inside the row.
  */
-export const TEXT_ROW_LINE_HEIGHT = 16;
+export const TEXT_ROW_LINE_HEIGHT = 20;
 export const TEXT_ROW_MAX_LINES = 4;
 export const TEXT_ROW_MAX_HEIGHT = TEXT_ROW_LINE_HEIGHT * TEXT_ROW_MAX_LINES;
 
