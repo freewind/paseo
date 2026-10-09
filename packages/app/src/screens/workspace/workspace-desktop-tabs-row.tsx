@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/context-menu";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { FloatingScrollView } from "@/components/ui/floating";
 import { useShortcutKeys } from "@/hooks/use-shortcut-keys";
 import { WORKSPACE_SECONDARY_HEADER_HEIGHT, useIsCompactFormFactor } from "@/constants/layout";
 import { buttonControlHeight } from "@/components/ui/control-geometry";
@@ -172,7 +173,11 @@ function AgentTabTooltipBody({
   const activity = formatCompactTimeAgoAsProse(compactActivity);
 
   return (
-    <View style={styles.tooltipAgentContent}>
+    <FloatingScrollView
+      style={styles.tooltipAgentScroll}
+      contentContainerStyle={styles.tooltipAgentContent}
+      showsVerticalScrollIndicator
+    >
       <Text style={styles.agentTooltipTitle}>{title}</Text>
       <View style={styles.tooltipAgentMetadata}>
         <Text style={styles.tooltipAgentId}>{agentId.slice(0, 7)}</Text>
@@ -183,7 +188,7 @@ function AgentTabTooltipBody({
           </>
         ) : null}
       </View>
-    </View>
+    </FloatingScrollView>
   );
 }
 
@@ -851,7 +856,7 @@ function TabChip({
       onPointerLeave={handleTabPointerLeave}
     >
       <ContextMenu key={tab.key}>
-        <Tooltip delayDuration={400} enabledOnDesktop enabledOnMobile={false}>
+        <Tooltip delayDuration={400} enabledOnDesktop enabledOnMobile={false} interactive>
           <TooltipTrigger asChild triggerRefProp="triggerRef">
             <ContextMenuTrigger
               {...(dragHandleProps?.attributes as object | undefined)}
@@ -1787,9 +1792,13 @@ const styles = StyleSheet.create((theme) => ({
     color: theme.colors.foreground,
     fontSize: theme.fontSize.base,
   },
+  tooltipAgentScroll: {
+    maxWidth: 420,
+    // Cap the hover tooltip so a long title cannot cover the page; the body scrolls past it.
+    maxHeight: 200,
+  },
   tooltipAgentContent: {
     gap: theme.spacing[0.5],
-    maxWidth: 420,
   },
   agentTooltipTitle: {
     color: theme.colors.foreground,

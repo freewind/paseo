@@ -27,6 +27,7 @@ import { FadeIn, FadeOut } from "react-native-reanimated";
 import { StyleSheet } from "react-native-unistyles";
 import { useIsCompactFormFactor } from "@/constants/layout";
 import { FloatingSurface } from "@/components/ui/floating";
+import { useHoverSafeZone } from "@/hooks/use-hover-safe-zone";
 import { isNative, isWeb } from "@/constants/platform";
 import { getOverlayRoot, OVERLAY_Z } from "@/lib/overlay-root";
 
@@ -49,6 +50,12 @@ interface TooltipContextValue {
   enabled: boolean;
   openOnPress: boolean;
   delayDuration: number;
+  /**
+   * When true on web the content accepts pointer events and the tooltip stays open while the
+   * pointer is over it, so a scrollable body can actually be scrolled. Off by default: a plain
+   * tooltip is non-interactive and closes as soon as the pointer leaves the trigger.
+   */
+  interactive: boolean;
 }
 
 const TooltipContext = createContext<TooltipContextValue | null>(null);
@@ -239,6 +246,7 @@ export function Tooltip({
   delayDuration = 0,
   enabledOnDesktop = true,
   enabledOnMobile = false,
+  interactive = false,
   children,
 }: PropsWithChildren<{
   open?: boolean;
@@ -247,6 +255,7 @@ export function Tooltip({
   delayDuration?: number;
   enabledOnDesktop?: boolean;
   enabledOnMobile?: boolean;
+  interactive?: boolean;
 }>): ReactElement {
   const triggerRef = useRef<TooltipTriggerElement>(null);
   const [isOpen, setIsOpen] = useControllableOpenState({
@@ -267,8 +276,9 @@ export function Tooltip({
       enabled,
       openOnPress: opensOnPress,
       delayDuration,
+      interactive,
     }),
-    [isOpen, setIsOpen, enabled, opensOnPress, delayDuration],
+    [isOpen, setIsOpen, enabled, opensOnPress, delayDuration, interactive],
   );
 
   return <TooltipContext.Provider value={value}>{children}</TooltipContext.Provider>;
@@ -340,9 +350,13 @@ export function TooltipTrigger({
   const handleHoverOut = useCallback(
     (e?: unknown) => {
       if (isCallable(onHoverOut)) onHoverOut(e);
+      // An interactive tooltip is closed by the safe zone in TooltipContent, which spans the
+      // trigger and the content. Closing on the trigger's own hover-out would drop it the moment
+      // the pointer crosses the gap on its way to the content.
+      if (ctx.interactive) return;
       close();
     },
-    [onHoverOut, close],
+    [onHoverOut, close, ctx.interactive],
   );
 
   const handleFocus = useCallback(
@@ -523,16 +537,33 @@ export function TooltipContent({
 
   const handleDismiss = useCallback(() => ctx.setOpen(false), [ctx]);
 
+  // Closing is owned by the safe zone that spans the trigger, the content, and the bridge between
+  // them, so the pointer can travel from one to the other without dropping the tooltip.
+  const contentRef = useRef<View>(null);
+  const handleSafeZoneEnter = useCallback(() => {}, []);
+  const handleSafeZoneLeave = useCallback(() => ctx.setOpen(false), [ctx]);
+  useHoverSafeZone({
+    enabled: ctx.interactive && ctx.open,
+    triggerRef: ctx.triggerRef,
+    contentRef,
+    onEnterSafeZone: handleSafeZoneEnter,
+    onLeaveSafeZone: handleSafeZoneLeave,
+  });
+
   if (!ctx.open || !ctx.enabled) return null;
 
   // On web, avoid React Native's <Modal/> implementation (it uses <dialog> and can
   // steal focus / disrupt hover). Rendering via Portal + position:fixed keeps the
   // exact same positioning math as DropdownMenu, without hover feedback loops.
   if (isWeb) {
+    // An interactive tooltip must receive pointer events so its content can be scrolled; a plain
+    // one stays transparent to the pointer so it never steals a hover or a click from the page.
+    const overlayPointerEvents = ctx.interactive ? "box-none" : "none";
     return createPortal(
-      <View pointerEvents="none" style={styles.portalOverlay}>
+      <View pointerEvents={overlayPointerEvents} style={styles.portalOverlay}>
         <FloatingSurface
-          pointerEvents="none"
+          ref={contentRef}
+          pointerEvents={ctx.interactive ? "auto" : "none"}
           entering={FadeIn.duration(80)}
           exiting={FadeOut.duration(80)}
           collapsable={false}
