@@ -72,7 +72,6 @@ import {
   isOpenableProjectPath,
   type ProjectPickerOption,
 } from "@/components/project-picker-options";
-import { Button } from "@/components/ui/button";
 import { appLog } from "@/utils/app-log";
 import { Shortcut } from "@/components/ui/shortcut";
 import { useRevealActiveItem } from "@/components/ui/scroll-reveal";
