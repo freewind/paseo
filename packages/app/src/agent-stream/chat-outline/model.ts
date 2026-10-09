@@ -43,6 +43,15 @@ export const TEXT_RAIL_MAX_WIDTH = 360;
 export const TEXT_RAIL_GUTTER_PADDING = 12;
 
 /**
+ * A prompt row shows the whole prompt, capped so one pasted file cannot own the rail.
+ * The cap is a line count, so the row sets its own line height — inheriting the
+ * platform's would put the cut in the middle of a line. The rest scrolls inside the row.
+ */
+export const TEXT_ROW_LINE_HEIGHT = 16;
+export const TEXT_ROW_MAX_LINES = 4;
+export const TEXT_ROW_MAX_HEIGHT = TEXT_ROW_LINE_HEIGHT * TEXT_ROW_MAX_LINES;
+
+/**
  * Width available to the text outline, or `null` when the panel has not been
  * measured yet or the gutter is too narrow to show a readable line. A `null`
  * tells the caller to fall back to the dot rail; it never hides the outline,

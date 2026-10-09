@@ -2,9 +2,7 @@ import React, {
   memo,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
-  useRef,
   useState,
   useSyncExternalStore,
 } from "react";
@@ -21,13 +19,18 @@ import { useReducedMotion } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronUp } from "lucide-react-native";
 import { useContainerWidth, useContainerWidthBelow } from "@/hooks/use-container-width";
-import { useHoverSafeZone } from "@/hooks/use-hover-safe-zone";
 import { inlineUnistylesStyle } from "@/styles/unistyles-inline-style";
 import { mutedIconColorMapping } from "@/components/ui/icon-color";
 import { ICON_SIZE } from "@/styles/theme";
 import { createChatOutlineHoverIntent } from "./hover-intent";
 import { useChatOutlineCollapsed } from "./collapsed-state";
-import { promptTickMagnification, resolveTextRailWidth, type ChatOutlinePrompt } from "./model";
+import {
+  promptTickMagnification,
+  resolveTextRailWidth,
+  TEXT_ROW_LINE_HEIGHT,
+  TEXT_ROW_MAX_HEIGHT,
+  type ChatOutlinePrompt,
+} from "./model";
 import type { ChatOutlineRailProps } from "./rail";
 
 // Hover tracking lives on the rail and the slots, never on the Pressable inside them:
@@ -45,9 +48,6 @@ const PREVIEW_HEIGHT = 48;
 const PREVIEW_GAP = 4;
 // A text row has to be readable and clickable, not as dense as a dot.
 const TEXT_ROW_MIN_HEIGHT = 24;
-// The text preview carries a whole prompt, so it gets room and its own scroll.
-const TEXT_PREVIEW_WIDTH = 320;
-const TEXT_PREVIEW_HEIGHT = 180;
 const TOGGLE_SIZE = 20;
 
 const ThemedChevronDown = withUnistyles(ChevronDown, mutedIconColorMapping);
@@ -156,6 +156,9 @@ export const ChatOutlineRail = memo(function ChatOutlineRail({
             onHover={handlePointerEnterTick}
             onFocusChange={handleFocusChange}
             onJumpToPrompt={onJumpToPrompt}
+            // The dot card repeats a truncated preview the text form already shows in
+            // full, so the two forms never open a popover at the same time.
+            showPreview={variant !== "text"}
           />
         ))}
       </View>
@@ -166,7 +169,6 @@ export const ChatOutlineRail = memo(function ChatOutlineRail({
           key={agentId}
           prompts={prompts}
           activeSeq={activeSeq}
-          attentionIndex={attentionIndex}
           width={textRailWidth}
           agentId={agentId}
           onHover={handlePointerEnterTick}
@@ -187,6 +189,8 @@ interface ChatOutlineTickProps {
   label: string;
   isActive: boolean;
   hasAttention: boolean;
+  /** False while the text form shows the prompt beside the dots. */
+  showPreview: boolean;
   magnification: number;
   onHover: (index: number) => void;
   onFocusChange: (index: number, focused: boolean) => void;
@@ -200,6 +204,7 @@ const ChatOutlineTick = memo(function ChatOutlineTick({
   label,
   isActive,
   hasAttention,
+  showPreview,
   magnification,
   onHover,
   onFocusChange,
@@ -241,7 +246,7 @@ const ChatOutlineTick = memo(function ChatOutlineTick({
           ]}
         />
       </Pressable>
-      {hasAttention ? (
+      {showPreview && hasAttention ? (
         <View style={styles.preview} pointerEvents="none" aria-hidden testID="chat-outline-preview">
           <Text style={styles.previewText} numberOfLines={2}>
             {preview}
@@ -255,7 +260,6 @@ const ChatOutlineTick = memo(function ChatOutlineTick({
 interface ChatOutlineTextRailProps {
   prompts: ChatOutlinePrompt[];
   activeSeq: number | null;
-  attentionIndex: number | null;
   width: number;
   agentId: string;
   onHover: (index: number) => void;
@@ -265,10 +269,37 @@ interface ChatOutlineTextRailProps {
   onRequestPromptText: (seq: number) => Promise<string | null>;
 }
 
+const NO_PROMPT_TEXTS: ReadonlyMap<number, string> = new Map();
+
+function mergePromptText(
+  current: ReadonlyMap<number, string>,
+  seq: number,
+  text: string,
+): ReadonlyMap<number, string> {
+  if (current.get(seq) === text) return current;
+  const next = new Map(current);
+  next.set(seq, text);
+  return next;
+}
+
+/**
+ * Reads every prompt's full text in order. Serial on purpose: one reader at a time keeps a
+ * long conversation from firing its whole backlog of reads at the daemon at once.
+ */
+async function readPromptTexts(
+  prompts: readonly ChatOutlinePrompt[],
+  read: (seq: number) => Promise<string | null>,
+  onText: (seq: number, text: string) => void,
+): Promise<void> {
+  for (const prompt of prompts) {
+    const text = await read(prompt.seq);
+    if (text !== null) onText(prompt.seq, text);
+  }
+}
+
 const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
   prompts,
   activeSeq,
-  attentionIndex,
   width,
   agentId,
   onHover,
@@ -277,74 +308,30 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
   onJumpToPrompt,
   onRequestPromptText,
 }: ChatOutlineTextRailProps) {
-  const railRef = useRef<View>(null);
-  const previewRef = useRef<View>(null);
-  const [previewTop, setPreviewTop] = useState(0);
-  const [detail, setDetail] = useState<{ seq: number; text: string } | null>(null);
+  const [promptTexts, setPromptTexts] = useState<ReadonlyMap<number, string>>(NO_PROMPT_TEXTS);
   // Collapse is a reading decision, not a preference: it is remembered per chat and never
   // surfaced in settings. See ./collapsed-state.ts for why this outlives the component.
   const [isCollapsed, handleToggleCollapsed] = useChatOutlineCollapsed(agentId);
   const { t } = useTranslation();
-  const attentionSeq = attentionIndex !== null ? (prompts[attentionIndex]?.seq ?? null) : null;
 
   useEffect(() => {
-    if (isCollapsed && attentionIndex !== null) onLeave();
-  }, [attentionIndex, isCollapsed, onLeave]);
+    if (isCollapsed) onLeave();
+  }, [isCollapsed, onLeave]);
 
-  // The index only carries a truncated preview, so the full text is read on demand.
-  // Keying the state by seq keeps one row's text from flashing inside another row's card.
+  const handlePromptText = useCallback((seq: number, text: string) => {
+    setPromptTexts((current) => mergePromptText(current, seq, text));
+  }, []);
+
+  // The index carries only a truncated preview, so each row reads its own full text once.
+  // The reader scans the rail instead of hovering it. Prompts already loaded in the
+  // transcript cost no request at all, and the reader's own cache dedupes the rest.
   useEffect(() => {
-    if (attentionSeq === null) return;
-    let active = true;
-    void onRequestPromptText(attentionSeq).then((text) => {
-      if (active && text !== null) setDetail({ seq: attentionSeq, text });
-      return undefined;
-    });
-    return () => {
-      active = false;
-    };
-  }, [attentionSeq, onRequestPromptText]);
-
-  // The card is a sibling of the scroller (a child would be clipped by its
-  // overflow), so it has to follow its row: measured against the rail, then
-  // re-measured as the scroller moves the row underneath a resting pointer.
-  const measurePreview = useCallback(() => {
-    const rail = railRef.current as unknown as Element | null;
-    if (rail === null || attentionIndex === null) return;
-    const seq = prompts[attentionIndex]?.seq;
-    const row = rail.querySelector(`[data-testid="chat-outline-text-row-${seq}"]`);
-    if (!(row instanceof Element)) return;
-    const railBounds = rail.getBoundingClientRect();
-    const rowBounds = row.getBoundingClientRect();
-    const rowCentre = rowBounds.top - railBounds.top + rowBounds.height / 2;
-    const maxTop = Math.max(railBounds.height - TEXT_PREVIEW_HEIGHT, 0);
-    setPreviewTop(Math.min(Math.max(rowCentre - TEXT_PREVIEW_HEIGHT / 2, 0), maxTop));
-  }, [attentionIndex, prompts]);
-
-  useLayoutEffect(() => {
-    if (attentionIndex === null) return;
-    measurePreview();
-  }, [attentionIndex, measurePreview]);
-
-  const handleEnterSafeZone = useCallback(() => {}, []);
-  // The card sits outside the rail's box, and its region passes pointer events through to
-  // the transcript below, so pointerleave on the rail fires exactly while the pointer is
-  // over the card. The rect-based safe zone is therefore the only closer. See docs/hover.md.
-  const handleLeaveSafeZone = useCallback(() => {
-    onLeave();
-    if (attentionIndex !== null) onFocusChange(attentionIndex, false);
-  }, [attentionIndex, onFocusChange, onLeave]);
-  useHoverSafeZone({
-    enabled: attentionIndex !== null,
-    triggerRef: railRef,
-    contentRef: previewRef,
-    onEnterSafeZone: handleEnterSafeZone,
-    onLeaveSafeZone: handleLeaveSafeZone,
-  });
+    if (isCollapsed) return;
+    void readPromptTexts(prompts, onRequestPromptText, handlePromptText);
+  }, [handlePromptText, isCollapsed, onRequestPromptText, prompts]);
 
   return (
     <View
-      ref={railRef}
       style={[styles.textRail, inlineUnistylesStyle({ width })]}
       role="tablist"
       testID="chat-outline-text-rail"
@@ -371,15 +358,13 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
           style={styles.textRailScroll}
           contentContainerStyle={styles.textRailContent}
           showsVerticalScrollIndicator={false}
-          scrollEventThrottle={16}
-          onScroll={measurePreview}
         >
           {prompts.map((prompt, index) => (
             <ChatOutlineTextRow
               key={prompt.seq}
               index={index}
               seq={prompt.seq}
-              preview={prompt.preview}
+              text={promptTexts.get(prompt.seq) ?? prompt.preview}
               label={`${index + 1} of ${prompts.length}: ${prompt.preview}`}
               isActive={prompt.seq === activeSeq}
               onHover={onHover}
@@ -389,23 +374,6 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
           ))}
         </ScrollView>
       )}
-      {attentionIndex !== null ? (
-        <View
-          ref={previewRef}
-          style={[styles.textPreview, inlineUnistylesStyle({ top: previewTop })]}
-          pointerEvents="none"
-          aria-hidden
-          testID="chat-outline-text-preview"
-        >
-          <ScrollView style={styles.textPreviewScroll} nestedScrollEnabled>
-            <Text style={styles.previewText}>
-              {detail !== null && detail.seq === attentionSeq
-                ? detail.text
-                : (prompts[attentionIndex]?.preview ?? "")}
-            </Text>
-          </ScrollView>
-        </View>
-      ) : null}
     </View>
   );
 });
@@ -413,7 +381,7 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
 interface ChatOutlineTextRowProps {
   index: number;
   seq: number;
-  preview: string;
+  text: string;
   label: string;
   isActive: boolean;
   onHover: (index: number) => void;
@@ -424,7 +392,7 @@ interface ChatOutlineTextRowProps {
 const ChatOutlineTextRow = memo(function ChatOutlineTextRow({
   index,
   seq,
-  preview,
+  text,
   label,
   isActive,
   onHover,
@@ -441,24 +409,27 @@ const ChatOutlineTextRow = memo(function ChatOutlineTextRow({
 
   return (
     <View style={styles.textRow} onPointerEnter={handlePointerEnter}>
-      <Pressable
-        style={styles.textRowTarget}
-        onPress={handlePress}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        accessibilityRole="tab"
-        aria-selected={isActive}
-        accessibilityLabel={label}
-        testID={`chat-outline-text-row-${seq}`}
+      {/* The row scrolls its own overflow, so a long prompt stays readable without
+          hovering and without pushing the next prompt off the rail. The press target sits
+          inside the scroller: a press on the scrollbar must not jump the transcript. */}
+      <ScrollView
+        style={styles.textRowScroll}
+        showsVerticalScrollIndicator
+        testID={`chat-outline-text-scroll-${seq}`}
       >
-        <Text
-          style={[styles.textRowLabel, isActive && styles.textRowLabelActive]}
-          numberOfLines={3}
-          ellipsizeMode="tail"
+        <Pressable
+          style={styles.textRowTarget}
+          onPress={handlePress}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          accessibilityRole="tab"
+          aria-selected={isActive}
+          accessibilityLabel={label}
+          testID={`chat-outline-text-row-${seq}`}
         >
-          {preview}
-        </Text>
-      </Pressable>
+          <Text style={[styles.textRowLabel, isActive && styles.textRowLabelActive]}>{text}</Text>
+        </Pressable>
+      </ScrollView>
     </View>
   );
 });
@@ -574,27 +545,15 @@ const styles = StyleSheet.create((theme) => ({
   },
   textRowLabel: {
     fontSize: theme.fontSize.sm,
+    lineHeight: TEXT_ROW_LINE_HEIGHT,
     color: theme.colors.foregroundMuted,
   },
   textRowLabelActive: {
     color: theme.colors.foreground,
   },
-  // The rail is on the right, so the card opens back over the transcript it describes.
-  textPreview: {
-    position: "absolute",
-    right: "100%",
-    marginRight: PREVIEW_GAP,
-    width: TEXT_PREVIEW_WIDTH,
-    height: TEXT_PREVIEW_HEIGHT,
-    paddingVertical: theme.spacing[2],
-    paddingHorizontal: theme.spacing[3],
-    borderRadius: theme.borderRadius.lg,
-    borderWidth: theme.borderWidth[1],
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface2,
-    ...theme.shadow.md,
-  },
-  textPreviewScroll: {
-    flex: 1,
+  // The row owns the whole prompt but never more than a few lines of it; the rest is
+  // reachable by scrolling the row itself.
+  textRowScroll: {
+    maxHeight: TEXT_ROW_MAX_HEIGHT,
   },
 }));

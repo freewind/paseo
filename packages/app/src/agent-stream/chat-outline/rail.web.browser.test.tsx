@@ -2,18 +2,17 @@ import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { page } from "vitest/browser";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createActivePromptPublisher } from "./model";
+import { createActivePromptPublisher, TEXT_ROW_MAX_HEIGHT } from "./model";
 import { ChatOutlineRail } from "./rail.web";
 
 // App sources compile against the classic JSX runtime, which expects React on the global.
 beforeEach(() => vi.stubGlobal("React", React));
 
 /**
- * A real browser with real layout, because the bug under test is clipping: the preview
- * card has to float over the transcript outside the rail's scroller, and jsdom has no
- * layout — an overflow-hidden ancestor crops the card in the browser while every jsdom
- * assertion still passes. Only a rendered page can prove the card is on screen and that
- * no ancestor clips it.
+ * A real browser with real layout, because the subject under test is text overflow: a
+ * capped row only scrolls if the glyphs actually wrap past the cap, and only a rendered
+ * page can tell a row that scrolls from one that silently cut the prompt. jsdom measures
+ * nothing, so it can assert the cap but never that the tail is reachable.
  */
 
 interface Mounted {
@@ -34,7 +33,9 @@ function prompt(seq: number, preview: string) {
   return { seq, timestamp: new Date(seq).toISOString(), preview };
 }
 
-const defaultPromptText = async () => "full text";
+const LONG_PROMPT = Array.from({ length: 24 }, (_, index) => `prompt line ${index + 1}`).join(" ");
+
+const defaultPromptText = async () => LONG_PROMPT;
 
 async function waitFor(predicate: () => boolean, what: string, timeoutMs = 8_000): Promise<void> {
   const { promise, resolve, reject } = Promise.withResolvers<void>();
@@ -57,8 +58,8 @@ async function waitFor(predicate: () => boolean, what: string, timeoutMs = 8_000
 async function mountRail(options?: { onRequestPromptText?: (seq: number) => Promise<string> }) {
   const container = document.createElement("div");
   container.style.position = "relative";
-  // The rail now lives in the right gutter, so the panel has to fit the viewport or
-  // the rail — and the card that opens from it — land off-screen.
+  // The rail lives in the right gutter, so the panel has to fit the viewport or the rail
+  // lands off-screen and every measurement reads zero.
   container.style.width = "1200px";
   container.style.height = "700px";
   document.body.appendChild(container);
@@ -89,67 +90,43 @@ async function mountRail(options?: { onRequestPromptText?: (seq: number) => Prom
   return container;
 }
 
-async function hoverRow(seq: number) {
-  const row = document.querySelector(`[data-testid="chat-outline-text-row-${seq}"]`);
-  expect(row).not.toBeNull();
-  await act(async () => {
-    row?.dispatchEvent(new MouseEvent("pointerover", { bubbles: true, relatedTarget: null }));
-    const { promise, resolve } = Promise.withResolvers<void>();
-    // Hover intent activates on its own delay.
-    setTimeout(resolve, 250);
-    await promise;
-  });
-}
-
-describe("ChatOutlineRail text preview in a real browser", () => {
-  it("shows the hover preview on screen with no ancestor clipping it", async () => {
-    // The default test viewport is narrower than a real panel, and the card is
-    // anchored to a panel's gutter — size the viewport like the app's.
+describe("ChatOutlineRail text rows in a real browser", () => {
+  it("shows the whole prompt in the row and scrolls what passes the cap", async () => {
     await page.viewport(1280, 800);
-    await mountRail({
-      onRequestPromptText: async () => "The full text the reader hovered for",
+    await mountRail();
+
+    const scroller = document.querySelector<HTMLElement>(
+      '[data-testid="chat-outline-text-scroll-1"]',
+    );
+    expect(scroller).not.toBeNull();
+    if (!scroller) return;
+
+    // The row keeps the prompt whole: nothing in the DOM is elided, the box scrolls.
+    expect(scroller.textContent).toContain("prompt line 24");
+    expect(scroller.clientHeight).toBe(TEXT_ROW_MAX_HEIGHT);
+    expect(scroller.scrollHeight).toBeGreaterThan(TEXT_ROW_MAX_HEIGHT);
+
+    // And the tail really is reachable, not merely present in the markup.
+    scroller.scrollTop = scroller.scrollHeight;
+    expect(scroller.scrollTop).toBeGreaterThan(0);
+    expect(scroller.getBoundingClientRect().bottom).toBeLessThanOrEqual(window.innerHeight);
+  });
+
+  it("never opens a popover over the transcript", async () => {
+    await page.viewport(1280, 800);
+    await mountRail();
+
+    const row = document.querySelector('[data-testid="chat-outline-text-row-1"]');
+    expect(row).not.toBeNull();
+    await act(async () => {
+      row?.dispatchEvent(new MouseEvent("pointerover", { bubbles: true, relatedTarget: null }));
+      const { promise, resolve } = Promise.withResolvers<void>();
+      // Hover intent activates on its own delay, so the test has to let it elapse.
+      setTimeout(resolve, 250);
+      await promise;
     });
 
-    await hoverRow(1);
-
-    const rail = document.querySelector('[data-testid="chat-outline-text-rail"]');
-    const preview = document.querySelector('[data-testid="chat-outline-text-preview"]');
-    expect(rail).not.toBeNull();
-    expect(preview).not.toBeNull();
-    if (!rail || !preview) return;
-
-    // The card must sit outside the scroller: the scroller forces overflow on itself,
-    // so a nested card is cropped to the gutter in a way jsdom can never observe.
-    const scroller = document.querySelector(
-      '[data-testid="chat-outline-text-row-1"]',
-    )?.parentElement;
-    expect(scroller?.contains(preview)).toBe(false);
-
-    // Walk the ancestor chain: no element the card renders inside may clip.
-    const clippers: string[] = [];
-    for (let el: Element | null = preview; el !== null; el = el.parentElement) {
-      const style = getComputedStyle(el);
-      for (const axis of ["overflowX", "overflowY"] as const) {
-        const value = style[axis];
-        if (value !== "visible" && value !== "") {
-          clippers.push(`${el.tagName.toLowerCase()}.${el.className || "?"} ${axis}=${value}`);
-        }
-      }
-    }
-    expect(clippers).toEqual([]);
-
-    // The rail sits in the right gutter, so the card opens back over the transcript it
-    // describes: it ends where the rail begins, and it stays on screen doing so.
-    const rect = preview.getBoundingClientRect();
-    const railRect = rail.getBoundingClientRect();
-    expect(rect.width).toBeGreaterThan(0);
-    expect(rect.height).toBeGreaterThan(0);
-    expect(rect.right).toBeLessThanOrEqual(railRect.left);
-    expect(rect.left).toBeGreaterThanOrEqual(0);
-    expect(rect.right).toBeLessThanOrEqual(window.innerWidth);
-    expect(rect.top).toBeGreaterThanOrEqual(0);
-    expect(rect.bottom).toBeLessThanOrEqual(window.innerHeight);
-
-    expect(preview.textContent).toContain("The full text the reader hovered for");
+    expect(document.querySelector('[data-testid="chat-outline-text-preview"]')).toBeNull();
+    expect(document.querySelector('[data-testid="chat-outline-preview"]')).toBeNull();
   });
 });

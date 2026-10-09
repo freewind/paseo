@@ -2,13 +2,14 @@
  * @vitest-environment jsdom
  *
  * The text outline is the only place a reader scans prompt text instead of
- * counting dots, so these assert what actually reaches the DOM: one line per
- * prompt, a gutter taken out of the panel's slack, and a click that jumps.
+ * counting dots, so these assert what actually reaches the DOM: a row per prompt
+ * showing that prompt's whole text, a gutter taken out of the panel's slack, and a
+ * click that jumps.
  */
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createActivePromptPublisher, resolveTextRailWidth } from "./model";
+import { createActivePromptPublisher, resolveTextRailWidth, TEXT_ROW_MAX_HEIGHT } from "./model";
 import { ChatOutlineRail } from "./rail.web";
 
 const CONTENT_MAX_WIDTH = 820;
@@ -205,119 +206,45 @@ describe("ChatOutlineRail in its text form", () => {
     expect(selected[0]?.getAttribute("data-testid")).toBe("chat-outline-text-row-2");
   });
 
-  it("previews the prompt's full text rather than the index's truncated one", async () => {
+  it("reads each prompt's full text as soon as the rail renders", async () => {
     const fullText = "The whole prompt, well past the index's 120 character preview limit.";
     const onRequestPromptText = vi.fn(async () => fullText);
     await renderRail([prompt(1, "truncated preview"), prompt(2, "Second")], {
       onRequestPromptText,
     });
 
-    const target = document.querySelector('[data-testid="chat-outline-text-row-1"]');
-    expect(target).not.toBeNull();
-    // Nothing is read until the reader points at or focuses the row: the index
-    // preview is what the rail shows at rest.
-    expect(onRequestPromptText).not.toHaveBeenCalled();
-    expect(document.body.textContent).not.toContain(fullText);
-
-    await act(async () => {
-      (target as HTMLElement).focus();
-    });
-
+    // No hover and no focus: the reader scans the rail, so the row itself asks for the text.
     expect(onRequestPromptText).toHaveBeenCalledWith(1);
-    expect(document.querySelector('[data-testid="chat-outline-text-preview"]')).not.toBeNull();
+    expect(onRequestPromptText).toHaveBeenCalledWith(2);
     expect(document.body.textContent).toContain(fullText);
+    // The text lives in the row now, so nothing floats over the transcript.
+    expect(document.querySelector('[data-testid="chat-outline-text-preview"]')).toBeNull();
   });
 
-  it("keeps the preview rather than the truncated line when the read fails", async () => {
+  it("keeps the index preview when the full text cannot be read", async () => {
     await renderRail([prompt(1, "truncated preview"), prompt(2, "Second")], {
       onRequestPromptText: async () => null,
     });
 
-    const target = document.querySelector('[data-testid="chat-outline-text-row-1"]');
-    await act(async () => {
-      (target as HTMLElement).focus();
-    });
-
-    expect(document.querySelector('[data-testid="chat-outline-text-preview"]')).not.toBeNull();
     expect(document.body.textContent).toContain("truncated preview");
-  });
-
-  it("opens the preview when the pointer rests on a row", async () => {
-    const onRequestPromptText = vi.fn(async () => "The full text behind the hover");
-    await renderRail([prompt(1, "First"), prompt(2, "Second")], { onRequestPromptText });
-
-    const row = document.querySelector('[data-testid="chat-outline-text-row-1"]');
-    expect(row).not.toBeNull();
-    expect(onRequestPromptText).not.toHaveBeenCalled();
-
-    await act(async () => {
-      row?.dispatchEvent(new MouseEvent("pointerover", { bubbles: true, relatedTarget: null }));
-      // Hover intent activates on its own delay, so the test has to let it elapse.
-      const { promise, resolve } = Promise.withResolvers<void>();
-      setTimeout(resolve, 200);
-      await promise;
-    });
-
-    expect(onRequestPromptText).toHaveBeenCalledWith(1);
-    expect(document.querySelector('[data-testid="chat-outline-text-preview"]')).not.toBeNull();
-    expect(document.body.textContent).toContain("The full text behind the hover");
-  });
-
-  it("keeps the preview outside the scroller so its overflow cannot crop it", async () => {
-    await renderRail([prompt(1, "First"), prompt(2, "Second")], {
-      onRequestPromptText: async () => "The full text",
-    });
-
-    await act(async () => {
-      (document.querySelector('[data-testid="chat-outline-text-row-1"]') as HTMLElement).focus();
-    });
-
-    const rail = document.querySelector('[data-testid="chat-outline-text-rail"]');
-    const preview = document.querySelector('[data-testid="chat-outline-text-preview"]');
-    const row = document.querySelector('[data-testid="chat-outline-text-row-1"]');
-    expect(rail).not.toBeNull();
-    expect(preview).not.toBeNull();
-    // The scroller forces overflow on itself, so anything inside it is cropped to the
-    // gutter. The card has to be its sibling — a child of a row puts it back inside.
-    expect(preview?.parentElement).toBe(rail);
-    // The scroller is whichever ancestor holds the rows; the toggle above it is not one.
-    const scroller = row?.parentElement;
-    expect(scroller?.contains(row)).toBe(true);
-    expect(scroller?.contains(preview as Node)).toBe(false);
-  });
-
-  it("drops the preview once the pointer leaves the outline", async () => {
-    await renderRail([prompt(1, "First"), prompt(2, "Second")], {
-      onRequestPromptText: async () => "The full text",
-    });
-
-    await act(async () => {
-      document
-        .querySelector('[data-testid="chat-outline-text-row-1"]')
-        ?.dispatchEvent(new MouseEvent("pointerover", { bubbles: true, relatedTarget: null }));
-      const { promise, resolve } = Promise.withResolvers<void>();
-      setTimeout(resolve, 200);
-      await promise;
-    });
-    expect(document.querySelector('[data-testid="chat-outline-text-preview"]')).not.toBeNull();
-
-    await act(async () => {
-      document.dispatchEvent(new MouseEvent("pointermove", { clientX: 500, clientY: 500 }));
-    });
-
     expect(document.querySelector('[data-testid="chat-outline-text-preview"]')).toBeNull();
   });
 
-  it("shows up to three lines of a prompt before truncating", async () => {
-    await renderRail([prompt(1, "First prompt"), prompt(2, "Second prompt")]);
+  it("caps a long prompt at four lines and scrolls the rest instead of cutting it", async () => {
+    const longText = "word ".repeat(80);
+    await renderRail([prompt(1, "First prompt"), prompt(2, "Second prompt")], {
+      onRequestPromptText: async () => longText,
+    });
 
-    // RNW clamps through -webkit-line-clamp, which jsdom keeps on the style object
-    // but drops from the serialized attribute. React writes RNW's style key verbatim;
-    // lib.dom only declares the lowercase form. The Text is the row's only child.
+    const scroller = document.querySelector('[data-testid="chat-outline-text-scroll-1"]');
+    expect(scroller).not.toBeNull();
+    // The cap is the row's own scroller, not a line clamp that hides the tail.
+    expect((scroller as HTMLElement).style.maxHeight).toBe(`${TEXT_ROW_MAX_HEIGHT}px`);
     const label = document.querySelector('[data-testid="chat-outline-text-row-1"]')
       ?.firstElementChild as HTMLElement | null;
     const styleWithClamp = label?.style as unknown as { WebkitLineClamp?: string } | undefined;
-    expect(String(styleWithClamp?.WebkitLineClamp)).toBe("3");
+    expect(styleWithClamp?.WebkitLineClamp).toBeUndefined();
+    expect(label?.textContent).toBe(longText);
   });
 
   it("hides the words behind a toggle and shows them again", async () => {
