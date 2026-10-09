@@ -113,6 +113,18 @@ export const zhCN: TranslationResources = {
       settingOff: "关",
     },
   },
+  comment: {
+    menu: {
+      item: "评论",
+      title: "评论",
+    },
+    sheet: {
+      title: "添加评论",
+      quote: "引用",
+      placeholder: "写下你的评论",
+      attach: "附加",
+    },
+  },
   composer: {
     readAloud: { start: "开启此对话朗读", stop: "关闭此对话朗读" },
     placeholders: {

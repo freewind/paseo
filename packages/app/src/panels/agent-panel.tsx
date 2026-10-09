@@ -1,4 +1,5 @@
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
+import { AssistantCommentProvider, buildCommentDraftText } from "@/assistant-comment";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
@@ -1216,6 +1217,18 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
       composerState,
     ],
   );
+  const handleCommentCommit = useCallback(
+    ({ blockText, comment }: { blockText: string; comment: string }) => {
+      replaceText(
+        buildCommentDraftText({
+          existingText: textSource.getSnapshot(),
+          blockText,
+          comment,
+        }),
+      );
+    },
+    [replaceText, textSource],
+  );
   const composerSection = (
     <RenderProfile id={`AgentComposerSection:${agentId}`}>
       <AgentComposerSection
@@ -1237,7 +1250,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   const streamContent = (
     <View style={animatedStaticStyles.content}>
       <RenderProfile id={`AgentStreamSection:${agentId}`}>
-        <AgentStreamSection
+        <CommentableAgentStreamSection
+          onCommentCommit={handleCommentCommit}
           streamViewRef={streamViewRef}
           serverId={serverId}
           workspaceId={workspaceId}
@@ -1359,6 +1373,21 @@ function TimelineSyncErrorCallout({
         </View>
       </View>
     </View>
+  );
+}
+
+type CommentableAgentStreamSectionProps = React.ComponentProps<typeof AgentStreamSection> & {
+  onCommentCommit: (input: { blockText: string; comment: string }) => void;
+};
+
+function CommentableAgentStreamSection({
+  onCommentCommit,
+  ...props
+}: CommentableAgentStreamSectionProps) {
+  return (
+    <AssistantCommentProvider onCommit={onCommentCommit}>
+      <AgentStreamSection {...props} />
+    </AssistantCommentProvider>
   );
 }
 

@@ -114,6 +114,18 @@ export const ptBR: TranslationResources = {
       settingOff: "Desligado",
     },
   },
+  comment: {
+    menu: {
+      item: "Comentar",
+      title: "Comentário",
+    },
+    sheet: {
+      title: "Adicionar um comentário",
+      quote: "Citação",
+      placeholder: "Escreva seu comentário",
+      attach: "Anexar",
+    },
+  },
   composer: {
     readAloud: { start: "Ativar leitura desta conversa", stop: "Desativar leitura desta conversa" },
     placeholders: {

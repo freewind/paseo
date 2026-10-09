@@ -114,6 +114,18 @@ export const ja: TranslationResources = {
       settingOff: "オフ",
     },
   },
+  comment: {
+    menu: {
+      item: "コメント",
+      title: "コメント",
+    },
+    sheet: {
+      title: "コメントを追加",
+      quote: "引用",
+      placeholder: "コメントを入力",
+      attach: "添付",
+    },
+  },
   composer: {
     readAloud: { start: "この会話の読み上げを開始", stop: "この会話の読み上げを停止" },
     placeholders: {

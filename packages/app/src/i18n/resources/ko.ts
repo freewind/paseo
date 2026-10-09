@@ -113,6 +113,18 @@ export const ko: TranslationResources = {
       settingOff: "꺼짐",
     },
   },
+  comment: {
+    menu: {
+      item: "댓글",
+      title: "댓글",
+    },
+    sheet: {
+      title: "댓글 추가",
+      quote: "인용",
+      placeholder: "댓글을 입력하세요",
+      attach: "첨부",
+    },
+  },
   composer: {
     readAloud: { start: "이 대화 읽기 시작", stop: "이 대화 읽기 중지" },
     placeholders: {

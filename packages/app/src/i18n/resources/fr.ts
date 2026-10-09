@@ -116,6 +116,18 @@ export const fr: TranslationResources = {
       settingOff: "Désactivé",
     },
   },
+  comment: {
+    menu: {
+      item: "Commenter",
+      title: "Commentaire",
+    },
+    sheet: {
+      title: "Ajouter un commentaire",
+      quote: "Citation",
+      placeholder: "Écrivez votre commentaire",
+      attach: "Joindre",
+    },
+  },
   composer: {
     readAloud: {
       start: "Activer la lecture de cette conversation",

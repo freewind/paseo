@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { MarkdownParagraphView, MarkdownTextSpan } from "@/components/markdown-text";
+import { MarkdownCommentableBlock, markdownBlockText } from "@/assistant-comment";
 import { MarkdownTableCellText } from "@/components/markdown-text-selection";
 import * as React from "react";
 import {
@@ -1583,9 +1584,11 @@ export const AssistantMessage = memo(function AssistantMessage({
         _parent: ASTNode[],
         styles: MarkdownStyles,
       ) => (
-        <View key={node.key} style={styles._VIEW_SAFE_heading1} dataSet={markdownCopyDataSet.h1}>
-          {children}
-        </View>
+        <MarkdownCommentableBlock key={node.key} blockText={markdownBlockText(node)}>
+          <View style={styles._VIEW_SAFE_heading1} dataSet={markdownCopyDataSet.h1}>
+            {children}
+          </View>
+        </MarkdownCommentableBlock>
       ),
       heading2: (
         node: ASTNode,
@@ -1593,9 +1596,11 @@ export const AssistantMessage = memo(function AssistantMessage({
         _parent: ASTNode[],
         styles: MarkdownStyles,
       ) => (
-        <View key={node.key} style={styles._VIEW_SAFE_heading2} dataSet={markdownCopyDataSet.h2}>
-          {children}
-        </View>
+        <MarkdownCommentableBlock key={node.key} blockText={markdownBlockText(node)}>
+          <View style={styles._VIEW_SAFE_heading2} dataSet={markdownCopyDataSet.h2}>
+            {children}
+          </View>
+        </MarkdownCommentableBlock>
       ),
       heading3: (
         node: ASTNode,
@@ -1603,9 +1608,11 @@ export const AssistantMessage = memo(function AssistantMessage({
         _parent: ASTNode[],
         styles: MarkdownStyles,
       ) => (
-        <View key={node.key} style={styles._VIEW_SAFE_heading3} dataSet={markdownCopyDataSet.h3}>
-          {children}
-        </View>
+        <MarkdownCommentableBlock key={node.key} blockText={markdownBlockText(node)}>
+          <View style={styles._VIEW_SAFE_heading3} dataSet={markdownCopyDataSet.h3}>
+            {children}
+          </View>
+        </MarkdownCommentableBlock>
       ),
       heading4: (
         node: ASTNode,
@@ -1613,9 +1620,11 @@ export const AssistantMessage = memo(function AssistantMessage({
         _parent: ASTNode[],
         styles: MarkdownStyles,
       ) => (
-        <View key={node.key} style={styles._VIEW_SAFE_heading4} dataSet={markdownCopyDataSet.h4}>
-          {children}
-        </View>
+        <MarkdownCommentableBlock key={node.key} blockText={markdownBlockText(node)}>
+          <View style={styles._VIEW_SAFE_heading4} dataSet={markdownCopyDataSet.h4}>
+            {children}
+          </View>
+        </MarkdownCommentableBlock>
       ),
       heading5: (
         node: ASTNode,
@@ -1623,9 +1632,11 @@ export const AssistantMessage = memo(function AssistantMessage({
         _parent: ASTNode[],
         styles: MarkdownStyles,
       ) => (
-        <View key={node.key} style={styles._VIEW_SAFE_heading5} dataSet={markdownCopyDataSet.h5}>
-          {children}
-        </View>
+        <MarkdownCommentableBlock key={node.key} blockText={markdownBlockText(node)}>
+          <View style={styles._VIEW_SAFE_heading5} dataSet={markdownCopyDataSet.h5}>
+            {children}
+          </View>
+        </MarkdownCommentableBlock>
       ),
       heading6: (
         node: ASTNode,
@@ -1633,9 +1644,11 @@ export const AssistantMessage = memo(function AssistantMessage({
         _parent: ASTNode[],
         styles: MarkdownStyles,
       ) => (
-        <View key={node.key} style={styles._VIEW_SAFE_heading6} dataSet={markdownCopyDataSet.h6}>
-          {children}
-        </View>
+        <MarkdownCommentableBlock key={node.key} blockText={markdownBlockText(node)}>
+          <View style={styles._VIEW_SAFE_heading6} dataSet={markdownCopyDataSet.h6}>
+            {children}
+          </View>
+        </MarkdownCommentableBlock>
       ),
       blockquote: (
         node: ASTNode,
@@ -1956,13 +1969,14 @@ export const AssistantMessage = memo(function AssistantMessage({
         _parent: ASTNode[],
         styles: MarkdownStyles,
       ) => (
-        <MarkdownParagraphView
-          key={node.key}
-          paragraphStyle={styles.paragraph}
-          containsImage={markdownNodeContainsType(node, "image")}
-        >
-          {children}
-        </MarkdownParagraphView>
+        <MarkdownCommentableBlock key={node.key} blockText={markdownBlockText(node)}>
+          <MarkdownParagraphView
+            paragraphStyle={styles.paragraph}
+            containsImage={markdownNodeContainsType(node, "image")}
+          >
+            {children}
+          </MarkdownParagraphView>
+        </MarkdownCommentableBlock>
       ),
       link: (node: ASTNode, children: ReactNode[], _parent: ASTNode[], styles: MarkdownStyles) => (
         <AssistantMarkdownLink

@@ -114,6 +114,18 @@ export const ru: TranslationResources = {
       settingOff: "Выкл",
     },
   },
+  comment: {
+    menu: {
+      item: "Комментарий",
+      title: "Комментарий",
+    },
+    sheet: {
+      title: "Добавить комментарий",
+      quote: "Цитата",
+      placeholder: "Напишите комментарий",
+      attach: "Прикрепить",
+    },
+  },
   composer: {
     readAloud: { start: "Включить чтение этой беседы", stop: "Выключить чтение этой беседы" },
     placeholders: {

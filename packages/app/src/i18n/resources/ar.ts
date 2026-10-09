@@ -113,6 +113,18 @@ export const ar: TranslationResources = {
       settingOff: "إيقاف",
     },
   },
+  comment: {
+    menu: {
+      item: "تعليق",
+      title: "تعليق",
+    },
+    sheet: {
+      title: "إضافة تعليق",
+      quote: "اقتباس",
+      placeholder: "اكتب تعليقك",
+      attach: "إرفاق",
+    },
+  },
   composer: {
     readAloud: { start: "بدء قراءة هذه المحادثة", stop: "إيقاف قراءة هذه المحادثة" },
     placeholders: {
