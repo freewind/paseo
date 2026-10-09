@@ -1,4 +1,5 @@
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
+import { AssistantCommentProvider, buildCommentDraftText } from "@/assistant-comment";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
@@ -1229,6 +1230,19 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     ],
   );
   const composerSection = showsComposer ? (
+  const handleCommentCommit = useCallback(
+    ({ blockText, comment }: { blockText: string; comment: string }) => {
+      replaceText(
+        buildCommentDraftText({
+          existingText: textSource.getSnapshot(),
+          blockText,
+          comment,
+        }),
+      );
+    },
+    [replaceText, textSource],
+  );
+  const composerSection = (
     <RenderProfile id={`AgentComposerSection:${agentId}`}>
       <AgentComposerSection
         agentId={agentId}
@@ -1251,7 +1265,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     <View style={animatedStaticStyles.content}>
       {showsComposer ? null : <SheetAgentFacts serverId={serverId} agentId={agentId} />}
       <RenderProfile id={`AgentStreamSection:${agentId}`}>
-        <AgentStreamSection
+        <CommentableAgentStreamSection
+          onCommentCommit={handleCommentCommit}
           streamViewRef={streamViewRef}
           serverId={serverId}
           workspaceId={workspaceId}
@@ -1384,6 +1399,19 @@ function TimelineSyncErrorCallout({
 function SheetAgentFacts({ serverId, agentId }: { serverId: string; agentId: string }) {
   const text = useAgentFactsLine(serverId, agentId);
   return text ? <PaneSubtitle text={text} testID="agent-pane-subtitle" /> : null;
+type CommentableAgentStreamSectionProps = React.ComponentProps<typeof AgentStreamSection> & {
+  onCommentCommit: (input: { blockText: string; comment: string }) => void;
+};
+
+function CommentableAgentStreamSection({
+  onCommentCommit,
+  ...props
+}: CommentableAgentStreamSectionProps) {
+  return (
+    <AssistantCommentProvider onCommit={onCommentCommit}>
+      <AgentStreamSection {...props} />
+    </AssistantCommentProvider>
+  );
 }
 
 const AgentStreamSection = memo(function AgentStreamSection({
