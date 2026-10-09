@@ -115,7 +115,6 @@ const TAB_MIN_WIDTH = 64;
 const TAB_MAX_WIDTH = 160;
 const TAB_CLOSE_BUTTON_RESERVED_WIDTH = 0;
 const TAB_LABEL_LAYOUT_ALLOWANCE = 4;
-const AGENT_TOOLTIP_TITLE_MAX_LENGTH = 80;
 
 const ThemedLoadingSpinner = withUnistyles(LoadingSpinner);
 const ThemedX = withUnistyles(X);
@@ -149,11 +148,6 @@ function normalizeAgentTooltipTitle(title: string): string {
   return title.replace(/\s+/g, " ").trim();
 }
 
-function formatAgentTooltipTitle(singleLineTitle: string): string {
-  if (singleLineTitle.length <= AGENT_TOOLTIP_TITLE_MAX_LENGTH) return singleLineTitle;
-  return `${singleLineTitle.slice(0, AGENT_TOOLTIP_TITLE_MAX_LENGTH - 1).trimEnd()}…`;
-}
-
 function AgentTabTooltipBody({
   serverId,
   agentId,
@@ -173,9 +167,7 @@ function AgentTabTooltipBody({
 
   return (
     <View style={styles.tooltipAgentContent}>
-      <Text style={styles.agentTooltipTitle} numberOfLines={1} ellipsizeMode="tail">
-        {title}
-      </Text>
+      <Text style={styles.agentTooltipTitle}>{title}</Text>
       <View style={styles.tooltipAgentMetadata}>
         <Text style={styles.tooltipAgentId}>{agentId.slice(0, 7)}</Text>
         {activity ? (
@@ -1549,10 +1541,9 @@ function ResolvedDesktopTabChip({
     item.tab.target.kind === "agent"
       ? normalizeAgentTooltipTitle(rawTooltipLabel)
       : rawTooltipLabel;
-  const tooltipLabel =
-    item.tab.target.kind === "agent"
-      ? formatAgentTooltipTitle(accessibilityLabel)
-      : rawTooltipLabel;
+  // A long agent title wraps across lines in the hover tooltip instead of ending in an ellipsis,
+  // so the user can read the whole title without scrolling back to the top of the tab.
+  const tooltipLabel = accessibilityLabel;
 
   return (
     <View style={styles.tabSlot}>
