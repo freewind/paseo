@@ -14,14 +14,14 @@ import {
   type LayoutChangeEvent,
   type PointerEvent as RNPointerEvent,
 } from "react-native";
-import { StyleSheet, withUnistyles } from "react-native-unistyles";
+import { StyleSheet } from "react-native-unistyles";
 import { useReducedMotion } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronUp } from "lucide-react-native";
 import { useContainerWidth, useContainerWidthBelow } from "@/hooks/use-container-width";
 import { inlineUnistylesStyle } from "@/styles/unistyles-inline-style";
-import { mutedIconColorMapping } from "@/components/ui/icon-color";
-import { ICON_SIZE } from "@/styles/theme";
+import { Button } from "@/components/ui/button";
+import { baseColors, type Theme } from "@/styles/theme";
 import { createChatOutlineHoverIntent } from "./hover-intent";
 import { useChatOutlineCollapsed } from "./collapsed-state";
 import {
@@ -48,10 +48,16 @@ const PREVIEW_HEIGHT = 48;
 const PREVIEW_GAP = 4;
 // A text row has to be readable and clickable, not as dense as a dot.
 const TEXT_ROW_MIN_HEIGHT = 24;
-const TOGGLE_SIZE = 20;
 
-const ThemedChevronDown = withUnistyles(ChevronDown, mutedIconColorMapping);
-const ThemedChevronUp = withUnistyles(ChevronUp, mutedIconColorMapping);
+/**
+ * The prompt the reader is inside is marked with color, not with a fill, so it never
+ * competes with the transcript behind the rail. There is no semantic blue in the theme —
+ * accent is green — so the raw scale is the only source of one. It is read from the module,
+ * not from the style function's theme argument, which does not carry the raw scales.
+ */
+function activePromptColor(theme: Theme): string {
+  return theme.colorScheme === "dark" ? baseColors.blue[400] : baseColors.blue[600];
+}
 
 export const ChatOutlineRail = memo(function ChatOutlineRail({
   prompts,
@@ -337,21 +343,16 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
       testID="chat-outline-text-rail"
     >
       <View style={styles.textRailHeader}>
-        <Pressable
-          style={styles.textRailToggle}
+        <Button
+          variant="secondary"
+          size="xs"
+          leftIcon={isCollapsed ? ChevronDown : ChevronUp}
           onPress={handleToggleCollapsed}
-          accessibilityRole="button"
           accessibilityLabel={t(
             isCollapsed ? "agentStream.chatOutline.expand" : "agentStream.chatOutline.collapse",
           )}
           testID="chat-outline-text-toggle"
-        >
-          {isCollapsed ? (
-            <ThemedChevronDown size={ICON_SIZE.xs} />
-          ) : (
-            <ThemedChevronUp size={ICON_SIZE.xs} />
-          )}
-        </Pressable>
+        />
       </View>
       {isCollapsed ? null : (
         <ScrollView
@@ -418,7 +419,7 @@ const ChatOutlineTextRow = memo(function ChatOutlineTextRow({
         testID={`chat-outline-text-scroll-${seq}`}
       >
         <Pressable
-          style={styles.textRowTarget}
+          style={[styles.textRowTarget, index > 0 && styles.textRowDivider]}
           onPress={handlePress}
           onFocus={handleFocus}
           onBlur={handleBlur}
@@ -515,15 +516,7 @@ const styles = StyleSheet.create((theme) => ({
   // collapsed, so collapsing never shifts the rail sideways.
   textRailHeader: {
     flexDirection: "row",
-    justifyContent: "flex-start",
-  },
-  textRailToggle: {
-    alignItems: "center",
-    justifyContent: "center",
-    width: TOGGLE_SIZE,
-    height: TOGGLE_SIZE,
-    marginLeft: theme.spacing[2],
-    borderRadius: theme.borderRadius.md,
+    justifyContent: "flex-end",
   },
   textRailScroll: {
     flex: 1,
@@ -543,13 +536,19 @@ const styles = StyleSheet.create((theme) => ({
     paddingHorizontal: theme.spacing[2],
     borderRadius: theme.borderRadius.lg,
   },
+  // Rows after the first carry one top border, the same divider settings rows use. The
+  // first row follows the header, which is separation enough.
+  textRowDivider: {
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
   textRowLabel: {
-    fontSize: theme.fontSize.sm,
+    fontSize: theme.fontSize.base,
     lineHeight: TEXT_ROW_LINE_HEIGHT,
-    color: theme.colors.foregroundMuted,
+    color: theme.colors.foreground,
   },
   textRowLabelActive: {
-    color: theme.colors.foreground,
+    color: activePromptColor(theme),
   },
   // The row owns the whole prompt but never more than a few lines of it; the rest is
   // reachable by scrolling the row itself.
