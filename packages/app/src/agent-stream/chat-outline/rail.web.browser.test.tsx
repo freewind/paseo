@@ -140,7 +140,7 @@ describe("ChatOutlineRail text rows in a real browser", () => {
     expect(document.querySelector('[data-testid="chat-outline-preview"]')).toBeNull();
   });
 
-  it("separates the rows with one hairline and marks the current one in blue", async () => {
+  it("separates the rows with one hairline and marks the current one with the theme foreground", async () => {
     await page.viewport(1280, 800);
     await mountRail({ activeSeq: 1 });
 
@@ -182,7 +182,12 @@ describe("ChatOutlineRail text rows in a real browser", () => {
     expect(activeLabel).not.toBeNull();
     expect(idleLabel).not.toBeNull();
     const activeColor = getComputedStyle(activeLabel as Element).color;
-    expect(activeColor).not.toBe(getComputedStyle(idleLabel as Element).color);
-    expect(activeColor).toBe("rgb(37, 99, 235)");
+    const idleColor = getComputedStyle(idleLabel as Element).color;
+    // The current prompt comes forward on the theme's own foreground pair, the way every
+    // list marks its selection, so a scheme change re-weights the rail instead of
+    // restyling a hand-picked hue. Values come from the unistyles test stub theme.
+    expect(activeColor).toBe("rgb(17, 17, 17)");
+    expect(idleColor).toBe("rgb(102, 102, 102)");
+    expect(activeColor).not.toBe(idleColor);
   });
 });
