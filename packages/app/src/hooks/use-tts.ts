@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import * as Speech from "expo-speech";
 import { i18n } from "@/i18n/i18next";
 import { createUtteranceCoordinator, type UtteranceCoordinator } from "@/tts/utterance-coordinator";
+import { observeAudioFocusLoss } from "@/tts/audio-focus";
 
 export interface SpeakTextInput {
   text: string;
@@ -82,10 +83,23 @@ function lookupVoices(): Promise<TtsVoice[]> {
 
 /** One coordinator per process: expo-speech has a single output, so reads must not interleave. */
 let coordinator: UtteranceCoordinator | null = null;
+/** Held only while an utterance is in flight; releasing early lets other apps take the floor. */
+let releaseAudioFocus: (() => void) | null = null;
+
+function stopWatchingAudioFocus() {
+  releaseAudioFocus?.();
+  releaseAudioFocus = null;
+}
 
 function getCoordinator(): UtteranceCoordinator {
   coordinator ??= createUtteranceCoordinator({
-    speak: (text, voiceId, onSettled, rate) => {
+    speak(text, voiceId, onSettled, rate) {
+      // Whatever ends the utterance — done, stopped, errored — the focus must go back, or the
+      // user's next tap on a third-party player gets a silent app.
+      const settle = () => {
+        stopWatchingAudioFocus();
+        onSettled();
+      };
       // Deliberately never awaiting a voice lookup here: expo-speech resolves the voice itself, and
       // on web a stalled lookup would otherwise swallow the utterance entirely.
       Speech.speak(text, {
@@ -93,12 +107,19 @@ function getCoordinator(): UtteranceCoordinator {
         // current app language when the default voice is used.
         ...(voiceId ? { voice: voiceId } : { language: i18n.resolvedLanguage ?? "en" }),
         rate,
-        onDone: onSettled,
-        onStopped: onSettled,
-        onError: onSettled,
+        onDone: settle,
+        onStopped: settle,
+        onError: settle,
+      });
+      stopWatchingAudioFocus();
+      releaseAudioFocus = observeAudioFocusLoss(() => {
+        // Another app took the audio floor — a dictation keyboard, Siri, a call. Reading has to
+        // yield instead of talking over the user.
+        coordinator?.stop();
       });
     },
     stop: () => {
+      stopWatchingAudioFocus();
       void Speech.stop().catch(() => {});
     },
   });
