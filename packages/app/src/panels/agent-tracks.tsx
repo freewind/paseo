@@ -1,8 +1,11 @@
-import { memo, useCallback, type ReactElement } from "react";
+import { useCallback, memo, type ReactElement } from "react";
+import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
+import { List } from "lucide-react-native";
 import { WorkspaceDiffStatPill } from "@/composer/diff-stat-pill";
 import { useWorkspaceHasDiffStat } from "@/composer/workspace-diff-stat";
 import { AgentTaskList } from "@/composer/task-list";
-import { ComposerTrackBar } from "@/composer/tracks";
+import { ComposerTrackBar, ComposerTrackTools } from "@/composer/tracks";
 import { supportsDesktopPaneSplits, useIsCompactFormFactor } from "@/constants/layout";
 import { usePaneContext } from "@/panels/pane-context";
 import { useSettings } from "@/hooks/use-settings";
@@ -38,6 +41,8 @@ export const AgentTracks = memo(function AgentTracks({
   archiveFinishedStatus,
   onArchiveFinished,
   hasPluginComposerPills,
+  chatOutlineAvailable,
+  onOpenChatOutline,
 }: {
   serverId: string;
   workspaceId: string;
@@ -48,7 +53,10 @@ export const AgentTracks = memo(function AgentTracks({
   archiveFinishedStatus: ArchiveFinishedStatus;
   onArchiveFinished: () => void;
   hasPluginComposerPills: boolean;
+  chatOutlineAvailable: boolean;
+  onOpenChatOutline: () => void;
 }): ReactElement | null {
+  const { t } = useTranslation();
   const { tabId, openTab } = usePaneContext();
   const hasWorkspaceDiffStat = useWorkspaceHasDiffStat(serverId, workspaceId);
   const isCompact = useIsCompactFormFactor();
@@ -114,6 +122,7 @@ export const AgentTracks = memo(function AgentTracks({
 
   if (
     !hasWorkspaceDiffStat &&
+    !chatOutlineAvailable &&
     !hasAgentTracks({
       subagentRows,
       tasks,
@@ -148,6 +157,20 @@ export const AgentTracks = memo(function AgentTracks({
         workspaceId={workspaceId}
         onPress={handleOpenChanges}
       />
+      <ComposerTrackTools>
+        {chatOutlineAvailable ? (
+          <Button
+            variant="ghost"
+            size="xs"
+            leftIcon={List}
+            accessibilityLabel={t("settings.appearance.chatOutline.title")}
+            onPress={onOpenChatOutline}
+            testID="composer-chat-outline-button"
+          >
+            {t("settings.appearance.chatOutline.title")}
+          </Button>
+        ) : null}
+      </ComposerTrackTools>
     </ComposerTrackBar>
   );
 });
