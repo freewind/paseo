@@ -48,7 +48,7 @@ export function AdaptiveRenameModal({
   const inputRef = useRef<EditingTextInputHandle>(null);
 
   const handleClear = useCallback(() => {
-    inputRef.current?.replaceText("");
+    inputRef.current?.reset();
     setDraft("");
     setError(null);
     inputRef.current?.focus();
