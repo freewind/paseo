@@ -10,6 +10,7 @@ const { theme, adaptiveInputState } = vi.hoisted(() => ({
       onChangeText?: (next: string) => void;
       onSubmitEditing?: () => void;
     } | null,
+    reset: vi.fn(),
   },
   theme: {
     spacing: { 2: 8, 3: 12 },
@@ -90,11 +91,9 @@ vi.mock("@/components/adaptive-modal-sheet", async () => {
       const inputElement = ReactModule.createElement("input", {
         ref: (node: HTMLInputElement | null) => {
           if (node) {
-            (node as HTMLInputElement & { replaceText: (t: string) => void }).replaceText = (
-              next: string,
-            ) => {
-              node.value = next;
-              p.onChangeText?.(next);
+            (node as HTMLInputElement & { reset: () => void }).reset = () => {
+              adaptiveInputState.reset();
+              node.value = "";
             };
           }
           if (typeof ref === "function") ref(node);
@@ -164,6 +163,7 @@ beforeEach(() => {
   document.body.appendChild(container);
   root = createRoot(container);
   adaptiveInputState.latestProps = null;
+  adaptiveInputState.reset.mockClear();
 });
 
 afterEach(() => {
@@ -384,7 +384,8 @@ describe("RenameModal", () => {
   });
 
   it("shows the clear button only when there is draft content and clears on press", async () => {
-    renderModal({ initialValue: "main" });
+    const onSubmit = vi.fn();
+    renderModal({ initialValue: "main", onSubmit });
 
     const clear = queryClear();
     expect(clear).not.toBeNull();
@@ -393,8 +394,26 @@ describe("RenameModal", () => {
     click(clear);
     await flush();
 
-    // Clears the input value and hides the button once the draft is empty.
+    // The clear action uses the editor reset command and empties the visible input.
+    expect(adaptiveInputState.reset).toHaveBeenCalledOnce();
     expect(queryInput()?.value).toBe("");
     expect(queryClear()).toBeNull();
+    expect(querySubmit()?.disabled).toBe(true);
+
+    typeInto("new name");
+    expect(queryClear()).not.toBeNull();
+    click(queryClear());
+    await flush();
+
+    expect(queryInput()?.value).toBe("");
+    expect(queryClear()).toBeNull();
+    expect(querySubmit()?.disabled).toBe(true);
+
+    typeInto("renamed");
+    pressEnter();
+    await flush();
+
+    expect(onSubmit).toHaveBeenCalledOnce();
+    expect(onSubmit).toHaveBeenCalledWith("renamed");
   });
 });
