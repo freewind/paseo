@@ -1,4 +1,12 @@
-import { useCallback, useMemo, useState, type ReactElement, type ReactNode } from "react";
+import {
+  Children,
+  isValidElement,
+  useCallback,
+  useMemo,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import { Pressable, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import {
@@ -30,13 +38,35 @@ import { COMPOSER_PILL_CLEARANCE, composerPillStyles } from "./pill-styles";
  * the final footer clear without turning the overlay into a layout band.
  */
 export function ComposerTrackBar({ children }: { children: ReactNode }): ReactElement {
+  const content: ReactNode[] = [];
+  const actions: ReactNode[] = [];
+  for (const child of Children.toArray(children)) {
+    if (isValidElement<{ children?: ReactNode }>(child) && child.type === ComposerTrackTools) {
+      actions.push(child.props.children);
+    } else {
+      content.push(child);
+    }
+  }
+
   return (
     <View style={styles.bar} pointerEvents="box-none">
       <View style={styles.track} pointerEvents="box-none">
-        {children}
+        <View style={styles.content} pointerEvents="box-none" testID="composer-track-content">
+          {content}
+        </View>
+        {actions.length > 0 ? (
+          <View style={styles.actions} pointerEvents="box-none" testID="composer-track-actions">
+            {actions}
+          </View>
+        ) : null}
       </View>
     </View>
   );
+}
+
+/** Direct children render in the toolbar's trailing slot. */
+export function ComposerTrackTools({ children }: { children: ReactNode }): ReactNode {
+  return children;
 }
 
 export interface ComposerTrackPillSegment {
@@ -328,6 +358,19 @@ const styles = StyleSheet.create((theme) => {
     track: {
       width: "100%",
       maxWidth: theme.contentMaxWidth,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: theme.spacing[2],
+    },
+    content: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing[1],
+    },
+    actions: {
       flexDirection: "row",
       alignItems: "center",
       gap: theme.spacing[1],
