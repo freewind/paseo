@@ -1,0 +1,9 @@
+{
+  "platforms": ["android", "ios"],
+  "android": {
+    "modules": ["sh.paseo.audiofocus.PaseoAudioFocusModule"]
+  },
+  "ios": {
+    "modules": ["PaseoAudioFocusModule"]
+  }
+}
