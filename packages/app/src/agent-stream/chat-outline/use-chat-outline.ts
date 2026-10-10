@@ -3,7 +3,6 @@ import type {
   AgentTimelinePromptIndexPayload,
   FetchAgentTimelinePayload,
 } from "@getpaseo/client/internal/daemon-client";
-import { isWeb } from "@/constants/platform";
 import { useStableEvent } from "@/hooks/use-stable-event";
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
 import { planTimelinePromptJump } from "@/timeline/timeline-sync-plan";
@@ -89,7 +88,7 @@ export function useChatOutline({
   const promptTextCacheRef = useRef(new Map<number, string>());
   const inFlightPromptTextRef = useRef(new Map<number, Promise<string | null>>());
   const loadedItems = useMemo(() => [...tail, ...(head ?? NO_STREAM_ITEMS)], [head, tail]);
-  const prompts = enabled ? (index?.prompts ?? NO_PROMPTS) : NO_PROMPTS;
+  const prompts = enabled && index?.epoch === timelineEpoch ? index.prompts : NO_PROMPTS;
 
   // The viewed timeline already owns live delivery and reconnect catch-up. Its complete
   // loaded items (including rows outside the mounted window) invalidate the prompt index.
@@ -112,7 +111,7 @@ export function useChatOutline({
   // Only a timeline the daemon has served can be indexed. A draft's optimistic stream has no
   // epoch, and its id names no agent the daemon knows.
   useEffect(() => {
-    if (!isWeb || !enabled || timelineEpoch === null) {
+    if (!enabled || timelineEpoch === null) {
       setIndex(null);
       return;
     }
