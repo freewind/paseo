@@ -15,7 +15,6 @@ const runtime = vi.hoisted(() => ({
   }),
 }));
 
-vi.mock("@/constants/platform", () => ({ isWeb: true }));
 vi.mock("@/runtime/host-runtime", () => ({
   getHostRuntimeStore: () => ({
     getClient: () => ({
@@ -108,6 +107,7 @@ describe("useChatOutline", () => {
 
     rerender({ timelineEpoch: "epoch-2" });
     await waitFor(() => expect(runtime.listAgentTimelinePrompts).toHaveBeenCalledTimes(2));
+    expect(result.current.prompts).toEqual([]);
     await act(async () => first.resolve({ epoch: "epoch-1", prompts: [] }));
     expect(result.current.prompts).toEqual([]);
 

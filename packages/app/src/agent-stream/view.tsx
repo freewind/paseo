@@ -68,6 +68,7 @@ import { type AgentStreamRenderModel, buildAgentStreamRenderModel } from "./mode
 import { resolveStreamRenderStrategy } from "./strategy-resolver";
 import { type StreamSegmentRenderers, type StreamViewportHandle } from "./strategy";
 import { ChatOutlineRail } from "@/agent-stream/chat-outline/rail";
+import { ChatOutlineSheet, useChatOutlineSheetController } from "@/agent-stream/chat-outline/sheet";
 import { useChatOutline } from "@/agent-stream/chat-outline/use-chat-outline";
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
 import { planTimelineTailFetch } from "@/timeline/timeline-sync-plan";
@@ -269,6 +270,7 @@ function renderLiveHeadStreamItem(input: {
 export interface AgentStreamViewHandle {
   scrollToBottom(reason?: BottomAnchorLocalRequest["reason"]): void;
   prepareForViewportChange(): void;
+  openChatOutline(): void;
 }
 
 export interface AgentStreamViewProps {
@@ -288,6 +290,7 @@ export interface AgentStreamViewProps {
   bottomOverlayControlClearance?: number;
   toast?: ToastApi | null;
   onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
+  onChatOutlineAvailabilityChange?: (available: boolean) => void;
   readOnly?: boolean;
   historyPagination?: {
     hasOlder: boolean;
@@ -342,6 +345,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
       bottomOverlayControlClearance,
       toast,
       onOpenWorkspaceFile,
+      onChatOutlineAvailabilityChange,
       readOnly = false,
       historyPagination,
     },
@@ -630,17 +634,27 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
         ),
       [baseRenderModel.history, baseRenderModel.segments.liveHead],
     );
+    const isChatOutlineEnabled = supportsChatOutline && chatOutlineEnabled;
     const chatOutline = useChatOutline({
       agentId,
       serverId: resolvedServerId,
       timelineEpoch,
       tail: effectiveStreamItems,
       head: effectiveStreamHead,
-      enabled: supportsChatOutline && chatOutlineEnabled,
+      enabled: isChatOutlineEnabled,
       viewportRef,
       onJumpError: handleTimelineHistoryLoadError,
       visibleMessageIds,
       revealLoadedMessage: revealLoadedHistory,
+    });
+    const chatOutlineSheet = useChatOutlineSheetController({
+      isCompact: isMobile,
+      isActive,
+      enabled: isChatOutlineEnabled,
+      agentId,
+      timelineEpoch,
+      promptCount: chatOutline.prompts.length,
+      onAvailabilityChange: onChatOutlineAvailabilityChange,
     });
 
     useImperativeHandle(
@@ -652,8 +666,9 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
         prepareForViewportChange() {
           viewportRef.current?.prepareForViewportChange();
         },
+        openChatOutline: chatOutlineSheet.open,
       }),
-      [],
+      [chatOutlineSheet.open],
     );
 
     const scrollToBottom = useCallback(() => {
@@ -1160,6 +1175,13 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
               agentId={agentId}
               onRequestPromptText={chatOutline.fetchPromptText}
             />
+            <ChatOutlineSheet
+              prompts={chatOutline.prompts}
+              activePrompt={chatOutline.activePrompt}
+              visible={chatOutlineSheet.visible}
+              onClose={chatOutlineSheet.close}
+              onJumpToPrompt={chatOutline.jumpToPrompt}
+            />
             {(!isNearBottom || isTimelineDetached) && (
               <View style={scrollToBottomContainerStyle} pointerEvents="box-none">
                 <Animated.View entering={scrollIndicatorFadeIn} exiting={scrollIndicatorFadeOut}>
@@ -1294,6 +1316,9 @@ function agentStreamViewPropsEqual(
   }
   if (left.toast !== right.toast) reasons.push("toast");
   if (left.onOpenWorkspaceFile !== right.onOpenWorkspaceFile) reasons.push("onOpenWorkspaceFile");
+  if (left.onChatOutlineAvailabilityChange !== right.onChatOutlineAvailabilityChange) {
+    reasons.push("onChatOutlineAvailabilityChange");
+  }
   if (left.readOnly !== right.readOnly) reasons.push("readOnly");
   if (!historyPaginationPropsEqual(left.historyPagination, right.historyPagination)) {
     reasons.push("historyPagination");
