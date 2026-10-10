@@ -402,7 +402,17 @@ const ChatOutlineTextRow = memo(function ChatOutlineTextRow({
           radius reads as a box around every prompt. It sits outside the padding so the
           gap above and below it is the same. */}
       {index > 0 ? (
-        <View style={styles.textRowDivider} testID={`chat-outline-text-divider-${seq}`} />
+        <View
+          style={styles.textRowDivider}
+          testID={`chat-outline-text-divider-${seq}`}
+          // 🌿 A bare digit is the whole copy, so the mark goes on the only text the
+          // element carries.
+          accessibilityLabel={`🌿 ${index + 1}`}
+        >
+          <View style={styles.textRowDividerLine} />
+          <Text style={styles.textRowDividerLabel}>{`(${index + 1})`}</Text>
+          <View style={styles.textRowDividerLine} />
+        </View>
       ) : null}
       <View style={styles.textRow} onPointerEnter={handlePointerEnter}>
         {/* The row scrolls its own overflow, so a long prompt stays readable without
@@ -538,9 +548,25 @@ const styles = StyleSheet.create((theme) => ({
   },
   // Rows after the first are separated by one full-width hairline, the same divider the
   // settings rows use. The first row follows the header, which is separation enough.
+  // The line is broken in the middle by the ordinal of the prompt below it: a reader who
+  // wants prompt 12 says "12" instead of counting rows down a long conversation.
   textRowDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  // Equal flex on both halves is what keeps the ordinal on the rail's centre line, so the
+  // number sits over the same axis the rows above and below it occupy.
+  textRowDividerLine: {
+    flex: 1,
     height: 1,
     backgroundColor: theme.colors.border,
+  },
+  // Flat and quiet: the ordinal is a locator, not a heading. Parentheses are the whole
+  // styling, so no weight or letter spacing is added on top of them.
+  textRowDividerLabel: {
+    paddingHorizontal: theme.spacing[2],
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.foregroundMuted,
   },
   // The prompt the reader is inside is marked with the theme's own foreground pair, the
   // same way every list marks its selection: the row being read comes forward, the rest

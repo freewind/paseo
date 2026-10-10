@@ -140,7 +140,7 @@ describe("ChatOutlineRail text rows in a real browser", () => {
     expect(document.querySelector('[data-testid="chat-outline-preview"]')).toBeNull();
   });
 
-  it("separates the rows with one hairline and marks the current one with the theme foreground", async () => {
+  it("separates the rows with a numbered hairline and marks the current one with the theme foreground", async () => {
     await page.viewport(1280, 800);
     await mountRail({ activeSeq: 1 });
 
@@ -157,10 +157,20 @@ describe("ChatOutlineRail text rows in a real browser", () => {
     );
     expect(divider).not.toBeNull();
     if (divider) {
-      // Flat and full width: no radius, no box around the prompt.
-      expect(getComputedStyle(divider).height).toBe("1px");
-      expect(getComputedStyle(divider).borderRadius).toBe("0px");
+      // The line is cut in the middle by the ordinal of the row below it, so the divider is
+      // three parts: hairline, label, hairline. The hairlines stay flat and full width.
+      expect(divider.textContent).toBe("(2)");
+      const hairline = divider.firstElementChild as HTMLElement;
+      expect(getComputedStyle(hairline).height).toBe("1px");
+      expect(getComputedStyle(hairline).borderRadius).toBe("0px");
       expect(divider.getBoundingClientRect().width).toBe(rowTwo.getBoundingClientRect().width);
+
+      const label = divider.children[1] as HTMLElement;
+      const dividerBox = divider.getBoundingClientRect();
+      const labelBox = label.getBoundingClientRect();
+      const dividerCentre = dividerBox.left + dividerBox.width / 2;
+      const labelCentre = labelBox.left + labelBox.width / 2;
+      expect(Math.abs(labelCentre - dividerCentre)).toBeLessThan(1);
     }
 
     // The rows are separated by space, not by the line alone. Measured on the scrollers:
