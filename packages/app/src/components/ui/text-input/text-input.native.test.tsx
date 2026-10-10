@@ -76,19 +76,44 @@ describe("EditingTextInputNative", () => {
     expect(bottomSheetTextInputRender.mock.calls[0]?.[0]).toMatchObject({ testID: "inside" });
   });
 
-  it("clears text via clear() when replaceText receives an empty string", () => {
+  it("replaces visible text when reset is used after the native clear command fails", () => {
     const handleRef = createRef<EditingTextInputHandle>();
-
-    act(() => {
-      root?.render(<EditingTextInput ref={handleRef} initialValue="initial" onChangeText={noop} />);
+    bottomSheetTextInputRender.mockImplementation((props: { defaultValue?: string }) => {
+      if (props.defaultValue === "initial") {
+        // Simulate the native clear command being rejected: leave the old view untouched.
+        return;
+      }
     });
 
-    expect(handleRef.current?.getText()).toBe("initial");
+    act(() => {
+      root?.render(
+        <BottomSheetScope>
+          <EditingTextInput ref={handleRef} initialValue="initial" onChangeText={noop} />
+        </BottomSheetScope>,
+      );
+    });
+    const originalInput = container?.querySelector("input");
+    if (!originalInput) throw new Error("Expected bottom-sheet input");
+    Object.defineProperty(originalInput, "value", { configurable: true, value: "initial" });
+    Object.defineProperty(originalInput, "clear", {
+      configurable: true,
+      value: () => {},
+    });
 
     act(() => {
       handleRef.current?.replaceText("");
     });
 
+    expect(originalInput.value).toBe("initial");
+    expect(handleRef.current?.getText()).toBe("");
+
+    act(() => {
+      handleRef.current?.reset();
+    });
+
+    const replacementInput = container?.querySelector("input");
+    expect(replacementInput).not.toBe(originalInput);
+    expect((replacementInput as HTMLInputElement | null)?.value).toBe("");
     expect(handleRef.current?.getText()).toBe("");
   });
 
