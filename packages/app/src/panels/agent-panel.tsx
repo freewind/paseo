@@ -753,6 +753,7 @@ function ChatAgentContent({
   const { api: toastApi, toast: toastState, dismiss: dismissToast } = useToastHost();
   const { isArchivingAgent } = useArchiveAgent();
   const streamViewRef = useRef<AgentStreamViewHandle>(null);
+  const [chatOutlineAvailable, setChatOutlineAvailable] = useState(false);
   const clearOnAgentBlurRef = useRef<() => void>(() => {});
   const wasPaneFocusedRef = useRef(isPaneFocused);
   const initAttemptTokenRef = useRef(0);
@@ -1091,6 +1092,8 @@ function ChatAgentContent({
       toast={toastState}
       dismiss={dismissToast}
       streamViewRef={streamViewRef}
+      chatOutlineAvailable={chatOutlineAvailable}
+      onChatOutlineAvailabilityChange={setChatOutlineAvailable}
       handleComposerHeightChange={handleComposerHeightChange}
       handleMessageSent={handleMessageSent}
       handleRewindComplete={handleRewindComplete}
@@ -1121,6 +1124,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   toast,
   dismiss,
   streamViewRef,
+  chatOutlineAvailable,
+  onChatOutlineAvailabilityChange,
   handleComposerHeightChange,
   handleMessageSent,
   handleRewindComplete,
@@ -1147,6 +1152,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   toast: ToastState | null;
   dismiss: () => void;
   streamViewRef: React.RefObject<AgentStreamViewHandle | null>;
+  chatOutlineAvailable: boolean;
+  onChatOutlineAvailabilityChange: (available: boolean) => void;
   handleComposerHeightChange: (height: number) => void;
   handleMessageSent: () => void;
   handleRewindComplete: () => void;
@@ -1166,6 +1173,10 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   // The dock lays out fullscreen for the same session the composer edits in.
   const composerEditingSession = useComposerEditingSession("chat");
   const isComposerFullscreen = useComposerFullscreen(composerEditingSession);
+  const openChatOutline = useCallback(
+    () => streamViewRef.current?.openChatOutline(),
+    [streamViewRef],
+  );
   const subagentRows = useSubagentsForParent({ serverId, parentAgentId: agentId });
   const tasks = useSessionStore((state): TodoEntry[] | undefined =>
     state.sessions[serverId]?.agentTasks.get(agentId),
@@ -1276,6 +1287,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
           hasAppliedAuthoritativeHistory={hasAppliedAuthoritativeHistory}
           hasActiveComposer={hasActiveComposer}
           hasVisibleAgentTracks={hasVisibleAgentTracks}
+          chatOutlineAvailable={chatOutlineAvailable}
+          onChatOutlineAvailabilityChange={onChatOutlineAvailabilityChange}
           toast={toastApi}
           onOpenWorkspaceFile={onOpenWorkspaceFile}
         />
@@ -1290,6 +1303,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
           archiveFinishedStatus={archiveFinishedSubagents.status}
           onArchiveFinished={archiveFinishedSubagents.archiveFinished}
           hasPluginComposerPills={hasPluginComposerPills}
+          chatOutlineAvailable={chatOutlineAvailable}
+          onOpenChatOutline={openChatOutline}
         />
       ) : null}
     </View>
@@ -1424,6 +1439,8 @@ const AgentStreamSection = memo(function AgentStreamSection({
   hasAppliedAuthoritativeHistory,
   hasActiveComposer,
   hasVisibleAgentTracks,
+  chatOutlineAvailable,
+  onChatOutlineAvailabilityChange,
   toast,
   onOpenWorkspaceFile,
 }: {
@@ -1436,13 +1453,15 @@ const AgentStreamSection = memo(function AgentStreamSection({
   hasAppliedAuthoritativeHistory: boolean;
   hasActiveComposer: boolean;
   hasVisibleAgentTracks: boolean;
+  chatOutlineAvailable: boolean;
+  onChatOutlineAvailabilityChange: (available: boolean) => void;
   toast: ReturnType<typeof useToastHost>["api"];
   onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
 }) {
   const isCompactFormFactor = useIsCompactFormFactor();
   const hasWorkspaceDiffStat = useWorkspaceHasDiffStat(serverId, workspaceId);
   const hasVisibleComposerTracks =
-    hasActiveComposer && (hasVisibleAgentTracks || hasWorkspaceDiffStat);
+    hasActiveComposer && (hasVisibleAgentTracks || hasWorkspaceDiffStat || chatOutlineAvailable);
   const bottomOverlayTailClearance = hasVisibleComposerTracks
     ? resolveComposerTrackTailClearance(isCompactFormFactor)
     : 0;
@@ -1510,6 +1529,7 @@ const AgentStreamSection = memo(function AgentStreamSection({
       pendingMessageSubmissions={pendingMessageSubmissions}
       turnPresentation={turnPresentation}
       onOpenWorkspaceFile={onOpenWorkspaceFile}
+      onChatOutlineAvailabilityChange={onChatOutlineAvailabilityChange}
     />
   );
 });
