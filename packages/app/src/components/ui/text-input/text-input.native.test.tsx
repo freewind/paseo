@@ -86,7 +86,6 @@ describe("EditingTextInputNative", () => {
     expect(bottomSheetTextInputRender.mock.calls[0]?.[0]).toMatchObject({ testID: "inside" });
   });
 
-<<<<<<< HEAD
   it("keeps its editing handle and selection when native editing rerenders the leaf", () => {
     const { handleRef, received, assignHandle } = createHandleRecorder();
     act(() =>
