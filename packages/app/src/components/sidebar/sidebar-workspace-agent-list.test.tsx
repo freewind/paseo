@@ -6,19 +6,28 @@ import { createRoot, type Root } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { setStringAsyncMock, navigateToAgentMock, archiveAgentMock, updateAgentMock, selectionRef } =
-  vi.hoisted(() => ({
-    setStringAsyncMock: vi.fn(() => Promise.resolve()),
-    navigateToAgentMock: vi.fn(),
-    archiveAgentMock: vi.fn(() => Promise.resolve()),
-    updateAgentMock: vi.fn(() => Promise.resolve()),
-    selectionRef: {
-      current: { serverId: "server-1", workspaceId: "workspace-a" } as {
-        serverId: string;
-        workspaceId: string;
-      },
+const {
+  setStringAsyncMock,
+  navigateToAgentMock,
+  archiveAgentMock,
+  updateAgentMock,
+  selectionRef,
+  compactLayoutRef,
+  navigationPanelTargets,
+} = vi.hoisted(() => ({
+  setStringAsyncMock: vi.fn(() => Promise.resolve()),
+  navigateToAgentMock: vi.fn(),
+  compactLayoutRef: { current: true },
+  navigationPanelTargets: [] as string[],
+  archiveAgentMock: vi.fn(() => Promise.resolve()),
+  updateAgentMock: vi.fn(() => Promise.resolve()),
+  selectionRef: {
+    current: { serverId: "server-1", workspaceId: "workspace-a" } as {
+      serverId: string;
+      workspaceId: string;
     },
-  }));
+  },
+}));
 
 vi.mock("expo-clipboard", () => ({ setStringAsync: setStringAsyncMock }));
 
@@ -28,6 +37,11 @@ vi.mock("react-i18next", () => ({
 }));
 
 vi.mock("@/utils/navigate-to-agent", () => ({ navigateToAgent: navigateToAgentMock }));
+
+vi.mock("@/constants/layout", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/constants/layout")>()),
+  useIsCompactFormFactor: () => compactLayoutRef.current,
+}));
 
 vi.mock("@/stores/navigation-active-workspace-store", () => ({
   useActiveWorkspaceSelection: () => selectionRef.current,
@@ -97,6 +111,7 @@ vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
 
 import { SidebarWorkspaceAgentList } from "@/components/sidebar/sidebar-workspace-agent-list";
 import { useWorkspaceLayoutStore } from "@/stores/workspace-layout-store";
+import { usePanelStore } from "@/stores/panel-store";
 import { createFakeDesktopBridge, createInMemoryKeyValueStorage } from "@/hooks/use-settings/fakes";
 import {
   APP_SETTINGS_KEY,
@@ -114,11 +129,11 @@ import type { SidebarWorkspaceEntry } from "@/hooks/sidebar-workspaces-view-mode
 
 const WORKSPACE_KEY = "server-1:workspace-a";
 
-function entry(): SidebarWorkspaceEntry {
+function entry(workspaceId = "workspace-a"): SidebarWorkspaceEntry {
   return {
-    workspaceKey: WORKSPACE_KEY,
+    workspaceKey: `server-1:${workspaceId}`,
     serverId: "server-1",
-    workspaceId: "workspace-a",
+    workspaceId,
     projectViewKey: "view-1",
     projectName: "paseo",
     projectKind: "local",
@@ -158,6 +173,15 @@ describe("SidebarWorkspaceAgentList", () => {
 
   beforeEach(() => {
     navigateToAgentMock.mockClear();
+    navigationPanelTargets.length = 0;
+    compactLayoutRef.current = true;
+    usePanelStore.setState({
+      mobilePanel: { target: "agent-list", revision: 0 },
+      desktop: { ...usePanelStore.getState().desktop, agentListOpen: true },
+    });
+    navigateToAgentMock.mockImplementation(() => {
+      navigationPanelTargets.push(usePanelStore.getState().mobilePanel.target);
+    });
     archiveAgentMock.mockClear();
     updateAgentMock.mockClear();
     updateAgentMock.mockImplementation(() => Promise.resolve());
@@ -177,11 +201,11 @@ describe("SidebarWorkspaceAgentList", () => {
     container = null;
   });
 
-  function render() {
+  function render(workspace = entry()) {
     act(() => {
       root?.render(
         <QueryClientProvider client={new QueryClient()}>
-          <SidebarWorkspaceAgentList workspace={entry()} />
+          <SidebarWorkspaceAgentList workspace={workspace} />
         </QueryClientProvider>,
       );
     });
@@ -208,12 +232,12 @@ describe("SidebarWorkspaceAgentList", () => {
     });
   }
 
-  function openAgentTabs(ids: string[]) {
+  function openAgentTabs(ids: string[], workspaceKey = WORKSPACE_KEY) {
     act(() => {
       useWorkspaceLayoutStore.setState({ layoutByWorkspace: {} });
       for (const id of ids) {
         useWorkspaceLayoutStore.getState().openTab({
-          workspaceKey: WORKSPACE_KEY,
+          workspaceKey,
           target: { kind: "agent", agentId: id },
           intent: "reveal",
         });
@@ -412,7 +436,7 @@ describe("SidebarWorkspaceAgentList", () => {
     );
   });
 
-  it("navigates to the agent when its row is pressed", () => {
+  it("closes the mobile agent list before navigating to the selected agent", () => {
     openAgentTabs(["agent-a"]);
     seedAgents([agent("agent-a", null)]);
     render();
@@ -423,11 +447,91 @@ describe("SidebarWorkspaceAgentList", () => {
       row!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    expect(navigateToAgentMock).toHaveBeenCalledWith({
+    expect(usePanelStore.getState().mobilePanel).toEqual({ target: "agent", revision: 1 });
+    expect(navigationPanelTargets).toEqual(["agent"]);
+    expect(navigateToAgentMock).toHaveBeenCalledExactlyOnceWith({
       serverId: "server-1",
       agentId: "agent-a",
       workspaceId: "workspace-a",
     });
+  });
+
+  it("does not change the mobile panel when the selected agent is already visible", () => {
+    usePanelStore.setState({ mobilePanel: { target: "agent", revision: 4 } });
+    openAgentTabs(["agent-a"]);
+    seedAgents([agent("agent-a", null)]);
+    render();
+
+    act(() => {
+      agentRows()[0]!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(usePanelStore.getState().mobilePanel).toEqual({ target: "agent", revision: 4 });
+    expect(navigationPanelTargets).toEqual(["agent"]);
+    expect(navigateToAgentMock).toHaveBeenCalledExactlyOnceWith({
+      serverId: "server-1",
+      agentId: "agent-a",
+      workspaceId: "workspace-a",
+    });
+  });
+
+  it("closes the mobile panel when an agent from another workspace is selected", () => {
+    openAgentTabs(["agent-b"], "server-1:workspace-b");
+    seedAgents([agent("agent-b", null, { workspaceId: "workspace-b" })]);
+    render(entry("workspace-b"));
+
+    act(() => {
+      agentRows()[0]!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(usePanelStore.getState().mobilePanel).toEqual({ target: "agent", revision: 1 });
+    expect(navigateToAgentMock).toHaveBeenCalledExactlyOnceWith({
+      serverId: "server-1",
+      agentId: "agent-b",
+      workspaceId: "workspace-b",
+    });
+  });
+
+  it("keeps the desktop sidebar state unchanged when an agent row is pressed", () => {
+    compactLayoutRef.current = false;
+    openAgentTabs(["agent-a"]);
+    seedAgents([agent("agent-a", null)]);
+    render();
+
+    act(() => {
+      agentRows()[0]!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(usePanelStore.getState().mobilePanel).toEqual({ target: "agent-list", revision: 0 });
+    expect(usePanelStore.getState().desktop.agentListOpen).toBe(true);
+    expect(navigationPanelTargets).toEqual(["agent-list"]);
+    expect(navigateToAgentMock).toHaveBeenCalledExactlyOnceWith({
+      serverId: "server-1",
+      agentId: "agent-a",
+      workspaceId: "workspace-a",
+    });
+  });
+
+  it("does not close the mobile agent list when a menu action is used", async () => {
+    openAgentTabs(["agent-a"]);
+    seedAgents([agent("agent-a", null)]);
+    render();
+
+    const menuTrigger = container!.querySelector<HTMLElement>(
+      '[data-testid^="sidebar-workspace-agent-menu-"][data-testid$="-trigger"]',
+    );
+    expect(menuTrigger).not.toBeNull();
+    act(() => {
+      menuTrigger!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(usePanelStore.getState().mobilePanel).toEqual({ target: "agent-list", revision: 0 });
+    expect(navigateToAgentMock).not.toHaveBeenCalled();
+
+    await hideFirstAgent();
+
+    expect(usePanelStore.getState().mobilePanel).toEqual({ target: "agent-list", revision: 0 });
+    expect(navigationPanelTargets).toEqual([]);
+    expect(navigateToAgentMock).not.toHaveBeenCalled();
   });
 
   function hideButton(): HTMLElement {

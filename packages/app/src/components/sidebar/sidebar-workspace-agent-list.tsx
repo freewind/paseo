@@ -5,6 +5,8 @@ import { StyleSheet } from "react-native-unistyles";
 import { navigateToAgent } from "@/utils/navigate-to-agent";
 import { useActiveWorkspaceSelection } from "@/stores/navigation-active-workspace-store";
 import { useAppSettings } from "@/hooks/use-settings";
+import { useIsCompactFormFactor } from "@/constants/layout";
+import { usePanelStore } from "@/stores/panel-store";
 import { useShallow } from "zustand/shallow";
 import { useSessionStore, selectAgentTurnPresentation } from "@/stores/session-store";
 import type { Agent, SessionState } from "@/stores/session-store";
@@ -62,6 +64,8 @@ export const SidebarWorkspaceAgentList = memo(function SidebarWorkspaceAgentList
   workspace,
 }: SidebarWorkspaceAgentListProps) {
   const { serverId, workspaceId, workspaceKey } = workspace;
+  const isCompactLayout = useIsCompactFormFactor();
+  const showMobileAgent = usePanelStore((state) => state.showMobileAgent);
   const rows = useSidebarWorkspaceAgentRows(workspaceKey);
   const focusedTabId = useFocusedWorkspaceTabId(workspaceKey);
   const isWorkspaceActive = useActiveWorkspaceKey(serverId, workspaceId);
@@ -112,9 +116,12 @@ export const SidebarWorkspaceAgentList = memo(function SidebarWorkspaceAgentList
 
   const openAgent = useCallback(
     (agentId: string) => () => {
+      if (isCompactLayout) {
+        showMobileAgent();
+      }
       navigateToAgent({ serverId, agentId, workspaceId });
     },
-    [serverId, workspaceId],
+    [isCompactLayout, serverId, showMobileAgent, workspaceId],
   );
 
   if (rows.length === 0) return null;
