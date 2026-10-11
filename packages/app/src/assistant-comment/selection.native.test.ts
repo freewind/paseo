@@ -19,7 +19,7 @@ interface NativeTextSelectionModule {
 async function loadSelection(nativeModule: NativeTextSelectionModule | null) {
   vi.resetModules();
   requireOptionalNativeModule.mockReturnValue(nativeModule);
-  return import("./selection.ios");
+  return import("./selection.native");
 }
 
 describe("readAssistantCommentSelection on iOS", () => {
