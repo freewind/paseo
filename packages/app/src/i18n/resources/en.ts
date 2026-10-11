@@ -249,6 +249,7 @@ export const en = {
     chatOutline: {
       collapse: "🌿 Collapse outline",
       expand: "🌿 Expand outline",
+      jumpToPrompt: "🌿 Jump to this prompt",
     },
     historyLoadFailed: "Couldn't load agent history",
     messageCapped: "This message was capped ({{bytes}} bytes).",

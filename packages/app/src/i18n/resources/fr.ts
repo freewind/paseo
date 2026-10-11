@@ -256,6 +256,7 @@ export const fr: TranslationResources = {
     chatOutline: {
       collapse: "🌿 Réduire le plan",
       expand: "🌿 Déplier le plan",
+      jumpToPrompt: "🌿 Aller à cette invite",
     },
     historyLoadFailed: "Impossible de charger l’historique de l’agent",
     messageCapped: "Ce message a été tronqué ({{bytes}} octets).",

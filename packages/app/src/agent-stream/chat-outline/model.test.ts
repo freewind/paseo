@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   collapsePromptWhitespace,
   createActivePromptPublisher,
+  PROMPT_DETAIL_GAP,
+  PROMPT_DETAIL_MAX_HEIGHT,
+  PROMPT_DETAIL_WIDTH,
   resolveTextRailWidth,
   shouldAcceptPromptIndexEpoch,
   promptTickMagnification,
@@ -11,7 +14,6 @@ import {
   TEXT_RAIL_MAX_WIDTH,
   TEXT_RAIL_MIN_WIDTH,
   TEXT_ROW_LINE_HEIGHT,
-  TEXT_ROW_MAX_HEIGHT,
   TEXT_ROW_MAX_LINES,
   type ChatOutlinePrompt,
 } from "./model";
@@ -24,11 +26,21 @@ describe("chat outline prompt index epoch", () => {
 });
 
 describe("chat outline row cap", () => {
-  it("cuts a row at four and a half lines so the next line stays visible", () => {
-    expect(TEXT_ROW_MAX_LINES).toBe(4.5);
-    expect(TEXT_ROW_MAX_HEIGHT).toBe(TEXT_ROW_LINE_HEIGHT * TEXT_ROW_MAX_LINES);
-    // Exactly half a line below the cut: the reader sees there is more to scroll.
-    expect(TEXT_ROW_MAX_HEIGHT % TEXT_ROW_LINE_HEIGHT).toBe(TEXT_ROW_LINE_HEIGHT / 2);
+  it("clamps a row at whole lines so the list stays the only scroller", () => {
+    // A whole line count is what numberOfLines takes; the half-line cue belongs to the
+    // scroll era, which this rail removed when the wheel was given back to the list.
+    expect(Number.isInteger(TEXT_ROW_MAX_LINES)).toBe(true);
+    expect(TEXT_ROW_MAX_LINES).toBe(4);
+    expect(TEXT_ROW_LINE_HEIGHT).toBe(20);
+  });
+
+  it("sizes the detail popover over the rail it came from", () => {
+    // The popover keeps the rail's own width budget and a height that reads as a note
+    // beside the conversation, not a panel over it. The gap keeps it visually attached
+    // to the row that opened it.
+    expect(PROMPT_DETAIL_WIDTH).toBe(360);
+    expect(PROMPT_DETAIL_MAX_HEIGHT).toBe(360);
+    expect(PROMPT_DETAIL_GAP).toBeGreaterThan(0);
   });
 });
 

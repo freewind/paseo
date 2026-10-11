@@ -255,6 +255,7 @@ export const es: TranslationResources = {
     chatOutline: {
       collapse: "🌿 Contraer esquema",
       expand: "🌿 Expandir esquema",
+      jumpToPrompt: "🌿 Ir a esta instrucción",
     },
     historyLoadFailed: "No se pudo cargar el historial del agente",
     messageCapped: "Este mensaje fue truncado ({{bytes}} bytes).",

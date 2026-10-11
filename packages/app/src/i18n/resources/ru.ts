@@ -252,6 +252,7 @@ export const ru: TranslationResources = {
     chatOutline: {
       collapse: "🌿 Свернуть план",
       expand: "🌿 Развернуть план",
+      jumpToPrompt: "🌿 Перейти к этому запросу",
     },
     historyLoadFailed: "Не удалось загрузить историю агента",
     messageCapped: "Это сообщение было обрезано ({{bytes}} байт).",
