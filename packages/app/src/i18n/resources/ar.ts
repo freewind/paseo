@@ -2059,6 +2059,12 @@ export const ar: TranslationResources = {
     },
     plugins: pluginSettings.ar,
     metadataGeneration: {
+      titlePrompt: "موجّه العنوان",
+      titlePromptHint:
+        "التعليمات التي يتبعها Paseo عند إنشاء عناوين مساحات العمل. الفراغ يعني النمط الافتراضي، ويبقى paseo.json له الأولوية.",
+      titlePromptPlaceholder: "مثال: [وحدة] ملخص مهمة قصير",
+      titlePromptSave: "حفظ",
+      titlePromptSaving: "جارٍ الحفظ...",
       title: "إنشاء البيانات الوصفية",
       description:
         "اختر النموذج الذي يستخدمه Paseo لعناوين مساحات العمل وأسماء الفروع ورسائل الالتزام ومسودات طلبات السحب",
@@ -2811,8 +2817,6 @@ export const ar: TranslationResources = {
       metadata: {
         title: "توليد البيانات الوصفية",
         info: "تعليمات خاصة بالمشروع يتم إدخالها في الذكاء الاصطناعي الذي يستخدمه Paseo لإنشاء بيانات التعريف - استخدمها لفرض اصطلاحات فريقك مثل تسمية الفرع أو نمط الالتزام أو تنسيق PR",
-        titlePrompt: "🌿 عناوين مساحات العمل",
-        titlePromptPlaceholder: "🌿 صف أسلوب تسمية عناوين مساحات العمل",
         branchName: "اسماء الفروع",
         branchNamePlaceholder: "بادئة الفروع بـ fet/ أو Fix/, mb/ للفروع الشخصية",
         commitMessage: "ارتكاب الرسائل",

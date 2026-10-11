@@ -2114,6 +2114,12 @@ export const es: TranslationResources = {
     },
     plugins: pluginSettings.es,
     metadataGeneration: {
+      titlePrompt: "Indicación del título",
+      titlePromptHint:
+        "Instrucciones que Paseo sigue al generar títulos de espacios de trabajo. Vacío usa el estilo predeterminado; paseo.json sigue teniendo prioridad.",
+      titlePromptPlaceholder: "p. ej. [Módulo] resumen breve de la tarea",
+      titlePromptSave: "Guardar",
+      titlePromptSaving: "Guardando...",
       title: "Generación de metadatos",
       description:
         "Elige el modelo que Paseo usa para títulos de espacios de trabajo, nombres de ramas, mensajes de commit y borradores de pull requests",
@@ -2878,9 +2884,6 @@ export const es: TranslationResources = {
       metadata: {
         title: "Generación de metadatos",
         info: "Instrucciones específicas del proyecto inyectadas en los mensajes de IA quePaseoutiliza para generar metadatos; úselas para hacer cumplir las convenciones de su equipo, como la denominación de ramas, el estilo de confirmación o el formatoPR.",
-        titlePrompt: "🌿 Títulos de espacios de trabajo",
-        titlePromptPlaceholder:
-          "🌿 Describe el estilo de nombres para los títulos de espacios de trabajo",
         branchName: "Nombres de sucursales",
         branchNamePlaceholder: "Prefijo ramas con feat/ o fix/, mb/ para ramas personales",
         commitMessage: "Confirmar mensajes",

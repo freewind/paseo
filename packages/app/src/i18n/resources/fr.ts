@@ -2119,6 +2119,12 @@ export const fr: TranslationResources = {
     },
     plugins: pluginSettings.fr,
     metadataGeneration: {
+      titlePrompt: "Invite de titre",
+      titlePromptHint:
+        "Instructions suivies par Paseo pour générer les titres des espaces de travail. Vide = style par défaut ; paseo.json garde la priorité.",
+      titlePromptPlaceholder: "ex. [Module] brève tâche",
+      titlePromptSave: "Enregistrer",
+      titlePromptSaving: "Enregistrement...",
       title: "Génération de métadonnées",
       description:
         "Choisissez le modèle utilisé par Paseo pour les titres d’espaces de travail, les noms de branches, les messages de commit et les brouillons de pull request",
@@ -2887,8 +2893,6 @@ export const fr: TranslationResources = {
       metadata: {
         title: "Génération de métadonnées",
         info: "Instructions spécifiques au projet injectées dans les invites de l'IA quePaseoutilise pour générer des métadonnées: utilisez-les pour appliquer les conventions de votre équipe telles que la dénomination des branches, le style de validation ou le formatPR.",
-        titlePrompt: "🌿 Titres des espaces de travail",
-        titlePromptPlaceholder: "🌿 Décrivez le style de nommage des titres d’espaces de travail",
         branchName: "Noms des succursales",
         branchNamePlaceholder:
           "Préfixez les branches avec feat/ ou fix/, mb/ pour les branches personnelles",

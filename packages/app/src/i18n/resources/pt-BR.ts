@@ -2094,6 +2094,12 @@ export const ptBR: TranslationResources = {
     },
     plugins: pluginSettings["pt-BR"],
     metadataGeneration: {
+      titlePrompt: "Prompt do título",
+      titlePromptHint:
+        "Instruções que o Paseo segue ao gerar títulos de workspaces. Vazio usa o estilo padrão; o paseo.json continua com prioridade.",
+      titlePromptPlaceholder: "ex.: [Módulo] breve resumo da tarefa",
+      titlePromptSave: "Salvar",
+      titlePromptSaving: "Salvando...",
       title: "Geração de metadados",
       description:
         "Escolha o modelo usado pelo Paseo para títulos de espaços de trabalho, nomes de branches, mensagens de commit e rascunhos de pull request",
@@ -2856,8 +2862,6 @@ export const ptBR: TranslationResources = {
       metadata: {
         title: "Geração de metadados",
         info: "Instruções específicas do projeto injetadas nos prompts de IA que o Paseo usa para gerar metadados. Use-as para aplicar convenções da sua equipe, como nomes de branch, estilo de commit ou formato de PR",
-        titlePrompt: "🌿 Títulos de workspace",
-        titlePromptPlaceholder: "🌿 Descreva o estilo de nomenclatura dos títulos de workspace",
         branchName: "Nomes de branch",
         branchNamePlaceholder: "Prefixe branches com feat/ ou fix/, mb/ para branches pessoais",
         commitMessage: "Mensagens de commit",
