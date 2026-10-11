@@ -371,6 +371,8 @@ export interface AgentTaskItem {
   id?: string;
   status?: "pending" | "in_progress" | "completed";
   activeForm?: string;
+  /** Long-form body for the task. Optional: most providers only carry a title. */
+  description?: string;
 }
 
 export type AgentTimelineItem =

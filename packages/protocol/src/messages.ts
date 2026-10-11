@@ -697,6 +697,7 @@ export const AgentTimelineItemPayloadSchema: z.ZodType<AgentTimelineItem, unknow
         id: z.string().optional(),
         status: z.enum(["pending", "in_progress", "completed"]).optional(),
         activeForm: z.string().optional(),
+        description: z.string().optional(),
       }),
     ),
   }),
