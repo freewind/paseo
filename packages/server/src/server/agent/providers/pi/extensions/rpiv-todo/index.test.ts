@@ -17,3 +17,34 @@ test("rpiv-todo declines the example todo result shape", () => {
   );
   expect(rpivTodo.createSession().mapToolCall?.(call)).toBeUndefined();
 });
+
+test("rpiv-todo passes a task description through to the timeline", () => {
+  const mapping = rpivTodo.createSession().mapToolCall?.({
+    callId: "call-description",
+    toolName: "todo",
+    args: { action: "create", subject: "test" },
+    status: "completed",
+    result: {
+      details: {
+        action: "create",
+        params: { action: "create", subject: "test", description: "a long body" },
+        nextId: 2,
+        tasks: [{ id: 1, subject: "test", status: "pending", description: "a long body" }],
+      },
+    },
+  });
+  expect(mapping?.timeline).toEqual([
+    {
+      type: "todo",
+      items: [
+        {
+          id: "1",
+          text: "test",
+          status: "pending",
+          completed: false,
+          description: "a long body",
+        },
+      ],
+    },
+  ]);
+});
