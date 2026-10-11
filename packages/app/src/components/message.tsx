@@ -1933,14 +1933,16 @@ export const AssistantMessage = memo(function AssistantMessage({
         const contentStyle = isOrdered ? styles.ordered_list_content : styles.bullet_list_content;
 
         return (
-          <View key={node.key} style={styles.list_item} dataSet={markdownCopyDataSet.li}>
-            <Text style={iconStyle} dataSet={markdownCopyDataSet.listMarker}>
-              {marker}
-            </Text>
-            <MarkdownListItemContent contentStyle={contentStyle}>
-              {children}
-            </MarkdownListItemContent>
-          </View>
+          <MarkdownCommentableBlock key={node.key} blockText={markdownBlockText(node)}>
+            <View style={styles.list_item} dataSet={markdownCopyDataSet.li}>
+              <Text style={iconStyle} dataSet={markdownCopyDataSet.listMarker}>
+                {marker}
+              </Text>
+              <MarkdownListItemContent contentStyle={contentStyle}>
+                {children}
+              </MarkdownListItemContent>
+            </View>
+          </MarkdownCommentableBlock>
         );
       },
       th: (node: ASTNode, children: ReactNode[], _parent: ASTNode[], styles: MarkdownStyles) => (
