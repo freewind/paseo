@@ -771,6 +771,7 @@ export const ptBR: TranslationResources = {
       actions: {
         workspaceActions: "Ações do workspace",
         workspaceActionsUnhealthy: "Ações do workspace, há um serviço com problema",
+        showHiddenAgents: "Mostrar agentes ocultos ({{count}})",
         newAgent: "Novo agente",
         newTerminal: "Novo terminal",
         newBrowser: "Nova aba de navegador",

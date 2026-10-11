@@ -765,6 +765,7 @@ export const ar: TranslationResources = {
       actions: {
         workspaceActions: "إجراءات Workspace",
         workspaceActionsUnhealthy: "إجراءات Workspace، توجد خدمة غير سليمة",
+        showHiddenAgents: "إظهار الوكلاء المخفيين ({{count}})",
         newAgent: "وكيل جديد",
         newTerminal: "محطة جديدة",
         newBrowser: "علامة تبويب متصفح جديدة",

@@ -771,6 +771,7 @@ export const ja: TranslationResources = {
       actions: {
         workspaceActions: "ワークスペースアクション",
         workspaceActionsUnhealthy: "ワークスペースアクション、異常なサービスがあります",
+        showHiddenAgents: "非表示のエージェントを表示（{{count}}）",
         newAgent: "新しいエージェント",
         newTerminal: "新しいターミナル",
         newBrowser: "新しいブラウザタブ",

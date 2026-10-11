@@ -774,6 +774,7 @@ export const ru: TranslationResources = {
       actions: {
         workspaceActions: "Действия с рабочим пространством",
         workspaceActionsUnhealthy: "Действия с рабочим пространством, есть неисправный сервис",
+        showHiddenAgents: "Показать скрытых агентов ({{count}})",
         newAgent: "Новый агент",
         newTerminal: "Новый терминал",
         newBrowser: "Новая вкладка браузера",

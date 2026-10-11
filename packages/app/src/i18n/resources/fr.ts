@@ -780,6 +780,7 @@ export const fr: TranslationResources = {
         workspaceActions: "Actions de l’espace de travail",
         workspaceActionsUnhealthy:
           "Actions de l’espace de travail, un service est en mauvaise santé",
+        showHiddenAgents: "Afficher les agents masqués ({{count}})",
         newAgent: "Nouvel agent",
         newTerminal: "Nouveau terminal",
         newBrowser: "Nouvel onglet de navigateur",

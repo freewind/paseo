@@ -767,6 +767,7 @@ export const ko: TranslationResources = {
       actions: {
         workspaceActions: "워크스페이스 작업",
         workspaceActionsUnhealthy: "워크스페이스 작업, 비정상 서비스가 있습니다",
+        showHiddenAgents: "숨긴 에이전트 표시 ({{count}})",
         newAgent: "새 에이전트",
         newTerminal: "새 터미널",
         newBrowser: "새 브라우저 탭",

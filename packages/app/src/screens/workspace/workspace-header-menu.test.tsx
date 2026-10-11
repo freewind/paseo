@@ -90,6 +90,7 @@ describe("WorkspaceHeaderMenu", () => {
       document.querySelectorAll("[data-testid^='workspace-menu-']"),
     ).map((element) => element.getAttribute("data-testid"));
     expect(desktopIds).toContain("workspace-menu-new-agent-server-a:workspace-b");
+    expect(desktopIds).toContain("workspace-menu-restore-hidden-agents-server-a:workspace-b");
     expect(desktopIds).toContain("workspace-menu-labels-server-a:workspace-b");
     expect(desktopIds).toContain("workspace-menu-open-folder-server-a:workspace-b");
     expect(

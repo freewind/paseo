@@ -191,10 +191,11 @@ The asymmetry is intentional: a subagent's persistent relationship lives in the 
 
 **Hide this agent** in an agent tab's menu removes the tab from this client without ending the agent. Unlike close it never archives, never releases the runtime, and never interrupts a running turn, for a root agent or a subagent alike. Its boundaries are the existing layout-hide boundaries:
 
-- The hide intent is per-client and in-memory. Another client keeps its own tab, and after a reload a root or cross-workspace subagent is auto-opened again.
-- A hidden subagent is released from this client's open-tab label first, so a later parent archive can still cascade to it. If that write fails, the tab stays: a visible tab is what makes the label true.
-- Reopening an agent clears its hide intent, so the parent's subagent track brings a hidden child back the same way it brings back a closed one.
-- Hiding changes no parentage. A detached or detached-during-hide agent is not archived by the hide action itself.
+- Hide is per-client and in-memory. Another client keeps its tab, and a reload clears the hide intent.
+- Hiding a subagent first releases this client's open-tab label so a later parent archive can still cascade to it. If that write fails, the tab stays visible.
+- Explicit Hide stays distinct from ordinary close. Closing remains layout-only for subagents and archive-on-close for root agents.
+- The Workspace menu can restore explicitly hidden, active agents for that Workspace. It opens the Workspace, restores the tabs in the background, and leaves focus on the current pane. Restoring does not stop, reload, or unarchive an agent.
+- Reopening an agent from another existing surface clears its hide intent as before. Hiding changes no parentage; a detached or detached-during-hide agent is not archived by Hide.
 
 ## Workspace activity
 

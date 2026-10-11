@@ -767,6 +767,7 @@ export const en = {
       actions: {
         workspaceActions: "Workspace actions",
         workspaceActionsUnhealthy: "Workspace actions, a service is unhealthy",
+        showHiddenAgents: "Show hidden agents ({{count}})",
         newAgent: "New agent",
         newTerminal: "New terminal",
         newBrowser: "New browser tab",

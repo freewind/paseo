@@ -779,6 +779,7 @@ export const es: TranslationResources = {
       actions: {
         workspaceActions: "AccionesWorkspace",
         workspaceActionsUnhealthy: "Acciones del workspace, hay un servicio con problemas",
+        showHiddenAgents: "Mostrar agentes ocultos ({{count}})",
         newAgent: "Nuevo agente",
         newTerminal: "Nueva terminal",
         newBrowser: "Nueva pestaña del navegador",
