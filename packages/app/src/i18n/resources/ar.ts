@@ -117,6 +117,7 @@ export const ar: TranslationResources = {
   comment: {
     menu: {
       item: "تعليق",
+      itemSelected: "التعليق على المحدد",
       title: "تعليق",
     },
     sheet: {

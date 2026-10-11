@@ -117,6 +117,7 @@ export const zhCN: TranslationResources = {
   comment: {
     menu: {
       item: "评论",
+      itemSelected: "评论所选文字",
       title: "评论",
     },
     sheet: {

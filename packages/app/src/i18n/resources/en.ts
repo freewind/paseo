@@ -113,6 +113,7 @@ export const en = {
   comment: {
     menu: {
       item: "Comment",
+      itemSelected: "Comment on selection",
       title: "Comment",
     },
     sheet: {

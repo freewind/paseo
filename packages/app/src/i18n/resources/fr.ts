@@ -119,6 +119,7 @@ export const fr: TranslationResources = {
   comment: {
     menu: {
       item: "Commenter",
+      itemSelected: "Commenter la sélection",
       title: "Commentaire",
     },
     sheet: {

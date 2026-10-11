@@ -118,6 +118,7 @@ export const ptBR: TranslationResources = {
   comment: {
     menu: {
       item: "Comentar",
+      itemSelected: "Comentar seleção",
       title: "Comentário",
     },
     sheet: {
