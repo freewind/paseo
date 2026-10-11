@@ -5,10 +5,12 @@ import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { controllerRef } = vi.hoisted(() => ({
+const { controllerRef, selectionRef, readSelection } = vi.hoisted(() => ({
   controllerRef: {
     current: null as null | { requestComment: (blockText: string) => void },
   },
+  selectionRef: { current: null as string | null },
+  readSelection: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -19,10 +21,28 @@ vi.mock("@/assistant-comment/context", () => ({
   useAssistantComment: () => controllerRef.current,
 }));
 
+vi.mock("@/assistant-comment/selection", () => ({
+  readAssistantCommentSelection: () => {
+    readSelection();
+    return selectionRef.current;
+  },
+}));
+
 vi.mock("@/components/ui/context-menu", () => ({
   ContextMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  ContextMenuTrigger: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="comment-trigger">{children}</div>
+  ContextMenuTrigger: ({
+    children,
+    onLongPress,
+    onContextMenu,
+  }: {
+    children: React.ReactNode;
+    onLongPress?: () => void;
+    onContextMenu?: () => void;
+  }) => (
+    <div data-testid="comment-trigger" onContextMenu={onContextMenu}>
+      <button type="button" data-testid="comment-long-press" onClick={onLongPress} />
+      {children}
+    </div>
   ),
   ContextMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   ContextMenuItem: ({
@@ -52,6 +72,8 @@ describe("MarkdownCommentableBlock", () => {
     document.body.appendChild(container);
     root = createRoot(container);
     controllerRef.current = null;
+    selectionRef.current = null;
+    readSelection.mockClear();
   });
 
   afterEach(() => {
@@ -67,6 +89,26 @@ describe("MarkdownCommentableBlock", () => {
         </MarkdownCommentableBlock>,
       ),
     );
+  }
+
+  function openMenuByLongPress(): void {
+    const press = container.querySelector<HTMLButtonElement>("[data-testid=comment-long-press]");
+    expect(press).not.toBeNull();
+    act(() => press?.click());
+  }
+
+  function openMenuByRightClick(): void {
+    const trigger = container.querySelector<HTMLElement>("[data-testid=comment-trigger]");
+    expect(trigger).not.toBeNull();
+    act(() => {
+      trigger?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+    });
+  }
+
+  function chooseCommentItem(): void {
+    const item = container.querySelector<HTMLButtonElement>("[data-testid=comment-item]");
+    expect(item).not.toBeNull();
+    act(() => item?.click());
   }
 
   it("renders the block without a trigger outside a chat surface", () => {
@@ -88,6 +130,34 @@ describe("MarkdownCommentableBlock", () => {
     const item = container.querySelector<HTMLButtonElement>("[data-testid=comment-item]");
     expect(item).not.toBeNull();
     act(() => item?.click());
+    expect(requestComment).toHaveBeenCalledWith("some claim");
+  });
+
+  it("hands the selected text to the controller when a selection exists", () => {
+    const requestComment = vi.fn();
+    controllerRef.current = { requestComment };
+    selectionRef.current = "the **selected** words";
+    render("some claim");
+
+    openMenuByLongPress();
+
+    expect(readSelection).toHaveBeenCalledTimes(1);
+    expect(container.textContent).toContain("comment.menu.itemSelected");
+    chooseCommentItem();
+    expect(requestComment).toHaveBeenCalledWith("the **selected** words");
+  });
+
+  it("falls back to the block text when no selection is readable", () => {
+    const requestComment = vi.fn();
+    controllerRef.current = { requestComment };
+    render("some claim");
+
+    openMenuByRightClick();
+
+    expect(readSelection).toHaveBeenCalledTimes(1);
+    expect(container.textContent).toContain("comment.menu.item");
+    expect(container.textContent).not.toContain("comment.menu.itemSelected");
+    chooseCommentItem();
     expect(requestComment).toHaveBeenCalledWith("some claim");
   });
 });

@@ -117,6 +117,7 @@ export const ja: TranslationResources = {
   comment: {
     menu: {
       item: "コメント",
+      itemSelected: "選択範囲にコメント",
       title: "コメント",
     },
     sheet: {

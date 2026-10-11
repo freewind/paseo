@@ -117,6 +117,7 @@ export const ru: TranslationResources = {
   comment: {
     menu: {
       item: "Комментарий",
+      itemSelected: "Комментировать выделенное",
       title: "Комментарий",
     },
     sheet: {

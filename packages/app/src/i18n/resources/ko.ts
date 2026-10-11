@@ -116,6 +116,7 @@ export const ko: TranslationResources = {
   comment: {
     menu: {
       item: "댓글",
+      itemSelected: "선택한 텍스트에 댓글",
       title: "댓글",
     },
     sheet: {
