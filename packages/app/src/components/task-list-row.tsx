@@ -1,6 +1,6 @@
-import { Circle, CircleCheck, CircleDot } from "lucide-react-native";
-import { memo } from "react";
-import { Text, View } from "react-native";
+import { ChevronDown, ChevronRight, Circle, CircleCheck, CircleDot } from "lucide-react-native";
+import { memo, useCallback, useMemo, useState } from "react";
+import { Pressable, Text, View } from "react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import type { Theme } from "@/styles/theme";
 import type { TodoEntry } from "@/types/stream";
@@ -8,6 +8,8 @@ import type { TodoEntry } from "@/types/stream";
 const ThemedCircle = withUnistyles(Circle);
 const ThemedCircleCheck = withUnistyles(CircleCheck);
 const ThemedCircleDot = withUnistyles(CircleDot);
+const ThemedChevronDown = withUnistyles(ChevronDown);
+const ThemedChevronRight = withUnistyles(ChevronRight);
 
 const extraMutedIcon = (theme: Theme) => ({ color: theme.colors.foregroundExtraMuted });
 const runningIcon = (theme: Theme) => ({ color: theme.colors.statusDotRunning });
@@ -25,12 +27,23 @@ function TaskStatusIcon({ isCompleted, isRunning }: { isCompleted: boolean; isRu
   return <ThemedCircle size={16} uniProps={extraMutedIcon} />;
 }
 
+function ExpandChevron({ hasBody, expanded }: { hasBody: boolean; expanded: boolean }) {
+  if (!hasBody) return null;
+  if (expanded) return <ThemedChevronDown size={14} uniProps={extraMutedIcon} />;
+  return <ThemedChevronRight size={14} uniProps={extraMutedIcon} />;
+}
+
 export const TaskListRow = memo(function TaskListRow({ task }: { task: TodoEntry }) {
+  const [expanded, setExpanded] = useState(false);
   const isCompleted = task.completed || task.status === "completed";
   const isRunning = !isCompleted && task.status === "in_progress";
   const text = isRunning && task.activeForm ? task.activeForm : task.text;
+  // Only rows with a body are tappable: a press that expands nothing is a dead control.
+  const description = task.description?.trim();
+  const handlePress = useCallback(() => setExpanded((value) => !value), []);
+  const accessibilityState = useMemo(() => ({ expanded }), [expanded]);
 
-  return (
+  const row = (
     <View style={styles.row} accessibilityLabel={text}>
       <TaskStatusIcon isCompleted={isCompleted} isRunning={isRunning} />
       <Text
@@ -39,7 +52,21 @@ export const TaskListRow = memo(function TaskListRow({ task }: { task: TodoEntry
       >
         {text}
       </Text>
+      <ExpandChevron hasBody={Boolean(description)} expanded={expanded} />
     </View>
+  );
+
+  if (!description) return row;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={accessibilityState}
+      onPress={handlePress}
+    >
+      {row}
+      {expanded ? <Text style={[styles.description]}>{description}</Text> : null}
+    </Pressable>
   );
 });
 
@@ -66,5 +93,13 @@ const styles = StyleSheet.create((theme) => ({
   completedText: {
     color: theme.colors.foregroundExtraMuted,
     textDecorationLine: "line-through",
+  },
+  // Sits under the title text, aligned past the status icon: icon (16) + row gap.
+  description: {
+    color: theme.colors.foregroundMuted,
+    fontSize: theme.fontSize.sm,
+    lineHeight: theme.fontSize.base,
+    paddingLeft: 16 + theme.spacing[2],
+    paddingTop: theme.spacing[1],
   },
 }));

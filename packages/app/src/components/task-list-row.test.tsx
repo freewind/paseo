@@ -21,6 +21,12 @@ const { theme } = vi.hoisted(() => ({
 vi.mock("react-native", () => ({
   View: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) =>
     React.createElement("div", props, children),
+  Pressable: ({ children, onPress, accessibilityRole, ...props }: Record<string, unknown>) =>
+    React.createElement(
+      "div",
+      { ...props, role: accessibilityRole, onClick: onPress as () => void },
+      children as React.ReactNode,
+    ),
   Text: ({ children, style }: React.PropsWithChildren<{ style?: Record<string, unknown>[] }>) => {
     const resolvedStyle = Object.assign({}, ...(style ?? []).filter(Boolean));
     return React.createElement(
@@ -53,6 +59,8 @@ vi.mock("lucide-react-native", () => {
     Circle: createIcon("Circle"),
     CircleCheck: createIcon("CircleCheck"),
     CircleDot: createIcon("CircleDot"),
+    ChevronDown: createIcon("ChevronDown"),
+    ChevronRight: createIcon("ChevronRight"),
   };
 });
 
@@ -69,6 +77,12 @@ const runningTask = {
   status: "in_progress",
 } as const;
 const completedTask = { text: "Finished", completed: true, status: "completed" } as const;
+const describedTask = {
+  text: "test",
+  completed: false,
+  status: "pending",
+  description: "a long body",
+} as const;
 
 describe("TaskListRow", () => {
   let container: HTMLElement;
@@ -113,5 +127,21 @@ describe("TaskListRow", () => {
     const text = container.querySelector("[data-color]");
     expect(text?.getAttribute("data-color")).toBe("#extra-muted");
     expect(text?.getAttribute("data-decoration")).toBe("line-through");
+  });
+
+  it("hides the body and shows a collapsed chevron until the row is pressed", () => {
+    act(() => root.render(<TaskListRow task={describedTask} />));
+
+    expect(container.textContent).toBe("test");
+    expect(container.querySelector('[data-icon="ChevronRight"]')).not.toBeNull();
+
+    act(() => {
+      container
+        .querySelector("div[role=button]")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(container.textContent).toBe("testa long body");
+    expect(container.querySelector('[data-icon="ChevronDown"]')).not.toBeNull();
   });
 });

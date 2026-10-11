@@ -12,6 +12,7 @@ const Details = z.object({
       subject: z.string(),
       status: z.enum(["pending", "in_progress", "completed", "deleted"]),
       activeForm: z.string().optional(),
+      description: z.string().optional(),
     }),
   ),
   error: z.string().optional(),
@@ -45,6 +46,7 @@ export const rpivTodo: PiExtension = {
                     completed: task.status === "completed",
                   };
                   if (task.activeForm) item.activeForm = task.activeForm;
+                  if (task.description) item.description = task.description;
                   return [item];
                 }),
               },
