@@ -1965,6 +1965,8 @@ export class VoiceAssistantWebSocketServer {
         workspaceSetupRun: true,
         workspaceSetupObservation: true,
         workspaceSortTimes: true,
+        // COMPAT(metadataTitlePrompt): added in v0.11.0, remove gate after 2027-10-11.
+        metadataTitlePrompt: true,
         // COMPAT(providersSnapshot): keep optional until all clients rely on snapshot flow.
         providersSnapshot: true,
         // COMPAT(providersSnapshotCwd): added in v0.3.2, remove gate after 2027-02-10.

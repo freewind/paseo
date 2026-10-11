@@ -2236,6 +2236,11 @@ export const zhCN: TranslationResources = {
     },
     plugins: pluginSettings["zh-CN"],
     metadataGeneration: {
+      titlePrompt: "标题提示词",
+      titlePromptHint: "Paseo 生成工作区标题时遵循的指令。留空用默认风格;paseo.json 的配置优先。",
+      titlePromptPlaceholder: "例如:[模块] 简短任务摘要",
+      titlePromptSave: "保存",
+      titlePromptSaving: "保存中...",
       title: "元数据生成",
       description: "选择 Paseo 用于工作区标题、分支名称、提交消息和拉取请求草稿的模型",
       selection: "模型选择",
@@ -2972,8 +2977,6 @@ export const zhCN: TranslationResources = {
       metadata: {
         title: "元数据生成",
         info: "注入到 Paseo 用来生成元数据的 AI prompts 中的 Project 专属指令，可用于强制执行团队约定，例如分支命名、提交风格或 PR 格式",
-        titlePrompt: "🌿 工作区标题",
-        titlePromptPlaceholder: "🌿 描述工作区标题的命名风格",
         branchName: "分支名称",
         branchNamePlaceholder: "分支以 feat/ 或 fix/ 开头，个人分支使用 mb/",
         commitMessage: "提交消息",

@@ -22,7 +22,7 @@ interface SupportedMutableConfigPatch {
   browserTools?: { enabled?: boolean };
   providers?: MutableDaemonConfig["providers"];
   removeProviders?: string[];
-  metadataGeneration?: MutableDaemonConfig["metadataGeneration"];
+  metadataGeneration?: MutableDaemonConfigPatch["metadataGeneration"];
   autoArchiveAfterMerge?: boolean;
   enableTerminalAgentHooks?: boolean;
   appendSystemPrompt?: string;
@@ -263,7 +263,26 @@ function pickRelayPatch(
   return Object.keys(picked).length > 0 ? { relay: picked } : {};
 }
 
+function pickMetadataGenerationPatch(
+  patch: MutableDaemonConfigPatch,
+): SupportedMutableConfigPatch["metadataGeneration"] {
+  const metadataGeneration = patch.metadataGeneration;
+  if (
+    metadataGeneration === undefined ||
+    (metadataGeneration.providers === undefined && metadataGeneration.title === undefined)
+  ) {
+    return undefined;
+  }
+  return {
+    ...(metadataGeneration.providers !== undefined
+      ? { providers: metadataGeneration.providers }
+      : {}),
+    ...(metadataGeneration.title !== undefined ? { title: metadataGeneration.title } : {}),
+  };
+}
+
 function pickSupportedPatchFields(patch: MutableDaemonConfigPatch): SupportedMutableConfigPatch {
+  const metadataGeneration = pickMetadataGenerationPatch(patch);
   return {
     ...pickRelayPatch(patch.relay),
     ...(patch.mcp?.injectIntoAgents !== undefined
@@ -274,9 +293,7 @@ function pickSupportedPatchFields(patch: MutableDaemonConfigPatch): SupportedMut
       : {}),
     ...(patch.providers !== undefined ? { providers: patch.providers } : {}),
     ...(patch.removeProviders !== undefined ? { removeProviders: patch.removeProviders } : {}),
-    ...(patch.metadataGeneration?.providers !== undefined
-      ? { metadataGeneration: { providers: patch.metadataGeneration.providers } }
-      : {}),
+    ...(metadataGeneration !== undefined ? { metadataGeneration } : {}),
     ...(patch.autoArchiveAfterMerge !== undefined
       ? { autoArchiveAfterMerge: patch.autoArchiveAfterMerge }
       : {}),
@@ -607,6 +624,27 @@ function mergeMutablePatchIntoPersistedConfig(params: {
   } as PersistedConfig;
 }
 
+function mergeMetadataGenerationPatch(
+  persistedAgents: PersistedConfig["agents"],
+  patch: Omit<SupportedMutableConfigPatch, "removeProviders">,
+): NonNullable<PersistedConfig["agents"]>["metadataGeneration"] | undefined {
+  const metadataGeneration = patch.metadataGeneration;
+  if (
+    metadataGeneration === undefined ||
+    (metadataGeneration.providers === undefined && metadataGeneration.title === undefined)
+  ) {
+    return undefined;
+  }
+  const next = { ...persistedAgents?.metadataGeneration };
+  if (metadataGeneration.providers !== undefined) {
+    next.providers = metadataGeneration.providers;
+  }
+  if (metadataGeneration.title !== undefined) {
+    next.title = metadataGeneration.title;
+  }
+  return next;
+}
+
 function mergeMutableAgentPatch(
   persistedAgents: PersistedConfig["agents"],
   patch: Omit<SupportedMutableConfigPatch, "removeProviders">,
@@ -633,8 +671,9 @@ function mergeMutableAgentPatch(
   if (providerOverrides) next["providers"] = providerOverrides;
   else delete next["providers"];
 
-  if (patch.metadataGeneration?.providers !== undefined) {
-    next["metadataGeneration"] = { providers: patch.metadataGeneration.providers };
+  const metadataGeneration = mergeMetadataGenerationPatch(persistedAgents, patch);
+  if (metadataGeneration !== undefined) {
+    next["metadataGeneration"] = metadataGeneration;
   } else if (removeProviders.length > 0 && persistedAgents?.metadataGeneration?.providers) {
     const removed = new Set(removeProviders);
     next["metadataGeneration"] = {

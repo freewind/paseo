@@ -11,7 +11,6 @@ function emptyDraft(): ProjectConfigDraft {
     teardownOriginalKind: "missing",
     scripts: [],
     metadataPrompts: {
-      title: "",
       branchName: "",
       commitMessage: "",
       pullRequest: "",
@@ -227,7 +226,6 @@ describe("applyDraftToConfig", () => {
       },
     });
     expect(draft.metadataPrompts).toEqual({
-      title: "Workspace title style.",
       branchName: "feat/<slug>",
       commitMessage: "Conventional commits.",
       pullRequest: "Include risk notes.",
@@ -239,7 +237,6 @@ describe("applyDraftToConfig", () => {
       metadataGeneration: { branchName: { instructions: "feat/<slug>" } },
     });
     expect(draft.metadataPrompts).toEqual({
-      title: "",
       branchName: "feat/<slug>",
       commitMessage: "",
       pullRequest: "",
@@ -257,11 +254,24 @@ describe("applyDraftToConfig", () => {
     );
 
     expect(draft.metadataPrompts).toEqual({
-      title: "",
       branchName: "feat/<slug>",
       commitMessage: "",
       pullRequest: "",
     });
+  });
+
+  it("preserves base title instructions on round-trip even though the prompt key moved to global settings", () => {
+    const base = PaseoConfigRawSchema.parse({
+      metadataGeneration: {
+        title: { instructions: "Workspace title style." },
+      },
+    });
+    const draft = configToDraft(base);
+    draft.metadataPrompts.branchName = "Use mb/.";
+    const next = applyDraftToConfig({ draft, base });
+    const metadata = next.metadataGeneration as Record<string, unknown>;
+    expect(metadata.title).toEqual({ instructions: "Workspace title style." });
+    expect(metadata.branchName).toEqual({ instructions: "Use mb/." });
   });
 
   it("writes only metadata prompt entries with non-empty text", () => {

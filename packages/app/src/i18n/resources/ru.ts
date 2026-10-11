@@ -2291,6 +2291,12 @@ export const ru: TranslationResources = {
     },
     plugins: pluginSettings.ru,
     metadataGeneration: {
+      titlePrompt: "Подсказка для названия",
+      titlePromptHint:
+        "Инструкции, которые Paseo использует при генерации названий рабочих пространств. Пусто = стиль по умолчанию; paseo.json имеет приоритет.",
+      titlePromptPlaceholder: "напр. [Модуль] краткое описание задачи",
+      titlePromptSave: "Сохранить",
+      titlePromptSaving: "Сохранение...",
       title: "Генерация метаданных",
       description:
         "Выберите модель, которую Paseo будет использовать для названий рабочих пространств и веток, сообщений коммитов и черновиков PR",
@@ -3059,8 +3065,6 @@ export const ru: TranslationResources = {
       metadata: {
         title: "Генерация метаданных",
         info: "Инструкции для этого проекта, добавляемые в промпты ИИ, с помощью которых Paseo генерирует метаданные. Используйте их, чтобы соблюдать принятые в команде правила именования веток, оформления коммитов и формата PR.",
-        titlePrompt: "🌿 Названия рабочих пространств",
-        titlePromptPlaceholder: "🌿 Опишите стиль именования рабочих пространств",
         branchName: "Названия веток",
         branchNamePlaceholder:
           "Добавляйте к веткам префиксы feat/ или fix/, а к личным веткам — mb/",

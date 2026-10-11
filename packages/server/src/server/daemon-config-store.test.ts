@@ -8,6 +8,17 @@ import { loadPersistedConfig } from "./persisted-config.js";
 import type { PersistedConfig } from "./persisted-config.js";
 import type { MutableDaemonConfig } from "@getpaseo/protocol/messages";
 
+function metadataGenerationConfig(
+  agents: PersistedConfig["agents"],
+): MutableDaemonConfig["metadataGeneration"] {
+  const metadata = agents?.metadataGeneration;
+  const title = metadata?.title;
+  return {
+    providers: metadata?.providers ?? [],
+    ...(title !== undefined ? { title } : {}),
+  };
+}
+
 function reloadableConfig(
   persisted: PersistedConfig,
   options: { relayEnabledFallback?: boolean } = {},
@@ -23,7 +34,7 @@ function reloadableConfig(
     mcp: { enabled: true, injectIntoAgents: false },
     browserTools: { enabled: daemon.browserTools?.enabled ?? false },
     providers: (agents.providers ?? {}) as MutableDaemonConfig["providers"],
-    metadataGeneration: { providers: agents.metadataGeneration?.providers ?? [] },
+    metadataGeneration: metadataGenerationConfig(agents),
     autoArchiveAfterMerge: daemon.autoArchiveAfterMerge ?? false,
     enableTerminalAgentHooks: daemon.enableTerminalAgentHooks ?? false,
     appendSystemPrompt: daemon.appendSystemPrompt ?? "",
@@ -900,6 +911,78 @@ describe("DaemonConfigStore", () => {
 
     const persisted = loadPersistedConfig(paseoHome);
     expect(persisted.agents?.metadataGeneration).toEqual({ providers: [] });
+  });
+
+  test("patch persists metadata generation title instructions into config.json", () => {
+    const paseoHome = mkdtempSync(path.join(tmpdir(), "paseo-daemon-config-store-"));
+    tempDirs.push(paseoHome);
+
+    const store = new DaemonConfigStore(
+      paseoHome,
+      {
+        mcp: { injectIntoAgents: false },
+        browserTools: { enabled: false },
+        providers: {},
+        metadataGeneration: { providers: [] },
+        autoArchiveAfterMerge: false,
+        enableTerminalAgentHooks: false,
+        appendSystemPrompt: "",
+      },
+      undefined,
+    );
+
+    store.patch({ metadataGeneration: { title: { instructions: "Format: [Area] task." } } });
+
+    const persisted = loadPersistedConfig(paseoHome);
+    expect(persisted.agents?.metadataGeneration).toEqual({
+      providers: [],
+      title: { instructions: "Format: [Area] task." },
+    });
+  });
+
+  test("patch keeps title instructions when metadata generation providers are replaced", () => {
+    const paseoHome = mkdtempSync(path.join(tmpdir(), "paseo-daemon-config-store-"));
+    tempDirs.push(paseoHome);
+    writeFileSync(
+      path.join(paseoHome, "config.json"),
+      `${JSON.stringify(
+        {
+          version: 1,
+          agents: {
+            metadataGeneration: {
+              providers: [{ provider: "claude", model: "haiku" }],
+              title: { instructions: "Format: [Area] task." },
+            },
+          },
+        },
+        null,
+        2,
+      )}\n`,
+    );
+
+    const store = new DaemonConfigStore(
+      paseoHome,
+      {
+        mcp: { injectIntoAgents: false },
+        browserTools: { enabled: false },
+        providers: {},
+        metadataGeneration: { providers: [{ provider: "claude", model: "haiku" }] },
+        autoArchiveAfterMerge: false,
+        enableTerminalAgentHooks: false,
+        appendSystemPrompt: "",
+      },
+      undefined,
+    );
+
+    store.patch({
+      metadataGeneration: { providers: [{ provider: "codex", model: "gpt-5.4-mini" }] },
+    });
+
+    const persisted = loadPersistedConfig(paseoHome);
+    expect(persisted.agents?.metadataGeneration).toEqual({
+      providers: [{ provider: "codex", model: "gpt-5.4-mini" }],
+      title: { instructions: "Format: [Area] task." },
+    });
   });
 
   test("patch persists custom ACP provider overrides into config.json", () => {

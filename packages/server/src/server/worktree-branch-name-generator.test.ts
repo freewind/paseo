@@ -326,6 +326,46 @@ describe("generateBranchNameFromFirstAgentContext", () => {
     expect(prompt).toContain("Aim for about 4 words");
   });
 
+  test("daemon-level title instructions replace the default title style", async () => {
+    const structured = createStructuredGenerator({ title: "Fix login flow", branch: "fix/login" });
+
+    await generateBranchNameFromFirstAgentContext({
+      agentManager: {} as AgentManager,
+      cwd: path.join(createTempDir("paseo-daemon-title-"), "nested"),
+      firstAgentContext: { prompt: "Fix the login flow" },
+      daemonConfig: { metadataGeneration: { title: { instructions: "Format: [Area] task." } } },
+      logger: createLogger(),
+      deps: { generateStructuredAgentResponseWithFallback: structured.generateStructured },
+    });
+
+    const prompt = String(structured.calls[0]?.prompt);
+    expect(prompt).toContain("Title style:\nFormat: [Area] task.");
+    expect(prompt).not.toContain("Aim for about 4 words");
+    expect(prompt).toContain("Branch style:\nA short task-shaped slug");
+  });
+
+  test("paseo.json title instructions win over the daemon-level title override", async () => {
+    const repoRoot = createTempDir("paseo-branch-config-");
+    writeConfig(repoRoot, { metadataGeneration: { title: { instructions: "Project style." } } });
+    const structured = createStructuredGenerator({ title: "Fix login flow", branch: "fix/login" });
+
+    await generateBranchNameFromFirstAgentContext({
+      agentManager: {} as AgentManager,
+      cwd: path.join(repoRoot, "nested"),
+      workspaceGitService: createNoopWorkspaceGitService({
+        resolveRepoRoot: async () => repoRoot,
+      }),
+      firstAgentContext: { prompt: "Fix the login flow" },
+      daemonConfig: { metadataGeneration: { title: { instructions: "Machine style." } } },
+      logger: createLogger(),
+      deps: { generateStructuredAgentResponseWithFallback: structured.generateStructured },
+    });
+
+    const prompt = String(structured.calls[0]?.prompt);
+    expect(prompt).toContain("Title style:\nProject style.");
+    expect(prompt).not.toContain("Machine style.");
+  });
+
   test("the contract is never overridable by user instructions", async () => {
     const { prompt } = await generateBranchPromptWithConfig({
       metadataGeneration: {

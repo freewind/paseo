@@ -2388,6 +2388,12 @@ export const en = {
       },
     },
     metadataGeneration: {
+      titlePrompt: "Title prompt",
+      titlePromptHint:
+        "Instructions Paseo follows when generating workspace titles. Empty uses the default style; a paseo.json override still wins.",
+      titlePromptPlaceholder: "e.g. [Module] short task summary",
+      titlePromptSave: "Save",
+      titlePromptSaving: "Saving...",
       title: "Metadata generation",
       description:
         "Choose the model Paseo uses for workspace titles, branch names, commit messages, and pull request drafts",
@@ -3140,8 +3146,6 @@ export const en = {
       metadata: {
         title: "Metadata generation",
         info: "Project-specific instructions injected into the AI prompts Paseo uses to generate metadata - use them to enforce your team's conventions like branch naming, commit style, or PR format",
-        titlePrompt: "🌿 Workspace titles",
-        titlePromptPlaceholder: "🌿 Describe the naming style for workspace titles",
         branchName: "Branch names",
         branchNamePlaceholder: "Prefix branches with feat/ or fix/, mb/ for personal branches",
         commitMessage: "Commit messages",

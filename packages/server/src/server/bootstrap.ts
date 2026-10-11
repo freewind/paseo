@@ -455,6 +455,9 @@ export interface PaseoDaemonConfig {
       model?: string;
       thinkingOptionId?: string;
     }>;
+    title?: {
+      instructions?: string;
+    };
   };
   providerOverrides?: Record<string, ProviderOverride>;
   log?: PersistedConfig["log"];
@@ -548,6 +551,16 @@ function createInitialRelayConfig(config: PaseoDaemonConfig): MutableDaemonConfi
   };
 }
 
+function buildMetadataGenerationConfig(
+  metadataGeneration: PaseoDaemonConfig["metadataGeneration"],
+): NonNullable<MutableDaemonConfig["metadataGeneration"]> {
+  const title = metadataGeneration?.title;
+  return {
+    providers: metadataGeneration?.providers ?? [],
+    ...(title !== undefined ? { title } : {}),
+  };
+}
+
 function createInitialMutableDaemonConfig(config: PaseoDaemonConfig): MutableDaemonConfig {
   const providers = config.providerOverrides ?? {};
 
@@ -567,9 +580,7 @@ function createInitialMutableDaemonConfig(config: PaseoDaemonConfig): MutableDae
       : {}),
     browserTools: { enabled: config.browserToolsEnabled ?? false },
     providers,
-    metadataGeneration: {
-      providers: config.metadataGeneration?.providers ?? [],
-    },
+    metadataGeneration: buildMetadataGenerationConfig(config.metadataGeneration),
     autoArchiveAfterMerge: config.autoArchiveAfterMerge ?? false,
     enableTerminalAgentHooks: config.enableTerminalAgentHooks ?? false,
     appendSystemPrompt: config.appendSystemPrompt ?? "",

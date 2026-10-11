@@ -238,7 +238,8 @@ snapshot so a mixed edit can apply its live subset and still name the paths that
     // `extends` (one of the built-ins or `"acp"`) and `label`. See `provider-launch-config.ts`.
     providers: Record<providerId, ProviderOverride>,
     metadataGeneration: {
-      providers: [{ provider, model?, thinkingOptionId? }]
+      providers: [{ provider, model?, thinkingOptionId? }],
+      title?: { instructions?: string }
     }
   },
   pluginsEnabled: boolean,
@@ -318,6 +319,8 @@ session is created, resumed, imported, or reloaded, so configuration changes aff
 session rather than an already-running one.
 
 `agents.metadataGeneration.providers` selects the models for daemon-side metadata tasks: commit messages, PR text, branch names, and generated titles. An empty list is Automatic; a non-empty list is Manual and only those models are tried. See [public-docs/metadata-generation.md](../public-docs/metadata-generation.md#how-a-model-is-chosen).
+
+`agents.metadataGeneration.title.instructions` overrides the style used for generated workspace titles; it is written from the host's Metadata generation settings page. Resolution order for the style: the project's `paseo.json` `metadataGeneration.title.instructions` wins, then this daemon value, then the built-in style. The project settings page edits the branch, commit, and pull-request prompts only.
 
 ### Git process limits
 
