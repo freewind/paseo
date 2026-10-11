@@ -1,7 +1,6 @@
 import { router, type Href } from "expo-router";
-import { navigateToLastWorkspace } from "@/stores/navigation-active-workspace-store";
+import { backToChat } from "@/utils/back-to-chat";
 import {
-  buildOpenProjectRoute,
   buildProjectSettingsRoute,
   buildProjectsSettingsRoute,
   buildSettingsHostSectionRoute,
@@ -27,9 +26,7 @@ export function openProjectSettings(serverId: string, projectId: string): void {
 
 export function returnFromSettings(view: SettingsView): void {
   if (view.kind === "root") {
-    if (!navigateToLastWorkspace()) {
-      router.replace(buildOpenProjectRoute());
-    }
+    backToChat();
     return;
   }
 

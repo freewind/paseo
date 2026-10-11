@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, Text, View } from "react-native";
-import { useLocalSearchParams, useRouter, type Href } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import type { BarcodeScanningResult, BarcodeSettings } from "expo-camera";
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
 import { openPairScan } from "@/hosts/pair-scan-model";
+import { backToChat } from "@/utils/back-to-chat";
 import { buildHostRootRoute, buildSettingsHostRoute } from "@/utils/host-routes";
 import { isWeb } from "@/constants/platform";
 import { BackHeader } from "@/components/headers/back-header";
@@ -149,13 +150,7 @@ export default function PairScanScreen() {
   const scanState = useSyncExternalStore(scan.subscribe, scan.getState, scan.getState);
   useEffect(() => () => scan.close(), [scan]);
 
-  const closeToSource = useCallback(() => {
-    try {
-      router.back();
-    } catch {
-      router.replace("/" as Href);
-    }
-  }, [router]);
+  const closeToSource = useCallback(() => backToChat(), []);
 
   useEffect(() => {
     if (isWeb) return;
