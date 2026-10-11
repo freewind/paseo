@@ -2352,13 +2352,18 @@ export class DaemonClient {
     }
   }
 
-  async markWorkspaceUnread(workspaceId: string, requestId?: string): Promise<void> {
+  async markWorkspaceUnread(
+    workspaceId: string,
+    requestId?: string,
+    agentId?: string,
+  ): Promise<void> {
     const response =
       await this.sendNamespacedCorrelatedSessionRequest<"workspace.mark_unread.response">({
         requestId,
         message: {
           type: "workspace.mark_unread.request",
           workspaceId,
+          ...(agentId ? { agentId } : {}),
         },
       });
     if (!response.success) {

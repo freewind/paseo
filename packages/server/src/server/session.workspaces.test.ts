@@ -1894,6 +1894,108 @@ test("workspace mark unread selects the newest finished workspace root", async (
   });
 });
 
+test("workspace mark unread targets the requested finished child agent", async () => {
+  const emitted: SessionOutboundMessage[] = [];
+  const workspace = createPersistedWorkspaceRecord({
+    workspaceId: REPO_CWD,
+    projectId: REPO_CWD,
+    cwd: REPO_CWD,
+    kind: "directory",
+    displayName: "repo",
+    createdAt: "2026-03-30T15:00:00.000Z",
+    updatedAt: "2026-03-30T15:00:00.000Z",
+  });
+  const markedAgentIds: string[] = [];
+  const session = createSessionForWorkspaceTests({
+    onMessage: (message) => emitted.push(message),
+    agentManager: {
+      markAgentUnread: async (agentId: string) => {
+        markedAgentIds.push(agentId);
+      },
+    },
+  });
+  session.workspaceRegistry.get = async (id: string) =>
+    id === workspace.workspaceId ? workspace : null;
+  session.listAgentPayloads = async () => [
+    makeAgent({
+      id: "root-agent",
+      cwd: REPO_CWD,
+      workspaceId: workspace.workspaceId,
+      status: "idle",
+      updatedAt: "2026-03-30T16:00:00.000Z",
+    }),
+    makeAgent({
+      id: "child-agent",
+      cwd: REPO_CWD,
+      workspaceId: workspace.workspaceId,
+      status: "idle",
+      updatedAt: "2026-03-30T17:00:00.000Z",
+      labels: { "paseo.parent-agent-id": "root-agent" },
+    }),
+  ];
+
+  await session.handleMessage({
+    type: "workspace.mark_unread.request",
+    workspaceId: workspace.workspaceId,
+    agentId: "child-agent",
+    requestId: "req-mark-child-unread",
+  });
+
+  expect(markedAgentIds).toEqual(["child-agent"]);
+  expect(findByType(emitted, "workspace.mark_unread.response").payload).toMatchObject({
+    requestId: "req-mark-child-unread",
+    markedAgentId: "child-agent",
+    success: true,
+  });
+});
+
+test("workspace mark unread rejects a requested agent outside the workspace", async () => {
+  const emitted: SessionOutboundMessage[] = [];
+  const workspace = createPersistedWorkspaceRecord({
+    workspaceId: REPO_CWD,
+    projectId: REPO_CWD,
+    cwd: REPO_CWD,
+    kind: "directory",
+    displayName: "repo",
+    createdAt: "2026-03-30T15:00:00.000Z",
+    updatedAt: "2026-03-30T15:00:00.000Z",
+  });
+  const markedAgentIds: string[] = [];
+  const session = createSessionForWorkspaceTests({
+    onMessage: (message) => emitted.push(message),
+    agentManager: {
+      markAgentUnread: async (agentId: string) => {
+        markedAgentIds.push(agentId);
+      },
+    },
+  });
+  session.workspaceRegistry.get = async (id: string) =>
+    id === workspace.workspaceId ? workspace : null;
+  session.listAgentPayloads = async () => [
+    makeAgent({
+      id: "other-agent",
+      cwd: "/other/repo",
+      workspaceId: "other-workspace",
+      status: "idle",
+      updatedAt: "2026-03-30T17:00:00.000Z",
+    }),
+  ];
+
+  await session.handleMessage({
+    type: "workspace.mark_unread.request",
+    workspaceId: workspace.workspaceId,
+    agentId: "other-agent",
+    requestId: "req-mark-other-unread",
+  });
+
+  expect(markedAgentIds).toEqual([]);
+  expect(findByType(emitted, "workspace.mark_unread.response").payload).toMatchObject({
+    requestId: "req-mark-other-unread",
+    markedAgentId: null,
+    success: false,
+  });
+});
+
 test("workspace mark unread rejects workspaces without a finished root agent", async () => {
   const emitted: SessionOutboundMessage[] = [];
   const workspace = createPersistedWorkspaceRecord({

@@ -3757,10 +3757,11 @@ test("marks a workspace unread through the dotted RPC", async () => {
   mock.triggerOpen();
   await connectPromise;
 
-  const markPromise = client.markWorkspaceUnread("workspace-1", "req-mark-unread");
+  const markPromise = client.markWorkspaceUnread("workspace-1", "req-mark-unread", "agent-2");
   expect(parseSentFrame(mock.sent[0])).toEqual({
     type: "workspace.mark_unread.request",
     workspaceId: "workspace-1",
+    agentId: "agent-2",
     requestId: "req-mark-unread",
   });
 
