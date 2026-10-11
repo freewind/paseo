@@ -248,6 +248,7 @@ export const ptBR: TranslationResources = {
     chatOutline: {
       collapse: "🌿 Recolher_sumário",
       expand: "🌿 Expandir sumário",
+      jumpToPrompt: "🌿 Ir para este prompt",
     },
     historyLoadFailed: "Não foi possível carregar o histórico do agente",
     messageCapped: "Esta mensagem foi truncada ({{bytes}} bytes).",

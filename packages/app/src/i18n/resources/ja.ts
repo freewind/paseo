@@ -249,6 +249,7 @@ export const ja: TranslationResources = {
     chatOutline: {
       collapse: "🌿 アウトラインを折りたたむ",
       expand: "🌿 アウトラインを展開",
+      jumpToPrompt: "🌿 このプロンプトへジャンプ",
     },
     historyLoadFailed: "エージェントの履歴を読み込めませんでした",
     messageCapped: "このメッセージは上限で切り詰められました（{{bytes}}バイト）。",

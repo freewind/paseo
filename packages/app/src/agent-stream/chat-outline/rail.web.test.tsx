@@ -9,7 +9,7 @@
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createActivePromptPublisher, resolveTextRailWidth, TEXT_ROW_MAX_HEIGHT } from "./model";
+import { createActivePromptPublisher, resolveTextRailWidth } from "./model";
 import { ChatOutlineRail } from "./rail.web";
 
 const CONTENT_MAX_WIDTH = 820;
@@ -86,6 +86,39 @@ function prompt(seq: number, preview: string) {
 
 /** The default: no reader ever asked for a row's full text. */
 const noPromptText = async () => null;
+
+/**
+ * jsdom lays nothing out, so the popover's window measurements are stubbed per test.
+ * react-native-web attaches measureInWindow as an *own* property on the DOM node the
+ * ref points at, so the stub has to land on each node the rail can measure, not on the
+ * prototype.
+ */
+function stubMeasureInWindow(
+  rect: { x?: number; y?: number; width?: number; height?: number } = {},
+) {
+  const { x = 1000, y = 100, width = 360, height = 80 } = rect;
+  const patch = (node: Element | null) => {
+    if (!node) return;
+    Object.defineProperty(node, "measureInWindow", {
+      configurable: true,
+      get: () => (callback: (x: number, y: number, w: number, h: number) => void) =>
+        callback(x, y, width, height),
+      set: () => {},
+    });
+  };
+  const panel = document.querySelector('[data-testid="chat-outline-text-rail"]')?.parentElement;
+  if (panel) {
+    Object.defineProperty(panel, "measureInWindow", {
+      configurable: true,
+      get: () => (callback: (x: number, y: number, w: number, h: number) => void) =>
+        callback(100, 40, PANEL_WIDTH, height),
+      set: () => {},
+    });
+  }
+  for (const row of document.querySelectorAll('[data-testid^="chat-outline-text-row-"]')) {
+    patch(row.parentElement);
+  }
+}
 
 describe("ChatOutlineRail in its text form", () => {
   let root: Root | null = null;
@@ -185,14 +218,24 @@ describe("ChatOutlineRail in its text form", () => {
   });
 
   it("jumps to the prompt the reader clicks", async () => {
-    const { onJumpToPrompt } = await renderRail([prompt(1, "First"), prompt(2, "Second")]);
+    const { onJumpToPrompt } = await renderRail([prompt(1, "First"), prompt(2, "Second")], {
+      onRequestPromptText: async () => null,
+    });
+    stubMeasureInWindow();
 
+    // A click opens the popover, and the jump happens from the popover: the row itself
+    // no longer jumps, because the click's first job is reading the whole prompt.
     const rows = document.querySelectorAll('[data-testid="chat-outline-text-rail"] [role="tab"]');
-    expect(rows).toHaveLength(2);
     await act(async () => {
       (rows[1] as HTMLElement).click();
     });
+    expect(onJumpToPrompt).not.toHaveBeenCalled();
 
+    const jump = document.querySelector('[data-testid="chat-outline-prompt-detail-jump-2"]');
+    expect(jump).not.toBeNull();
+    await act(async () => {
+      (jump as HTMLElement).click();
+    });
     expect(onJumpToPrompt).toHaveBeenCalledWith(2);
   });
 
@@ -240,21 +283,258 @@ describe("ChatOutlineRail in its text form", () => {
     expect(document.querySelector('[data-testid="chat-outline-text-preview"]')).toBeNull();
   });
 
-  it("caps a long prompt at four and a half lines and scrolls the rest", async () => {
-    const longText = "word ".repeat(80);
-    await renderRail([prompt(1, "First prompt"), prompt(2, "Second prompt")], {
-      onRequestPromptText: async () => longText,
+  it("opens the whole prompt in a popover and keeps its line breaks", async () => {
+    await renderRail([prompt(1, "truncated preview"), prompt(2, "Second")], {
+      onRequestPromptText: async (seq) => (seq === 1 ? "first line\n\nsecond line\nthird" : null),
+    });
+    stubMeasureInWindow();
+
+    const rows = document.querySelectorAll('[data-testid="chat-outline-text-row-1"]');
+    expect(rows).toHaveLength(1);
+    await act(async () => {
+      (rows[0] as HTMLElement).click();
     });
 
-    const scroller = document.querySelector('[data-testid="chat-outline-text-scroll-1"]');
-    expect(scroller).not.toBeNull();
-    // The cap is the row's own scroller, not a line clamp that hides the tail.
-    expect((scroller as HTMLElement).style.maxHeight).toBe(`${TEXT_ROW_MAX_HEIGHT}px`);
-    const label = document.querySelector('[data-testid="chat-outline-text-row-1"]')
+    const detail = document.querySelector('[data-testid="chat-outline-prompt-detail-1"]');
+    expect(detail).not.toBeNull();
+    const body = detail?.querySelector('[data-testid="chat-outline-prompt-detail-scroll-1"]');
+    expect(body?.textContent).toContain("first line\n\nsecond line\nthird");
+    // The popover is where the reader reads, so the prompt's own breaks survive; the row
+    // keeps folding them, because the row is for scanning.
+    const rowLabel = document.querySelector('[data-testid="chat-outline-text-row-1"]')
       ?.firstElementChild as HTMLElement | null;
-    const styleWithClamp = label?.style as unknown as { WebkitLineClamp?: string } | undefined;
-    expect(styleWithClamp?.WebkitLineClamp).toBeUndefined();
-    expect(label?.textContent).toBe(longText.trim());
+    expect(rowLabel?.textContent).toBe("first line second line third");
+  });
+
+  it("closes the popover from the backdrop, the close button, and the same row", async () => {
+    await renderRail([prompt(1, "First"), prompt(2, "Second")], {
+      onRequestPromptText: async () => null,
+    });
+    stubMeasureInWindow();
+
+    const row = document.querySelector('[data-testid="chat-outline-text-row-1"]') as HTMLElement;
+    await act(async () => {
+      row.click();
+    });
+    expect(document.querySelector('[data-testid="chat-outline-prompt-detail-1"]')).not.toBeNull();
+
+    // Clicking away closes it.
+    await act(async () => {
+      (
+        document.querySelector('[data-testid="chat-outline-prompt-backdrop"]') as HTMLElement
+      ).click();
+    });
+    expect(document.querySelector('[data-testid="chat-outline-prompt-detail-1"]')).toBeNull();
+
+    // The close button closes it.
+    await act(async () => {
+      row.click();
+    });
+    await act(async () => {
+      (
+        document.querySelector('[data-testid="chat-outline-prompt-detail-close-1"]') as HTMLElement
+      ).click();
+    });
+    expect(document.querySelector('[data-testid="chat-outline-prompt-detail-1"]')).toBeNull();
+
+    // Clicking the same row again closes it; clicking another row swaps the prompt.
+    await act(async () => {
+      row.click();
+    });
+    await act(async () => {
+      (document.querySelector('[data-testid="chat-outline-text-row-2"]') as HTMLElement).click();
+    });
+    expect(document.querySelector('[data-testid="chat-outline-prompt-detail-1"]')).toBeNull();
+    expect(document.querySelector('[data-testid="chat-outline-prompt-detail-2"]')).not.toBeNull();
+    await act(async () => {
+      (document.querySelector('[data-testid="chat-outline-text-row-2"]') as HTMLElement).click();
+    });
+    expect(document.querySelector('[data-testid="chat-outline-prompt-detail-2"]')).toBeNull();
+  });
+
+  it("falls back to the preview when the popover's own read fails", async () => {
+    await renderRail([prompt(1, "truncated preview"), prompt(2, "Second")], {
+      onRequestPromptText: async () => null,
+    });
+    stubMeasureInWindow();
+
+    await act(async () => {
+      (document.querySelector('[data-testid="chat-outline-text-row-1"]') as HTMLElement).click();
+    });
+
+    // A null read is a silent fallback, never an error: the popover shows what the row
+    // already had.
+    const body = document.querySelector('[data-testid="chat-outline-prompt-detail-scroll-1"]');
+    expect(body?.textContent).toContain("truncated preview");
+    expect(document.body.textContent).not.toContain("Loading");
+  });
+
+  it("shows the popover for the row that was clicked, not the one before it", async () => {
+    await renderRail([prompt(1, "First"), prompt(2, "Second")], {
+      onRequestPromptText: async (seq) => (seq === 1 ? "full first" : "full second"),
+    });
+    stubMeasureInWindow();
+
+    await act(async () => {
+      (document.querySelector('[data-testid="chat-outline-text-row-2"]') as HTMLElement).click();
+    });
+
+    const body = document.querySelector('[data-testid="chat-outline-prompt-detail-scroll-2"]');
+    expect(body?.textContent).toContain("full second");
+    expect(body?.textContent).not.toContain("full first");
+  });
+
+  it("gives the wheel to the list: a row never carries its own scroller", async () => {
+    await renderRail([prompt(1, "First prompt"), prompt(2, "Second prompt")]);
+
+    // One scroller per rail: the list. A row that scrolled itself would eat the wheel
+    // before the list got it, which is exactly the trap this layout removed.
+    const scrollers = document.querySelectorAll(
+      '[data-testid="chat-outline-text-rail"] [data-testid^="chat-outline-text-scroll-"]',
+    );
+    expect(scrollers).toHaveLength(0);
+    const listScroller = document.querySelector('[data-testid="chat-outline-text-list"]');
+    expect(listScroller).not.toBeNull();
+  });
+
+  it("positions the detail in panel-local coordinates with fixed actions and capped height", async () => {
+    const { panel } = await renderRail([prompt(1, "First"), prompt(2, "Second")], {
+      onRequestPromptText: async () => "line\n".repeat(200) + "last line",
+    });
+    stubMeasureInWindow({ height: 900 });
+    await act(async () => {
+      (document.querySelector('[data-testid="chat-outline-text-row-1"]') as HTMLElement).click();
+    });
+    const detail = document.querySelector(
+      '[data-testid="chat-outline-prompt-detail-1"]',
+    ) as HTMLElement;
+    expect(detail.parentElement).toBe(panel);
+    expect(detail.style.left).toBe("532px");
+    expect(detail.style.top).toBe("60px");
+    expect(detail.style.maxHeight).toBe("360px");
+    const body = detail.querySelector(
+      '[data-testid="chat-outline-prompt-detail-scroll-1"]',
+    ) as HTMLElement;
+    const actions = detail.querySelector('[data-testid="chat-outline-prompt-detail-actions-1"]');
+    expect(body.textContent).toContain("last line");
+    expect(body.contains(actions)).toBe(false);
+    expect(getComputedStyle(body).overflowY).toBe("auto");
+    expect(
+      document.querySelector('[data-testid="chat-outline-prompt-backdrop"]')?.parentElement,
+    ).toBe(panel);
+  });
+
+  it("caps the detail to the available panel height", async () => {
+    await renderRail([prompt(1, "First"), prompt(2, "Second")]);
+    stubMeasureInWindow({ height: 240 });
+    await act(async () => {
+      (document.querySelector('[data-testid="chat-outline-text-row-1"]') as HTMLElement).click();
+    });
+    const detail = document.querySelector(
+      '[data-testid="chat-outline-prompt-detail-1"]',
+    ) as HTMLElement;
+    expect(detail.style.maxHeight).toBe("240px");
+    expect(detail.style.top).toBe("0px");
+  });
+
+  it("closes the detail on collapse and chat switch", async () => {
+    const prompts = [prompt(1, "First"), prompt(2, "Second")];
+    await renderRail(prompts, { agentId: "detail-session-a" });
+    stubMeasureInWindow();
+    await act(async () => {
+      (document.querySelector('[data-testid="chat-outline-text-row-1"]') as HTMLElement).click();
+    });
+    await act(async () => {
+      (document.querySelector('[data-testid="chat-outline-text-toggle"]') as HTMLElement).click();
+    });
+    expect(document.querySelector('[data-testid="chat-outline-prompt-detail-1"]')).toBeNull();
+    expect(document.querySelector('[data-testid="chat-outline-prompt-backdrop"]')).toBeNull();
+    await act(async () => {
+      (document.querySelector('[data-testid="chat-outline-text-toggle"]') as HTMLElement).click();
+    });
+    stubMeasureInWindow();
+    await act(async () => {
+      (document.querySelector('[data-testid="chat-outline-text-row-1"]') as HTMLElement).click();
+    });
+    expect(document.querySelector('[data-testid="chat-outline-prompt-detail-1"]')).not.toBeNull();
+    await renderRail(prompts, { agentId: "detail-session-b" });
+    expect(document.querySelector('[data-testid="chat-outline-prompt-detail-1"]')).toBeNull();
+    expect(document.querySelector('[data-testid="chat-outline-prompt-backdrop"]')).toBeNull();
+  });
+
+  it("shows loading and rejects stale text after changing rows and reopening", async () => {
+    const reads: { seq: number; resolve: (text: string | null) => void }[] = [];
+    await renderRail([prompt(1, "First\npreview"), prompt(2, "Second")], {
+      onRequestPromptText: (seq) => new Promise((resolve) => reads.push({ seq, resolve })),
+    });
+    stubMeasureInWindow();
+    const click = async (seq: number) => {
+      await act(async () => {
+        (
+          document.querySelector(`[data-testid="chat-outline-text-row-${seq}"]`) as HTMLElement
+        ).click();
+      });
+    };
+    await click(1);
+    const body = () =>
+      document.querySelector('[data-testid="chat-outline-prompt-detail-scroll-1"]');
+    expect(body()?.textContent).toBe("common.loading");
+    const oldRead = reads[1];
+    await click(2);
+    await click(1);
+    const newRead = reads[3];
+    expect(newRead.seq).toBe(1);
+    await act(async () => newRead.resolve(null));
+    expect(body()?.textContent).toBe("First\npreview");
+    await act(async () => oldRead.resolve("stale first"));
+    expect(body()?.textContent).toBe("First\npreview");
+  });
+
+  it("rejects delayed measurements after a row switch or same-row reopen", async () => {
+    await renderRail([prompt(1, "First"), prompt(2, "Second")]);
+    stubMeasureInWindow({ height: 900 });
+    const row = document.querySelector('[data-testid="chat-outline-text-row-1"]') as HTMLElement;
+    const measurements: ((x: number, y: number, width: number, height: number) => void)[] = [];
+    Object.defineProperty(row.parentElement, "measureInWindow", {
+      configurable: true,
+      get: () => (callback: (typeof measurements)[number]) => measurements.push(callback),
+      set: () => {},
+    });
+    await act(async () => row.click());
+    expect(document.querySelector('[data-testid="chat-outline-prompt-detail-1"]')).toBeNull();
+    await act(async () => {
+      (document.querySelector('[data-testid="chat-outline-text-row-2"]') as HTMLElement).click();
+    });
+    expect(document.querySelector('[data-testid="chat-outline-prompt-detail-2"]')).not.toBeNull();
+    await act(async () => measurements[0](400, 500, 360, 80));
+    expect(
+      (document.querySelector('[data-testid="chat-outline-prompt-detail-2"]') as HTMLElement).style
+        .left,
+    ).toBe("532px");
+    await act(async () => row.click());
+    await act(async () => row.click());
+    await act(async () => row.click());
+    await act(async () => measurements[2](1000, 120, 360, 80));
+    expect(
+      (document.querySelector('[data-testid="chat-outline-prompt-detail-1"]') as HTMLElement).style
+        .top,
+    ).toBe("80px");
+    await act(async () => measurements[1](400, 500, 360, 80));
+    expect(
+      (document.querySelector('[data-testid="chat-outline-prompt-detail-1"]') as HTMLElement).style
+        .top,
+    ).toBe("80px");
+  });
+
+  it("does not open the detail on hover", async () => {
+    await renderRail([prompt(1, "First"), prompt(2, "Second")]);
+    await act(async () => {
+      document
+        .querySelector('[data-testid="chat-outline-text-row-1"]')
+        ?.parentElement?.dispatchEvent(new MouseEvent("pointerover", { bubbles: true }));
+    });
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.querySelector('[data-testid="chat-outline-prompt-backdrop"]')).toBeNull();
   });
 
   it("hides the words behind a toggle and shows them again", async () => {

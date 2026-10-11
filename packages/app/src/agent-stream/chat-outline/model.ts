@@ -43,14 +43,29 @@ export const TEXT_RAIL_MAX_WIDTH = 360;
 export const TEXT_RAIL_GUTTER_PADDING = 12;
 
 /**
- * A prompt row shows the whole prompt, capped so one pasted file cannot own the rail.
- * The cap is four and a half lines: the half line left visible is the cue that the row
- * scrolls. The cap is a line count, so the row sets its own line height — inheriting the
- * platform's would put the cut in the middle of a line.
+ * A prompt row shows a few lines of the prompt, capped so one pasted file cannot own
+ * the rail. The cap is a whole line count so it can drive `numberOfLines`: a partial
+ * line would need a pixel cap and its own scroller again, and the scroller is exactly
+ * what this rail removed — the list is the only thing the wheel may scroll. What the
+ * cap hides lives in the detail popover a click opens instead.
  */
 export const TEXT_ROW_LINE_HEIGHT = 20;
-export const TEXT_ROW_MAX_LINES = 4.5;
-export const TEXT_ROW_MAX_HEIGHT = TEXT_ROW_LINE_HEIGHT * TEXT_ROW_MAX_LINES;
+export const TEXT_ROW_MAX_LINES = 4;
+
+/**
+ * The detail popover keeps the same width budget as the rail itself, so widening the
+ * popover is a decision about the layout, not a side effect of opening it.
+ */
+export const PROMPT_DETAIL_WIDTH = 360;
+
+/**
+ * Past this height a popover stops reading like a note and starts covering the outline
+ * it sprang from, so the body scrolls inside while the actions stay pinned below it.
+ */
+export const PROMPT_DETAIL_MAX_HEIGHT = 360;
+
+/** Gap between the popover and the rail, so the popover reads as attached to its row. */
+export const PROMPT_DETAIL_GAP = 8;
 
 /**
  * The rail lays a prompt out as one paragraph. Blank lines and hard wraps only buy empty

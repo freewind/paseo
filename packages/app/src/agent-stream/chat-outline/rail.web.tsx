@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from "react";
@@ -28,10 +29,11 @@ import {
   promptTickMagnification,
   resolveTextRailWidth,
   TEXT_ROW_LINE_HEIGHT,
-  TEXT_ROW_MAX_HEIGHT,
+  TEXT_ROW_MAX_LINES,
   type ChatOutlinePrompt,
 } from "./model";
 import type { ChatOutlineRailProps } from "./rail";
+import { PromptDetailPopover } from "./prompt-detail.web";
 
 // Hover tracking lives on the rail and the slots, never on the Pressable inside them:
 // magnifying a slot must not move the box the pointer is resting on. See docs/hover.md.
@@ -56,6 +58,7 @@ export const ChatOutlineRail = memo(function ChatOutlineRail({
   agentId,
   onRequestPromptText,
 }: ChatOutlineRailProps) {
+  const panelRef = useRef<View>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const activeSeq = useSyncExternalStore(activePrompt.subscribe, activePrompt.getActiveSeq);
@@ -124,7 +127,7 @@ export const ChatOutlineRail = memo(function ChatOutlineRail({
   }
 
   return (
-    <View style={styles.panelMeasure} pointerEvents="box-none" onLayout={onLayout}>
+    <View ref={panelRef} style={styles.panelMeasure} pointerEvents="box-none" onLayout={onLayout}>
       <View
         style={styles.rail}
         role="tablist"
@@ -164,6 +167,7 @@ export const ChatOutlineRail = memo(function ChatOutlineRail({
           prompts={prompts}
           activeSeq={activeSeq}
           width={textRailWidth}
+          panelRef={panelRef}
           agentId={agentId}
           onHover={handlePointerEnterTick}
           onLeave={handlePointerLeaveRail}
@@ -255,6 +259,7 @@ interface ChatOutlineTextRailProps {
   prompts: ChatOutlinePrompt[];
   activeSeq: number | null;
   width: number;
+  panelRef: React.RefObject<View | null>;
   agentId: string;
   onHover: (index: number) => void;
   onLeave: () => void;
@@ -295,6 +300,7 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
   prompts,
   activeSeq,
   width,
+  panelRef,
   agentId,
   onHover,
   onLeave,
@@ -307,6 +313,12 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
   // surfaced in settings. See ./collapsed-state.ts for why this outlives the component.
   const [isCollapsed, handleToggleCollapsed] = useChatOutlineCollapsed(agentId);
   const { t } = useTranslation();
+  // The popover's anchor is measured in window space, so the row that opened it has to
+  // stay addressable after the click. Only one popover exists at a time: a click on the
+  // open row closes it, a click on another row moves it.
+  const [openPromptSeq, setOpenPromptSeq] = useState<number | null>(null);
+  const openRowRef = useRef<View>(null);
+  const textRequestEpoch = useRef(0);
 
   useEffect(() => {
     if (isCollapsed) onLeave();
@@ -321,49 +333,104 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
   // transcript cost no request at all, and the reader's own cache dedupes the rest.
   useEffect(() => {
     if (isCollapsed) return;
-    void readPromptTexts(prompts, onRequestPromptText, handlePromptText);
+    const request = textRequestEpoch;
+    const epoch = ++request.current;
+    void readPromptTexts(prompts, onRequestPromptText, (seq, text) => {
+      if (request.current === epoch) handlePromptText(seq, text);
+    });
+    return () => {
+      request.current++;
+    };
   }, [handlePromptText, isCollapsed, onRequestPromptText, prompts]);
 
+  // Collapse closes any open popover along with the rows, because the popover is a child
+  // of the rail's layer and its anchor row is gone with them.
+  useEffect(() => {
+    if (isCollapsed) setOpenPromptSeq(null);
+  }, [isCollapsed]);
+
+  const handleTogglePrompt = useCallback((seq: number) => {
+    setOpenPromptSeq((current) => (current === seq ? null : seq));
+  }, []);
+
+  const handleClosePrompt = useCallback(() => setOpenPromptSeq(null), []);
+
+  const openIndex = openPromptSeq === null ? -1 : prompts.findIndex((p) => p.seq === openPromptSeq);
+  const openPrompt = openIndex >= 0 ? prompts[openIndex] : null;
+
   return (
-    <View
-      style={[styles.textRail, inlineUnistylesStyle({ width })]}
-      role="tablist"
-      testID="chat-outline-text-rail"
-    >
-      <View style={styles.textRailHeader}>
-        <Button
-          variant="secondary"
-          size="xs"
-          leftIcon={isCollapsed ? ChevronDown : ChevronUp}
-          onPress={handleToggleCollapsed}
-          accessibilityLabel={t(
-            isCollapsed ? "agentStream.chatOutline.expand" : "agentStream.chatOutline.collapse",
-          )}
-          testID="chat-outline-text-toggle"
+    <>
+      {/* The backdrop owns every click that is neither the rail nor the popover, so the
+          reader closes the popover the way every floating layer closes: by clicking away.
+          It is anchored to the panel layer and rendered before the rail, so the rail and
+          the popover above it still take their own clicks. */}
+      {!isCollapsed && openPrompt !== null ? (
+        <Pressable
+          style={styles.backdrop}
+          onPress={handleClosePrompt}
+          accessibilityRole="button"
+          accessibilityLabel={t("common.actions.close")}
+          aria-hidden
+          testID="chat-outline-prompt-backdrop"
         />
+      ) : null}
+      <View
+        style={[styles.textRail, inlineUnistylesStyle({ width })]}
+        role="tablist"
+        testID="chat-outline-text-rail"
+      >
+        <View style={styles.textRailHeader}>
+          <Button
+            variant="secondary"
+            size="xs"
+            leftIcon={isCollapsed ? ChevronDown : ChevronUp}
+            onPress={handleToggleCollapsed}
+            accessibilityLabel={t(
+              isCollapsed ? "agentStream.chatOutline.expand" : "agentStream.chatOutline.collapse",
+            )}
+            testID="chat-outline-text-toggle"
+          />
+        </View>
+        {isCollapsed ? null : (
+          <ScrollView
+            style={styles.textRailScroll}
+            contentContainerStyle={styles.textRailContent}
+            showsVerticalScrollIndicator={false}
+            testID="chat-outline-text-list"
+          >
+            {prompts.map((prompt, index) => (
+              <ChatOutlineTextRow
+                key={prompt.seq}
+                index={index}
+                seq={prompt.seq}
+                text={collapsePromptWhitespace(promptTexts.get(prompt.seq) ?? prompt.preview)}
+                label={`${index + 1} of ${prompts.length}: ${prompt.preview}`}
+                isActive={prompt.seq === activeSeq}
+                isOpen={prompt.seq === openPromptSeq}
+                rowRef={prompt.seq === openPromptSeq ? openRowRef : undefined}
+                onHover={onHover}
+                onFocusChange={onFocusChange}
+                onTogglePrompt={handleTogglePrompt}
+              />
+            ))}
+          </ScrollView>
+        )}
       </View>
-      {isCollapsed ? null : (
-        <ScrollView
-          style={styles.textRailScroll}
-          contentContainerStyle={styles.textRailContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {prompts.map((prompt, index) => (
-            <ChatOutlineTextRow
-              key={prompt.seq}
-              index={index}
-              seq={prompt.seq}
-              text={collapsePromptWhitespace(promptTexts.get(prompt.seq) ?? prompt.preview)}
-              label={`${index + 1} of ${prompts.length}: ${prompt.preview}`}
-              isActive={prompt.seq === activeSeq}
-              onHover={onHover}
-              onFocusChange={onFocusChange}
-              onJumpToPrompt={onJumpToPrompt}
-            />
-          ))}
-        </ScrollView>
-      )}
-    </View>
+      {!isCollapsed && openPrompt !== null ? (
+        <PromptDetailPopover
+          key={openPrompt.seq}
+          prompt={openPrompt}
+          index={openIndex}
+          total={prompts.length}
+          preview={openPrompt.preview}
+          onRequestPromptText={onRequestPromptText}
+          rowRef={openRowRef}
+          panelRef={panelRef}
+          onJumpToPrompt={onJumpToPrompt}
+          onClose={handleClosePrompt}
+        />
+      ) : null}
+    </>
   );
 });
 
@@ -373,9 +440,11 @@ interface ChatOutlineTextRowProps {
   text: string;
   label: string;
   isActive: boolean;
+  isOpen: boolean;
+  rowRef?: React.RefObject<View | null>;
   onHover: (index: number) => void;
   onFocusChange: (index: number, focused: boolean) => void;
-  onJumpToPrompt: (seq: number) => void;
+  onTogglePrompt: (seq: number) => void;
 }
 
 const ChatOutlineTextRow = memo(function ChatOutlineTextRow({
@@ -384,14 +453,17 @@ const ChatOutlineTextRow = memo(function ChatOutlineTextRow({
   text,
   label,
   isActive,
+  isOpen,
+  rowRef,
   onHover,
   onFocusChange,
-  onJumpToPrompt,
+  onTogglePrompt,
 }: ChatOutlineTextRowProps) {
+  const accessibilityState = useMemo(() => ({ expanded: isOpen }), [isOpen]);
   const handlePress = useCallback(() => {
-    onJumpToPrompt(seq);
+    onTogglePrompt(seq);
     onFocusChange(index, false);
-  }, [index, onFocusChange, onJumpToPrompt, seq]);
+  }, [index, onFocusChange, onTogglePrompt, seq]);
   const handlePointerEnter = useCallback(() => onHover(index), [index, onHover]);
   const handleFocus = useCallback(() => onFocusChange(index, true), [index, onFocusChange]);
   const handleBlur = useCallback(() => onFocusChange(index, false), [index, onFocusChange]);
@@ -414,29 +486,28 @@ const ChatOutlineTextRow = memo(function ChatOutlineTextRow({
           <View style={styles.textRowDividerLine} />
         </View>
       ) : null}
-      <View style={styles.textRow} onPointerEnter={handlePointerEnter}>
-        {/* The row scrolls its own overflow, so a long prompt stays readable without
-            hovering and without pushing the next prompt off the rail. The press target
-            sits inside the scroller: a press on the scrollbar must not jump the
-            transcript. */}
-        <ScrollView
-          style={styles.textRowScroll}
-          showsVerticalScrollIndicator
-          testID={`chat-outline-text-scroll-${seq}`}
+      <View style={styles.textRow} onPointerEnter={handlePointerEnter} ref={rowRef}>
+        {/* The row clamps its own lines instead of scrolling them: a scroller here is a
+            wheel trap that eats the scroll before the list gets it, so the rail owns the
+            only vertical scroller and a click opens the full text in a popover instead. */}
+        <Pressable
+          style={[styles.textRowTarget, isOpen && styles.textRowTargetOpen]}
+          onPress={handlePress}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          accessibilityRole="tab"
+          aria-selected={isActive}
+          accessibilityLabel={label}
+          accessibilityState={accessibilityState}
+          testID={`chat-outline-text-row-${seq}`}
         >
-          <Pressable
-            style={styles.textRowTarget}
-            onPress={handlePress}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            accessibilityRole="tab"
-            aria-selected={isActive}
-            accessibilityLabel={label}
-            testID={`chat-outline-text-row-${seq}`}
+          <Text
+            style={[styles.textRowLabel, isActive && styles.textRowLabelActive]}
+            numberOfLines={TEXT_ROW_MAX_LINES}
           >
-            <Text style={[styles.textRowLabel, isActive && styles.textRowLabelActive]}>{text}</Text>
-          </Pressable>
-        </ScrollView>
+            {text}
+          </Text>
+        </Pressable>
       </View>
     </>
   );
@@ -533,9 +604,8 @@ const styles = StyleSheet.create((theme) => ({
   textRailContent: {
     paddingVertical: 0,
   },
-  // The padding lives on the row, not on the press target: a capped scroller clips whatever
-  // is inside it, so padding in there would simply disappear on a long prompt and let two
-  // rows touch.
+  // The padding lives on the row, not on the press target: padding in there would move
+  // the clamp's cut with it and let two rows touch.
   textRow: {
     justifyContent: "center",
     paddingVertical: theme.spacing[3],
@@ -579,9 +649,17 @@ const styles = StyleSheet.create((theme) => ({
   textRowLabelActive: {
     color: theme.colors.foreground,
   },
-  // The row owns the whole prompt but never more than a few lines of it; the rest is
-  // reachable by scrolling the row itself.
-  textRowScroll: {
-    maxHeight: TEXT_ROW_MAX_HEIGHT,
+  // The row whose popover is open comes forward with the theme's own hover surface, the
+  // same paint-only change the rail's rows already use. See docs/hover.md.
+  textRowTargetOpen: {
+    backgroundColor: theme.colors.surface2,
+  },
+  // The backdrop covers the rail's whole layer so a click anywhere outside the popover
+  // closes it. It is rendered before the rail's rows, so the rows and the popover above
+  // it still take their own clicks.
+  backdrop: {
+    position: "absolute",
+    inset: 0,
+    zIndex: 1,
   },
 }));

@@ -247,6 +247,7 @@ export const ar: TranslationResources = {
     chatOutline: {
       collapse: "🌿 طيّ المخطط",
       expand: "🌿 توسيع المخطط",
+      jumpToPrompt: "🌿 الانتقال إلى هذا الطلب",
     },
     historyLoadFailed: "تعذر تحميل سجل الوكيل",
     messageCapped: "تم اقتطاع هذه الرسالة ({{bytes}} بايت).",

@@ -247,6 +247,7 @@ export const ko: TranslationResources = {
     chatOutline: {
       collapse: "🌿 개요 접기",
       expand: "🌿 개요 펼치기",
+      jumpToPrompt: "🌿 이 프롬프트로 이동",
     },
     historyLoadFailed: "에이전트 기록을 로드할 수 없습니다.",
     messageCapped: "이 메시지는 길이 제한으로 잘렸습니다({{bytes}}바이트).",
