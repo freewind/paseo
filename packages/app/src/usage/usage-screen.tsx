@@ -1,8 +1,8 @@
 import { useIsFocused } from "@react-navigation/native";
-import { router } from "expo-router";
 import { useMemo, type ReactNode } from "react";
 import { View } from "react-native";
 import { PageLayout } from "@/components/page-layout";
+import { backToChat } from "@/utils/back-to-chat";
 import { useHostUsageWithControls } from "./controls";
 import { usageCopy } from "./copy";
 import { useUsagePreferences } from "./display";
@@ -11,13 +11,9 @@ import type { UsageHost } from "./model";
 import { UsageOptions } from "./options";
 import { UsageBody, UsageMessage } from "./usage-section";
 
-// The screen is reachable by URL, so there may be no history to go back to.
+// The screen is reachable by URL, so the helper restores the last workspace when history is empty.
 function leaveUsage(): void {
-  if (router.canGoBack()) {
-    router.back();
-    return;
-  }
-  router.replace("/");
+  backToChat();
 }
 
 export function UsageScreen() {
