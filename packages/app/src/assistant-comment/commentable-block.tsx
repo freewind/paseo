@@ -37,9 +37,15 @@ export function MarkdownCommentableBlock({ blockText, children }: MarkdownCommen
   }
 
   return (
-    <ContextMenu>
-      <ContextMenuTrigger>{children}</ContextMenuTrigger>
-      <ContextMenuContent sheetTitle={t("comment.menu.title")}>
+    <ContextMenu compactMode="popover">
+      <ContextMenuTrigger testID="markdown-comment-trigger">{children}</ContextMenuTrigger>
+      <ContextMenuContent
+        sheetTitle={t("comment.menu.title")}
+        width={152}
+        minWidth={0}
+        horizontalPadding={4}
+        testID="assistant-comment-menu"
+      >
         <ContextMenuItem leading={leading} onSelect={handleSelect} testID="markdown-comment-item">
           {t("comment.menu.item")}
         </ContextMenuItem>
