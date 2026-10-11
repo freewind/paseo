@@ -9,6 +9,7 @@ import {
   CopyX,
   Ellipsis,
   EyeOff,
+  Circle,
   Pencil,
   RotateCw,
   X,
@@ -30,6 +31,7 @@ const ThemedRotateCw = withUnistyles(RotateCw);
 const ThemedArrowLeftToLine = withUnistyles(ArrowLeftToLine);
 const ThemedArrowRightToLine = withUnistyles(ArrowRightToLine);
 const ThemedEyeOff = withUnistyles(EyeOff);
+const ThemedCircle = withUnistyles(Circle);
 const ThemedCopyX = withUnistyles(CopyX);
 const ThemedPencil = withUnistyles(Pencil);
 const ThemedX = withUnistyles(X);
@@ -62,6 +64,8 @@ function MobileTabDropdownMenuItem({
         return <ThemedCopyX size={16} uniProps={mutedColorMapping} />;
       case "eye-off":
         return <ThemedEyeOff size={16} uniProps={mutedColorMapping} />;
+      case "circle":
+        return <ThemedCircle size={16} uniProps={mutedColorMapping} />;
       case "pencil":
         return <ThemedPencil size={16} uniProps={mutedColorMapping} />;
       case "x":

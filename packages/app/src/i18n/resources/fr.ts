@@ -656,6 +656,9 @@ export const fr: TranslationResources = {
     },
     tabs: {
       loading: "Chargement…",
+      agentUnread: {
+        hostUpgradeRequired: "Mettez à jour l’hôte pour marquer cet agent comme non lu.",
+      },
       modified: "Modifications non enregistrées",
       loadingAgentTitle: "Chargement du titre de l’agent…",
       fallback: {
@@ -690,6 +693,7 @@ export const fr: TranslationResources = {
         reloadAgentTooltip:
           "Rechargez l’agent pour mettre à jour les skills, les MCP ou l’état de connexion.",
         hideAgent: "Masquer cet agent",
+        markAsUnread: "Marquer comme non lu",
         close: "Fermer",
         renameTerminal: "Renommer le terminal",
         renameAgent: "Renommer l’agent",
@@ -1371,6 +1375,8 @@ export const fr: TranslationResources = {
         copyPath: "Copier le chemin",
         copyBranchName: "Copier le nom de la branche",
         rename: "Renommer l’espace de travail",
+        markAsRead: "Marquer comme lu",
+        markAsUnread: "Marquer comme non lu",
         pin: "Épingler en haut",
         unpin: "Désépingler",
         archive: "Archiver",

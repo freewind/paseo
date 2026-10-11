@@ -652,6 +652,9 @@ export const ru: TranslationResources = {
     },
     tabs: {
       loading: "Загрузка...",
+      agentUnread: {
+        hostUpgradeRequired: "Обновите хост, чтобы отметить агента как непрочитанного.",
+      },
       modified: "Несохранённые изменения",
       loadingAgentTitle: "Загрузка названия агента",
       fallback: {
@@ -685,6 +688,7 @@ export const ru: TranslationResources = {
         reloadAgent: "Перезагрузить агента",
         reloadAgentTooltip: "Перезагрузите агента, чтобы обновить навыки, MCP или статус входа.",
         hideAgent: "Скрыть этого агента",
+        markAsUnread: "Отметить как непрочитанное",
         close: "Закрыть",
         renameTerminal: "Переименовать терминал",
         renameAgent: "Переименовать агента",
@@ -1353,6 +1357,8 @@ export const ru: TranslationResources = {
         createWorkspaceFor: "Создать новое рабочее пространство для {{projectName}}",
         copyPath: "Копировать путь",
         copyBranchName: "Скопировать имя ветки",
+        markAsRead: "Отметить как прочитанное",
+        markAsUnread: "Отметить как непрочитанное",
         rename: "Переименовать рабочее пространство",
         pin: "Закрепить вверху",
         unpin: "Открепить",

@@ -28,6 +28,9 @@ import {
   useWorkspaceTabRename,
   WorkspaceTabRenameModal,
 } from "@/screens/workspace/use-workspace-tab-rename";
+import { useHostFeature } from "@/runtime/host-features";
+import { markWorkspaceUnread } from "@/workspace/mark-unread";
+import { canMarkAgentUnread } from "@/workspace/agent-unread-policy";
 
 /** Rename only ever touches agents from this list, so the terminal branch of the hook is unreachable. */
 const NO_TERMINALS_QUERY_KEY: readonly unknown[] = ["workspace-agent-tab-rename"];
@@ -197,6 +200,8 @@ export interface WorkspaceAgentTabActions {
   onCloseTabsAfter: (tabId: string) => Promise<void>;
   onCloseOtherTabs: (tabId: string) => Promise<void>;
   onHideTab: (tabId: string) => Promise<void>;
+  onMarkAsUnread: (agentId: string) => Promise<void>;
+  canMarkAsUnread: (agentId: string) => boolean;
   /** Rendered once by the list that owns this hook, so the modal is not repeated per row. */
   renameModal: ReactElement | null;
 }
@@ -231,6 +236,27 @@ export function useWorkspaceAgentTabActions({
   );
 
   const hideAgentTab = useHideWorkspaceAgentTab({ serverId, workspaceId });
+  const supportsAgentUnread = useHostFeature(serverId, "workspaceMarkUnreadAgentTarget");
+  const canMarkAsUnread = useCallback(
+    (agentId: string) => {
+      const session = useSessionStore.getState().sessions[serverId];
+      const agent = session?.agents.get(agentId) ?? session?.agentDetails.get(agentId) ?? null;
+      return supportsAgentUnread && canMarkAgentUnread({ session, agent, workspaceId });
+    },
+    [serverId, supportsAgentUnread, workspaceId],
+  );
+  const onMarkAsUnread = useCallback(
+    async (agentId: string) => {
+      try {
+        await markWorkspaceUnread(serverId, workspaceId, agentId);
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : t("workspace.terminal.hostDisconnected"),
+        );
+      }
+    },
+    [serverId, t, toast, workspaceId],
+  );
 
   const { renamingTab, handleRenameTab, handleRenameModalSubmit, handleRenameModalClose } =
     useWorkspaceTabRename({
@@ -562,6 +588,8 @@ export function useWorkspaceAgentTabActions({
     onCloseTabsAfter,
     onCloseOtherTabs,
     onHideTab: hideAgentTab.onHideTab,
+    onMarkAsUnread,
+    canMarkAsUnread,
     renameModal,
   };
 }

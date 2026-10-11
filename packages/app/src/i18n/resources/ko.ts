@@ -646,6 +646,9 @@ export const ko: TranslationResources = {
     },
     tabs: {
       loading: "불러오는 중...",
+      agentUnread: {
+        hostUpgradeRequired: "에이전트를 읽지 않음으로 표시하려면 호스트를 업데이트하세요.",
+      },
       modified: "저장되지 않은 변경사항",
       loadingAgentTitle: "에이전트 제목 불러오는 중",
       fallback: {
@@ -680,6 +683,7 @@ export const ko: TranslationResources = {
         reloadAgentTooltip:
           "스킬, MCP 또는 로그인 상태를 업데이트하려면 에이전트를 다시 로드하세요.",
         hideAgent: "이 에이전트 숨기기",
+        markAsUnread: "읽지 않음으로 표시",
         close: "닫기",
         renameTerminal: "터미널 이름 변경",
         renameAgent: "에이전트 이름 변경",
@@ -1342,6 +1346,8 @@ export const ko: TranslationResources = {
         createWorkspaceFor: "{{projectName}}을(를) 위한 새 워크스페이스 생성",
         copyPath: "경로 복사",
         copyBranchName: "브랜치 이름 복사",
+        markAsRead: "읽음으로 표시",
+        markAsUnread: "읽지 않음으로 표시",
         rename: "워크스페이스 이름 변경",
         pin: "상단에 고정",
         unpin: "고정 해제",

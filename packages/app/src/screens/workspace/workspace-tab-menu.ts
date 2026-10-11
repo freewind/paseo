@@ -20,6 +20,7 @@ export interface WorkspaceTabMenuLabels {
   reloadAgent: string;
   reloadAgentTooltip: string;
   hideAgent: string;
+  markAsUnread: string;
   close: string;
 }
 
@@ -38,6 +39,7 @@ export const DEFAULT_WORKSPACE_TAB_MENU_LABELS: WorkspaceTabMenuLabels = {
   reloadAgent: i18n.t("workspace.tabs.menu.reloadAgent"),
   reloadAgentTooltip: i18n.t("workspace.tabs.menu.reloadAgentTooltip"),
   hideAgent: i18n.t("workspace.tabs.menu.hideAgent"),
+  markAsUnread: i18n.t("workspace.tabs.menu.markAsUnread"),
   close: i18n.t("workspace.tabs.menu.close"),
 };
 
@@ -53,6 +55,7 @@ export type WorkspaceTabMenuEntry =
         | "arrow-right-to-line"
         | "copy-x"
         | "eye-off"
+        | "circle"
         | "pencil"
         | "x";
       hint?: string;
@@ -90,6 +93,8 @@ interface BuildWorkspaceTabMenuEntriesInput {
   onCloseTabsAfter: (tabId: string) => Promise<void> | void;
   onCloseOtherTabs: (tabId: string) => Promise<void> | void;
   onHideTab: (tabId: string) => Promise<void> | void;
+  onMarkAsUnread?: (agentId: string) => Promise<void> | void;
+  canMarkAsUnread?: boolean;
   labels?: WorkspaceTabMenuLabels;
 }
 
@@ -109,6 +114,8 @@ interface BuildWorkspaceDesktopTabActionsInput {
   onCloseTabsToRight: (tabId: string) => Promise<void> | void;
   onCloseOtherTabs: (tabId: string) => Promise<void> | void;
   onHideTab: (tabId: string) => Promise<void> | void;
+  onMarkAsUnread?: (agentId: string) => Promise<void> | void;
+  canMarkAsUnread?: (agentId: string) => boolean;
   labels?: WorkspaceTabMenuLabels;
 }
 
@@ -198,6 +205,8 @@ export function buildWorkspaceTabMenuEntries(
     onCloseTabsAfter,
     onCloseOtherTabs,
     onHideTab,
+    onMarkAsUnread,
+    canMarkAsUnread = false,
   } = input;
   const labels = input.labels ?? DEFAULT_WORKSPACE_TAB_MENU_LABELS;
   const isFirstTab = index === 0;
@@ -335,6 +344,18 @@ export function buildWorkspaceTabMenuEntries(
     });
     // Hiding is not closing: the agent keeps running and stays reachable from its parent's
     // subagent track, while this client stops listing the tab. It is never destructive.
+    if (canMarkAsUnread && onMarkAsUnread) {
+      entries.push({
+        kind: "item",
+        key: "mark-as-unread",
+        label: labels.markAsUnread,
+        icon: "circle",
+        testID: `${menuTestIDBase}-mark-as-unread`,
+        onSelect: () => {
+          void onMarkAsUnread(agentId);
+        },
+      });
+    }
     entries.push({
       kind: "item",
       key: "hide-agent",
@@ -384,6 +405,11 @@ export function buildWorkspaceDesktopTabActions(
       onCloseTabsAfter: input.onCloseTabsToRight,
       onCloseOtherTabs: input.onCloseOtherTabs,
       onHideTab: input.onHideTab,
+      onMarkAsUnread: input.onMarkAsUnread,
+      canMarkAsUnread:
+        input.tab.target.kind === "agent" && input.canMarkAsUnread
+          ? input.canMarkAsUnread(input.tab.target.agentId)
+          : false,
       labels: input.labels,
     }),
     closeButtonTestId: getCloseButtonTestId(input.tab),

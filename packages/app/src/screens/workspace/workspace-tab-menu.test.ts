@@ -54,6 +54,122 @@ describe("buildWorkspaceTabMenuEntries", () => {
     expect(entries.some((entry) => entry.kind === "separator")).toBe(false);
   });
 
+  it("adds the unread action only for eligible agent tabs and targets that agent", () => {
+    const onMarkAsUnread = vi.fn();
+    const entries = buildWorkspaceTabMenuEntries({
+      surface: "desktop",
+      tab: createAgentTab(),
+      index: 0,
+      tabCount: 1,
+      menuTestIDBase: "workspace-tab-context-agent_123",
+      onCopyResumeCommand: vi.fn(),
+      onCopyAgentId: vi.fn(),
+      onCopyConversationMarkdown: vi.fn(),
+      onCopyTerminalId: vi.fn(),
+      onCopyFilePath: vi.fn(),
+      onReloadAgent: vi.fn(),
+      onRenameTab: vi.fn(),
+      onCloseTab: vi.fn(),
+      onCloseTabsBefore: vi.fn(),
+      onCloseTabsAfter: vi.fn(),
+      onCloseOtherTabs: vi.fn(),
+      onHideTab: vi.fn(),
+      onMarkAsUnread,
+      canMarkAsUnread: true,
+    });
+    const entry = entries.find(
+      (candidate) => candidate.kind === "item" && candidate.key === "mark-as-unread",
+    );
+    expect(entry).toMatchObject({
+      kind: "item",
+      label: "Mark as unread",
+      testID: "workspace-tab-context-agent_123-mark-as-unread",
+    });
+    if (entry?.kind === "item") entry.onSelect();
+    expect(onMarkAsUnread).toHaveBeenCalledWith("agent-123");
+
+    const hiddenEntries = buildWorkspaceTabMenuEntries({
+      surface: "desktop",
+      tab: createAgentTab(),
+      index: 0,
+      tabCount: 1,
+      menuTestIDBase: "workspace-tab-context-agent_123",
+      onCopyResumeCommand: vi.fn(),
+      onCopyAgentId: vi.fn(),
+      onCopyConversationMarkdown: vi.fn(),
+      onCopyTerminalId: vi.fn(),
+      onCopyFilePath: vi.fn(),
+      onReloadAgent: vi.fn(),
+      onRenameTab: vi.fn(),
+      onCloseTab: vi.fn(),
+      onCloseTabsBefore: vi.fn(),
+      onCloseTabsAfter: vi.fn(),
+      onCloseOtherTabs: vi.fn(),
+      onHideTab: vi.fn(),
+      onMarkAsUnread,
+      canMarkAsUnread: false,
+    });
+    expect(itemKeys(hiddenEntries)).not.toContain("mark-as-unread");
+  });
+
+  it("only offers the unread action for eligible agent tabs", () => {
+    const onMarkAsUnread = vi.fn();
+    const entries = buildWorkspaceTabMenuEntries({
+      surface: "desktop",
+      tab: createAgentTab(),
+      index: 0,
+      tabCount: 1,
+      menuTestIDBase: "workspace-tab-context-agent_123",
+      onCopyResumeCommand: vi.fn(),
+      onCopyAgentId: vi.fn(),
+      onCopyConversationMarkdown: vi.fn(),
+      onCopyTerminalId: vi.fn(),
+      onCopyFilePath: vi.fn(),
+      onReloadAgent: vi.fn(),
+      onRenameTab: vi.fn(),
+      onCloseTab: vi.fn(),
+      onCloseTabsBefore: vi.fn(),
+      onCloseTabsAfter: vi.fn(),
+      onCloseOtherTabs: vi.fn(),
+      onHideTab: vi.fn(),
+      onMarkAsUnread,
+      canMarkAsUnread: true,
+    });
+    const entry = entries.find(
+      (candidate) => candidate.kind === "item" && candidate.key === "mark-as-unread",
+    );
+    expect(entry).toMatchObject({
+      kind: "item",
+      label: "Mark as unread",
+      testID: "workspace-tab-context-agent_123-mark-as-unread",
+    });
+    if (entry?.kind === "item") entry.onSelect();
+    expect(onMarkAsUnread).toHaveBeenCalledWith("agent-123");
+
+    const hiddenEntries = buildWorkspaceTabMenuEntries({
+      surface: "desktop",
+      tab: createAgentTab(),
+      index: 0,
+      tabCount: 1,
+      menuTestIDBase: "workspace-tab-context-agent_123",
+      onCopyResumeCommand: vi.fn(),
+      onCopyAgentId: vi.fn(),
+      onCopyConversationMarkdown: vi.fn(),
+      onCopyTerminalId: vi.fn(),
+      onCopyFilePath: vi.fn(),
+      onReloadAgent: vi.fn(),
+      onRenameTab: vi.fn(),
+      onCloseTab: vi.fn(),
+      onCloseTabsBefore: vi.fn(),
+      onCloseTabsAfter: vi.fn(),
+      onCloseOtherTabs: vi.fn(),
+      onHideTab: vi.fn(),
+      onMarkAsUnread,
+      canMarkAsUnread: false,
+    });
+    expect(itemKeys(hiddenEntries)).not.toContain("mark-as-unread");
+  });
+
   it("invokes onRenameTab when the rename entry is selected for agent tabs", () => {
     const onRenameTab = vi.fn();
     const tab = createAgentTab();

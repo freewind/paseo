@@ -18,6 +18,7 @@ import {
   ArrowRightToLine,
   Copy,
   EyeOff,
+  Circle,
   Pencil,
   RotateCw,
   Columns2,
@@ -84,6 +85,7 @@ import { buildWorkspaceKeyboardHandlerId } from "@/keyboard/handler-id";
 import type { KeyboardActionDefinition } from "@/keyboard/keyboard-action-dispatcher";
 import { WorkspaceNewTabMenuContent } from "@/screens/workspace/workspace-new-tab-menu";
 import { useHideWorkspaceAgentTab } from "@/screens/workspace/use-workspace-agent-tab-actions";
+import { useAgentReadState } from "@/hooks/use-agent-read-state";
 import {
   paneContentToolbarTrailingPadding,
   ToolbarButton,
@@ -131,6 +133,7 @@ const ThemedRotateCw = withUnistyles(RotateCw);
 const ThemedArrowLeftToLine = withUnistyles(ArrowLeftToLine);
 const ThemedArrowRightToLine = withUnistyles(ArrowRightToLine);
 const ThemedEyeOff = withUnistyles(EyeOff);
+const ThemedCircle = withUnistyles(Circle);
 const ThemedCopyX = withUnistyles(CopyX);
 const ThemedPencil = withUnistyles(Pencil);
 const ThemedPlus = withUnistyles(Plus);
@@ -434,6 +437,8 @@ function TabContextMenuItem({
         return <ThemedCopyX size={16} uniProps={mutedColorMapping} />;
       case "eye-off":
         return <ThemedEyeOff size={16} uniProps={mutedColorMapping} />;
+      case "circle":
+        return <ThemedCircle size={16} uniProps={mutedColorMapping} />;
       case "pencil":
         return <ThemedPencil size={16} uniProps={mutedColorMapping} />;
       case "x":
@@ -1133,6 +1138,7 @@ function ResolvedWorkspaceDesktopTabsRow({
       reloadAgent: t("workspace.tabs.menu.reloadAgent"),
       reloadAgentTooltip: t("workspace.tabs.menu.reloadAgentTooltip"),
       hideAgent: t("workspace.tabs.menu.hideAgent"),
+      markAsUnread: t("workspace.tabs.menu.markAsUnread"),
       close: t("workspace.tabs.menu.close"),
     }),
     [t],
@@ -1362,6 +1368,7 @@ function ResolvedWorkspaceDesktopTabsRow({
       tabMenuLabels,
       tabDropPreviewIndex,
       displayedTabs.length,
+      normalizedWorkspaceId,
     ],
   );
 
@@ -1528,6 +1535,12 @@ function ResolvedDesktopTabChip({
   showDropIndicatorAfter: boolean;
 }) {
   const { t } = useTranslation();
+  const agentId = item.tab.target.kind === "agent" ? item.tab.target.agentId : "";
+  const unreadState = useAgentReadState({
+    serverId,
+    workspaceId,
+    agentId,
+  });
   const presentation = item.presentation;
   const resolvedTab = useMemo(
     () =>
@@ -1547,6 +1560,8 @@ function ResolvedDesktopTabChip({
         onCloseTabsToRight,
         onCloseOtherTabs,
         onHideTab,
+        onMarkAsUnread: unreadState.markUnread,
+        canMarkAsUnread: () => unreadState.canMarkUnread,
         labels,
       }),
     [
@@ -1564,6 +1579,8 @@ function ResolvedDesktopTabChip({
       onHideTab,
       labels,
       onReloadAgent,
+      unreadState.canMarkUnread,
+      unreadState.markUnread,
       onRenameTab,
       tabCount,
     ],
