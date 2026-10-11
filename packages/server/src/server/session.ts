@@ -7522,7 +7522,7 @@ export class Session {
   private async handleWorkspaceMarkUnreadRequest(
     request: Extract<SessionInboundMessage, { type: "workspace.mark_unread.request" }>,
   ): Promise<void> {
-    const { requestId, workspaceId } = request;
+    const { requestId, workspaceId, agentId } = request;
     let markedAgentId: string | null = null;
     try {
       const workspace = await this.workspaceRegistry.get(workspaceId);
@@ -7534,19 +7534,25 @@ export class Session {
         this.isProviderVisibleToClient(agent.provider),
       );
       const agentsById = new Map(agents.map((agent) => [agent.id, agent] as const));
-      const candidates = agents
+      const eligibleAgents = agents
         .filter((agent) => !agent.archivedAt && agent.workspaceId === workspace.workspaceId)
-        .filter((agent) => resolveWorkspaceRootAgent(agent, agentsById)?.id === agent.id)
         .filter((agent) => agent.status === "idle" || agent.status === "closed")
         .filter((agent) => agent.requiresAttention !== true)
-        .filter((agent) => (agent.pendingPermissions?.length ?? 0) === 0)
-        .sort(
-          (left, right) =>
-            right.updatedAt.localeCompare(left.updatedAt) || left.id.localeCompare(right.id),
-        );
-      const candidate = candidates[0];
+        .filter((agent) => (agent.pendingPermissions?.length ?? 0) === 0);
+      const candidate = agentId
+        ? eligibleAgents.find((agent) => agent.id === agentId)
+        : eligibleAgents
+            .filter((agent) => resolveWorkspaceRootAgent(agent, agentsById)?.id === agent.id)
+            .sort(
+              (left, right) =>
+                right.updatedAt.localeCompare(left.updatedAt) || left.id.localeCompare(right.id),
+            )[0];
       if (!candidate) {
-        throw new Error(`Workspace has no finished agent to mark unread: ${workspaceId}`);
+        throw new Error(
+          agentId
+            ? `Agent is not eligible to mark unread in workspace ${workspaceId}: ${agentId}`
+            : `Workspace has no finished agent to mark unread: ${workspaceId}`,
+        );
       }
 
       await this.agentManager.markAgentUnread(candidate.id);
