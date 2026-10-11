@@ -127,6 +127,9 @@ import {
 import { useWorkspace } from "@/stores/session-store-hooks";
 import { useSidebarWorkspacePinController } from "@/hooks/use-sidebar-workspace-pin";
 import { useHostFeature } from "@/runtime/host-features";
+import { useAgentReadState } from "@/hooks/use-agent-read-state";
+import { useWorkspaceReadState } from "@/hooks/use-workspace-read-state";
+import type { WorkspaceLabelTarget } from "@/workspace-labels/picker";
 import { useWorkspaceTerminalSessionRetention } from "@/terminal/hooks/use-workspace-terminal-session-retention";
 import type { CheckoutStatusPayload } from "@/git/use-status-query";
 import { confirmDialog } from "@/utils/confirm-dialog";
@@ -610,6 +613,12 @@ function MobileWorkspaceTabOption({
   onHideTab: (tabId: string) => Promise<void>;
 }) {
   const { t } = useTranslation();
+  const agentId = tab.target.kind === "agent" ? tab.target.agentId : "";
+  const unreadState = useAgentReadState({
+    serverId: normalizedServerId,
+    workspaceId: normalizedWorkspaceId,
+    agentId,
+  });
   const tabMenuLabels = useMemo<WorkspaceTabMenuLabels>(
     () => ({
       copyResumeCommand: t("workspace.tabs.menu.copyResumeCommand"),
@@ -626,6 +635,7 @@ function MobileWorkspaceTabOption({
       reloadAgent: t("workspace.tabs.menu.reloadAgent"),
       reloadAgentTooltip: t("workspace.tabs.menu.reloadAgentTooltip"),
       hideAgent: t("workspace.tabs.menu.hideAgent"),
+      markAsUnread: t("workspace.tabs.menu.markAsUnread"),
       close: t("workspace.tabs.menu.close"),
     }),
     [t],
@@ -649,6 +659,8 @@ function MobileWorkspaceTabOption({
     onCloseTabsAfter: onCloseTabsBelow,
     onCloseOtherTabs,
     onHideTab,
+    onMarkAsUnread: unreadState.markUnread,
+    canMarkAsUnread: unreadState.canMarkUnread,
     labels: tabMenuLabels,
   });
 
@@ -997,8 +1009,13 @@ interface WorkspaceHeaderTitleBarProps {
   currentBranchName: string | null;
   normalizedServerId: string;
   normalizedWorkspaceId: string;
+  workspaceKey: string;
+  workspaceTarget: WorkspaceLabelTarget | null;
+  workspaceDirectory: string | null;
   workspaceScripts: WorkspaceDescriptor["scripts"];
   liveTerminalIds: string[];
+  onMarkAsRead?: () => void;
+  onMarkAsUnread?: () => void;
   showWorkspaceSetup: boolean;
   showCreateBrowserTab: boolean;
   isMobile: boolean;
@@ -1032,6 +1049,9 @@ function WorkspaceHeaderTitleBar({
   currentBranchName,
   normalizedServerId,
   normalizedWorkspaceId,
+  workspaceKey,
+  workspaceTarget,
+  workspaceDirectory,
   workspaceScripts,
   liveTerminalIds,
   showWorkspaceSetup,
@@ -1041,6 +1061,8 @@ function WorkspaceHeaderTitleBar({
   importAgentDisabled,
   copyPathDisabled,
   onCreateDraftTab,
+  onMarkAsRead,
+  onMarkAsUnread,
   onCreateTerminal,
   onCreateTerminalWithProfile,
   onCreateBrowser,
@@ -1084,7 +1106,6 @@ function WorkspaceHeaderTitleBar({
             createTerminalDisabled={createTerminalDisabled}
             importAgentDisabled={importAgentDisabled}
             copyPathDisabled={copyPathDisabled}
-            onCreateDraftTab={onCreateDraftTab}
             onCreateTerminal={onCreateTerminal}
             onCreateTerminalWithProfile={onCreateTerminalWithProfile}
             onCreateBrowser={onCreateBrowser}
@@ -1092,6 +1113,12 @@ function WorkspaceHeaderTitleBar({
             onCopyWorkspacePath={onCopyWorkspacePath}
             onCopyBranchName={onCopyBranchName}
             onOpenSetupTab={onOpenSetupTab}
+            workspaceKey={workspaceKey}
+            workspaceTarget={workspaceTarget}
+            onCreateAgent={onCreateDraftTab}
+            onMarkAsRead={onMarkAsRead}
+            onMarkAsUnread={onMarkAsUnread}
+            workspaceDirectory={workspaceTarget ? workspaceDirectory : null}
             onRename={onRename}
             onTogglePin={onTogglePin}
             isPinned={isPinned}
@@ -1101,6 +1128,12 @@ function WorkspaceHeaderTitleBar({
           />
         ) : (
           <WorkspaceHeaderMenuDesktop
+            workspaceKey={workspaceKey}
+            workspaceTarget={workspaceTarget}
+            onCreateAgent={onCreateDraftTab}
+            onMarkAsRead={onMarkAsRead}
+            onMarkAsUnread={onMarkAsUnread}
+            workspaceDirectory={workspaceTarget ? workspaceDirectory : null}
             currentBranchName={currentBranchName}
             showWorkspaceSetup={showWorkspaceSetup}
             importAgentDisabled={importAgentDisabled}
@@ -1660,6 +1693,24 @@ function WorkspaceScreenContent({
     }),
     [normalizedServerId, normalizedWorkspaceId, workspaceDescriptor],
   );
+  const workspaceReadState = useWorkspaceReadState({
+    serverId: normalizedServerId,
+    workspaceId: normalizedWorkspaceId,
+  });
+  const handleMarkWorkspaceAsRead = useCallback(() => {
+    void workspaceReadState.clearAttention().catch((error) => {
+      toast.error(
+        error instanceof Error ? error.message : t("workspace.terminal.hostDisconnected"),
+      );
+    });
+  }, [t, toast, workspaceReadState]);
+  const handleMarkWorkspaceAsUnread = useCallback(() => {
+    void workspaceReadState.markUnread().catch((error) => {
+      toast.error(
+        error instanceof Error ? error.message : t("workspace.terminal.hostDisconnected"),
+      );
+    });
+  }, [t, toast, workspaceReadState]);
   const { archive: handleArchive, isArchiving } = useWorkspaceHeaderArchive({
     serverId: normalizedServerId,
     workspaceId: normalizedWorkspaceId,
@@ -1703,6 +1754,17 @@ function WorkspaceScreenContent({
     (state) => state.sessions[normalizedServerId]?.serverInfo?.features?.providersSnapshot === true,
   );
   const workspaceDirectory = workspaceDescriptor?.workspaceDirectory || null;
+  const workspaceTarget = useMemo<WorkspaceLabelTarget | null>(
+    () =>
+      workspaceDescriptor
+        ? {
+            serverId: normalizedServerId,
+            workspaceId: normalizedWorkspaceId,
+            labels: workspaceDescriptor.labels ?? [],
+          }
+        : null,
+    [workspaceDescriptor, normalizedServerId, normalizedWorkspaceId],
+  );
   const isMissingWorkspaceDirectory = Boolean(workspaceDescriptor) && !workspaceDirectory;
   const [isImportSheetVisible, setIsImportSheetVisible] = useState(false);
   const canOpenImportSheet = [client, isConnected, workspaceDirectory].every(Boolean);
@@ -4008,8 +4070,17 @@ function WorkspaceScreenContent({
                   currentBranchName={currentBranchName}
                   normalizedServerId={normalizedServerId}
                   normalizedWorkspaceId={normalizedWorkspaceId}
+                  workspaceKey={`${normalizedServerId}:${normalizedWorkspaceId}`}
+                  workspaceTarget={workspaceTarget}
+                  workspaceDirectory={workspaceDirectory}
                   workspaceScripts={workspaceScripts}
                   liveTerminalIds={liveTerminalIds}
+                  onMarkAsRead={
+                    workspaceReadState.hasClearableAttention ? handleMarkWorkspaceAsRead : undefined
+                  }
+                  onMarkAsUnread={
+                    workspaceReadState.canMarkUnread ? handleMarkWorkspaceAsUnread : undefined
+                  }
                   showWorkspaceSetup={showWorkspaceSetup}
                   showCreateBrowserTab={showCreateBrowserTab}
                   isMobile={isMobile}
@@ -4049,6 +4120,10 @@ function WorkspaceScreenContent({
     [
       archiveLabel,
       canOpenImportSheet,
+      workspaceReadState,
+      handleMarkWorkspaceAsRead,
+      handleMarkWorkspaceAsUnread,
+      createTerminalDisabled,
       currentBranchName,
       handleArchive,
       handleTogglePin,
@@ -4073,6 +4148,7 @@ function WorkspaceScreenContent({
       showWorkspaceSetup,
       workspaceDescriptor,
       workspaceDirectory,
+      workspaceTarget,
       renameWorkspace,
       workspaceHeaderSubtitle,
       workspaceHeaderTitle,
