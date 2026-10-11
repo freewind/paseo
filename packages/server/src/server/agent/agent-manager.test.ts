@@ -1979,6 +1979,63 @@ test("normalizeConfig strips legacy 'default' model id", async () => {
   expect(snapshot.config.modeId).toBeUndefined();
 });
 
+test("reloadAgentSession falls back to the default model when the configured model is no longer selectable", async () => {
+  const workdir = mkdtempSync(join(tmpdir(), "agent-manager-test-"));
+  const storagePath = join(workdir, "agents");
+  const storage = new AgentStorage(storagePath, logger);
+  const manager = new AgentManager({
+    clients: {
+      codex: new TestAgentClient(),
+    },
+    registry: storage,
+    logger,
+    idFactory: () => "00000000-0000-4000-8000-000000000103",
+  });
+
+  const created = await manager.createAgent(
+    {
+      provider: "codex",
+      cwd: workdir,
+    },
+    undefined,
+    { workspaceId: undefined },
+  );
+
+  // The persisted model id is gone from the provider catalogue (e.g. the
+  // user edited it out of configuration). Reload must not abort — it
+  // falls back to the default and leaves the agent usable.
+  const reloaded = await manager.reloadAgentSession(created.id, { model: "gpt-4-deleted" });
+
+  expect(reloaded.config.model).toBe("gpt-5.4");
+});
+
+test("reloadAgentSession keeps a configured model that is still selectable", async () => {
+  const workdir = mkdtempSync(join(tmpdir(), "agent-manager-test-"));
+  const storagePath = join(workdir, "agents");
+  const storage = new AgentStorage(storagePath, logger);
+  const manager = new AgentManager({
+    clients: {
+      codex: new TestAgentClient(),
+    },
+    registry: storage,
+    logger,
+    idFactory: () => "00000000-0000-4000-8000-000000000104",
+  });
+
+  const created = await manager.createAgent(
+    {
+      provider: "codex",
+      cwd: workdir,
+    },
+    undefined,
+    { workspaceId: undefined },
+  );
+
+  const reloaded = await manager.reloadAgentSession(created.id, { model: "gpt-5.4-mini" });
+
+  expect(reloaded.config.model).toBe("gpt-5.4-mini");
+});
+
 test("listDraftCommands returns no commands without guessing a missing model", async () => {
   const workdir = mkdtempSync(join(tmpdir(), "agent-manager-draft-commands-"));
   const storagePath = join(workdir, "agents");
