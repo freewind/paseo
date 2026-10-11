@@ -41,7 +41,12 @@ public class PaseoTextSelectionModule: Module {
   }
 
   private static func selectedText(in view: UIView) -> String? {
+    // `isEditable` keeps the composer out of this: RN's multiline TextInput is an
+    // `RCTUITextView`, so a stale selection in the message box would otherwise answer first.
+    // Every Markdown block is a non-editable `UITextView` (react-native-uitextview sets
+    // `editable = false`), so excluding editable text views loses nothing.
     if let textView = view as? UITextView,
+      !textView.isEditable,
       !textView.isSecureTextEntry,
       let range = textView.selectedTextRange,
       !range.isEmpty
