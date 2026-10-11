@@ -751,6 +751,7 @@ export const ko: TranslationResources = {
     header: {
       actions: {
         workspaceActions: "워크스페이스 작업",
+        showHiddenAgents: "숨긴 에이전트 표시 ({{count}})",
         newAgent: "새 에이전트",
         newTerminal: "새 터미널",
         newBrowser: "새 브라우저 탭",

@@ -751,6 +751,7 @@ export const en = {
     header: {
       actions: {
         workspaceActions: "Workspace actions",
+        showHiddenAgents: "Show hidden agents ({{count}})",
         newAgent: "New agent",
         newTerminal: "New terminal",
         newBrowser: "New browser tab",

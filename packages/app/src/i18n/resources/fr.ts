@@ -763,6 +763,7 @@ export const fr: TranslationResources = {
     header: {
       actions: {
         workspaceActions: "ActionsWorkspace",
+        showHiddenAgents: "Afficher les agents masqués ({{count}})",
         newAgent: "Nouvel agent",
         newTerminal: "Nouvelle borne",
         newBrowser: "Nouvel onglet du navigateur",

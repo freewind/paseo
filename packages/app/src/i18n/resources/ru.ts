@@ -758,6 +758,7 @@ export const ru: TranslationResources = {
     header: {
       actions: {
         workspaceActions: "Действия с рабочим пространством",
+        showHiddenAgents: "Показать скрытых агентов ({{count}})",
         newAgent: "Новый агент",
         newTerminal: "Новый терминал",
         newBrowser: "Новая вкладка браузера",

@@ -747,6 +747,7 @@ export const zhCN: TranslationResources = {
     header: {
       actions: {
         workspaceActions: "Workspace 操作",
+        showHiddenAgents: "显示隐藏的 Agent（{{count}}）",
         newAgent: "新建 Agent",
         newTerminal: "新建 Terminal",
         newBrowser: "新建浏览器标签",

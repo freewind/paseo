@@ -6,11 +6,14 @@ import { i18n as testI18n } from "@/i18n/i18next";
 
 void testI18n;
 
-const { closeMenuMock, mockTheme } = vi.hoisted(() => ({
+const { closeMenuMock, mockTheme, menuSession, menuStore, layoutHydrated } = vi.hoisted(() => ({
   closeMenuMock: vi.fn(),
   mockTheme: {
     colors: { foregroundMuted: "#aaa" },
   },
+  menuSession: { hasHydratedAgents: true, agents: new Map() as Map<string, unknown> },
+  menuStore: { explicitlyHiddenAgentIdsByWorkspace: {} as Record<string, Set<string>> },
+  layoutHydrated: { current: true },
 }));
 
 // In-file mocks instead of the test-stubs aliases so the suite also runs from the repo root
@@ -52,12 +55,14 @@ vi.mock("@/components/ui/dropdown-menu", () => ({
     children,
     onSelect,
     testID,
+    disabled,
   }: {
     children: React.ReactNode;
     onSelect?: () => void;
     testID?: string;
+    disabled?: boolean;
   }) => (
-    <button type="button" data-testid={testID} onClick={onSelect}>
+    <button type="button" data-testid={testID} disabled={disabled} onClick={onSelect}>
       {children}
     </button>
   ),
@@ -79,12 +84,14 @@ vi.mock("@/components/ui/context-menu", () => ({
     children,
     onSelect,
     testID,
+    disabled,
   }: {
     children: React.ReactNode;
     onSelect?: () => void;
     testID?: string;
+    disabled?: boolean;
   }) => (
-    <button type="button" data-testid={testID} onClick={onSelect}>
+    <button type="button" data-testid={testID} disabled={disabled} onClick={onSelect}>
       {children}
     </button>
   ),
@@ -101,8 +108,32 @@ vi.mock("@/workspace/open-in-file-manager/menu-item", () => ({
 vi.mock("@/workspace-labels/picker", () => ({
   WORKSPACE_LABEL_PAGE_ID: "workspaceLabels",
 }));
+vi.mock("@/stores/navigation-active-workspace-store", () => ({
+  navigateToWorkspace: vi.fn(),
+}));
+vi.mock("@/stores/session-store", () => ({
+  useSessionStore: (selector: (state: { sessions: Record<string, unknown> }) => unknown) =>
+    selector({ sessions: { "server-a": menuSession } }),
+  getState: () => ({ sessions: { "server-a": menuSession } }),
+}));
+vi.mock("@/stores/workspace-layout-store", () => ({
+  useWorkspaceLayoutStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector(menuStore),
+  useWorkspaceLayoutStoreHydrated: () => layoutHydrated.current,
+}));
+vi.mock("@/workspace-tabs/restore-hidden-agents", () => ({
+  restoreHiddenWorkspaceAgents: vi.fn(),
+}));
+vi.mock("@/workspace-tabs/agent-visibility", () => ({
+  selectRestorableHiddenAgentIds: vi.fn(() => []),
+}));
 
 import { WorkspaceMenuActionItems } from "@/components/workspace-menu-action-items";
+import { selectRestorableHiddenAgentIds } from "@/workspace-tabs/agent-visibility";
+import { restoreHiddenWorkspaceAgents } from "@/workspace-tabs/restore-hidden-agents";
+
+const selectRestorableHiddenAgentIdsMock = vi.mocked(selectRestorableHiddenAgentIds);
+const restoreHiddenWorkspaceAgentsMock = vi.mocked(restoreHiddenWorkspaceAgents);
 
 const target = { serverId: "server-a", workspaceId: "workspace-a", labels: ["bugs"] };
 const targetB = { serverId: "server-a", workspaceId: "workspace-b", labels: ["bugs"] };
@@ -140,6 +171,11 @@ function menuProps(status: "done" | "attention" | "failed") {
 describe("WorkspaceMenuActionItems", () => {
   afterEach(() => {
     cleanup();
+    vi.clearAllMocks();
+    selectRestorableHiddenAgentIdsMock.mockReturnValue([]);
+    menuSession.hasHydratedAgents = true;
+    menuStore.explicitlyHiddenAgentIdsByWorkspace = {};
+    layoutHydrated.current = true;
   });
   it("renders the same daily actions for dropdown and context surfaces", () => {
     const props = {
@@ -165,6 +201,7 @@ describe("WorkspaceMenuActionItems", () => {
       .filter((id) => id?.startsWith("workspace-menu-"));
     expect(contextIds).toEqual(dropdownIds);
     expect(contextIds).toContain("workspace-menu-new-agent-server-a:workspace-a");
+    expect(contextIds).toContain("workspace-menu-restore-hidden-agents-server-a:workspace-a");
     expect(contextIds).toContain("workspace-menu-mark-as-unread-server-a:workspace-a");
     expect(contextIds).toContain("workspace-menu-labels-server-a:workspace-a");
     expect(contextIds).toContain("workspace-menu-open-folder-server-a:workspace-a");
@@ -198,6 +235,78 @@ describe("WorkspaceMenuActionItems", () => {
       screen.getByTestId("sidebar-workspace-menu-open-folder-server-a:workspace-a"),
     ).toBeTruthy();
     expect(screen.getByTestId("sidebar-workspace-menu-archive-server-a:workspace-a")).toBeTruthy();
+  });
+
+  it("disables restoring before agent hydration", () => {
+    menuSession.hasHydratedAgents = false;
+    selectRestorableHiddenAgentIdsMock.mockReturnValue(["root-a"]);
+    render(
+      <WorkspaceMenuActionItems
+        surface="dropdown"
+        workspaceKey="server-a:workspace-a"
+        workspaceTarget={target}
+      />,
+    );
+    expect(
+      screen
+        .getByTestId("workspace-menu-restore-hidden-agents-server-a:workspace-a")
+        .hasAttribute("disabled"),
+    ).toBe(true);
+  });
+
+  it("disables restoring before layout hydration", () => {
+    layoutHydrated.current = false;
+    selectRestorableHiddenAgentIdsMock.mockReturnValue(["root-a"]);
+    render(
+      <WorkspaceMenuActionItems
+        surface="dropdown"
+        workspaceKey="server-a:workspace-a"
+        workspaceTarget={target}
+      />,
+    );
+    expect(
+      screen
+        .getByTestId("workspace-menu-restore-hidden-agents-server-a:workspace-a")
+        .hasAttribute("disabled"),
+    ).toBe(true);
+  });
+
+  it("disables restoring when there are no valid hidden agents", () => {
+    render(
+      <WorkspaceMenuActionItems
+        surface="dropdown"
+        workspaceKey="server-a:workspace-a"
+        workspaceTarget={target}
+      />,
+    );
+    const restoreItem = screen.getByTestId(
+      "workspace-menu-restore-hidden-agents-server-a:workspace-a",
+    );
+    expect(restoreItem.hasAttribute("disabled")).toBe(true);
+    expect(restoreItem.textContent).toContain("0");
+  });
+
+  it("passes the workspace to one batch restore action for multiple hidden agents", () => {
+    selectRestorableHiddenAgentIdsMock.mockReturnValue(["root-a", "child-a"]);
+    menuStore.explicitlyHiddenAgentIdsByWorkspace["server-a:workspace-a"] = new Set([
+      "root-a",
+      "child-a",
+    ]);
+    render(
+      <WorkspaceMenuActionItems
+        surface="dropdown"
+        workspaceKey="server-a:workspace-a"
+        workspaceTarget={target}
+      />,
+    );
+    fireEvent.click(
+      screen.getByTestId("workspace-menu-restore-hidden-agents-server-a:workspace-a"),
+    );
+    expect(restoreHiddenWorkspaceAgentsMock).toHaveBeenCalledOnce();
+    expect(restoreHiddenWorkspaceAgentsMock.mock.calls[0]?.[0]).toMatchObject({
+      serverId: "server-a",
+      workspaceId: "workspace-a",
+    });
   });
 
   it("shows only the workspace attention action that matches its status", () => {

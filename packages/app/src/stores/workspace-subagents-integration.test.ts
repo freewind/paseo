@@ -7,6 +7,7 @@ import {
 } from "@/workspace-tabs/agent-visibility";
 import { buildWorkspaceTabPersistenceKey } from "@/workspace-tabs/model";
 import { selectSubagentsForParent } from "@/subagents/select";
+import { getAgentTabsNeedingOpenLabel } from "@/subagents/open-tab-labels";
 import { findPaneById, findPaneContainingTab } from "./workspace-layout-actions";
 import { useWorkspaceLayoutStore } from "./workspace-layout-store";
 import { useSessionStore, type Agent } from "./session-store";
@@ -129,6 +130,7 @@ afterEach(() => {
     splitSizesByWorkspace: {},
     pinnedAgentIdsByWorkspace: {},
     hiddenAgentIdsByWorkspace: {},
+    explicitlyHiddenAgentIdsByWorkspace: {},
   });
 });
 
@@ -255,6 +257,37 @@ describe("workspace subagents integration", () => {
         },
         new Set(),
       ).map((row) => row.id),
+    ).toEqual([child.id]);
+  });
+
+  it("restores a hidden same-workspace child and lets the mounted-workspace claim selector mark it", () => {
+    const workspaceKey = buildWorkspaceTabPersistenceKey({
+      serverId: SERVER_ID,
+      workspaceId: WORKSPACE_ID,
+    });
+    if (!workspaceKey) throw new Error("Expected workspace key");
+    const parent = makeAgent({ id: "parent-agent" });
+    const child = makeAgent({ id: "child-agent", parentAgentId: parent.id });
+    initializeAgents([parent, child]);
+    const store = useWorkspaceLayoutStore.getState();
+    store.hideAgentExplicitly(workspaceKey, child.id);
+    const tabId = store.openTab({
+      workspaceKey,
+      target: { kind: "agent", agentId: child.id },
+      intent: "background",
+      placement: { mode: "pane", paneId: "main" },
+    });
+
+    const tabs = store.getWorkspaceTabs(workspaceKey);
+    expect(tabs.map((tab) => tab.target)).toContainEqual({ kind: "agent", agentId: child.id });
+    expect(tabId).toBe("agent_child-agent");
+    expect(
+      getAgentTabsNeedingOpenLabel({
+        tabs,
+        getAgent: (agentId) => useSessionStore.getState().sessions[SERVER_ID]?.agents.get(agentId),
+        label: "paseo.open-agent-tab.client-1",
+        pendingAgentIds: new Set(),
+      }),
     ).toEqual([child.id]);
   });
 
