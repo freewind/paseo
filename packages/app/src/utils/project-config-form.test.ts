@@ -259,6 +259,20 @@ describe("applyDraftToConfig", () => {
     });
   });
 
+  it("preserves base title instructions on round-trip even though the prompt key moved to global settings", () => {
+    const base = PaseoConfigRawSchema.parse({
+      metadataGeneration: {
+        title: { instructions: "Workspace title style." },
+      },
+    });
+    const draft = configToDraft(base);
+    draft.metadataPrompts.branchName = "Use mb/.";
+    const next = applyDraftToConfig({ draft, base });
+    const metadata = next.metadataGeneration as Record<string, unknown>;
+    expect(metadata.title).toEqual({ instructions: "Workspace title style." });
+    expect(metadata.branchName).toEqual({ instructions: "Use mb/." });
+  });
+
   it("writes only metadata prompt entries with non-empty text", () => {
     const base: PaseoConfigRaw = {};
     const draft = configToDraft(base);

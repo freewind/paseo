@@ -2190,6 +2190,12 @@ export const en = {
       },
     },
     metadataGeneration: {
+      titlePrompt: "Title prompt",
+      titlePromptHint:
+        "Instructions Paseo follows when generating workspace titles. Empty uses the default style; a paseo.json override still wins.",
+      titlePromptPlaceholder: "e.g. [Module] short task summary",
+      titlePromptSave: "Save",
+      titlePromptSaving: "Saving...",
       title: "Metadata generation",
       description:
         "Choose the model Paseo uses for workspace titles, branch names, commit messages, and pull request drafts",
