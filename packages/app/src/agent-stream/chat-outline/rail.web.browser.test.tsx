@@ -2,7 +2,7 @@ import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { page } from "vitest/browser";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createActivePromptPublisher, TEXT_ROW_MAX_HEIGHT } from "./model";
+import { createActivePromptPublisher, PROMPT_DETAIL_MAX_HEIGHT, TEXT_ROW_MAX_LINES } from "./model";
 import { ChatOutlineRail } from "./rail.web";
 
 // App sources compile against the classic JSX runtime, which expects React on the global.
@@ -10,9 +10,8 @@ beforeEach(() => vi.stubGlobal("React", React));
 
 /**
  * A real browser with real layout, because the subject under test is text overflow: a
- * capped row only scrolls if the glyphs actually wrap past the cap, and only a rendered
- * page can tell a row that scrolls from one that silently cut the prompt. jsdom measures
- * nothing, so it can assert the cap but never that the tail is reachable.
+ * detail body must scroll to the prompt's last line while the outline row stays clamped.
+ * jsdom measures nothing, so only a rendered page can prove the tail is reachable.
  */
 
 interface Mounted {
@@ -99,30 +98,45 @@ async function mountRail(options?: {
 }
 
 describe("ChatOutlineRail text rows in a real browser", () => {
-  it("shows the whole prompt in the row and scrolls what passes the cap", async () => {
+  it("clamps the row and scrolls the complete prompt inside the clicked detail", async () => {
     await page.viewport(1280, 800);
     await mountRail();
 
-    const scroller = document.querySelector<HTMLElement>(
-      '[data-testid="chat-outline-text-scroll-1"]',
+    const row = document.querySelector<HTMLElement>('[data-testid="chat-outline-text-row-1"]');
+    expect(row).not.toBeNull();
+    expect(document.querySelector('[data-testid="chat-outline-text-scroll-1"]')).toBeNull();
+    expect(getComputedStyle(row!.firstElementChild as Element).webkitLineClamp).toBe(
+      String(TEXT_ROW_MAX_LINES),
     );
-    expect(scroller).not.toBeNull();
-    if (!scroller) return;
-
-    // The row keeps the prompt whole: nothing in the DOM is elided, the box scrolls.
-    expect(scroller.textContent).toContain("prompt line 24");
-    // Blank lines and hard wraps are folded away, so the prompt reads as one paragraph.
-    expect(scroller.textContent).not.toContain("\n");
-    expect(scroller.clientHeight).toBe(TEXT_ROW_MAX_HEIGHT);
-    expect(scroller.scrollHeight).toBeGreaterThan(TEXT_ROW_MAX_HEIGHT);
-
-    // And the tail really is reachable, not merely present in the markup.
+    await page.getByTestId("chat-outline-text-row-1").click();
+    await waitFor(
+      () =>
+        document.querySelector('[data-testid="chat-outline-prompt-detail-scroll-1"]')
+          ?.textContent === LONG_PROMPT,
+      "the complete prompt in the detail",
+    );
+    const detail = document.querySelector<HTMLElement>(
+      '[data-testid="chat-outline-prompt-detail-1"]',
+    )!;
+    const scroller = document.querySelector<HTMLElement>(
+      '[data-testid="chat-outline-prompt-detail-scroll-1"]',
+    )!;
+    expect(detail.getBoundingClientRect().height).toBeLessThanOrEqual(PROMPT_DETAIL_MAX_HEIGHT);
+    expect(scroller.textContent).toBe(LONG_PROMPT);
+    expect(scroller.scrollHeight).toBeGreaterThan(scroller.clientHeight);
     scroller.scrollTop = scroller.scrollHeight;
     expect(scroller.scrollTop).toBeGreaterThan(0);
-    expect(scroller.getBoundingClientRect().bottom).toBeLessThanOrEqual(window.innerHeight);
+    expect(
+      Math.abs(scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop),
+    ).toBeLessThanOrEqual(1);
+    const actions = document.querySelector('[data-testid="chat-outline-prompt-detail-actions-1"]')!;
+    expect(scroller.contains(actions)).toBe(false);
+    expect(actions.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      detail.getBoundingClientRect().bottom,
+    );
   });
 
-  it("never opens a popover over the transcript", async () => {
+  it("never opens a detail popover on hover", async () => {
     await page.viewport(1280, 800);
     await mountRail();
 
@@ -137,6 +151,7 @@ describe("ChatOutlineRail text rows in a real browser", () => {
     });
 
     expect(document.querySelector('[data-testid="chat-outline-text-preview"]')).toBeNull();
+    expect(document.querySelector('[data-testid="chat-outline-prompt-detail-1"]')).toBeNull();
     expect(document.querySelector('[data-testid="chat-outline-preview"]')).toBeNull();
   });
 
@@ -173,19 +188,10 @@ describe("ChatOutlineRail text rows in a real browser", () => {
       expect(Math.abs(labelCentre - dividerCentre)).toBeLessThan(1);
     }
 
-    // The rows are separated by space, not by the line alone. Measured on the scrollers:
-    // a capped row's press target is taller than the box that clips it.
-    const scrollerOne = document
-      .querySelector('[data-testid="chat-outline-text-scroll-1"]')
-      ?.getBoundingClientRect();
-    const scrollerTwo = document
-      .querySelector('[data-testid="chat-outline-text-scroll-2"]')
-      ?.getBoundingClientRect();
-    expect(scrollerOne).toBeDefined();
-    expect(scrollerTwo).toBeDefined();
-    if (scrollerOne && scrollerTwo) {
-      expect(scrollerTwo.top - scrollerOne.bottom).toBeGreaterThanOrEqual(16);
-    }
+    // The rows keep their spacing without introducing independent scrollers.
+    const firstBox = rowOne.getBoundingClientRect();
+    const secondBox = rowTwo.getBoundingClientRect();
+    expect(secondBox.top - firstBox.bottom).toBeGreaterThanOrEqual(16);
 
     const activeLabel = rowOne.firstElementChild;
     const idleLabel = rowTwo.firstElementChild;
