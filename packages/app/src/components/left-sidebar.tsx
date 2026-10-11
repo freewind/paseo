@@ -23,6 +23,7 @@ import {
 import { HostPicker } from "@/components/hosts/host-picker";
 import { SidebarDisplayPreferencesMenu } from "@/components/sidebar/display-preferences/menu";
 import { SidebarSeparator } from "@/components/sidebar/sidebar-separator";
+import { SidebarBackRow } from "@/components/sidebar/sidebar-back-row";
 import { SidebarNavRows } from "@/components/sidebar/sidebar-nav-rows";
 import { SidebarHelpMenu } from "@/components/sidebar/sidebar-help-menu";
 import { SidebarResizeHandle } from "@/components/sidebar-resize-handle";
@@ -555,6 +556,9 @@ function MobileSidebar({
     >
       <View style={styles.sidebarContent} pointerEvents="auto">
         <WindowChromeSafeArea placement="below" />
+        <View style={styles.sidebarBackRow}>
+          <SidebarBackRow onBeforeNavigate={closeSidebar} />
+        </View>
         <SidebarNavRows style={styles.sidebarHeaderGroup} onBeforeNavigate={closeSidebar} />
         <WindowChromeSafeArea
           placement="inline"
@@ -759,6 +763,9 @@ function DesktopSidebar({
           ) : (
             <TitlebarDragRegion />
           )}
+          <View style={styles.sidebarBackRow}>
+            <SidebarBackRow />
+          </View>
           <SidebarNavRows style={sidebarHeaderGroupStyle} />
         </View>
 
@@ -852,6 +859,10 @@ const styles = StyleSheet.create((theme) => ({
     paddingBottom: theme.spacing[1.5],
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
+  },
+  // 返回行不属于 SidebarNavRows 的可配置体系，需要自己的容器与顶部留白。
+  sidebarBackRow: {
+    paddingTop: theme.spacing[2],
   },
   sidebarHeaderGroupBelowChrome: {
     paddingTop: 0,

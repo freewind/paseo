@@ -16,6 +16,9 @@ import type { ShortcutKey } from "@/utils/format-shortcut";
 
 const foregroundColorMapping = (theme: Theme) => ({ color: theme.colors.foreground });
 const foregroundMutedColorMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
+const foregroundExtraMutedColorMapping = (theme: Theme) => ({
+  color: theme.colors.foregroundExtraMuted,
+});
 
 type SidebarHeaderRowVariant = "header" | "compact" | "inline";
 
@@ -26,6 +29,8 @@ interface SidebarHeaderRowProps {
   label: string;
   onPress: () => void;
   isActive?: boolean;
+  /** Renders the row inert: no press, no hover highlight, muted icon and label. */
+  disabled?: boolean;
   testID?: string;
   nativeID?: string;
   accessibilityLabel?: string;
@@ -53,6 +58,7 @@ export function SidebarHeaderRow({
   label,
   onPress,
   isActive = false,
+  disabled = false,
   testID,
   nativeID,
   accessibilityLabel,
@@ -65,11 +71,12 @@ export function SidebarHeaderRow({
   const handlePointerEnter = useCallback(() => setIsHovered(true), []);
   const handlePointerLeave = useCallback(() => setIsHovered(false), []);
   const ThemedIcon = useMemo(() => (Icon ? withUnistyles(Icon) : null), [Icon]);
-  const isHighlighted = isHovered || isActive;
+  const isHighlighted = !disabled && (isHovered || isActive);
   const iconSize = variant === "header" ? ICON_SIZE.md : ICON_SIZE.sm;
+  const accessibilityState = getRowAccessibilityState(isActive, disabled);
 
   let right = trailing ?? null;
-  if (right === null && shortcutKeys && isHovered) {
+  if (right === null && !disabled && shortcutKeys && isHovered) {
     right = <Shortcut chord={shortcutKeys} />;
   }
 
@@ -82,27 +89,40 @@ export function SidebarHeaderRow({
       >
         <Pressable
           onPress={onPress}
+          disabled={disabled}
           testID={testID}
           nativeID={nativeID}
           accessible
           accessibilityRole="button"
           accessibilityLabel={accessibilityLabel ?? label}
-          accessibilityState={isActive ? SELECTED_STATE : undefined}
+          accessibilityState={accessibilityState}
           aria-selected={isActive}
+          aria-disabled={disabled}
           style={styles.button}
         >
           {ThemedIcon ? (
-            <ThemedIcon
-              size={iconSize}
-              uniProps={isHighlighted ? foregroundColorMapping : foregroundMutedColorMapping}
-            />
+            <ThemedIcon size={iconSize} uniProps={getIconColorMapping(isHighlighted, disabled)} />
           ) : (
             <View style={variant === "header" ? styles.iconSpacer : styles.iconSpacerCompact} />
           )}
-          <Text style={[styles.label, isHighlighted && styles.labelHighlighted]}>{label}</Text>
+          <Text
+            style={[
+              styles.label,
+              isHighlighted && styles.labelHighlighted,
+              disabled && styles.labelDisabled,
+            ]}
+          >
+            {label}
+          </Text>
         </Pressable>
         {right === null ? null : (
-          <Pressable onPress={onPress} accessible={false} focusable={false} style={styles.trailing}>
+          <Pressable
+            onPress={onPress}
+            disabled={disabled}
+            accessible={false}
+            focusable={false}
+            style={styles.trailing}
+          >
             {right}
           </Pressable>
         )}
@@ -111,7 +131,38 @@ export function SidebarHeaderRow({
   );
 }
 
-const SELECTED_STATE = { selected: true } as const;
+interface SidebarRowAccessibilityState {
+  selected?: boolean;
+  disabled?: boolean;
+}
+
+/**
+ * `selected` keeps the existing active-row semantics; `disabled` is only added
+ * when the row is actually inert, so enabled callers see no change.
+ */
+function getRowAccessibilityState(
+  isActive: boolean,
+  disabled: boolean,
+): SidebarRowAccessibilityState | undefined {
+  if (!isActive && !disabled) {
+    return undefined;
+  }
+  const state: SidebarRowAccessibilityState = {};
+  if (isActive) {
+    state.selected = true;
+  }
+  if (disabled) {
+    state.disabled = true;
+  }
+  return state;
+}
+
+function getIconColorMapping(isHighlighted: boolean, disabled: boolean) {
+  if (disabled) {
+    return foregroundExtraMutedColorMapping;
+  }
+  return isHighlighted ? foregroundColorMapping : foregroundMutedColorMapping;
+}
 
 const styles = StyleSheet.create((theme) => ({
   container: {
@@ -168,6 +219,9 @@ const styles = StyleSheet.create((theme) => ({
   },
   labelHighlighted: {
     color: theme.colors.foreground,
+  },
+  labelDisabled: {
+    color: theme.colors.foregroundExtraMuted,
   },
   trailing: {
     flexDirection: "row",
