@@ -5,21 +5,55 @@ import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-interface RootNavigationState {
-  key?: string;
-}
+const { navigationRef, router, emitEvent, resetSubscriptions, unsubscribeSpy } = vi.hoisted(() => {
+  const listeners = new Map<string, Set<() => void>>();
+  const unsubscribeSpyMock = vi.fn();
 
-const { navigationState, router } = vi.hoisted(() => ({
-  navigationState: { current: undefined as RootNavigationState | undefined },
-  router: {
+  function emit(event: string): void {
+    const callbacks = listeners.get(event);
+    if (!callbacks) {
+      return;
+    }
+    for (const callback of callbacks) {
+      callback();
+    }
+  }
+
+  function clearSubscriptions(): void {
+    listeners.clear();
+    unsubscribeSpyMock.mockReset();
+  }
+
+  const ref = {
+    isReady: vi.fn(() => false),
+    canGoBack: vi.fn(() => false),
+    addListener: vi.fn((event: string, callback: () => void) => {
+      const callbacks = listeners.get(event) ?? new Set<() => void>();
+      callbacks.add(callback);
+      listeners.set(event, callbacks);
+      return () => {
+        callbacks.delete(callback);
+        unsubscribeSpyMock(event);
+      };
+    }),
+  };
+
+  const routerMock = {
     back: vi.fn(),
-    canGoBack: vi.fn(),
     replace: vi.fn(),
-  },
-}));
+  };
+
+  return {
+    navigationRef: ref,
+    router: routerMock,
+    emitEvent: emit,
+    resetSubscriptions: clearSubscriptions,
+    unsubscribeSpy: unsubscribeSpyMock,
+  };
+});
 
 vi.mock("expo-router", () => ({
-  useRootNavigationState: () => navigationState.current,
+  useNavigationContainerRef: () => navigationRef,
   router,
 }));
 
@@ -40,11 +74,14 @@ describe("useRouteBack", () => {
   let container: HTMLElement | null = null;
 
   beforeEach(() => {
-    navigationState.current = undefined;
+    resetSubscriptions();
+    navigationRef.isReady.mockReset();
+    navigationRef.isReady.mockReturnValue(false);
+    navigationRef.canGoBack.mockReset();
+    navigationRef.canGoBack.mockReturnValue(false);
+    navigationRef.addListener.mockClear();
     router.back.mockReset();
-    router.canGoBack.mockReset();
     router.replace.mockReset();
-    router.canGoBack.mockReturnValue(false);
     routeBack = null;
     container = document.createElement("div");
     document.body.appendChild(container);
@@ -72,18 +109,20 @@ describe("useRouteBack", () => {
     return container?.querySelector('[data-testid="can-go-back"]')?.textContent ?? "";
   }
 
-  it("reports no back while the navigation container is not ready", () => {
-    navigationState.current = undefined;
-
+  it("reports no back and does not navigate while the container is not ready", () => {
     renderProbe();
 
     expect(routeBack?.canGoBack).toBe(false);
-    expect(renderedCanGoBack()).toBe("false");
+
+    act(() => {
+      routeBack?.goBack();
+    });
+
+    expect(router.back).not.toHaveBeenCalled();
   });
 
   it("reports no back and does not navigate when there is no history", () => {
-    navigationState.current = { key: "root" };
-    router.canGoBack.mockReturnValue(false);
+    navigationRef.isReady.mockReturnValue(true);
 
     renderProbe();
     expect(routeBack?.canGoBack).toBe(false);
@@ -97,8 +136,8 @@ describe("useRouteBack", () => {
   });
 
   it("reports back and goes back once when history exists", () => {
-    navigationState.current = { key: "root" };
-    router.canGoBack.mockReturnValue(true);
+    navigationRef.isReady.mockReturnValue(true);
+    navigationRef.canGoBack.mockReturnValue(true);
 
     renderProbe();
     expect(routeBack?.canGoBack).toBe(true);
@@ -111,34 +150,50 @@ describe("useRouteBack", () => {
     expect(router.replace).not.toHaveBeenCalled();
   });
 
-  it("updates canGoBack when the root navigation state changes", () => {
-    router.canGoBack.mockReturnValue(true);
-    navigationState.current = undefined;
+  it("updates canGoBack from the state event without a manual re-render", () => {
+    navigationRef.isReady.mockReturnValue(true);
 
     renderProbe();
-    expect(routeBack?.canGoBack).toBe(false);
+    expect(renderedCanGoBack()).toBe("false");
 
-    navigationState.current = { key: "root" };
-    renderProbe();
-    expect(routeBack?.canGoBack).toBe(true);
+    navigationRef.canGoBack.mockReturnValue(true);
+    act(() => {
+      emitEvent("state");
+    });
+    expect(renderedCanGoBack()).toBe("true");
 
-    navigationState.current = undefined;
-    renderProbe();
-    expect(routeBack?.canGoBack).toBe(false);
+    navigationRef.canGoBack.mockReturnValue(false);
+    act(() => {
+      emitEvent("state");
+    });
+    expect(renderedCanGoBack()).toBe("false");
   });
 
   it("does not go back when history disappears before the click", () => {
-    navigationState.current = { key: "root" };
-    router.canGoBack.mockReturnValue(true);
+    navigationRef.isReady.mockReturnValue(true);
+    navigationRef.canGoBack.mockReturnValue(true);
 
     renderProbe();
     expect(routeBack?.canGoBack).toBe(true);
 
-    router.canGoBack.mockReturnValue(false);
+    navigationRef.canGoBack.mockReturnValue(false);
     act(() => {
       routeBack?.goBack();
     });
 
     expect(router.back).not.toHaveBeenCalled();
+  });
+
+  it("unsubscribes from both events on unmount", () => {
+    navigationRef.isReady.mockReturnValue(true);
+
+    renderProbe();
+    act(() => {
+      root?.unmount();
+    });
+    root = null;
+
+    expect(unsubscribeSpy).toHaveBeenCalledWith("state");
+    expect(unsubscribeSpy).toHaveBeenCalledWith("ready");
   });
 });
