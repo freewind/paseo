@@ -53,6 +53,8 @@ import {
   type ImportedTimelineEntry,
   type ImportableProviderSession,
   type ListImportableSessionsOptions,
+  type AgentModelDefinition,
+  filterSelectableAgentModels,
 } from "./agent-sdk-types.js";
 import { buildArchivedAgentRecord, type ArchivedStoredAgentRecord } from "./agent-archive.js";
 import type { StoredAgentRecord, AgentStorage } from "./agent-storage.js";
@@ -173,6 +175,11 @@ interface NormalizeConfigOptions {
   env?: Record<string, string>;
   /** Defaults to interactive. A history load reads persisted state and runs nothing. */
   purpose?: AgentResumePurpose;
+  /** When true, drop a configured model that is no longer present in the
+   * provider catalog and fall back to the default. Used by resume/reload so
+   * that a stale model id (e.g. removed from configuration) does not abort
+   * the operation. createSession leaves this off to preserve pass-through. */
+  ensureModelSelectable?: boolean;
 }
 
 interface TimeoutOptions {
@@ -1380,7 +1387,7 @@ export class AgentManager {
     const { storedConfig, launchConfig, paseoToolPolicy } = await this.prepareSessionConfig(
       mergedConfig,
       resolvedAgentId,
-      { purpose },
+      { purpose, ensureModelSelectable: purpose !== "history" },
     );
     const client = this.requireClient(handle.provider);
     const available = await client.isAvailable();
@@ -1543,6 +1550,7 @@ export class AgentManager {
     const { storedConfig, launchConfig, paseoToolPolicy } = await this.prepareSessionConfig(
       refreshConfig,
       agentId,
+      { ensureModelSelectable: true },
     );
     const hadPreviousPaseoToolPolicy = this.paseoToolPolicies.has(agentId);
     const previousPaseoToolPolicy = this.paseoToolPolicies.get(agentId);
@@ -5296,6 +5304,19 @@ export class AgentManager {
     }
 
     const shouldResolveDefaultModel = options.resolveDefaultModel ?? true;
+    if (shouldResolveDefaultModel && options.ensureModelSelectable === true && normalized.model) {
+      const selectableModels = await this.resolveCatalogSelectableModels(normalized);
+      // selectableModels === null means the catalog could not be fetched (e.g. a
+      // transient provider error). In that case keep the requested model as-is
+      // rather than guessing it is gone; only a confirmed catalog miss falls back.
+      if (selectableModels !== null && !modelIsSelectable(normalized.model, selectableModels)) {
+        this.logger.warn(
+          { provider: normalized.provider, model: normalized.model },
+          "Configured model is no longer selectable; falling back to the provider default",
+        );
+        normalized.model = undefined;
+      }
+    }
     if (shouldResolveDefaultModel && !normalized.model) {
       const defaultModelId = await this.resolveDefaultModelId(normalized);
       if (defaultModelId) {
@@ -5331,6 +5352,27 @@ export class AgentManager {
     }
   }
 
+  private async resolveCatalogSelectableModels(
+    config: AgentSessionConfig,
+  ): Promise<AgentModelDefinition[] | null> {
+    const client = this.clients.get(config.provider);
+    if (!client) {
+      return null;
+    }
+    try {
+      const catalog = await client.fetchCatalog({
+        scope: "workspace",
+        cwd: config.cwd,
+        force: false,
+      });
+      return filterSelectableAgentModels(catalog.models);
+    } catch {
+      // Catalog fetch failed (transient provider error or unsupported listing).
+      // Returning null signals the caller to keep the requested model as-is.
+      return null;
+    }
+  }
+
   private async resolveDefaultModelId(config: AgentSessionConfig): Promise<string | undefined> {
     const client = this.clients.get(config.provider);
     if (!client) {
@@ -5352,11 +5394,16 @@ export class AgentManager {
   private async prepareSessionConfig(
     config: AgentSessionConfig,
     agentId: string,
-    options: { env?: Record<string, string>; purpose?: AgentResumePurpose } = {},
+    options: {
+      env?: Record<string, string>;
+      purpose?: AgentResumePurpose;
+      ensureModelSelectable?: boolean;
+    } = {},
   ): Promise<PreparedSessionConfig> {
     const storedConfig = await this.normalizeConfig(stripInternalPaseoMcpServer(config), {
       env: options.env,
       purpose: options.purpose,
+      ensureModelSelectable: options.ensureModelSelectable,
     });
     const paseoToolPolicy = this.paseoToolsEnabled
       ? this.resolvePaseoToolPolicy(storedConfig.provider)
@@ -5568,4 +5615,8 @@ export function commandMayHaveChangedExternalState(command: string): boolean {
     // ahead/behind counts can drift stale until the next refresh.
     /\bgit\s+fetch\b/.test(normalized)
   );
+}
+
+function modelIsSelectable(modelId: string, models: readonly AgentModelDefinition[]): boolean {
+  return models.some((model) => model.id === modelId || model.aliases?.includes(modelId));
 }
