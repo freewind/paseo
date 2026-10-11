@@ -2683,6 +2683,7 @@ export const WorkspaceClearAttentionRequestSchema = z.object({
 export const WorkspaceMarkUnreadRequestSchema = z.object({
   type: z.literal("workspace.mark_unread.request"),
   workspaceId: z.string(),
+  agentId: z.string().optional(),
   requestId: z.string(),
 });
 
@@ -3686,6 +3687,8 @@ export const ServerInfoStatusPayloadSchema = z
         workspacePinning: z.boolean().optional(),
         // COMPAT(workspaceMarkUnread): added in v0.5.0, remove after 2027-08-20.
         workspaceMarkUnread: z.boolean().optional(),
+        // COMPAT(workspaceMarkUnreadAgentTarget): added in v0.11.0, remove after 2027-08-20.
+        workspaceMarkUnreadAgentTarget: z.boolean().optional(),
         // COMPAT(hubRelationship): added in v0.1.X, drop the gate when floor >= v0.1.X.
         hubRelationship: z.boolean().optional(),
         // COMPAT(projectGithubClone): added in v0.1.108, remove gate after 2027-01-15.

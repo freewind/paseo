@@ -22,6 +22,19 @@ describe("workspace message schemas", () => {
       workspaceId: "workspace-1",
       requestId: "req-mark-unread",
     });
+    expect(
+      SessionInboundMessageSchema.parse({
+        type: "workspace.mark_unread.request",
+        workspaceId: "workspace-1",
+        agentId: "agent-2",
+        requestId: "req-mark-agent-unread",
+      }),
+    ).toEqual({
+      type: "workspace.mark_unread.request",
+      workspaceId: "workspace-1",
+      agentId: "agent-2",
+      requestId: "req-mark-agent-unread",
+    });
 
     expect(
       SessionOutboundMessageSchema.parse({
