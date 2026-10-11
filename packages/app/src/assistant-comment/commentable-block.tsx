@@ -21,13 +21,13 @@ interface MarkdownCommentableBlockProps {
 }
 
 /**
- * Long press opens a menu with one row: comment on the selected text, or on the whole block when
- * nothing is selected. Long press rather than the native text selection, because a custom
- * selection menu item needs iOS native code and Android's ActionMode has no extension point.
+ * The comment menu for one Markdown block: one row, opened by long press on mobile and by right
+ * click on web. The row comments on the text the user has selected, or on the whole block when
+ * there is no selection.
  *
- * The selection has to be read while the menu is opening: the page still owns it then, and a
- * right click or long press itself does not clear it. Reading it at render time would be the
- * selection of whatever opened the menu last.
+ * The selection is read as the menu opens rather than at render time: the platform still owns it
+ * at that moment, and neither gesture clears it. A render-time read would quote whatever opened
+ * the menu last.
  */
 export function MarkdownCommentableBlock({ blockText, children }: MarkdownCommentableBlockProps) {
   const comment = useAssistantComment();
