@@ -29,11 +29,11 @@ Disable mobile triggering explicitly on draggable rows, where long press belongs
 ## When the items differ per form factor
 
 A menu whose contents depend on what else is on screen gets one component per surface, not one
-component with `isMobile` branches inside it. The workspace header menu is the example
-(`packages/app/src/screens/workspace/workspace-header-menu.tsx`): compact has no tab strip, so it
-carries new-tab actions, while wide leaves those to the strip's `+` menu and lists workspace
-actions only. Items both surfaces share live in one component that each menu renders, from the same
-callbacks, so the two can't drift.
+component with `isMobile` branches inside it. Workspace actions shared by the sidebar and header live
+in `packages/app/src/components/workspace-menu-action-items.tsx`; both entry points provide the same
+workspace identity and callbacks. Compact headers add browser/terminal actions because they have no
+tab strip. Wide headers leave those actions to the tab strip. Keep these surface-specific actions
+outside the shared component.
 
 ## Selecting an item on iOS
 
