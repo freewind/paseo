@@ -1,0 +1,23 @@
+context platform=android timeout=90000 retries=0
+# Requires a connected daemon and an existing agent with a completed single-line reply matching COMMENT_BLOCK_TEXT.
+# Replay with --env AGENT_ID=<agent-id> --env COMMENT_BLOCK_TEXT='<exact reply paragraph>'.
+env APP_ID=sh.paseo.debug AGENT_ID=${AGENT_ID} COMMENT_BLOCK_TEXT=${COMMENT_BLOCK_TEXT}
+
+open "${APP_ID}"
+wait "id=\"workspace-tab-agent_${AGENT_ID}\"" 20000
+press "id=\"workspace-tab-agent_${AGENT_ID}\""
+wait "id=\"agent-chat-scroll\"" 10000
+wait "id=\"assistant-message\"" 20000
+longpress "id=\"markdown-comment-trigger\"" 800
+wait "id=\"assistant-comment-menu\"" 10000
+is visible "id=\"markdown-comment-item\""
+is absent "id=\"assistant-comment-menu-content\""
+press "id=\"markdown-comment-item\""
+wait "id=\"assistant-comment-input\"" 10000
+is focused "id=\"assistant-comment-input\""
+type "Please verify this statement." --delay-ms 0
+press "id=\"assistant-comment-attach\""
+wait "id=\"message-input-root\"" 10000
+is visible 'text="> ${COMMENT_BLOCK_TEXT}"'
+is visible 'text="Please verify this statement."'
+close
