@@ -1101,6 +1101,7 @@ describe("workspace-layout-store actions", () => {
       splitSizesByWorkspace: {},
       pinnedAgentIdsByWorkspace: {},
       hiddenAgentIdsByWorkspace: {},
+      explicitlyHiddenAgentIdsByWorkspace: {},
       focusRestorationByWorkspace: {},
       explorerSidebarPaneIdByWorkspace: {},
     });
@@ -3344,7 +3345,29 @@ describe("workspace-layout-store actions", () => {
     });
   });
 
-  it("keeps hidden agent intents in memory per workspace without persisting them", () => {
+  it("records explicit hidden agent intents separately from close suppression", () => {
+    const workspaceKey = createWorkspaceKey();
+    const store = workspaceLayoutStore.getState();
+
+    store.hideAgent(workspaceKey, "closed-agent");
+    store.hideAgentExplicitly(workspaceKey, "hidden-agent");
+
+    let state = workspaceLayoutStore.getState();
+    expect(Array.from(state.hiddenAgentIdsByWorkspace[workspaceKey] ?? [])).toEqual([
+      "closed-agent",
+      "hidden-agent",
+    ]);
+    expect(Array.from(state.explicitlyHiddenAgentIdsByWorkspace[workspaceKey] ?? [])).toEqual([
+      "hidden-agent",
+    ]);
+
+    store.unhideAgent(workspaceKey, "hidden-agent");
+    state = workspaceLayoutStore.getState();
+    expect(state.hiddenAgentIdsByWorkspace[workspaceKey]).toEqual(new Set(["closed-agent"]));
+    expect(state.explicitlyHiddenAgentIdsByWorkspace[workspaceKey]).toBeUndefined();
+  });
+
+  it("keeps explicit hidden agent intents in memory per workspace without persisting them", () => {
     const workspaceKey = createWorkspaceKey();
     const otherWorkspaceKey = buildWorkspaceTabPersistenceKey({
       serverId: SERVER_ID,
@@ -3383,6 +3406,7 @@ describe("workspace-layout-store actions", () => {
       explorerPaneIdByWorkspace: {},
       sidePaneIdByWorkspace: {},
     });
+    expect(state.explicitlyHiddenAgentIdsByWorkspace).toEqual({});
   });
 
   it("convertDraftToAgent removes the draft and focuses the existing canonical agent tab", () => {
@@ -3539,6 +3563,26 @@ describe("workspace-layout-store actions", () => {
       },
     ]);
     expect(findPaneById(layout.root, "main")?.focusedTabId).toBe("draft-agent");
+  });
+
+  it("purgeWorkspace clears explicit hidden state for only the removed workspace", () => {
+    const workspaceKey = createWorkspaceKey();
+    const otherWorkspaceKey = buildWorkspaceTabPersistenceKey({
+      serverId: SERVER_ID,
+      workspaceId: "ws-other-worktree",
+    });
+    if (!otherWorkspaceKey) throw new Error("Expected another workspace key");
+    const store = workspaceLayoutStore.getState();
+    store.hideAgentExplicitly(workspaceKey, "agent-a");
+    store.hideAgentExplicitly(otherWorkspaceKey, "agent-b");
+
+    store.purgeWorkspace(workspaceKey);
+
+    const state = workspaceLayoutStore.getState();
+    expect(state.explicitlyHiddenAgentIdsByWorkspace[workspaceKey]).toBeUndefined();
+    expect(Array.from(state.explicitlyHiddenAgentIdsByWorkspace[otherWorkspaceKey] ?? [])).toEqual([
+      "agent-b",
+    ]);
   });
 
   it("reconcileTabs does not re-add locally hidden agent tabs", () => {
@@ -3722,6 +3766,63 @@ describe("workspace-layout-store actions", () => {
     ).toEqual(["agent_parent-agent"]);
   });
 
+  it("restores explicitly hidden agents and keeps their tabs after reconciliation", () => {
+    const workspaceKey = createWorkspaceKey();
+    const store = workspaceLayoutStore.getState();
+    store.hideAgentExplicitly(workspaceKey, "root-agent");
+    store.hideAgentExplicitly(workspaceKey, "child-agent");
+
+    const rootTabId = store.openTab({
+      workspaceKey,
+      target: { kind: "agent", agentId: "root-agent" },
+      intent: "background",
+      placement: { mode: "pane", paneId: "main" },
+    });
+    const childTabId = store.openTab({
+      workspaceKey,
+      target: { kind: "agent", agentId: "child-agent" },
+      intent: "background",
+      placement: { mode: "pane", paneId: "main" },
+    });
+
+    expect(rootTabId).toBe("agent_root-agent");
+    expect(childTabId).toBe("agent_child-agent");
+    expect(
+      store
+        .getWorkspaceTabs(workspaceKey)
+        .filter((tab) => tab.target.kind === "agent")
+        .map((tab) => tab.target),
+    ).toEqual([
+      { kind: "agent", agentId: "root-agent" },
+      { kind: "agent", agentId: "child-agent" },
+    ]);
+    expect(
+      store.getWorkspaceTabs(workspaceKey).find((tab) => tab.tabId === childTabId)?.tabId,
+    ).toBe(childTabId);
+    expect(workspaceLayoutStore.getState().hiddenAgentIdsByWorkspace[workspaceKey]).toBeUndefined();
+    expect(
+      workspaceLayoutStore.getState().explicitlyHiddenAgentIdsByWorkspace[workspaceKey],
+    ).toBeUndefined();
+
+    store.reconcileTabs(workspaceKey, {
+      agentsHydrated: true,
+      terminalsHydrated: true,
+      activeAgentIds: ["root-agent", "child-agent"],
+      autoOpenAgentIds: ["root-agent"],
+      standaloneTerminalIds: [],
+    });
+
+    expect(
+      store
+        .getWorkspaceTabs(workspaceKey)
+        .filter((tab) => tab.target.kind === "agent")
+        .map((tab) => tab.target),
+    ).toEqual([
+      { kind: "agent", agentId: "root-agent" },
+      { kind: "agent", agentId: "child-agent" },
+    ]);
+  });
+
   it("reconcileTabs keeps manually opened subagent tabs that remain active", () => {
     const workspaceKey = createWorkspaceKey();
     const store = workspaceLayoutStore.getState();
@@ -3774,11 +3875,44 @@ describe("workspace-layout-store actions", () => {
     ).toEqual(["agent_parent-agent"]);
   });
 
+  it("keeps explicit hides before hydration and prunes them after hydration", () => {
+    const workspaceKey = createWorkspaceKey();
+    const store = workspaceLayoutStore.getState();
+    store.hideAgentExplicitly(workspaceKey, "live-child");
+    store.hideAgentExplicitly(workspaceKey, "archived-agent");
+
+    store.reconcileTabs(workspaceKey, {
+      agentsHydrated: false,
+      terminalsHydrated: true,
+      activeAgentIds: [],
+      autoOpenAgentIds: [],
+      standaloneTerminalIds: [],
+    });
+    expect(
+      Array.from(
+        workspaceLayoutStore.getState().explicitlyHiddenAgentIdsByWorkspace[workspaceKey] ?? [],
+      ),
+    ).toEqual(["live-child", "archived-agent"]);
+
+    store.reconcileTabs(workspaceKey, {
+      agentsHydrated: true,
+      terminalsHydrated: true,
+      activeAgentIds: ["live-child"],
+      autoOpenAgentIds: [],
+      standaloneTerminalIds: [],
+    });
+    expect(
+      Array.from(
+        workspaceLayoutStore.getState().explicitlyHiddenAgentIdsByWorkspace[workspaceKey] ?? [],
+      ),
+    ).toEqual(["live-child"]);
+  });
+
   it("openTab reveal intent reopens hidden subagent tabs and clears hidden intent", () => {
     const workspaceKey = createWorkspaceKey();
     const store = workspaceLayoutStore.getState();
 
-    store.hideAgent(workspaceKey, "child-agent");
+    store.hideAgentExplicitly(workspaceKey, "child-agent");
     store.reconcileTabs(workspaceKey, {
       agentsHydrated: true,
       terminalsHydrated: true,
@@ -3798,6 +3932,7 @@ describe("workspace-layout-store actions", () => {
 
     const state = workspaceLayoutStore.getState();
     expect(state.hiddenAgentIdsByWorkspace[workspaceKey]).toBeUndefined();
+    expect(state.explicitlyHiddenAgentIdsByWorkspace[workspaceKey]).toBeUndefined();
     expect(contentTabs(state.getWorkspaceTabs(workspaceKey)).map((tab) => tab.tabId)).toEqual([
       "agent_child-agent",
     ]);
@@ -4054,11 +4189,11 @@ describe("workspace-layout-store actions", () => {
     expect(state.hiddenAgentIdsByWorkspace[workspaceKey]).toBeUndefined();
   });
 
-  it("retargeting a tab to an agent clears hidden intent", () => {
+  it("retargeting a tab to an agent clears explicit hidden intent", () => {
     const workspaceKey = createWorkspaceKey();
     const store = workspaceLayoutStore.getState();
 
-    store.hideAgent(workspaceKey, "agent-1");
+    store.hideAgentExplicitly(workspaceKey, "agent-1");
     const tabId = store.openTab({
       workspaceKey: workspaceKey,
       target: { kind: "file", path: "/repo/worktree/a.ts" },
@@ -4068,6 +4203,7 @@ describe("workspace-layout-store actions", () => {
 
     const state = workspaceLayoutStore.getState();
     expect(state.hiddenAgentIdsByWorkspace[workspaceKey]).toBeUndefined();
+    expect(state.explicitlyHiddenAgentIdsByWorkspace[workspaceKey]).toBeUndefined();
   });
 
   it("closePane removes an emptied main pane and moves focus to the surviving pane", () => {

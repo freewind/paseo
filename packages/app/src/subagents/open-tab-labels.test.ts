@@ -35,6 +35,21 @@ describe("getAgentTabsNeedingOpenLabel", () => {
     ).toEqual(["background-child", "focused-child"]);
   });
 
+  it("marks a restored child from a background Workspace tab", () => {
+    const agents = new Map([
+      ["restored-child", agent({ id: "restored-child", parentAgentId: "parent" })],
+    ]);
+
+    expect(
+      getAgentTabsNeedingOpenLabel({
+        tabs: [tab("restored-child", 1)],
+        getAgent: (agentId) => agents.get(agentId),
+        label,
+        pendingAgentIds: new Set(),
+      }),
+    ).toEqual(["restored-child"]);
+  });
+
   it("skips tabs already marked or currently being marked", () => {
     const agents = new Map([
       ["marked", agent({ id: "marked", parentAgentId: "parent", open: true })],

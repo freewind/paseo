@@ -8,6 +8,21 @@ export interface WorkspaceAgentVisibility {
   autoOpenAgentIds: Set<string>;
 }
 
+export function selectRestorableHiddenAgentIds(input: {
+  hasHydratedAgents: boolean;
+  sessionAgents: Map<string, Agent> | undefined;
+  workspaceId: string | null | undefined;
+  explicitlyHiddenAgentIds: ReadonlySet<string> | undefined;
+}): string[] {
+  const workspaceId = normalizeWorkspaceOpaqueId(input.workspaceId);
+  if (!input.hasHydratedAgents || !input.sessionAgents || !workspaceId) return [];
+
+  return [...(input.explicitlyHiddenAgentIds ?? [])].filter((agentId) => {
+    const agent = input.sessionAgents?.get(agentId);
+    return Boolean(agent && agentBelongsToWorkspace(agent, workspaceId) && !agent.archivedAt);
+  });
+}
+
 function agentBelongsToWorkspace(agent: Agent, workspaceId: string): boolean {
   return normalizeWorkspaceOpaqueId(agent.workspaceId) === workspaceId;
 }

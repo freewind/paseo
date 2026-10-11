@@ -71,6 +71,9 @@ vi.mock("@/components/rename-modal", () => ({
   AdaptiveRenameModal: () => null,
   RenameModal: () => null,
 }));
+vi.mock("@/components/adaptive-modal-sheet", () => ({
+  AdaptiveModalSheet: () => null,
+}));
 
 vi.mock("@/components/ui/dropdown-menu", () => ({
   DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -188,7 +191,11 @@ describe("SidebarWorkspaceAgentList", () => {
     selectionRef.current = { serverId: "server-1", workspaceId: "workspace-a" };
     // The layout store is a module singleton, so tabs opened by an earlier test would otherwise
     // still be there for a test that opens none.
-    useWorkspaceLayoutStore.setState({ layoutByWorkspace: {} });
+    useWorkspaceLayoutStore.setState({
+      layoutByWorkspace: {},
+      hiddenAgentIdsByWorkspace: {},
+      explicitlyHiddenAgentIdsByWorkspace: {},
+    });
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -583,6 +590,11 @@ describe("SidebarWorkspaceAgentList", () => {
     expect(useSessionStore.getState().sessions["server-1"]?.agents.get("agent-a")?.status).toBe(
       "running",
     );
+    expect(
+      Array.from(
+        useWorkspaceLayoutStore.getState().explicitlyHiddenAgentIdsByWorkspace[WORKSPACE_KEY] ?? [],
+      ),
+    ).toEqual(["agent-a"]);
 
     // Reconciliation must not put the tab back while the agent is still active.
     reconcile("workspace-a", WORKSPACE_KEY);
@@ -610,6 +622,11 @@ describe("SidebarWorkspaceAgentList", () => {
       labels: { "paseo.open-agent-tab.client-1": "false" },
     });
     expect(archiveAgentMock).not.toHaveBeenCalled();
+    expect(
+      Array.from(
+        useWorkspaceLayoutStore.getState().explicitlyHiddenAgentIdsByWorkspace[WORKSPACE_KEY] ?? [],
+      ),
+    ).toEqual(["agent-a"]);
 
     // The child stays unarchived and still parented, so the parent's track can bring it back.
     const stored = useSessionStore.getState().sessions["server-1"]?.agents.get("agent-a");
@@ -668,6 +685,11 @@ describe("SidebarWorkspaceAgentList", () => {
     ).toBe(true);
     expect(
       Array.from(useWorkspaceLayoutStore.getState().hiddenAgentIdsByWorkspace[otherKey] ?? []),
+    ).toEqual([]);
+    expect(
+      Array.from(
+        useWorkspaceLayoutStore.getState().explicitlyHiddenAgentIdsByWorkspace[otherKey] ?? [],
+      ),
     ).toEqual([]);
   });
 });

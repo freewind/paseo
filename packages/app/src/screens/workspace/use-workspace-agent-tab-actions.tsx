@@ -74,7 +74,9 @@ export function useHideWorkspaceAgentTab({
   const client = useSessionStore((state) => state.sessions[serverId]?.client ?? null);
   const closeWorkspaceTab = useWorkspaceLayoutStore((state) => state.closeTab);
   const unpinWorkspaceAgent = useWorkspaceLayoutStore((state) => state.unpinAgent);
-  const hideWorkspaceAgent = useWorkspaceLayoutStore((state) => state.hideAgent);
+  const hideWorkspaceAgentExplicitly = useWorkspaceLayoutStore(
+    (state) => state.hideAgentExplicitly,
+  );
 
   const workspaceKey = useMemo(
     () => buildWorkspaceTabPersistenceKey({ serverId, workspaceId }),
@@ -109,7 +111,7 @@ export function useHideWorkspaceAgentTab({
           }
         }
         unpinWorkspaceAgent(workspaceKey, agentId);
-        hideWorkspaceAgent(workspaceKey, agentId);
+        hideWorkspaceAgentExplicitly(workspaceKey, agentId);
         closeWorkspaceTab(workspaceKey, tabId);
       });
     },
@@ -117,7 +119,7 @@ export function useHideWorkspaceAgentTab({
       client,
       closeTab,
       closeWorkspaceTab,
-      hideWorkspaceAgent,
+      hideWorkspaceAgentExplicitly,
       serverId,
       t,
       toast,
