@@ -17,7 +17,7 @@ import { type AgentHistoryHostError, useAgentHistory } from "@/hooks/use-agent-h
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useImportSession } from "@/hooks/use-import-session";
 import { useHosts } from "@/runtime/host-runtime";
-import { buildOpenProjectRoute } from "@/utils/host-routes";
+import { backToChat } from "@/utils/back-to-chat";
 
 /** Long enough that a typed word is one request, short enough to feel live. */
 const SEARCH_DEBOUNCE_MS = 200;
@@ -123,7 +123,7 @@ function SessionsScreenContent() {
   const showLoadError = isError && agents.length === 0;
 
   const handleBack = useCallback(() => {
-    router.navigate(buildOpenProjectRoute());
+    backToChat();
   }, []);
 
   const handleClearSearch = useCallback(() => setSearchInput(""), []);
