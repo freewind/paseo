@@ -630,6 +630,7 @@ export const ar: TranslationResources = {
     },
     tabs: {
       loading: "تحميل...",
+      agentUnread: { hostUpgradeRequired: "حدّث المضيف لتعيين الوكيل كغير مقروء." },
       modified: "تغييرات غير محفوظة",
       loadingAgentTitle: "جارٍ تحميل عنوان الوكيل",
       fallback: {
@@ -663,6 +664,7 @@ export const ar: TranslationResources = {
         reloadAgent: "إعادة تحميل الوكيل",
         reloadAgentTooltip: "قم بإعادة تحميل الوكيل لتحديث المهارات أو MCPs أو حالة تسجيل الدخول.",
         hideAgent: "إخفاء هذا الوكيل",
+        markAsUnread: "تعيين كغير مقروء",
         close: "يغلق",
         renameTerminal: "إعادة تسمية المحطة",
         renameAgent: "إعادة تسمية الوكيل",
@@ -1254,6 +1256,8 @@ export const ar: TranslationResources = {
         createWorkspaceFor: "قم بإنشاء مساحة عمل جديدة لـ{{projectName}}",
         copyPath: "نسخ المسار",
         copyBranchName: "انسخ اسم الفرع",
+        markAsRead: "تحديد كمقروء",
+        markAsUnread: "تعيين كغير مقروء",
         rename: "إعادة تسمية مساحة العمل",
         pin: "تثبيت في الأعلى",
         unpin: "إلغاء التثبيت",

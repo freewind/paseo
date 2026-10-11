@@ -635,6 +635,9 @@ export const ptBR: TranslationResources = {
     },
     tabs: {
       loading: "Carregando...",
+      agentUnread: {
+        hostUpgradeRequired: "Atualize o host para marcar este agente como não lido.",
+      },
       modified: "Alterações não salvas",
       loadingAgentTitle: "Carregando título do agente",
       fallback: {
@@ -668,6 +671,7 @@ export const ptBR: TranslationResources = {
         reloadAgent: "Recarregar agente",
         reloadAgentTooltip: "Recarregue o agente para atualizar skills, MCPs ou status de login.",
         hideAgent: "Ocultar este agente",
+        markAsUnread: "Marcar como não lido",
         close: "Fechar",
         renameTerminal: "Renomear terminal",
         renameAgent: "Renomear agente",
@@ -1280,6 +1284,8 @@ export const ptBR: TranslationResources = {
         createWorkspaceFor: "Criar um novo workspace para {{projectName}}",
         copyPath: "Copiar caminho",
         copyBranchName: "Copiar nome da branch",
+        markAsRead: "Marcar como lido",
+        markAsUnread: "Marcar como não lido",
         rename: "Renomear workspace",
         pin: "Fixar no topo",
         unpin: "Desafixar",

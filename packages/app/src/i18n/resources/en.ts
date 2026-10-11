@@ -632,6 +632,9 @@ export const en = {
     },
     tabs: {
       loading: "Loading...",
+      agentUnread: {
+        hostUpgradeRequired: "Update the host to mark this agent as unread.",
+      },
       modified: "Unsaved changes",
       loadingAgentTitle: "Loading agent title",
       fallback: {
@@ -665,6 +668,7 @@ export const en = {
         reloadAgent: "Reload agent",
         reloadAgentTooltip: "Reload agent to update skills, MCPs or login status.",
         hideAgent: "Hide this agent",
+        markAsUnread: "Mark as unread",
         close: "Close",
         renameTerminal: "Rename terminal",
         renameAgent: "Rename agent",
@@ -1267,6 +1271,8 @@ export const en = {
         createWorkspaceFor: "Create a new workspace for {{projectName}}",
         copyPath: "Copy path",
         copyBranchName: "Copy branch name",
+        markAsRead: "Mark as read",
+        markAsUnread: "Mark as unread",
         rename: "Rename workspace",
         pin: "Pin to top",
         unpin: "Unpin",

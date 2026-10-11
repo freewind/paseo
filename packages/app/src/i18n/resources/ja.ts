@@ -636,6 +636,9 @@ export const ja: TranslationResources = {
     },
     tabs: {
       loading: "読み込み中...",
+      agentUnread: {
+        hostUpgradeRequired: "エージェントを未読にするにはホストを更新してください。",
+      },
       modified: "未保存の変更",
       loadingAgentTitle: "エージェントタイトルを読み込み中",
       fallback: {
@@ -670,6 +673,7 @@ export const ja: TranslationResources = {
         reloadAgentTooltip:
           "スキル、MCP、ログイン状態を更新するためにエージェントを再読み込みします。",
         hideAgent: "このエージェントを隠す",
+        markAsUnread: "未読にする",
         close: "閉じる",
         renameTerminal: "ターミナルの名前を変更",
         renameAgent: "エージェントの名前を変更",
@@ -1268,6 +1272,8 @@ export const ja: TranslationResources = {
         createWorkspaceFor: "{{projectName}}の新しいワークスペースを作成",
         copyPath: "パスをコピー",
         copyBranchName: "ブランチ名をコピー",
+        markAsRead: "既読にする",
+        markAsUnread: "未読にする",
         rename: "ワークスペースの名前を変更",
         pin: "上部に固定",
         unpin: "固定解除",

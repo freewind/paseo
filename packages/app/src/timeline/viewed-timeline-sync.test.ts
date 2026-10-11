@@ -333,6 +333,29 @@ class TimelineWorld {
   }
 }
 
+test("releases one visible agent until its view is explicitly removed", async () => {
+  const world = new TimelineWorld();
+  world.sync.setConnected(true);
+  world.sync.replaceVisibleAgentIds("workspace", ["agent-a", "agent-b"]);
+  const firstMembership = await world.nextMembership();
+  firstMembership.succeed();
+  const fetchA = await world.nextFetch("agent-a");
+  const fetchB = await world.nextFetch("agent-b");
+  fetchA.respond({ hasNewer: false });
+  fetchB.respond({ hasNewer: false });
+
+  world.sync.releaseVisibleAgent("agent-a");
+  const release = await world.nextMembership();
+  expect(release.agentIds).toEqual(["agent-b"]);
+  release.succeed();
+
+  world.sync.replaceVisibleAgentIds("workspace", ["agent-a", "agent-b"]);
+  const restore = await world.nextMembership();
+  expect(restore.agentIds).toEqual(["agent-a", "agent-b"]);
+  restore.succeed();
+  world.sync.dispose();
+});
+
 test("uses a tail fetch when an agent becomes visible", async () => {
   const world = new TimelineWorld();
   world.sync.setConnected(true);
