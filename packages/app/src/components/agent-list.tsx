@@ -15,6 +15,7 @@ import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { useIsCompactFormFactor } from "@/constants/layout";
 import { useTimeAgo } from "@/hooks/use-time-ago";
+import { useSessionPromptPreviews } from "@/hooks/use-session-prompt-previews";
 import { type AggregatedAgent } from "@/hooks/use-aggregated-agents";
 import { useSessionStore } from "@/stores/session-store";
 import { Archive, ChevronRight } from "lucide-react-native";
@@ -162,6 +163,16 @@ function SessionRowTrailingAttention({
   );
 }
 
+function SessionPromptPreview({ first, last }: { first: string | null; last: string | null }) {
+  if (!first && !last) return null;
+  return (
+    <View style={styles.promptPreview}>
+      {first ? <Text style={styles.promptPreviewText}>{first}</Text> : null}
+      {last ? <Text style={styles.promptPreviewText}>{last}</Text> : null}
+    </View>
+  );
+}
+
 function SessionRow({
   agent,
   search,
@@ -183,6 +194,7 @@ function SessionRow({
 }) {
   const { theme } = useUnistyles();
   const { t } = useTranslation();
+  const promptPreviews = useSessionPromptPreviews(agent.serverId, agent.id);
   const agentKey = `${agent.serverId}:${agent.id}`;
   const isSelected = selectedAgentId === agentKey;
   const projectName = agent.projectPlacement?.projectName ?? "";
@@ -267,6 +279,7 @@ function SessionRow({
           />
         </View>
         {isMobile ? agentTitle : null}
+        <SessionPromptPreview first={promptPreviews.first} last={promptPreviews.last} />
         {isMobile ? (
           <View style={styles.rowMetaRow}>
             <HighlightedText
@@ -646,6 +659,13 @@ const styles = StyleSheet.create((theme) => ({
     minWidth: 0,
     fontSize: theme.fontSize.base,
     fontWeight: "400",
+    color: theme.colors.foregroundMuted,
+  },
+  promptPreview: {
+    marginTop: theme.spacing[1],
+  },
+  promptPreviewText: {
+    fontSize: theme.fontSize.sm,
     color: theme.colors.foregroundMuted,
   },
   sessionMetaText: {
