@@ -29,6 +29,12 @@ export interface NavigateToWorkspaceInput {
   target?: WorkspaceTabTarget;
   pin?: boolean;
   placement?: WorkspaceTabPlacement;
+  /**
+   * Switch the route without selecting an attention agent. Navigation-history
+   * replay uses this for entries whose remembered focus was not an agent, so
+   * returning restores the persisted tab focus instead of forcing a Chat open.
+   */
+  preserveFocus?: boolean;
 }
 
 export interface NavigateToWorkspaceDeps extends PrepareWorkspaceTabDeps {

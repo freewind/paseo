@@ -3,62 +3,12 @@
  */
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-const { navigationRef, router, emitEvent, resetSubscriptions, unsubscribeSpy } = vi.hoisted(() => {
-  const listeners = new Map<string, Set<() => void>>();
-  const unsubscribeSpyMock = vi.fn();
-
-  function emit(event: string): void {
-    const callbacks = listeners.get(event);
-    if (!callbacks) {
-      return;
-    }
-    for (const callback of callbacks) {
-      callback();
-    }
-  }
-
-  function clearSubscriptions(): void {
-    listeners.clear();
-    unsubscribeSpyMock.mockReset();
-  }
-
-  const ref = {
-    isReady: vi.fn(() => false),
-    canGoBack: vi.fn(() => false),
-    addListener: vi.fn((event: string, callback: () => void) => {
-      const callbacks = listeners.get(event) ?? new Set<() => void>();
-      callbacks.add(callback);
-      listeners.set(event, callbacks);
-      return () => {
-        callbacks.delete(callback);
-        unsubscribeSpyMock(event);
-      };
-    }),
-  };
-
-  const routerMock = {
-    back: vi.fn(),
-    replace: vi.fn(),
-  };
-
-  return {
-    navigationRef: ref,
-    router: routerMock,
-    emitEvent: emit,
-    resetSubscriptions: clearSubscriptions,
-    unsubscribeSpy: unsubscribeSpyMock,
-  };
-});
-
-vi.mock("expo-router", () => ({
-  useNavigationContainerRef: () => navigationRef,
-  router,
-}));
-
-vi.stubGlobal("React", React);
-vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+import {
+  navigationHistoryStore,
+  type NavigationHistoryEntry,
+} from "@/stores/navigation-history-store";
 
 import { useRouteBack, type RouteBack } from "./use-route-back";
 
@@ -66,7 +16,19 @@ let routeBack: RouteBack | null = null;
 
 function Probe(): React.ReactElement {
   routeBack = useRouteBack();
-  return <span data-testid="can-go-back">{String(routeBack.canGoBack)}</span>;
+  return (
+    <span data-testid="history-state">{`${String(routeBack.canGoBack)}|${String(routeBack.canGoForward)}`}</span>
+  );
+}
+
+function entry(pathname: string): NavigationHistoryEntry {
+  const isWorkspace = pathname.startsWith("/h/server-1/workspace/");
+  return {
+    pathname,
+    serverId: isWorkspace ? "server-1" : null,
+    workspaceId: isWorkspace ? (pathname.split("/")[4] ?? null) : null,
+    target: null,
+  };
 }
 
 describe("useRouteBack", () => {
@@ -74,14 +36,7 @@ describe("useRouteBack", () => {
   let container: HTMLElement | null = null;
 
   beforeEach(() => {
-    resetSubscriptions();
-    navigationRef.isReady.mockReset();
-    navigationRef.isReady.mockReturnValue(false);
-    navigationRef.canGoBack.mockReset();
-    navigationRef.canGoBack.mockReturnValue(false);
-    navigationRef.addListener.mockClear();
-    router.back.mockReset();
-    router.replace.mockReset();
+    navigationHistoryStore.reset();
     routeBack = null;
     container = document.createElement("div");
     document.body.appendChild(container);
@@ -97,6 +52,7 @@ describe("useRouteBack", () => {
     root = null;
     container?.remove();
     container = null;
+    navigationHistoryStore.reset();
   });
 
   function renderProbe(): void {
@@ -105,95 +61,67 @@ describe("useRouteBack", () => {
     });
   }
 
-  function renderedCanGoBack(): string {
-    return container?.querySelector('[data-testid="can-go-back"]')?.textContent ?? "";
+  function renderedState(): string {
+    return container?.querySelector('[data-testid="history-state"]')?.textContent ?? "";
   }
 
-  it("reports no back and does not navigate while the container is not ready", () => {
+  function record(pathname: string): void {
+    act(() => {
+      navigationHistoryStore.recordNavigation(entry(pathname));
+    });
+  }
+
+  it("reports no navigation while history is empty", () => {
     renderProbe();
 
     expect(routeBack?.canGoBack).toBe(false);
-
-    act(() => {
-      routeBack?.goBack();
-    });
-
-    expect(router.back).not.toHaveBeenCalled();
+    expect(routeBack?.canGoForward).toBe(false);
+    expect(renderedState()).toBe("false|false");
   });
 
-  it("reports no back and does not navigate when there is no history", () => {
-    navigationRef.isReady.mockReturnValue(true);
-
+  it("cannot go back from the first recorded position", () => {
+    record("/a");
     renderProbe();
+
     expect(routeBack?.canGoBack).toBe(false);
+    expect(renderedState()).toBe("false|false");
+
+    act(() => {
+      routeBack?.goBack();
+    });
+    expect(navigationHistoryStore.getSnapshot().cursor).toBe(0);
+  });
+
+  it("moves back and exposes forward once two positions exist", () => {
+    record("/a");
+    record("/b");
+    renderProbe();
+    expect(renderedState()).toBe("true|false");
 
     act(() => {
       routeBack?.goBack();
     });
 
-    expect(router.back).not.toHaveBeenCalled();
-    expect(router.replace).not.toHaveBeenCalled();
+    expect(navigationHistoryStore.getSnapshot().cursor).toBe(0);
+    expect(renderedState()).toBe("false|true");
+
+    act(() => {
+      routeBack?.goForward();
+    });
+
+    expect(navigationHistoryStore.getSnapshot().cursor).toBe(1);
+    expect(renderedState()).toBe("true|false");
   });
 
-  it("reports back and goes back once when history exists", () => {
-    navigationRef.isReady.mockReturnValue(true);
-    navigationRef.canGoBack.mockReturnValue(true);
-
+  it("updates reactively when the store changes outside the hook", () => {
     renderProbe();
-    expect(routeBack?.canGoBack).toBe(true);
+    expect(renderedState()).toBe("false|false");
 
     act(() => {
-      routeBack?.goBack();
+      navigationHistoryStore.recordNavigation(entry("/a"));
+      navigationHistoryStore.recordNavigation(entry("/b"));
     });
 
-    expect(router.back).toHaveBeenCalledOnce();
-    expect(router.replace).not.toHaveBeenCalled();
-  });
-
-  it("updates canGoBack from the state event without a manual re-render", () => {
-    navigationRef.isReady.mockReturnValue(true);
-
-    renderProbe();
-    expect(renderedCanGoBack()).toBe("false");
-
-    navigationRef.canGoBack.mockReturnValue(true);
-    act(() => {
-      emitEvent("state");
-    });
-    expect(renderedCanGoBack()).toBe("true");
-
-    navigationRef.canGoBack.mockReturnValue(false);
-    act(() => {
-      emitEvent("state");
-    });
-    expect(renderedCanGoBack()).toBe("false");
-  });
-
-  it("does not go back when history disappears before the click", () => {
-    navigationRef.isReady.mockReturnValue(true);
-    navigationRef.canGoBack.mockReturnValue(true);
-
-    renderProbe();
-    expect(routeBack?.canGoBack).toBe(true);
-
-    navigationRef.canGoBack.mockReturnValue(false);
-    act(() => {
-      routeBack?.goBack();
-    });
-
-    expect(router.back).not.toHaveBeenCalled();
-  });
-
-  it("unsubscribes from both events on unmount", () => {
-    navigationRef.isReady.mockReturnValue(true);
-
-    renderProbe();
-    act(() => {
-      root?.unmount();
-    });
-    root = null;
-
-    expect(unsubscribeSpy).toHaveBeenCalledWith("state");
-    expect(unsubscribeSpy).toHaveBeenCalledWith("ready");
+    expect(renderedState()).toBe("true|false");
   });
 });

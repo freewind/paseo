@@ -33,6 +33,7 @@ export const ja: TranslationResources = {
     actions: {
       save: "保存",
       back: "戻る",
+      forward: "Forward",
       cancel: "キャンセル",
       close: "閉じる",
       copy: "コピー",

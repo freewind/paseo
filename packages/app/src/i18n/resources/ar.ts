@@ -32,6 +32,7 @@ export const ar: TranslationResources = {
     actions: {
       save: "حفظ",
       back: "خلف",
+      forward: "Forward",
       cancel: "يلغي",
       close: "يغلق",
       copy: "ينسخ",

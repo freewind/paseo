@@ -33,6 +33,7 @@ export const ru: TranslationResources = {
     actions: {
       save: "Сохранить",
       back: "Назад",
+      forward: "Forward",
       cancel: "Отмена",
       close: "Закрыть",
       copy: "Копировать",

@@ -28,6 +28,7 @@ export const en = {
     actions: {
       save: "Save",
       back: "Back",
+      forward: "Forward",
       cancel: "Cancel",
       close: "Close",
       copy: "Copy",

@@ -102,6 +102,31 @@ store-ready protected group so a cold host deep link can survive daemon startup.
 Do not collapse this topology with a catch-all, `getId`, or
 `dangerouslySingular` workaround.
 
+## Navigation History
+
+The sidebar Back/Forward rows use their own history, not the route stack. A
+history entry is a pathname plus the focused workspace tab target
+(`stores/navigation-history-store.ts`): switching Chat inside a workspace keeps
+the pathname, so the route stack alone cannot represent it.
+
+`navigation/navigation-history-bridge.tsx` (mounted once in the root layout)
+observes rendered state — current pathname plus the active tab of that
+route's workspace — and records every entry point into an agent into one
+history. Background workspace layout changes never record, because the
+selector only reads the workspace of the current pathname.
+
+Back/Forward move a cursor in the store; the bridge replays the target entry:
+workspace entries go through `navigateToWorkspace()` (with `preserveFocus` when
+the remembered focus was not an agent, so replay restores the persisted tab
+instead of forcing the attention agent open), page entries through
+`router.navigate()`. While a replay is in flight the store holds observations
+until the target state appears (2s timeout, then recording resumes), which
+keeps intermediate states of the jump itself out of the history. A new
+navigation after Back truncates the forward branch, like a browser.
+
+The Android system Back button still pops the route stack and is not synced
+to this history; only the sidebar rows and `useRouteBack()` use it.
+
 ## Agent Targets
 
 Notifications and agent URLs name a host and agent. Both use

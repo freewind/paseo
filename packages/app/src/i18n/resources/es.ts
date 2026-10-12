@@ -33,6 +33,7 @@ export const es: TranslationResources = {
     actions: {
       save: "Guardar",
       back: "Atrás",
+      forward: "Forward",
       cancel: "Cancelar",
       close: "Cerrar",
       copy: "Copiar",

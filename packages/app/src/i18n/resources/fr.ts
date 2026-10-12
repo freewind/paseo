@@ -33,6 +33,7 @@ export const fr: TranslationResources = {
     actions: {
       save: "Enregistrer",
       back: "Retour",
+      forward: "Forward",
       cancel: "Annuler",
       close: "Fermer",
       copy: "Copier",

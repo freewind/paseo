@@ -32,6 +32,7 @@ export const ko: TranslationResources = {
     actions: {
       save: "저장",
       back: "뒤로",
+      forward: "Forward",
       cancel: "취소",
       close: "닫기",
       copy: "복사",
