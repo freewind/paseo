@@ -8,11 +8,7 @@ export function isTurnCompleteSoundId(value: string): value is TurnCompleteSound
   return (TURN_COMPLETE_SOUND_IDS as readonly string[]).includes(value);
 }
 
-/** Metro/bundler requires static require calls; keep the mapping exhaustive. */
-export const TURN_COMPLETE_SOUND_SOURCES: Record<TurnCompleteSoundId, unknown> = {
-  default: require("../../assets/audio/thinking-tone.wav"),
-  chime: require("../../assets/audio/chime.wav"),
-  bell: require("../../assets/audio/bell.wav"),
-  pop: require("../../assets/audio/pop.wav"),
-  ding: require("../../assets/audio/ding.wav"),
-};
+/** Unknown or missing ids fall back to the default sound, so a stale setting never plays nothing. */
+export function resolveTurnCompleteSoundId(value?: string): TurnCompleteSoundId {
+  return value && isTurnCompleteSoundId(value) ? value : DEFAULT_TURN_COMPLETE_SOUND;
+}
