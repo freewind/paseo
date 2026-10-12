@@ -89,7 +89,13 @@ export interface ComposerTrackPillProps {
   /** Spell out anything the segments abbreviate — a bare count reads as nothing out loud. */
   accessibilityLabel?: string;
   /** Panel body. Rendered into a popover on wide screens and a sheet on compact ones. */
-  children: ReactNode;
+  children:
+    | ReactNode
+    | ((state: {
+        hovered: boolean;
+        onPointerEnter: () => void;
+        onPointerLeave: () => void;
+      }) => ReactNode);
 }
 
 /**
@@ -115,6 +121,10 @@ export function ComposerTrackPill({
   accessibilityLabel,
   children,
 }: ComposerTrackPillProps): ReactElement {
+  const [hovered, setHovered] = useState(false);
+  const handlePointerEnter = useCallback(() => setHovered(true), []);
+  const handlePointerLeave = useCallback(() => setHovered(false), []);
+
   return (
     <MenuRoot compactMode="sheet">
       <ComposerTrackPillTrigger
@@ -133,7 +143,13 @@ export function ComposerTrackPill({
         scrollable
         testID={`${testID}-panel`}
       >
-        {children}
+        {typeof children === "function"
+          ? children({
+              hovered,
+              onPointerEnter: handlePointerEnter,
+              onPointerLeave: handlePointerLeave,
+            })
+          : children}
       </MenuSurface>
     </MenuRoot>
   );
@@ -252,11 +268,15 @@ export function ComposerTrackRow({
   disabled = false,
   accessibilityLabel,
   testID,
-}: ComposerTrackRowProps): ReactElement {
+  hovered = false,
+  onPointerEnter,
+  onPointerLeave,
+}: ComposerTrackRowProps & {
+  hovered?: boolean;
+  onPointerEnter?: () => void;
+  onPointerLeave?: () => void;
+}): ReactElement {
   const { selectItem } = useMenuContext("ComposerTrackRow");
-  const [hovered, setHovered] = useState(false);
-  const handlePointerEnter = useCallback(() => setHovered(true), []);
-  const handlePointerLeave = useCallback(() => setHovered(false), []);
   const handleSelect = useCallback(
     () => selectItem(onPress, closeOnSelect),
     [closeOnSelect, onPress, selectItem],
@@ -280,7 +300,7 @@ export function ComposerTrackRow({
   }
 
   return (
-    <View onPointerEnter={handlePointerEnter} onPointerLeave={handlePointerLeave}>
+    <View onPointerEnter={onPointerEnter} onPointerLeave={onPointerLeave}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
