@@ -5,8 +5,13 @@ import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { routeBack, theme } = vi.hoisted(() => ({
-  routeBack: { canGoBack: false, goBack: vi.fn() },
+const { history, theme } = vi.hoisted(() => ({
+  history: {
+    canGoBack: false,
+    canGoForward: false,
+    goBack: vi.fn(),
+    goForward: vi.fn(),
+  },
   theme: {
     spacing: { 0: 0, 1: 4, 2: 8, 3: 12, 4: 16 },
     iconSize: { sm: 14, md: 18 },
@@ -38,17 +43,22 @@ const { routeBack, theme } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/hooks/use-route-back", () => ({
-  useRouteBack: () => ({ canGoBack: routeBack.canGoBack, goBack: routeBack.goBack }),
+  useRouteBack: () => history,
 }));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string) => (key === "common.actions.back" ? "Back" : key),
+    t: (key: string) => {
+      if (key === "common.actions.back") return "Back";
+      if (key === "common.actions.forward") return "Forward";
+      return key;
+    },
   }),
 }));
 
 vi.mock("lucide-react-native", () => ({
   ArrowLeft: () => React.createElement("span", { "data-icon": "ArrowLeft" }),
+  ArrowRight: () => React.createElement("span", { "data-icon": "ArrowRight" }),
 }));
 
 vi.mock("react-native-unistyles", () => ({
@@ -77,8 +87,10 @@ describe("SidebarBackRow", () => {
   let container: HTMLElement | null = null;
 
   beforeEach(() => {
-    routeBack.canGoBack = false;
-    routeBack.goBack.mockReset();
+    history.canGoBack = false;
+    history.canGoForward = false;
+    history.goBack.mockReset();
+    history.goForward.mockReset();
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -95,49 +107,76 @@ describe("SidebarBackRow", () => {
     container = null;
   });
 
-  function renderBackRow(onBeforeNavigate?: () => void): void {
+  function renderRows(onBeforeNavigate?: () => void): void {
     act(() => {
       root?.render(<SidebarBackRow onBeforeNavigate={onBeforeNavigate} />);
     });
   }
 
-  function pressRow(): void {
+  function press(testID: string): void {
     act(() => {
-      container?.querySelector<HTMLElement>('[data-testid="sidebar-back"]')?.click();
+      container?.querySelector<HTMLElement>(`[data-testid="${testID}"]`)?.click();
     });
   }
 
-  it("navigates back after closing the sidebar when history exists", () => {
-    routeBack.canGoBack = true;
-    const onBeforeNavigate = vi.fn();
-    renderBackRow(onBeforeNavigate);
+  function row(testID: string): HTMLElement | null {
+    return container?.querySelector<HTMLElement>(`[data-testid="${testID}"]`) ?? null;
+  }
 
-    pressRow();
+  it("navigates back after closing the sidebar when history exists", () => {
+    history.canGoBack = true;
+    const onBeforeNavigate = vi.fn();
+    renderRows(onBeforeNavigate);
+
+    press("sidebar-back");
 
     expect(onBeforeNavigate).toHaveBeenCalledOnce();
-    expect(routeBack.goBack).toHaveBeenCalledOnce();
+    expect(history.goBack).toHaveBeenCalledOnce();
     expect(onBeforeNavigate.mock.invocationCallOrder[0]).toBeLessThan(
-      routeBack.goBack.mock.invocationCallOrder[0],
+      history.goBack.mock.invocationCallOrder[0],
     );
   });
 
-  it("keeps rendering the row and disables it when there is no history", () => {
-    routeBack.canGoBack = false;
-    renderBackRow();
+  it("navigates forward after closing the sidebar when a forward branch exists", () => {
+    history.canGoForward = true;
+    const onBeforeNavigate = vi.fn();
+    renderRows(onBeforeNavigate);
 
-    const row = container?.querySelector('[data-testid="sidebar-back"]');
-    expect(row).not.toBeNull();
-    expect(row?.getAttribute("aria-disabled")).toBe("true");
+    press("sidebar-forward");
+
+    expect(onBeforeNavigate).toHaveBeenCalledOnce();
+    expect(history.goForward).toHaveBeenCalledOnce();
+    expect(history.goBack).not.toHaveBeenCalled();
+  });
+
+  it("keeps both rows rendered and disables them when there is no history", () => {
+    renderRows();
+
+    const backRow = row("sidebar-back");
+    const forwardRow = row("sidebar-forward");
+    expect(backRow).not.toBeNull();
+    expect(backRow?.getAttribute("aria-disabled")).toBe("true");
+    expect(forwardRow).not.toBeNull();
+    expect(forwardRow?.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("disables only the direction without history", () => {
+    history.canGoBack = true;
+    renderRows();
+
+    expect(row("sidebar-back")?.getAttribute("aria-disabled")).not.toBe("true");
+    expect(row("sidebar-forward")?.getAttribute("aria-disabled")).toBe("true");
   });
 
   it("does nothing when pressed without history", () => {
-    routeBack.canGoBack = false;
     const onBeforeNavigate = vi.fn();
-    renderBackRow(onBeforeNavigate);
+    renderRows(onBeforeNavigate);
 
-    pressRow();
+    press("sidebar-back");
+    press("sidebar-forward");
 
-    expect(routeBack.goBack).not.toHaveBeenCalled();
+    expect(history.goBack).not.toHaveBeenCalled();
+    expect(history.goForward).not.toHaveBeenCalled();
     expect(onBeforeNavigate).not.toHaveBeenCalled();
   });
 });

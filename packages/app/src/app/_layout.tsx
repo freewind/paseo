@@ -73,6 +73,7 @@ import {
   type StartupBlocker,
 } from "@/navigation/host-runtime-bootstrap";
 import { registerWorkspaceRouteNavigationRef } from "@/navigation/workspace-route-navigation";
+import { NavigationHistoryBridge } from "@/navigation/navigation-history-bridge";
 import { ThemedStack } from "@/navigation/themed-stack";
 import { shouldUseDesktopDaemon } from "@/desktop/daemon/desktop-daemon";
 import { AgentNavigationListener } from "@/desktop/agent-navigation";
@@ -927,6 +928,7 @@ function AppShell() {
         <AgentNavigationListener />
         <AppWithSidebar>
           <WorkspaceRouteNavigationBridge />
+          <NavigationHistoryBridge />
           <RootStack />
         </AppWithSidebar>
       </HorizontalScrollProvider>

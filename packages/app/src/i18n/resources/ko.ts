@@ -31,6 +31,7 @@ export const ko: TranslationResources = {
     loading: "불러오는 중...",
     actions: {
       back: "뒤로",
+      forward: "Forward",
       cancel: "취소",
       close: "닫기",
       copy: "복사",

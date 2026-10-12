@@ -103,6 +103,32 @@ describe("workspace navigation", () => {
     ]);
   });
 
+  it("keeps the persisted tab focus when preserveFocus is set", () => {
+    const workspace = {
+      id: "workspace-a",
+      workspaceDirectory: "/repo/workspace-a",
+    } as WorkspaceDescriptor;
+    const agent = {
+      id: "agent-1",
+      cwd: "/repo/workspace-a",
+      workspaceId: "workspace-a",
+      requiresAttention: true,
+      attentionReason: "permission",
+    } as unknown as Agent;
+    const { deps, navigations, openedTabs } = createFakeDeps({
+      getSessionWorkspaces: () => new Map([[workspace.id, workspace]]),
+      getSessionAgents: () => [agent],
+    });
+
+    navigateToWorkspace(
+      { serverId: "server-1", workspaceId: "workspace-a", preserveFocus: true },
+      deps,
+    );
+
+    expect(openedTabs).toEqual([]);
+    expect(navigations).toEqual(["/h/server-1/workspace/workspace-a"]);
+  });
+
   it("keeps an explicit tab authoritative over an attention agent", () => {
     const workspace = {
       id: "workspace-a",

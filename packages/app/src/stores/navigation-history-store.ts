@@ -1,0 +1,197 @@
+import { normalizeWorkspaceTabTarget, workspaceTabTargetsEqual } from "@/workspace-tabs/identity";
+import type { WorkspaceTabTarget } from "@/workspace-tabs/model";
+
+/**
+ * One visited position: the app page plus the focused workspace tab. The tab
+ * target is what makes a Chat switch visible to history — switching tabs inside
+ * a workspace never changes the pathname, so the route stack alone cannot
+ * represent it.
+ */
+export interface NavigationHistoryEntry {
+  pathname: string;
+  serverId: string | null;
+  workspaceId: string | null;
+  target: WorkspaceTabTarget | null;
+}
+
+export interface NavigationHistoryReplay {
+  token: number;
+  entry: NavigationHistoryEntry;
+}
+
+export interface NavigationHistorySnapshot {
+  entries: readonly NavigationHistoryEntry[];
+  /** Index of the current position in `entries`. */
+  cursor: number;
+  /** Set while a back/forward jump is settling; consumers apply it once. */
+  replay: NavigationHistoryReplay | null;
+  version: number;
+}
+
+export interface NavigationHistoryStore {
+  subscribe: (onStoreChange: () => void) => () => void;
+  getSnapshot: () => NavigationHistorySnapshot;
+  getCanGoBack: () => boolean;
+  getCanGoForward: () => boolean;
+  recordNavigation: (entry: NavigationHistoryEntry) => void;
+  navigateBack: () => boolean;
+  navigateForward: () => boolean;
+  reset: () => void;
+}
+
+export interface NavigationHistoryStoreOptions {
+  replayTimeoutMs?: number;
+}
+
+const MAX_ENTRIES = 100;
+const REPLAY_TIMEOUT_MS = 2000;
+
+function stableStringify(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "null";
+  }
+  if (typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(",")}]`;
+  }
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record)
+    .filter((key) => record[key] !== undefined)
+    .sort();
+  return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(",")}}`;
+}
+
+/**
+ * Stable string form of a tab target. Used as a `useSyncExternalStore`
+ * snapshot fragment: a string keeps `Object.is` stable across selector calls
+ * even though the underlying tab objects are rebuilt on every layout update.
+ */
+export function canonicalTargetKey(target: WorkspaceTabTarget | null): string {
+  if (!target) {
+    return "";
+  }
+  return stableStringify(target);
+}
+
+function entriesEqual(a: NavigationHistoryEntry, b: NavigationHistoryEntry): boolean {
+  if (a.pathname !== b.pathname) {
+    return false;
+  }
+  if (!a.target || !b.target) {
+    return !a.target && !b.target;
+  }
+  return workspaceTabTargetsEqual(a.target, b.target);
+}
+
+export function createNavigationHistoryStore(
+  options: NavigationHistoryStoreOptions = {},
+): NavigationHistoryStore {
+  const replayTimeoutMs = options.replayTimeoutMs ?? REPLAY_TIMEOUT_MS;
+  const listeners = new Set<() => void>();
+  let replayTimer: ReturnType<typeof setTimeout> | null = null;
+  let nextToken = 1;
+  let snapshot: NavigationHistorySnapshot = {
+    entries: [],
+    cursor: -1,
+    replay: null,
+    version: 0,
+  };
+
+  function emit(next: NavigationHistorySnapshot): void {
+    snapshot = next;
+    for (const listener of listeners) {
+      listener();
+    }
+  }
+
+  function clearReplayTimer(): void {
+    if (replayTimer !== null) {
+      clearTimeout(replayTimer);
+      replayTimer = null;
+    }
+  }
+
+  function beginReplay(entry: NavigationHistoryEntry): void {
+    clearReplayTimer();
+    const token = nextToken++;
+    emit({
+      ...snapshot,
+      replay: { token, entry },
+      version: snapshot.version + 1,
+    });
+    replayTimer = setTimeout(() => {
+      replayTimer = null;
+      if (snapshot.replay?.token === token) {
+        // The target never became observable (agent deleted, route refused).
+        // Unfreeze recording instead of swallowing every later user action.
+        emit({ ...snapshot, replay: null, version: snapshot.version + 1 });
+      }
+    }, replayTimeoutMs);
+  }
+
+  function recordNavigation(rawEntry: NavigationHistoryEntry): void {
+    const entry: NavigationHistoryEntry = {
+      ...rawEntry,
+      target: normalizeWorkspaceTabTarget(rawEntry.target),
+    };
+
+    if (snapshot.replay) {
+      // Replay is in flight: the only interesting observation is arrival at the
+      // target. Anything else is an intermediate state of the jump itself (or a
+      // navigation the user started too quickly) and must not be recorded.
+      if (entriesEqual(entry, snapshot.replay.entry)) {
+        clearReplayTimer();
+        emit({ ...snapshot, replay: null, version: snapshot.version + 1 });
+      }
+      return;
+    }
+
+    const current = snapshot.cursor >= 0 ? snapshot.entries[snapshot.cursor] : null;
+    if (current && entriesEqual(current, entry)) {
+      return;
+    }
+
+    const kept = snapshot.cursor >= 0 ? snapshot.entries.slice(0, snapshot.cursor + 1) : [];
+    let entries = [...kept, entry];
+    let cursor = entries.length - 1;
+    if (entries.length > MAX_ENTRIES) {
+      entries = entries.slice(entries.length - MAX_ENTRIES);
+      cursor = entries.length - 1;
+    }
+    emit({ entries, cursor, replay: null, version: snapshot.version + 1 });
+  }
+
+  function jump(delta: -1 | 1): boolean {
+    const targetIndex = snapshot.cursor + delta;
+    if (targetIndex < 0 || targetIndex >= snapshot.entries.length) {
+      return false;
+    }
+    const entry = snapshot.entries[targetIndex];
+    emit({ ...snapshot, cursor: targetIndex, version: snapshot.version + 1 });
+    beginReplay(entry);
+    return true;
+  }
+
+  return {
+    subscribe(onStoreChange) {
+      listeners.add(onStoreChange);
+      return () => {
+        listeners.delete(onStoreChange);
+      };
+    },
+    getSnapshot: () => snapshot,
+    getCanGoBack: () => snapshot.cursor > 0,
+    getCanGoForward: () => snapshot.cursor >= 0 && snapshot.cursor < snapshot.entries.length - 1,
+    recordNavigation,
+    navigateBack: () => jump(-1),
+    navigateForward: () => jump(1),
+    reset() {
+      clearReplayTimer();
+      emit({ entries: [], cursor: -1, replay: null, version: snapshot.version + 1 });
+    },
+  };
+}
+
+export const navigationHistoryStore = createNavigationHistoryStore();

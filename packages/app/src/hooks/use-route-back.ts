@@ -1,52 +1,36 @@
-import { router, useNavigationContainerRef } from "expo-router";
-import { useCallback, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
+import { navigationHistoryStore } from "@/stores/navigation-history-store";
 
 export interface RouteBack {
   canGoBack: boolean;
+  canGoForward: boolean;
   goBack: () => void;
+  goForward: () => void;
 }
 
 /**
- * 提供「当前能否返回」和「返回上一条路由」两个能力。
+ * 侧栏历史导航的可用状态与跳转动作。
  *
- * `navigationRef.canGoBack()` 只是一次普通读取，不会因导航变化通知订阅者；
- * 只读它一次，侧栏按钮的历史判断会一直停在首帧。这里改用 useSyncExternalStore
- * 订阅容器事件，让历史变化自动触发重渲染。
- *
- * 容器挂载前 `canGoBack()` 只会 console.error 并返回 undefined，所以读取和
- * 导航前都必须先用 `isReady()` 守卫。
+ * 历史来自 navigation-history-store：它同时记录页面路由和 workspace 内的
+ * 活动 tab，所以同 workspace 里手动切换 Chat 也算一步历史——纯路由的
+ * `canGoBack()` 看不到这些切换。跳转由 NavigationHistoryBridge 回放完成，
+ * 这里只移动历史游标。
  */
 export function useRouteBack(): RouteBack {
-  const navigationRef = useNavigationContainerRef();
-
-  const getCanGoBack = useCallback(
-    () => (navigationRef.isReady() ? navigationRef.canGoBack() : false),
-    [navigationRef],
+  const snapshot = useSyncExternalStore(
+    navigationHistoryStore.subscribe,
+    navigationHistoryStore.getSnapshot,
+    navigationHistoryStore.getSnapshot,
   );
 
-  // state 覆盖前进/后退的历史变化；ready 覆盖挂载瞬间，否则容器就绪后会漏一次更新。
-  const subscribe = useCallback(
-    (onStoreChange: () => void) => {
-      const unsubscribeState = navigationRef.addListener("state", onStoreChange);
-      const unsubscribeReady = navigationRef.addListener("ready", onStoreChange);
-      return () => {
-        unsubscribeState();
-        unsubscribeReady();
-      };
+  return {
+    canGoBack: snapshot.cursor > 0,
+    canGoForward: snapshot.cursor >= 0 && snapshot.cursor < snapshot.entries.length - 1,
+    goBack: () => {
+      navigationHistoryStore.navigateBack();
     },
-    [navigationRef],
-  );
-
-  const canGoBack = useSyncExternalStore(subscribe, getCanGoBack, getCanGoBack);
-
-  function goBack(): void {
-    // 按钮的可用状态来自渲染时刻，而点击发生在之后；期间路由可能已被关闭，
-    // 所以点击当下必须重新核对，避免回退到一个不存在的入口。
-    if (!navigationRef.isReady() || !navigationRef.canGoBack()) {
-      return;
-    }
-    router.back();
-  }
-
-  return { canGoBack, goBack };
+    goForward: () => {
+      navigationHistoryStore.navigateForward();
+    },
+  };
 }
