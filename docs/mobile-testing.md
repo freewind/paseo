@@ -349,6 +349,24 @@ This cannot be validated by a JS test — verify on a device: play music through
 open Paseo, use dictation once, stop, and confirm the music resumes at full quality; then
 background/foreground the app and confirm it keeps playing at full quality.
 
+### Completion chime must not take audio focus
+
+The turn-complete chime plays through `packages/app/modules/paseo-notification-sound`, never through
+`expo-audio`. `expo-audio` requests `AUDIOFOCUS_GAIN` before every playback, so a chime played
+through it hands the user's music, a podcast, or another agent's reply a permanent
+`AUDIOFOCUS_LOSS` — that is the whole reason the module exists. Android uses `SoundPool`, which
+never asks for focus. iOS plays through the category the app already holds unless nothing can mix
+(`.soloAmbient`, or `.playback` without `.mixWithOthers`/`.duckOthers`), and only then switches to
+`.playback` + `.mixWithOthers`. A `.playAndRecord` session is left alone, because changing the
+category under an active recording stops its input.
+
+Rebuild the binary to test this (see [Local iOS device builds](#local-ios-device-builds)); Metro
+delivers JS only, so a stale dev client silently drops the chime. Then play music from another app
+and finish a turn, and preview each sound in the chat settings: the music keeps playing and does not
+restart. Read an agent reply aloud and complete another turn: the chime layers on top instead of
+cutting the reply off. Repeat while dictation records: the chime may be inaudible there, but the
+recording must survive.
+
 ## Unistyles + Reanimated
 
 ### The crash

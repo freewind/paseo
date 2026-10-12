@@ -1,18 +1,13 @@
 import { useCallback, useRef } from "react";
-import {
-  DEFAULT_TURN_COMPLETE_SOUND,
-  isTurnCompleteSoundId,
-  TURN_COMPLETE_SOUND_SOURCES,
-  type TurnCompleteSoundId,
-} from "@/audio/turn-complete-sounds";
+import { TURN_COMPLETE_SOUND_SOURCES } from "@/audio/turn-complete-sound-assets";
+import { resolveTurnCompleteSoundId, type TurnCompleteSoundId } from "@/audio/turn-complete-sounds";
 
 /** Plays a short notification sound when an agent finishes a turn (web: HTML Audio). */
 export function useTurnCompleteSound(): (soundId?: string) => void {
   const audioRef = useRef<Map<TurnCompleteSoundId, HTMLAudioElement> | null>(null);
 
   const playTurnCompleteSound = useCallback((soundId?: string) => {
-    const id: TurnCompleteSoundId =
-      soundId && isTurnCompleteSoundId(soundId) ? soundId : DEFAULT_TURN_COMPLETE_SOUND;
+    const id = resolveTurnCompleteSoundId(soundId);
     try {
       if (!audioRef.current) {
         audioRef.current = new Map();
