@@ -1282,6 +1282,11 @@ export const ja: TranslationResources = {
     footer: {
       usage: "使用状況",
     },
+    recentVisits: {
+      trigger: "最近",
+      empty: "最近見たセッションはありません",
+      current: "現在",
+    },
     help: {
       trigger: "ヘルプとサポート",
       sectionHelp: "ヘルプ",

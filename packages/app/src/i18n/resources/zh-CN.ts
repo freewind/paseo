@@ -1260,6 +1260,11 @@ export const zhCN: TranslationResources = {
     footer: {
       usage: "使用情况",
     },
+    recentVisits: {
+      trigger: "最近访问",
+      empty: "还没有最近访问的会话",
+      current: "当前",
+    },
     help: {
       trigger: "帮助与支持",
       sectionHelp: "帮助",

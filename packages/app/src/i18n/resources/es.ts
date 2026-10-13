@@ -1309,6 +1309,11 @@ export const es: TranslationResources = {
     footer: {
       usage: "Uso",
     },
+    recentVisits: {
+      trigger: "Recientes",
+      empty: "Aún no hay sesiones recientes",
+      current: "Actual",
+    },
     help: {
       trigger: "Ayuda y soporte",
       sectionHelp: "Ayuda",

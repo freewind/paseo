@@ -1286,6 +1286,11 @@ export const ru: TranslationResources = {
     footer: {
       usage: "Использование",
     },
+    recentVisits: {
+      trigger: "Недавние",
+      empty: "Нет недавних сессий",
+      current: "Текущая",
+    },
     help: {
       trigger: "Помощь и поддержка",
       sectionHelp: "Помощь",
