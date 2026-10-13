@@ -2,9 +2,11 @@ import React, { useCallback, useEffect, useRef, useState, type ReactElement } fr
 import { ScrollView, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { useTranslation } from "react-i18next";
-import { X } from "lucide-react-native";
+import { Copy, X } from "lucide-react-native";
 import { inlineUnistylesStyle } from "@/styles/unistyles-inline-style";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/contexts/toast-context";
+import { copyToClipboard } from "@/utils/copy-to-clipboard";
 import {
   PROMPT_DETAIL_GAP,
   PROMPT_DETAIL_MAX_HEIGHT,
@@ -66,6 +68,7 @@ export function PromptDetailPopover({
   onClose,
 }: PromptDetailPopoverProps): ReactElement | null {
   const { t } = useTranslation();
+  const toast = useToast();
   const [fullText, setFullText] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [frame, setFrame] = useState<ReturnType<typeof computePopoverPosition>>(null);
@@ -109,6 +112,19 @@ export function PromptDetailPopover({
     onClose();
   }, [onClose, onJumpToPrompt, prompt.seq]);
 
+  // The popover exists to show the whole prompt, so copy the loaded text and fall back to
+  // the index preview only while the daemon read is still in flight.
+  const handleCopy = useCallback(async () => {
+    const text = fullText ?? preview;
+    if (!text) return;
+    try {
+      await copyToClipboard(text);
+      toast.copied();
+    } catch {
+      toast.error(t("common.errors.unableToCopy"));
+    }
+  }, [fullText, preview, t, toast]);
+
   // Mount only after measurement, so no frame paints at an unmeasured position.
   if (!frame) return null;
 
@@ -131,6 +147,15 @@ export function PromptDetailPopover({
         </Text>
       </ScrollView>
       <View style={styles.actions} testID={`chat-outline-prompt-detail-actions-${prompt.seq}`}>
+        <Button
+          variant="secondary"
+          size="xs"
+          leftIcon={Copy}
+          onPress={handleCopy}
+          testID={`chat-outline-prompt-detail-copy-${prompt.seq}`}
+        >
+          {`🌿 ${t("common.actions.copy")}`}
+        </Button>
         <Button
           variant="secondary"
           size="xs"

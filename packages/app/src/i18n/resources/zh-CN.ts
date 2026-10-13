@@ -251,7 +251,7 @@ export const zhCN: TranslationResources = {
     chatOutline: {
       collapse: "🌿 收起大纲",
       expand: "🌿 展开大纲",
-      jumpToPrompt: "🌿 跳转到这条提示词",
+      jumpToPrompt: "🌿 定位",
     },
     historyLoadFailed: "无法加载智能体历史记录",
     messageCapped: "此消息已被截断（{{bytes}} 字节）。",
