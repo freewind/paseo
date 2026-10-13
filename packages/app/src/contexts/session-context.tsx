@@ -17,6 +17,7 @@ import { useTurnCompleteSound } from "@/hooks/use-turn-complete-sound";
 import { useTts } from "@/hooks/use-tts";
 import { useActiveTtsAgentId } from "@/tts/active-tts-agent";
 import { createAssistantSpeechSender } from "@/tts/assistant-message-completion";
+import { isConversationSpeechEnabled } from "@/tts/conversation-speech";
 import { observeSpeechInterruptions } from "@/tts/speech-interruption";
 import { useHostFeature } from "@/runtime/host-features";
 import { useAppSettings } from "@/hooks/use-settings";
@@ -238,9 +239,8 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
   const handleTurnCompletionRef = useRef(handleTurnCompletion);
   handleTurnCompletionRef.current = handleTurnCompletion;
   const activeConversationSpeechEnabled =
-    appSettings.ttsEnabled &&
     activeTtsAgentId !== null &&
-    appSettings.ttsConversations[JSON.stringify([serverId, activeTtsAgentId])] === true;
+    isConversationSpeechEnabled(appSettings, serverId, activeTtsAgentId);
   // Stop only the conversation that owned playback, not an unrelated host's preference update.
   useEffect(() => {
     if (!activeConversationSpeechEnabled) return;
@@ -434,8 +434,7 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
         const current = speechSettingsRef.current;
         if (
           speechText &&
-          current.appSettings.ttsEnabled &&
-          current.appSettings.ttsConversations[JSON.stringify([serverId, agentId])] === true &&
+          isConversationSpeechEnabled(current.appSettings, serverId, agentId) &&
           current.supportsAssistantMessageCompletion &&
           agentId === activeTtsAgentIdRef.current
         ) {

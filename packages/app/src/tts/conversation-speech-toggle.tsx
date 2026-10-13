@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAppSettings } from "@/hooks/use-settings";
 import { AgentControlTrigger } from "@/composer/agent-controls/control";
 import { useActiveTtsAgentId } from "./active-tts-agent";
+import { isConversationSpeechEnabled } from "./conversation-speech";
 import { useTts } from "@/hooks/use-tts";
 
 /** Speech preferences are device-local and independent for each host's conversation. */
@@ -19,7 +20,7 @@ export function ConversationSpeechToggle({
   const activeAgentId = useActiveTtsAgentId(serverId);
   const { stop } = useTts();
   const key = JSON.stringify([serverId, agentId]);
-  const enabled = settings.ttsConversations[key] === true;
+  const enabled = isConversationSpeechEnabled(settings, serverId, agentId);
   const accessibilityState = useMemo(() => ({ selected: enabled }), [enabled]);
   const toggle = useCallback(() => {
     if (enabled && activeAgentId === agentId) stop();
