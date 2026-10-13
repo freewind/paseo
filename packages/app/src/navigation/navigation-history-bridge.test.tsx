@@ -149,6 +149,32 @@ describe("NavigationHistoryBridge", () => {
     expect(recordedEntries()).toHaveLength(1);
   });
 
+  it("records the focused agent as recently visited", () => {
+    render();
+    observe("/settings", null);
+
+    expect(navigationHistoryStore.getRecentAgentVisits()).toEqual([
+      { serverId: "server-1", workspaceId: "workspace-a", agentId: "agent-1" },
+    ]);
+  });
+
+  it("collects the agent a jump actually arrived at", () => {
+    mocks.activeTarget = { kind: "agent", agentId: "agent-2" };
+    mocks.activeTabId = "agent_agent-2";
+    render();
+    observe(WORKSPACE_PATH, { kind: "agent", agentId: "agent-1" });
+
+    act(() => {
+      navigationHistoryStore.navigateBack();
+    });
+    observe(WORKSPACE_PATH, { kind: "agent", agentId: "agent-2" }, "agent_agent-2");
+
+    expect(navigationHistoryStore.getRecentAgentVisits().map((visit) => visit.agentId)).toEqual([
+      "agent-2",
+      "agent-1",
+    ]);
+  });
+
   it("replays a back jump to a workspace entry through navigateToWorkspace", () => {
     render();
     observe(WORKSPACE_PATH, { kind: "agent", agentId: "agent-2" });
