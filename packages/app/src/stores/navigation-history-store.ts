@@ -26,12 +26,25 @@ export interface NavigationHistoryReplay {
   entry: NavigationHistoryEntry;
 }
 
+/**
+ * An agent the user actually looked at, most recent first. Kept beside
+ * `entries` on purpose: history is a path you walk back along, so opening a new
+ * branch or walking that path must not lose the other agents you were just in.
+ */
+export interface RecentAgentVisit {
+  serverId: string;
+  workspaceId: string;
+  agentId: string;
+}
+
 export interface NavigationHistorySnapshot {
   entries: readonly NavigationHistoryEntry[];
   /** Index of the current position in `entries`. */
   cursor: number;
   /** Set while a back/forward jump is settling; consumers apply it once. */
   replay: NavigationHistoryReplay | null;
+  /** Agents the user visited, most recent first, deduplicated. */
+  recentAgentVisits: readonly RecentAgentVisit[];
   version: number;
 }
 
@@ -40,6 +53,7 @@ export interface NavigationHistoryStore {
   getSnapshot: () => NavigationHistorySnapshot;
   getCanGoBack: () => boolean;
   getCanGoForward: () => boolean;
+  getRecentAgentVisits: () => readonly RecentAgentVisit[];
   recordNavigation: (entry: NavigationHistoryEntry) => void;
   navigateBack: () => boolean;
   navigateForward: () => boolean;
@@ -52,6 +66,8 @@ export interface NavigationHistoryStoreOptions {
 
 const MAX_ENTRIES = 100;
 const REPLAY_TIMEOUT_MS = 2000;
+/** Enough to cover a working session; the full-page History covers the rest. */
+const MAX_RECENT_AGENT_VISITS = 20;
 
 function stableStringify(value: unknown): string {
   if (value === null || value === undefined) {
@@ -133,6 +149,50 @@ function rebindReplayInstance(
   return entries.map((item, itemIndex) => (itemIndex === index ? { ...item, tabId } : item));
 }
 
+/**
+ * The agent behind a position, when that position is a main agent chat. Pages,
+ * blank tabs, files, terminals and subagent panels are not something the user
+ * "was just in".
+ */
+function readRecentAgentVisit(entry: NavigationHistoryEntry): RecentAgentVisit | null {
+  if (entry.target?.kind !== "agent" || !entry.serverId || !entry.workspaceId) {
+    return null;
+  }
+  return {
+    serverId: entry.serverId,
+    workspaceId: entry.workspaceId,
+    agentId: entry.target.agentId,
+  };
+}
+
+function recentAgentVisitsEqual(left: RecentAgentVisit, right: RecentAgentVisit): boolean {
+  return (
+    left.serverId === right.serverId &&
+    left.workspaceId === right.workspaceId &&
+    left.agentId === right.agentId
+  );
+}
+
+/**
+ * Moves the visited agent to the front and keeps one entry per agent per
+ * workspace, so returning to an agent reorders the list instead of appending
+ * another copy of it.
+ */
+function withRecentAgentVisit(
+  visits: readonly RecentAgentVisit[],
+  entry: NavigationHistoryEntry,
+): readonly RecentAgentVisit[] {
+  const visit = readRecentAgentVisit(entry);
+  if (!visit) {
+    return visits;
+  }
+  if (visits[0] && recentAgentVisitsEqual(visits[0], visit)) {
+    return visits;
+  }
+  const rest = visits.filter((item) => !recentAgentVisitsEqual(item, visit));
+  return [visit, ...rest].slice(0, MAX_RECENT_AGENT_VISITS);
+}
+
 export function createNavigationHistoryStore(
   options: NavigationHistoryStoreOptions = {},
 ): NavigationHistoryStore {
@@ -144,6 +204,7 @@ export function createNavigationHistoryStore(
     entries: [],
     cursor: -1,
     replay: null,
+    recentAgentVisits: [],
     version: 0,
   };
 
@@ -195,6 +256,7 @@ export function createNavigationHistoryStore(
         emit({
           ...snapshot,
           entries: rebindReplayInstance(snapshot.entries, snapshot.cursor, entry.tabId),
+          recentAgentVisits: withRecentAgentVisit(snapshot.recentAgentVisits, entry),
           replay: null,
           version: snapshot.version + 1,
         });
@@ -214,7 +276,13 @@ export function createNavigationHistoryStore(
       entries = entries.slice(entries.length - MAX_ENTRIES);
       cursor = entries.length - 1;
     }
-    emit({ entries, cursor, replay: null, version: snapshot.version + 1 });
+    emit({
+      entries,
+      cursor,
+      recentAgentVisits: withRecentAgentVisit(snapshot.recentAgentVisits, entry),
+      replay: null,
+      version: snapshot.version + 1,
+    });
   }
 
   function jump(delta: -1 | 1): boolean {
@@ -238,12 +306,19 @@ export function createNavigationHistoryStore(
     getSnapshot: () => snapshot,
     getCanGoBack: () => snapshot.cursor > 0,
     getCanGoForward: () => snapshot.cursor >= 0 && snapshot.cursor < snapshot.entries.length - 1,
+    getRecentAgentVisits: () => snapshot.recentAgentVisits,
     recordNavigation,
     navigateBack: () => jump(-1),
     navigateForward: () => jump(1),
     reset() {
       clearReplayTimer();
-      emit({ entries: [], cursor: -1, replay: null, version: snapshot.version + 1 });
+      emit({
+        entries: [],
+        cursor: -1,
+        replay: null,
+        recentAgentVisits: [],
+        version: snapshot.version + 1,
+      });
     },
   };
 }

@@ -295,6 +295,133 @@ describe("navigation history store", () => {
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
+  describe("recent agent visits", () => {
+    const workspaceA = "/h/server-1/workspace/workspace-a";
+    const workspaceB = "/h/server-1/workspace/workspace-b";
+
+    function agentEntry(
+      pathname: string,
+      agentId: string,
+      tabId = `agent_${agentId}`,
+    ): NavigationHistoryEntry {
+      return entry(pathname, { kind: "agent", agentId }, tabId);
+    }
+
+    function visitIds(store: ReturnType<typeof createNavigationHistoryStore>): string[] {
+      return store.getRecentAgentVisits().map((visit) => visit.agentId);
+    }
+
+    function historyTabIds(
+      store: ReturnType<typeof createNavigationHistoryStore>,
+    ): (string | null)[] {
+      return store.getSnapshot().entries.map((item) => item.tabId);
+    }
+
+    it("lists visited agents most recent first", () => {
+      const store = createNavigationHistoryStore();
+
+      store.recordNavigation(agentEntry(workspaceA, "agent-a"));
+      store.recordNavigation(agentEntry(workspaceA, "agent-b"));
+      store.recordNavigation(agentEntry(workspaceA, "agent-c"));
+
+      expect(visitIds(store)).toEqual(["agent-c", "agent-b", "agent-a"]);
+      expect(store.getRecentAgentVisits()[0]).toEqual({
+        serverId: "server-1",
+        workspaceId: "workspace-a",
+        agentId: "agent-c",
+      });
+    });
+
+    it("moves a revisited agent to the front instead of adding it twice", () => {
+      const store = createNavigationHistoryStore();
+
+      store.recordNavigation(agentEntry(workspaceA, "agent-a"));
+      store.recordNavigation(agentEntry(workspaceA, "agent-b"));
+      store.recordNavigation(agentEntry(workspaceA, "agent-a"));
+
+      expect(visitIds(store)).toEqual(["agent-a", "agent-b"]);
+    });
+
+    it("keeps every agent after walking back and opening somewhere else", () => {
+      const store = createNavigationHistoryStore();
+      store.recordNavigation(agentEntry(workspaceA, "agent-a"));
+      store.recordNavigation(agentEntry(workspaceA, "agent-b"));
+      store.recordNavigation(agentEntry(workspaceA, "agent-c"));
+
+      store.navigateBack();
+      store.recordNavigation(agentEntry(workspaceA, "agent-b"));
+      store.recordNavigation(agentEntry(workspaceA, "agent-d"));
+
+      expect(historyTabIds(store)).toEqual(["agent_agent-a", "agent_agent-b", "agent_agent-d"]);
+      expect(visitIds(store)).toEqual(["agent-d", "agent-b", "agent-c", "agent-a"]);
+    });
+
+    it("keeps the agents it already has while a jump is in flight", () => {
+      const store = createNavigationHistoryStore();
+      store.recordNavigation(agentEntry(workspaceA, "agent-a"));
+      store.recordNavigation(agentEntry(workspaceA, "agent-b"));
+
+      store.navigateBack();
+      // An agent tab the jump merely passed through.
+      store.recordNavigation(agentEntry(workspaceA, "agent-passing"));
+
+      expect(visitIds(store)).toEqual(["agent-b", "agent-a"]);
+      expect(store.getSnapshot().replay).not.toBeNull();
+    });
+
+    it("collects only main agent chats", () => {
+      const store = createNavigationHistoryStore();
+
+      store.recordNavigation(entry("/settings"));
+      store.recordNavigation(entry(workspaceA, { kind: "new_tab" }, "tab_1"));
+      store.recordNavigation(entry(workspaceA, { kind: "file", path: "/repo/a.ts" }));
+      store.recordNavigation(entry(workspaceA, { kind: "terminal", terminalId: "t1" }));
+      store.recordNavigation(
+        entry(workspaceA, {
+          kind: "provider_subagent",
+          parentAgentId: "agent-a",
+          subagentId: "s1",
+        }),
+      );
+
+      expect(store.getRecentAgentVisits()).toEqual([]);
+    });
+
+    it("keeps the same agent id in different workspaces apart", () => {
+      const store = createNavigationHistoryStore();
+
+      store.recordNavigation(agentEntry(workspaceA, "agent-a"));
+      store.recordNavigation(agentEntry(workspaceB, "agent-a"));
+
+      expect(store.getRecentAgentVisits()).toEqual([
+        { serverId: "server-1", workspaceId: "workspace-b", agentId: "agent-a" },
+        { serverId: "server-1", workspaceId: "workspace-a", agentId: "agent-a" },
+      ]);
+    });
+
+    it("caps the list at twenty agents", () => {
+      const store = createNavigationHistoryStore();
+
+      for (let index = 0; index < 25; index += 1) {
+        store.recordNavigation(agentEntry(workspaceA, `agent-${index}`));
+      }
+
+      const visits = store.getRecentAgentVisits();
+      expect(visits).toHaveLength(20);
+      expect(visits[0].agentId).toBe("agent-24");
+      expect(visits[19].agentId).toBe("agent-5");
+    });
+
+    it("clears with the history on reset", () => {
+      const store = createNavigationHistoryStore();
+      store.recordNavigation(agentEntry(workspaceA, "agent-a"));
+
+      store.reset();
+
+      expect(store.getRecentAgentVisits()).toEqual([]);
+    });
+  });
+
   it("builds a stable canonical key for tab targets", () => {
     expect(canonicalTargetKey(null)).toBe("");
     expect(canonicalTargetKey({ kind: "agent", agentId: "agent-1" })).toBe(
