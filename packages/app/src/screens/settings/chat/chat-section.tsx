@@ -199,23 +199,19 @@ export function ChatSection() {
               onValueChange={changeTtsEngine}
             />
           ) : null}
-          {isNative ? (
-            <SettingsSelect
-              label={t("settings.general.ttsRate.label")}
-              value={String(settings.ttsRate)}
-              options={TTS_RATE_OPTIONS}
-              onValueChange={changeTtsRate}
-              testID="settings-tts-rate"
-            />
-          ) : null}
-          {isNative ? (
-            <SettingsAction
-              label={t("settings.general.ttsPreview.label")}
-              actionLabel={t("settings.general.ttsPreview.play")}
-              onPress={previewVoice}
-              testID="settings-tts-preview"
-            />
-          ) : null}
+          <SettingsSelect
+            label={t("settings.general.ttsRate.label")}
+            value={String(settings.ttsRate)}
+            options={TTS_RATE_OPTIONS}
+            onValueChange={changeTtsRate}
+            testID="settings-tts-rate"
+          />
+          <SettingsAction
+            label={t("settings.general.ttsPreview.label")}
+            actionLabel={t("settings.general.ttsPreview.play")}
+            onPress={previewVoice}
+            testID="settings-tts-preview"
+          />
           {isNative ? null : (
             <>
               <SettingsSwitch
