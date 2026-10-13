@@ -5,6 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createActivePromptPublisher, PROMPT_DETAIL_MAX_HEIGHT, TEXT_ROW_MAX_LINES } from "./model";
 import { ChatOutlineRail } from "./rail.web";
 
+// The popover's copy action reads the app toast, which the rail does not mount here.
+vi.mock("@/contexts/toast-context", () => ({
+  useToast: () => ({ show: vi.fn(), copied: vi.fn(), error: vi.fn() }),
+}));
+
 // App sources compile against the classic JSX runtime, which expects React on the global.
 beforeEach(() => vi.stubGlobal("React", React));
 

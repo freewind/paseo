@@ -185,6 +185,12 @@ export default defineConfig({
         find: /^expo-linking$/,
         replacement: path.resolve(__dirname, "test-stubs/expo-linking.ts"),
       },
+      // Its entry pulls in a JSX `.js` file the browser optimizer cannot parse, and no
+      // test asserts a real clipboard write.
+      {
+        find: /^expo-clipboard$/,
+        replacement: path.resolve(__dirname, "test-stubs/expo-clipboard.ts"),
+      },
       // No Node implementation: every call on the real module rejects, so a test
       // touching a persisted store drowns in unhandled rejections.
       {
