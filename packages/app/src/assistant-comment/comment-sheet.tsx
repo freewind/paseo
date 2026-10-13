@@ -1,10 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Text, View } from "react-native";
+import {
+  Text,
+  View,
+  type NativeSyntheticEvent,
+  type TextInputKeyPressEventData,
+} from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { AdaptiveModalSheet, type SheetHeader } from "@/components/adaptive-modal-sheet";
 import { SheetAwareTextInput } from "@/components/ui/text-input/sheet-aware";
+import { isWeb } from "@/constants/platform";
+import { isImeComposingKeyboardEvent } from "@/utils/keyboard-ime";
+
+/** Web-only extras present on the DOM KeyboardEvent behind react-native-web's onKeyPress. */
+type CommentSheetKeyPressEvent = NativeSyntheticEvent<
+  TextInputKeyPressEventData & {
+    shiftKey?: boolean;
+    isComposing?: boolean;
+    keyCode?: number;
+  }
+>;
 
 export interface AssistantCommentRequest {
   id: number;
@@ -41,6 +57,19 @@ export function AssistantCommentSheet({ request, onCancel, onAttach }: Assistant
       onAttach(comment);
     }
   }, [comment, onAttach]);
+
+  // Desktop only: Enter attaches, Shift+Enter keeps the newline. Mobile soft
+  // keyboards have no Enter key, so they keep the attach button.
+  const handleKeyPress = useCallback(
+    (event: CommentSheetKeyPressEvent) => {
+      if (isImeComposingKeyboardEvent(event.nativeEvent)) return;
+      if (event.nativeEvent.key !== "Enter") return;
+      if (event.nativeEvent.shiftKey) return;
+      event.preventDefault();
+      handleAttach();
+    },
+    [handleAttach],
+  );
 
   const { t } = useTranslation();
   const header = useMemo<SheetHeader>(() => ({ title: t("comment.sheet.title") }), [t]);
@@ -92,6 +121,7 @@ export function AssistantCommentSheet({ request, onCancel, onAttach }: Assistant
             placeholderTextColor={styles.placeholderText.color}
             multiline
             autoFocus
+            onKeyPress={isWeb ? handleKeyPress : undefined}
             testID="assistant-comment-input"
           />
         </View>
