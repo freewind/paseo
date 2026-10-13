@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { View, type StyleProp, type ViewStyle } from "react-native";
 import { useTranslation } from "react-i18next";
 import { withUnistyles } from "react-native-unistyles";
 import { MessageSquarePlus } from "lucide-react-native";
@@ -17,6 +18,12 @@ const ThemedCommentIcon = withUnistyles(MessageSquarePlus, mutedColorMapping);
 
 interface MarkdownCommentableBlockProps {
   blockText: string;
+  /**
+   * Box style for the trigger itself. A table cell keeps its padding, border and `flex: 1` here
+   * instead of on a child: the trigger is the element that sits in the row, so a cell that hands
+   * its box to a child stops filling the row.
+   */
+  style?: StyleProp<ViewStyle>;
   children: ReactNode;
 }
 
@@ -29,7 +36,11 @@ interface MarkdownCommentableBlockProps {
  * at that moment, and neither gesture clears it. A render-time read would quote whatever opened
  * the menu last.
  */
-export function MarkdownCommentableBlock({ blockText, children }: MarkdownCommentableBlockProps) {
+export function MarkdownCommentableBlock({
+  blockText,
+  style,
+  children,
+}: MarkdownCommentableBlockProps) {
   const comment = useAssistantComment();
   const { t } = useTranslation();
   const [selectedText, setSelectedText] = useState<string | null>(null);
@@ -41,14 +52,17 @@ export function MarkdownCommentableBlock({ blockText, children }: MarkdownCommen
   }, [comment, blockText, selectedText]);
   const leading = useMemo(() => <ThemedCommentIcon size={ICON_SIZE.sm} />, []);
 
+  // A block with nothing to quote, or with no composer to attach to, still renders the box it
+  // was handed: a table cell that drops its `flex: 1` and padding stops filling its row.
   if (!comment || blockText.trim().length === 0) {
-    return children;
+    return style ? <View style={style}>{children}</View> : children;
   }
 
   return (
     <ContextMenu compactMode="popover">
       <ContextMenuTrigger
         testID="markdown-comment-trigger"
+        style={style}
         onLongPress={captureSelection}
         onContextMenu={captureSelection}
       >

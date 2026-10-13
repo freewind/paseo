@@ -1807,13 +1807,14 @@ export const AssistantMessage = memo(function AssistantMessage({
         styles: MarkdownStyles,
         inheritedStyles: TextStyle = {},
       ) => (
-        <HighlightedCodeBlock
-          key={node.key}
-          code={node.content}
-          language={null}
-          inheritedStyles={inheritedStyles}
-          textStyle={styles.code_block}
-        />
+        <MarkdownCommentableBlock key={node.key} blockText={markdownBlockText(node)}>
+          <HighlightedCodeBlock
+            code={node.content}
+            language={null}
+            inheritedStyles={inheritedStyles}
+            textStyle={styles.code_block}
+          />
+        </MarkdownCommentableBlock>
       ),
       fence: (
         node: ASTNode,
@@ -1822,14 +1823,15 @@ export const AssistantMessage = memo(function AssistantMessage({
         styles: MarkdownStyles,
         inheritedStyles: TextStyle = {},
       ) => (
-        <MarkdownFenceBlock
-          key={node.key}
-          code={node.content}
-          info={node.sourceInfo}
-          phase={phase}
-          inheritedStyles={inheritedStyles}
-          textStyle={styles.fence}
-        />
+        <MarkdownCommentableBlock key={node.key} blockText={markdownBlockText(node)}>
+          <MarkdownFenceBlock
+            code={node.content}
+            info={node.sourceInfo}
+            phase={phase}
+            inheritedStyles={inheritedStyles}
+            textStyle={styles.fence}
+          />
+        </MarkdownCommentableBlock>
       ),
       code_inline: (
         node: ASTNode,
@@ -1947,22 +1949,26 @@ export const AssistantMessage = memo(function AssistantMessage({
       },
       th: (node: ASTNode, children: ReactNode[], _parent: ASTNode[], styles: MarkdownStyles) => (
         <MarkdownTableCellText key={node.key}>
-          <View
+          <MarkdownCommentableBlock
+            blockText={markdownBlockText(node)}
             style={styles._VIEW_SAFE_th}
-            dataSet={markdownCopyTableCellDataSet("th", node.attributes?.style)}
           >
-            {children}
-          </View>
+            <View dataSet={markdownCopyTableCellDataSet("th", node.attributes?.style)}>
+              {children}
+            </View>
+          </MarkdownCommentableBlock>
         </MarkdownTableCellText>
       ),
       td: (node: ASTNode, children: ReactNode[], _parent: ASTNode[], styles: MarkdownStyles) => (
         <MarkdownTableCellText key={node.key}>
-          <View
+          <MarkdownCommentableBlock
+            blockText={markdownBlockText(node)}
             style={styles._VIEW_SAFE_td}
-            dataSet={markdownCopyTableCellDataSet("td", node.attributes?.style)}
           >
-            {children}
-          </View>
+            <View dataSet={markdownCopyTableCellDataSet("td", node.attributes?.style)}>
+              {children}
+            </View>
+          </MarkdownCommentableBlock>
         </MarkdownTableCellText>
       ),
       paragraph: (
