@@ -1199,6 +1199,11 @@ export const en = {
     footer: {
       usage: "Usage",
     },
+    recentVisits: {
+      trigger: "Recent",
+      empty: "No recent sessions yet",
+      current: "Current",
+    },
     help: {
       trigger: "Help and support",
       sectionHelp: "Help",
