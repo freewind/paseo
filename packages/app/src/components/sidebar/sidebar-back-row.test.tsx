@@ -51,6 +51,7 @@ vi.mock("react-i18next", () => ({
     t: (key: string) => {
       if (key === "common.actions.back") return "Back";
       if (key === "common.actions.forward") return "Forward";
+      if (key === "sidebar.recentVisits.trigger") return "Recent";
       return key;
     },
   }),
@@ -59,6 +60,14 @@ vi.mock("react-i18next", () => ({
 vi.mock("lucide-react-native", () => ({
   ArrowLeft: () => React.createElement("span", { "data-icon": "ArrowLeft" }),
   ArrowRight: () => React.createElement("span", { "data-icon": "ArrowRight" }),
+  ChevronDown: () => React.createElement("span", { "data-icon": "ChevronDown" }),
+  Clock: () => React.createElement("span", { "data-icon": "Clock" }),
+}));
+
+// The row's layout is what this suite is about; the menu has its own suite.
+vi.mock("@/components/sidebar/sidebar-recent-visits-menu", () => ({
+  SidebarRecentVisitsMenu: () =>
+    React.createElement("span", { "data-testid": "sidebar-recent-visits" }, "Recent"),
 }));
 
 vi.mock("react-native-unistyles", () => ({
@@ -123,6 +132,29 @@ describe("SidebarBackRow", () => {
     return container?.querySelector<HTMLElement>(`[data-testid="${testID}"]`) ?? null;
   }
 
+  it("lays recent visits, back, and forward out in one row", () => {
+    renderRows();
+
+    const recent = row("sidebar-recent-visits");
+    const back = row("sidebar-back");
+    const forward = row("sidebar-forward");
+    expect(recent).not.toBeNull();
+    expect(back).not.toBeNull();
+    expect(forward).not.toBeNull();
+
+    // One row container holding all three, in this order: a wrap onto a second
+    // line would put one of them outside it.
+    const rowElement = recent?.parentElement ?? null;
+    expect(rowElement).not.toBeNull();
+    expect(rowElement?.contains(back)).toBe(true);
+    expect(rowElement?.contains(forward)).toBe(true);
+    expect(
+      Array.from(rowElement?.querySelectorAll('[data-testid^="sidebar-"]') ?? []).map((child) =>
+        child.getAttribute("data-testid"),
+      ),
+    ).toEqual(["sidebar-recent-visits", "sidebar-back", "sidebar-forward"]);
+  });
+
   it("navigates back after closing the sidebar when history exists", () => {
     history.canGoBack = true;
     const onBeforeNavigate = vi.fn();
@@ -149,15 +181,12 @@ describe("SidebarBackRow", () => {
     expect(history.goBack).not.toHaveBeenCalled();
   });
 
-  it("keeps both rows rendered and disables them when there is no history", () => {
+  it("keeps all three controls rendered and disables the empty directions", () => {
     renderRows();
 
-    const backRow = row("sidebar-back");
-    const forwardRow = row("sidebar-forward");
-    expect(backRow).not.toBeNull();
-    expect(backRow?.getAttribute("aria-disabled")).toBe("true");
-    expect(forwardRow).not.toBeNull();
-    expect(forwardRow?.getAttribute("aria-disabled")).toBe("true");
+    expect(row("sidebar-recent-visits")).not.toBeNull();
+    expect(row("sidebar-back")?.getAttribute("aria-disabled")).toBe("true");
+    expect(row("sidebar-forward")?.getAttribute("aria-disabled")).toBe("true");
   });
 
   it("disables only the direction without history", () => {

@@ -104,10 +104,13 @@ Do not collapse this topology with a catch-all, `getId`, or
 
 ## Navigation History
 
-The sidebar Back/Forward rows use their own history, not the route stack. A
-history entry is a pathname plus the focused workspace tab target
-(`stores/navigation-history-store.ts`): switching Chat inside a workspace keeps
-the pathname, so the route stack alone cannot represent it.
+The sidebar's top row holds recent visits, Back and Forward side by side
+(`components/sidebar/sidebar-back-row.tsx`), and Back/Forward use their own
+history, not the route stack. A history entry is a pathname plus the focused
+workspace tab (`stores/navigation-history-store.ts`): switching Chat inside a
+workspace keeps the pathname, so the route stack alone cannot represent it. The
+entry also carries the tab's instance id, because blank tabs share the target
+`{kind: "new_tab"}` and have no deterministic id to be found by.
 
 `navigation/navigation-history-bridge.tsx` (mounted once in the root layout)
 observes rendered state — current pathname plus the active tab of that
@@ -119,13 +122,33 @@ Back/Forward move a cursor in the store; the bridge replays the target entry:
 workspace entries go through `navigateToWorkspace()` (with `preserveFocus` when
 the remembered focus was not an agent, so replay restores the persisted tab
 instead of forcing the attention agent open), page entries through
-`router.navigate()`. While a replay is in flight the store holds observations
-until the target state appears (2s timeout, then recording resumes), which
-keeps intermediate states of the jump itself out of the history. A new
-navigation after Back truncates the forward branch, like a browser.
+`router.navigate()`. Replay passes the remembered tab instance, so a jump lands
+on the tab the user was in even when another tab shares its target; when that
+instance is gone, reveal falls back to the target — and for a blank tab, which
+has no deterministic target id, it opens a fresh blank tab instead of demanding
+one (`revealTargetInLayout`).
+
+While a replay is in flight the store holds observations until the target state
+appears (2s timeout, then recording resumes), which keeps intermediate states of
+the jump itself out of the history. Arrival is judged by position (pathname plus
+target), not by instance: a blank tab recreated for the jump still means the jump
+arrived, and the settled entry is rebound to the instance that showed up.
+Ordinary recording stays strict about the instance. A new navigation after Back
+truncates the forward branch, like a browser.
+
+`navigation-history-store.ts` also owns the **recent visits** list behind the
+sidebar's `sidebar-recent-visits-menu.tsx`. Keeping it apart from that history is
+the point: the history is a path you walk back along, and walking it — or
+opening a new branch — must not lose the other agents you were just in. It holds
+main agent chats only (pages, blank tabs, files, terminals and subagent panels
+are not somewhere the user "was just in"), deduplicated per server, workspace and
+agent, most recent first, and updates on real arrivals rather than on
+intermediate replay states. Rows resolve titles and workspace names from the
+session store at render time and fall back to the stored ids, so a host that is
+offline or has not sent metadata yet does not drop the record.
 
 The Android system Back button still pops the route stack and is not synced
-to this history; only the sidebar rows and `useRouteBack()` use it.
+to this history; only the sidebar controls and `useRouteBack()` use it.
 
 ## Agent Targets
 

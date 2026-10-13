@@ -1194,6 +1194,11 @@ export const ko: TranslationResources = {
     footer: {
       usage: "사용량",
     },
+    recentVisits: {
+      trigger: "최근",
+      empty: "최근 본 세션이 없습니다",
+      current: "현재",
+    },
     help: {
       trigger: "도움말 및 지원",
       sectionHelp: "도움말",

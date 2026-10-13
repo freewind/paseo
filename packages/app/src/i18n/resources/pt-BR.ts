@@ -1213,6 +1213,11 @@ export const ptBR: TranslationResources = {
     footer: {
       usage: "Uso",
     },
+    recentVisits: {
+      trigger: "Recentes",
+      empty: "Nenhuma sessão recente ainda",
+      current: "Atual",
+    },
     help: {
       trigger: "Ajuda e suporte",
       sectionHelp: "Ajuda",

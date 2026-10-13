@@ -1185,6 +1185,11 @@ export const ar: TranslationResources = {
     footer: {
       usage: "الاستخدام",
     },
+    recentVisits: {
+      trigger: "الأخيرة",
+      empty: "لا توجد جلسات حديثة",
+      current: "الحالية",
+    },
     help: {
       trigger: "المساعدة والدعم",
       sectionHelp: "المساعدة",
