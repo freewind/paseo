@@ -24,7 +24,7 @@ import { useAppSettings } from "@/hooks/use-settings";
 import { planTimelineTailFetch } from "@/timeline/timeline-sync-plan";
 import { requestTimelineReplacement } from "@/timeline/timeline-replacement";
 import { type ViewedTimelineOwner } from "@/timeline/viewed-timeline-sync";
-import type { SessionOutboundMessage } from "@getpaseo/protocol/messages";
+import type { AgentStreamEventPayload, SessionOutboundMessage } from "@getpaseo/protocol/messages";
 import { parseServerInfoStatusPayload } from "@getpaseo/protocol/messages";
 import {
   buildAgentAttentionNotificationPayload,
@@ -433,37 +433,47 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
       speechSender.interrupt(agentId);
       if (agentId === activeTtsAgentIdRef.current) stopTts();
     });
+    /**
+     * Speech owns two stream events before the timeline sees them: a user message retires the reply
+     * being read, and a completed assistant message may start a new one. The latter must not reach
+     * the timeline sync, so this reports whether it consumed the event.
+     */
+    const handleSpeechStreamEvent = (agentId: string, event: AgentStreamEventPayload): boolean => {
+      const speechText = speechSender.consume(agentId, event);
+      const interruptsReading =
+        (event.type === "timeline" &&
+          event.item.type === "user_message" &&
+          agentId === activeTtsAgentIdRef.current) ||
+        (event.type === "turn_canceled" &&
+          agentId === activeTtsAgentIdRef.current &&
+          spokenTurn?.agentId === agentId &&
+          spokenTurn.turnId === event.turnId);
+      if (interruptsReading) {
+        stopTts();
+        spokenTurn = null;
+      }
+      if (event.type !== "timeline" || !event.assistantMessageComplete) return false;
+      const current = speechSettingsRef.current;
+      if (
+        speechText &&
+        isConversationSpeechEnabled(current.appSettings, serverId, agentId) &&
+        current.supportsAssistantMessageCompletion &&
+        agentId === activeTtsAgentIdRef.current
+      ) {
+        spokenTurn = { agentId, turnId: event.turnId };
+        speakReply({
+          text: speechText,
+          voiceId: current.appSettings.ttsEngine,
+          rate: current.appSettings.ttsRate,
+        });
+      }
+      return true;
+    };
     const onStream = (message: SessionOutboundMessage) => {
       if (message.type !== "agent_stream") return;
       const { agentId, event, timestamp, seq, epoch } = message.payload;
       const parsedTimestamp = new Date(timestamp);
-      const speechText = speechSender.consume(agentId, event);
-      if (
-        event.type === "turn_canceled" &&
-        agentId === activeTtsAgentIdRef.current &&
-        spokenTurn?.agentId === agentId &&
-        spokenTurn.turnId === event.turnId
-      ) {
-        stopTts();
-        spokenTurn = null;
-      }
-      if (event.type === "timeline" && event.assistantMessageComplete) {
-        const current = speechSettingsRef.current;
-        if (
-          speechText &&
-          isConversationSpeechEnabled(current.appSettings, serverId, agentId) &&
-          current.supportsAssistantMessageCompletion &&
-          agentId === activeTtsAgentIdRef.current
-        ) {
-          spokenTurn = { agentId, turnId: event.turnId };
-          speakReply({
-            text: speechText,
-            voiceId: current.appSettings.ttsEngine,
-            rate: current.appSettings.ttsRate,
-          });
-        }
-        return;
-      }
+      if (handleSpeechStreamEvent(agentId, event)) return;
       const streamEvent = event;
       if (
         event.type === "turn_started" ||
