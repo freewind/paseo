@@ -106,6 +106,23 @@ describe("workspace-pane-state", () => {
     });
   });
 
+  it("falls back to the pane's focused tab when the preferred target is a blank tab", () => {
+    const pane = {
+      id: "main",
+      tabIds: ["tab_1"],
+      focusedTabId: "tab_1",
+    };
+    const tabs: WorkspaceTab[] = [createTab("tab_1", { kind: "new_tab" })];
+
+    const state = deriveWorkspacePaneState({
+      pane,
+      tabs,
+      preferredTarget: { kind: "new_tab" },
+    });
+
+    expect(state.activeTabId).toBe("tab_1");
+  });
+
   it("resolves side file opens to an existing file tab", () => {
     const layout: WorkspaceLayout = {
       root: {

@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   pathname: "/h/server-1/workspace/workspace-a",
   activeTarget: null as { kind: string; agentId?: string } | null,
+  activeTabId: "agent_agent-1",
   layoutState: {
     layoutByWorkspace: {} as Record<string, unknown>,
     getWorkspaceTabs: (_workspaceKey: string) => [],
@@ -34,7 +35,9 @@ vi.mock("@/stores/workspace-layout-store", () => {
 
 vi.mock("@/screens/workspace/workspace-pane-state", () => ({
   deriveWorkspacePaneState: () => ({
-    activeTab: mocks.activeTarget ? { descriptor: { target: mocks.activeTarget } } : null,
+    activeTab: mocks.activeTarget
+      ? { descriptor: { tabId: mocks.activeTabId, target: mocks.activeTarget } }
+      : null,
   }),
 }));
 
@@ -54,6 +57,7 @@ describe("NavigationHistoryBridge", () => {
     navigationHistoryStore.reset();
     mocks.pathname = WORKSPACE_PATH;
     mocks.activeTarget = { kind: "agent", agentId: "agent-1" };
+    mocks.activeTabId = "agent_agent-1";
     mocks.navigateToWorkspace.mockReset();
     mocks.routerNavigate.mockReset();
     container = document.createElement("div");
@@ -79,9 +83,14 @@ describe("NavigationHistoryBridge", () => {
     });
   }
 
-  function observe(pathname: string, target: typeof mocks.activeTarget): void {
+  function observe(
+    pathname: string,
+    target: typeof mocks.activeTarget,
+    tabId = "agent_agent-1",
+  ): void {
     mocks.pathname = pathname;
     mocks.activeTarget = target;
+    mocks.activeTabId = tabId;
     render();
   }
 
@@ -103,6 +112,7 @@ describe("NavigationHistoryBridge", () => {
       serverId: "server-1",
       workspaceId: "workspace-a",
       target: { kind: "agent", agentId: "agent-1" },
+      tabId: "agent_agent-1",
     });
   });
 
@@ -127,6 +137,7 @@ describe("NavigationHistoryBridge", () => {
       serverId: null,
       workspaceId: null,
       target: null,
+      tabId: null,
     });
   });
 
@@ -150,6 +161,7 @@ describe("NavigationHistoryBridge", () => {
       serverId: "server-1",
       workspaceId: "workspace-a",
       target: { kind: "agent", agentId: "agent-1" },
+      tabId: "agent_agent-1",
     });
 
     // The jump settles: the target becomes observable and the replay clears
@@ -212,7 +224,7 @@ describe("NavigationHistoryBridge", () => {
 
   it("replays forward to the next entry", () => {
     render();
-    observe(WORKSPACE_PATH, { kind: "agent", agentId: "agent-2" });
+    observe(WORKSPACE_PATH, { kind: "agent", agentId: "agent-2" }, "agent_agent-2");
 
     act(() => {
       navigationHistoryStore.navigateBack();
@@ -227,6 +239,50 @@ describe("NavigationHistoryBridge", () => {
       serverId: "server-1",
       workspaceId: "workspace-a",
       target: { kind: "agent", agentId: "agent-2" },
+      tabId: "agent_agent-2",
     });
+  });
+
+  it("replays a blank tab entry with its remembered instance", () => {
+    mocks.activeTarget = { kind: "new_tab" };
+    mocks.activeTabId = "tab_1";
+    render();
+    observe(WORKSPACE_PATH, { kind: "agent", agentId: "agent-1" });
+
+    act(() => {
+      navigationHistoryStore.navigateBack();
+    });
+
+    expect(mocks.navigateToWorkspace).toHaveBeenCalledWith({
+      serverId: "server-1",
+      workspaceId: "workspace-a",
+      target: { kind: "new_tab" },
+      tabId: "tab_1",
+    });
+
+    // The remembered instance is still open: the jump settles on it.
+    observe(WORKSPACE_PATH, { kind: "new_tab" }, "tab_1");
+
+    expect(replay()).toBeNull();
+    expect(recordedEntries()).toHaveLength(2);
+  });
+
+  it("settles a blank tab jump that had to create a fresh instance", () => {
+    mocks.activeTarget = { kind: "new_tab" };
+    mocks.activeTabId = "tab_1";
+    render();
+    observe(WORKSPACE_PATH, { kind: "agent", agentId: "agent-1" });
+
+    act(() => {
+      navigationHistoryStore.navigateBack();
+    });
+
+    // The remembered tab was closed, so the jump opened another blank tab.
+    observe(WORKSPACE_PATH, { kind: "new_tab" }, "tab_9");
+
+    const snapshot = navigationHistoryStore.getSnapshot();
+    expect(snapshot.replay).toBeNull();
+    expect(snapshot.entries).toHaveLength(2);
+    expect(snapshot.entries[0].tabId).toBe("tab_9");
   });
 });

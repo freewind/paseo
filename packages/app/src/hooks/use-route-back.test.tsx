@@ -28,6 +28,7 @@ function entry(pathname: string): NavigationHistoryEntry {
     serverId: isWorkspace ? "server-1" : null,
     workspaceId: isWorkspace ? (pathname.split("/")[4] ?? null) : null,
     target: null,
+    tabId: null,
   };
 }
 

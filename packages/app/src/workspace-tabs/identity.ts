@@ -191,6 +191,27 @@ function recordsShallowEqual(
   return true;
 }
 
+/**
+ * Whether two targets describe the same visited position. Differs from
+ * `workspaceTabTargetsEqual` in one place: blank tabs have no deterministic
+ * identity, so two of them are never equal as *targets* yet are the same
+ * position. Back/forward replay needs the position answer — a blank tab that
+ * was closed and reopened for the jump carries a different id but the jump did
+ * arrive. Recording still compares instances strictly.
+ */
+export function workspaceTabPositionsEqual(
+  left: WorkspaceTabTarget | null,
+  right: WorkspaceTabTarget | null,
+): boolean {
+  if (!left || !right) {
+    return !left && !right;
+  }
+  if (left.kind === "new_tab" && right.kind === "new_tab") {
+    return true;
+  }
+  return workspaceTabTargetsEqual(left, right);
+}
+
 export function buildDeterministicWorkspaceTabId(target: WorkspaceTabTarget): string {
   if (target.kind === "new_tab") {
     throw new Error("New tabs do not have deterministic target identities");

@@ -36,6 +36,7 @@ import {
   normalizeLayout,
   openTabInLayoutBackground,
   replaceTabTargetInLayout,
+  revealTabInstanceInLayout,
   revealTargetInLayout,
   restoreWorkspaceLayout,
   reconcileWorkspaceTabs,
@@ -97,6 +98,11 @@ export interface OpenWorkspaceTabInput {
   workspaceKey: string;
   target: WorkspaceTabTarget;
   intent: WorkspaceTabOpenIntent;
+  /**
+   * Instance of an already-open tab to land on. Reveal prefers it over the
+   * target when it is still open, and falls back to the target when it is gone.
+   */
+  tabId?: string;
   /** Keeps an explicitly opened agent visible even when it is archived. */
   pin?: boolean;
   placement?: WorkspaceTabPlacement;
@@ -737,13 +743,22 @@ export function createWorkspaceLayoutStore(
               now: Date.now(),
             });
           } else {
-            result = revealTargetInLayout({
-              ...placement,
-              insertionPosition: input.insertionPosition,
-              target: normalizedTarget,
-              now: Date.now(),
-              createTabId: createWorkspaceTabInstanceId,
-            });
+            const rememberedTabId = trimNonEmpty(input.tabId);
+            result =
+              (rememberedTabId
+                ? revealTabInstanceInLayout({
+                    layout: placement.layout,
+                    tabId: rememberedTabId,
+                    placement: placement.placement,
+                  })
+                : null) ??
+              revealTargetInLayout({
+                ...placement,
+                insertionPosition: input.insertionPosition,
+                target: normalizedTarget,
+                now: Date.now(),
+                createTabId: createWorkspaceTabInstanceId,
+              });
           }
           if (!result) {
             return null;
