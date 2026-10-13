@@ -1,17 +1,24 @@
-import { normalizeWorkspaceTabTarget, workspaceTabTargetsEqual } from "@/workspace-tabs/identity";
+import {
+  normalizeWorkspaceTabTarget,
+  workspaceTabPositionsEqual,
+  workspaceTabTargetsEqual,
+} from "@/workspace-tabs/identity";
 import type { WorkspaceTabTarget } from "@/workspace-tabs/model";
 
 /**
  * One visited position: the app page plus the focused workspace tab. The tab
  * target is what makes a Chat switch visible to history — switching tabs inside
  * a workspace never changes the pathname, so the route stack alone cannot
- * represent it.
+ * represent it. `tabId` is the focused tab's instance: blank tabs share one
+ * target, so their instance is the only thing that tells two of them apart when
+ * the jump has to land on a specific one.
  */
 export interface NavigationHistoryEntry {
   pathname: string;
   serverId: string | null;
   workspaceId: string | null;
   target: WorkspaceTabTarget | null;
+  tabId: string | null;
 }
 
 export interface NavigationHistoryReplay {
@@ -75,14 +82,55 @@ export function canonicalTargetKey(target: WorkspaceTabTarget | null): string {
   return stableStringify(target);
 }
 
+function trimNonEmpty(value: string | null | undefined): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+/**
+ * Same visited position, including which tab instance was focused. Two blank
+ * tabs in one workspace are two positions: neither is the other, and switching
+ * between them is worth remembering.
+ */
 function entriesEqual(a: NavigationHistoryEntry, b: NavigationHistoryEntry): boolean {
-  if (a.pathname !== b.pathname) {
+  if (a.pathname !== b.pathname || a.tabId !== b.tabId) {
     return false;
   }
   if (!a.target || !b.target) {
     return !a.target && !b.target;
   }
   return workspaceTabTargetsEqual(a.target, b.target);
+}
+
+/**
+ * Whether an observation is the position a jump was heading to. Arrival ignores
+ * the instance: a blank tab recreated for the jump carries a new id, and the
+ * jump still arrived. `rebindReplayInstance` then keeps the recorded id current.
+ */
+function replayArrived(observed: NavigationHistoryEntry, target: NavigationHistoryEntry): boolean {
+  return (
+    observed.pathname === target.pathname &&
+    workspaceTabPositionsEqual(observed.target, target.target)
+  );
+}
+
+/**
+ * Points the settled position at the instance that actually showed up, so the
+ * next jump to it focuses the tab instead of creating another one.
+ */
+function rebindReplayInstance(
+  entries: readonly NavigationHistoryEntry[],
+  index: number,
+  tabId: string | null,
+): readonly NavigationHistoryEntry[] {
+  const entry = entries[index];
+  if (!entry || entry.tabId === tabId) {
+    return entries;
+  }
+  return entries.map((item, itemIndex) => (itemIndex === index ? { ...item, tabId } : item));
 }
 
 export function createNavigationHistoryStore(
@@ -134,6 +182,7 @@ export function createNavigationHistoryStore(
   function recordNavigation(rawEntry: NavigationHistoryEntry): void {
     const entry: NavigationHistoryEntry = {
       ...rawEntry,
+      tabId: trimNonEmpty(rawEntry.tabId),
       target: normalizeWorkspaceTabTarget(rawEntry.target),
     };
 
@@ -141,9 +190,14 @@ export function createNavigationHistoryStore(
       // Replay is in flight: the only interesting observation is arrival at the
       // target. Anything else is an intermediate state of the jump itself (or a
       // navigation the user started too quickly) and must not be recorded.
-      if (entriesEqual(entry, snapshot.replay.entry)) {
+      if (replayArrived(entry, snapshot.replay.entry)) {
         clearReplayTimer();
-        emit({ ...snapshot, replay: null, version: snapshot.version + 1 });
+        emit({
+          ...snapshot,
+          entries: rebindReplayInstance(snapshot.entries, snapshot.cursor, entry.tabId),
+          replay: null,
+          version: snapshot.version + 1,
+        });
       }
       return;
     }

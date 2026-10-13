@@ -119,7 +119,9 @@ function getActiveTabId(input: {
   const focusedTabId = trimNonEmpty(input.focusedTabId);
   const preferredTarget = normalizeWorkspaceTabTarget(input.preferredTarget ?? null);
   const preferredTabId = (() => {
-    if (!preferredTarget) {
+    // Blank tabs have no deterministic target id, and matching them by target is
+    // meaningless: any of them is the position.
+    if (!preferredTarget || preferredTarget.kind === "new_tab") {
       return null;
     }
     const matchingTab =

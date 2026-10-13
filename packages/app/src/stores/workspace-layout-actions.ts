@@ -142,6 +142,11 @@ interface OpenTabInLayoutInput {
 interface CreateTabInLayoutInput extends OpenTabInLayoutInput {
   createTabId: () => string;
   state?: JsonValue;
+  /**
+   * Land on a pane's existing blank placeholder instead of adding a second
+   * blank tab. Only reveal sets this: an explicit "new tab" always adds one.
+   */
+  reuseBlankTab?: boolean;
 }
 
 interface OpenTabInLayoutResult {
@@ -1366,6 +1371,18 @@ function insertNewTabIntoPane(
   };
 
   const currentTab = isSoleNewTabPane(targetPane) ? targetPane.tabs[0] : null;
+  if (currentTab && input.target.kind === "new_tab" && input.reuseBlankTab) {
+    // The pane already shows a blank placeholder, which is the position being
+    // revealed. Stacking a second blank tab beside it would say nothing.
+    return {
+      tabId: currentTab.tabId,
+      layout: revealExistingTab({
+        layout: input.layout,
+        tabId: currentTab.tabId,
+        placement: input.placement,
+      }),
+    };
+  }
   if (currentTab && input.target.kind !== "new_tab") {
     return {
       tabId,
@@ -1468,10 +1485,42 @@ export function revealTargetInLayout(input: CreateTabInLayoutInput): OpenTabInLa
       }),
     };
   }
+  if (input.target.kind === "new_tab") {
+    // A blank tab has no deterministic id to reveal by, so the caller's instance
+    // generator supplies one. Asking to reveal a blank tab means ending up on
+    // one, not resuming a particular blank tab.
+    return createTabInLayout({ ...input, reuseBlankTab: true });
+  }
   return createTabInLayout({
     ...input,
     createTabId: () => buildDeterministicWorkspaceTabId(input.target),
   });
+}
+
+/**
+ * Focuses a tab the caller remembered by instance id. The instance wins over
+ * the remembered target: a tab retargeted since it was recorded (a draft
+ * converted into an agent) is still the tab the user was looking at.
+ * Returns null when that instance is gone.
+ */
+export function revealTabInstanceInLayout(input: {
+  layout: WorkspaceLayout;
+  tabId: string;
+  placement: WorkspaceTabPlacement;
+}): OpenTabInLayoutResult | null {
+  const layout = asInternalLayout(input.layout);
+  const existingTab = collectAllTabs(layout.root).find((tab) => tab.tabId === input.tabId);
+  if (!existingTab) {
+    return null;
+  }
+  return {
+    tabId: existingTab.tabId,
+    layout: revealExistingTab({
+      layout: input.layout,
+      tabId: existingTab.tabId,
+      placement: input.placement,
+    }),
+  };
 }
 
 /**

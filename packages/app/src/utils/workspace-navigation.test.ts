@@ -9,6 +9,7 @@ const AGENT_ID = "agent-1";
 interface RecordedOpenedTab {
   key: string;
   target: WorkspaceTabTarget;
+  tabId?: string;
   pin: boolean;
 }
 
@@ -19,13 +20,15 @@ function createFakeLayout() {
     openTab: ({
       workspaceKey: key,
       target,
+      tabId,
       pin = false,
     }: {
       workspaceKey: string;
       target: WorkspaceTabTarget;
+      tabId?: string;
       pin?: boolean;
     }) => {
-      openedTabs.push({ key, target, pin });
+      openedTabs.push({ key, target, tabId, pin });
       return target.kind === "agent" ? target.agentId : null;
     },
   };
@@ -71,6 +74,29 @@ describe("prepareWorkspaceTab", () => {
         key: "server-1:/repo/worktree",
         target: { kind: "agent", agentId: AGENT_ID },
         pin: true,
+      },
+    ]);
+  });
+
+  it("forwards a remembered tab instance so the opener can land on it", () => {
+    const layout = createFakeLayout();
+
+    prepareWorkspaceTab(
+      {
+        serverId: SERVER_ID,
+        workspaceId: WORKSPACE_ID,
+        target: { kind: "new_tab" },
+        tabId: "tab_1",
+      },
+      layout,
+    );
+
+    expect(layout.openedTabs).toEqual([
+      {
+        key: "server-1:/repo/worktree",
+        target: { kind: "new_tab" },
+        tabId: "tab_1",
+        pin: false,
       },
     ]);
   });

@@ -27,6 +27,8 @@ export interface NavigateToWorkspaceInput {
   serverId: string;
   workspaceId: string;
   target?: WorkspaceTabTarget;
+  /** Instance of an already-open tab to land on, when the caller remembers one. */
+  tabId?: string;
   pin?: boolean;
   placement?: WorkspaceTabPlacement;
   /**
