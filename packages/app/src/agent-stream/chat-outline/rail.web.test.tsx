@@ -12,6 +12,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createActivePromptPublisher, resolveTextRailWidth } from "./model";
 import { ChatOutlineRail } from "./rail.web";
 
+const { setStringAsyncMock, toastCopiedMock, toastErrorMock } = vi.hoisted(() => ({
+  setStringAsyncMock: vi.fn(() => Promise.resolve()),
+  toastCopiedMock: vi.fn(),
+  toastErrorMock: vi.fn(),
+}));
+
+vi.mock("expo-clipboard", () => ({ setStringAsync: setStringAsyncMock }));
+vi.mock("@/contexts/toast-context", () => ({
+  useToast: () => ({ show: vi.fn(), copied: toastCopiedMock, error: toastErrorMock }),
+}));
+
 const CONTENT_MAX_WIDTH = 820;
 /** Wide enough for the gutter to hold a readable line. */
 const PANEL_WIDTH = 1600;
@@ -127,6 +138,9 @@ describe("ChatOutlineRail in its text form", () => {
   beforeEach(() => {
     measured = new WeakMap();
     observed.clear();
+    setStringAsyncMock.mockClear();
+    toastCopiedMock.mockClear();
+    toastErrorMock.mockClear();
     installLayoutObserver();
     container = document.createElement("div");
     document.body.appendChild(container);
@@ -237,6 +251,29 @@ describe("ChatOutlineRail in its text form", () => {
       (jump as HTMLElement).click();
     });
     expect(onJumpToPrompt).toHaveBeenCalledWith(2);
+  });
+
+  it("copies the prompt's full text from the detail popover", async () => {
+    const fullText = "The whole prompt, well past the index's 120 character preview limit.";
+    await renderRail([prompt(1, "truncated preview"), prompt(2, "Second")], {
+      onRequestPromptText: async (seq) => (seq === 1 ? fullText : null),
+    });
+    stubMeasureInWindow();
+
+    await act(async () => {
+      (document.querySelector('[data-testid="chat-outline-text-row-1"]') as HTMLElement).click();
+    });
+    const copy = document.querySelector(
+      '[data-testid="chat-outline-prompt-detail-copy-1"]',
+    ) as HTMLElement;
+    expect(copy).not.toBeNull();
+    await act(async () => {
+      copy.click();
+    });
+
+    expect(setStringAsyncMock).toHaveBeenCalledWith(fullText);
+    expect(toastCopiedMock).toHaveBeenCalledTimes(1);
+    expect(toastErrorMock).not.toHaveBeenCalled();
   });
 
   it("marks the prompt the reader is currently inside", async () => {
