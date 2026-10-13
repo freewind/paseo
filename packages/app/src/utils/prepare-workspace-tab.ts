@@ -6,6 +6,8 @@ export interface PrepareWorkspaceTabInput {
   serverId: string;
   workspaceId: string;
   target: WorkspaceTabTarget;
+  /** Instance of an already-open tab to land on; see `openTab`. */
+  tabId?: string;
   pin?: boolean;
   placement?: WorkspaceTabPlacement;
 }
@@ -15,6 +17,7 @@ export interface PrepareWorkspaceTabDeps {
     workspaceKey: string;
     target: WorkspaceTabTarget;
     intent: "reveal";
+    tabId?: string;
     pin?: boolean;
     placement?: WorkspaceTabPlacement;
   }) => string | null;
@@ -42,6 +45,7 @@ export function prepareWorkspaceTab(
     workspaceKey: key,
     target,
     intent: "reveal",
+    ...(input.tabId ? { tabId: input.tabId } : {}),
     pin: input.pin === true && target.kind === "agent",
     placement: input.placement,
   });

@@ -12,18 +12,23 @@ import {
   type WorkspaceLayoutStore,
 } from "@/stores/workspace-layout-store";
 import { parseHostWorkspaceRouteFromPathname } from "@/utils/host-routes";
-import { buildWorkspaceTabPersistenceKey } from "@/workspace-tabs/model";
+import { buildWorkspaceTabPersistenceKey, type WorkspaceTabTarget } from "@/workspace-tabs/model";
+
+interface ActiveWorkspaceTab {
+  tabId: string;
+  target: WorkspaceTabTarget;
+}
 
 /**
- * Focused tab target of a workspace, read straight from the layout store. The
- * selector below turns it into a canonical string so `useSyncExternalStore`
- * sees a stable snapshot: tab descriptors are rebuilt on every layout update
- * even when the target itself did not change.
+ * Focused tab of a workspace, read straight from the layout store. The selector
+ * below turns it into a canonical string so `useSyncExternalStore` sees a stable
+ * snapshot: tab descriptors are rebuilt on every layout update even when the tab
+ * itself did not change.
  */
-function readActiveTarget(
+function readActiveTab(
   state: WorkspaceLayoutStore,
   workspaceKey: string,
-): NavigationHistoryEntry["target"] {
+): ActiveWorkspaceTab | null {
   const layout = state.layoutByWorkspace[workspaceKey] ?? null;
   const tabs = state.getWorkspaceTabs(workspaceKey);
   const derived = deriveWorkspacePaneState({
@@ -31,7 +36,20 @@ function readActiveTarget(
     tabs,
     paneId: layout?.focusedPaneId ?? null,
   });
-  return derived.activeTab?.descriptor.target ?? null;
+  const activeTab = derived.activeTab;
+  if (!activeTab) {
+    return null;
+  }
+  return { tabId: activeTab.descriptor.tabId, target: activeTab.descriptor.target };
+}
+
+/**
+ * Stable snapshot fragment for the focused tab. The instance id is part of it:
+ * two blank tabs share one target, and switching between them is a move the
+ * history has to see.
+ */
+function activeTabSnapshotKey(activeTab: ActiveWorkspaceTab | null): string {
+  return activeTab ? `${activeTab.tabId}\u0000${canonicalTargetKey(activeTab.target)}` : "";
 }
 
 function applyEntry(entry: NavigationHistoryEntry): void {
@@ -39,7 +57,9 @@ function applyEntry(entry: NavigationHistoryEntry): void {
     navigateToWorkspace({
       serverId: entry.serverId,
       workspaceId: entry.workspaceId,
-      ...(entry.target ? { target: entry.target } : { preserveFocus: true }),
+      ...(entry.target
+        ? { target: entry.target, ...(entry.tabId ? { tabId: entry.tabId } : {}) }
+        : { preserveFocus: true }),
     });
     return;
   }
@@ -66,8 +86,8 @@ export function NavigationHistoryBridge() {
 
   // Only the tab focus of the *current* route's workspace is observed, so
   // background workspace layout changes never touch the history.
-  const activeTargetKey = useWorkspaceLayoutStore((state) =>
-    workspaceKey ? canonicalTargetKey(readActiveTarget(state, workspaceKey)) : null,
+  const activeTabKey = useWorkspaceLayoutStore((state) =>
+    workspaceKey ? activeTabSnapshotKey(readActiveTab(state, workspaceKey)) : null,
   );
 
   const { replay } = useSyncExternalStore(
@@ -76,8 +96,8 @@ export function NavigationHistoryBridge() {
     navigationHistoryStore.getSnapshot,
   );
 
-  const latestRef = useRef({ pathname, activeTargetKey });
-  latestRef.current = { pathname, activeTargetKey };
+  const latestRef = useRef({ pathname, activeTabKey });
+  latestRef.current = { pathname, activeTabKey };
   const appliedReplayTokenRef = useRef(0);
 
   useEffect(() => {
@@ -89,9 +109,13 @@ export function NavigationHistoryBridge() {
     }
     appliedReplayTokenRef.current = replay.token;
     const latest = latestRef.current;
+    const replayTargetKey = activeTabSnapshotKey(
+      replay.entry.tabId && replay.entry.target
+        ? { tabId: replay.entry.tabId, target: replay.entry.target }
+        : null,
+    );
     const alreadyThere =
-      latest.pathname === replay.entry.pathname &&
-      (latest.activeTargetKey ?? "") === canonicalTargetKey(replay.entry.target);
+      latest.pathname === replay.entry.pathname && latest.activeTabKey === replayTargetKey;
     if (alreadyThere) {
       return;
     }
@@ -99,16 +123,17 @@ export function NavigationHistoryBridge() {
   }, [replay]);
 
   useEffect(() => {
-    const target = workspaceKey
-      ? readActiveTarget(useWorkspaceLayoutStore.getState(), workspaceKey)
+    const activeTab = workspaceKey
+      ? readActiveTab(useWorkspaceLayoutStore.getState(), workspaceKey)
       : null;
     navigationHistoryStore.recordNavigation({
       pathname,
       serverId: selection?.serverId ?? null,
       workspaceId: selection?.workspaceId ?? null,
-      target,
+      target: activeTab?.target ?? null,
+      tabId: activeTab?.tabId ?? null,
     });
-  }, [pathname, selection, workspaceKey, activeTargetKey]);
+  }, [pathname, selection, workspaceKey, activeTabKey]);
 
   return null;
 }

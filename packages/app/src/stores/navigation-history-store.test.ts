@@ -8,6 +8,7 @@ import {
 function entry(
   pathname: string,
   target: NavigationHistoryEntry["target"] = null,
+  tabId: string | null = null,
 ): NavigationHistoryEntry {
   const isWorkspace = pathname.startsWith("/h/server-1/workspace/");
   return {
@@ -15,6 +16,7 @@ function entry(
     serverId: isWorkspace ? "server-1" : null,
     workspaceId: isWorkspace ? (pathname.split("/")[4] ?? null) : null,
     target,
+    tabId,
   };
 }
 
@@ -183,13 +185,87 @@ describe("navigation history store", () => {
     const store = createNavigationHistoryStore();
 
     store.recordNavigation(
-      entry("/h/server-1/workspace/workspace-a", { kind: "agent", agentId: "agent-1" }),
+      entry(
+        "/h/server-1/workspace/workspace-a",
+        { kind: "agent", agentId: "agent-1" },
+        "agent_agent-1",
+      ),
     );
     store.recordNavigation(
-      entry("/h/server-1/workspace/workspace-a", { kind: "agent", agentId: "agent-1" }),
+      entry(
+        "/h/server-1/workspace/workspace-a",
+        { kind: "agent", agentId: "agent-1" },
+        "agent_agent-1",
+      ),
     );
 
     expect(store.getSnapshot().entries).toHaveLength(1);
+  });
+
+  it("keeps two blank tabs apart, because the instance is the position", () => {
+    const store = createNavigationHistoryStore();
+
+    store.recordNavigation(
+      entry("/h/server-1/workspace/workspace-a", { kind: "new_tab" }, "tab_1"),
+    );
+    store.recordNavigation(
+      entry("/h/server-1/workspace/workspace-a", { kind: "new_tab" }, "tab_2"),
+    );
+
+    const snapshot = store.getSnapshot();
+    expect(snapshot.entries).toHaveLength(2);
+    expect(snapshot.entries.map((item) => item.tabId)).toEqual(["tab_1", "tab_2"]);
+    expect(store.getCanGoBack()).toBe(true);
+  });
+
+  it("settles a jump onto a blank tab that had to be created again", () => {
+    const store = createNavigationHistoryStore();
+    store.recordNavigation(
+      entry("/h/server-1/workspace/workspace-a", { kind: "new_tab" }, "tab_1"),
+    );
+    store.recordNavigation(
+      entry(
+        "/h/server-1/workspace/workspace-a",
+        { kind: "agent", agentId: "agent-1" },
+        "agent_agent-1",
+      ),
+    );
+
+    store.navigateBack();
+    // The recorded instance is gone, so the jump opened a fresh blank tab.
+    store.recordNavigation(
+      entry("/h/server-1/workspace/workspace-a", { kind: "new_tab" }, "tab_9"),
+    );
+
+    const snapshot = store.getSnapshot();
+    expect(snapshot.replay).toBeNull();
+    expect(snapshot.entries).toHaveLength(2);
+    expect(snapshot.cursor).toBe(0);
+    expect(snapshot.entries[0].tabId).toBe("tab_9");
+  });
+
+  it("keeps the recorded instance when the jump finds it again", () => {
+    const store = createNavigationHistoryStore();
+    store.recordNavigation(
+      entry("/h/server-1/workspace/workspace-a", { kind: "new_tab" }, "tab_1"),
+    );
+    store.recordNavigation(
+      entry(
+        "/h/server-1/workspace/workspace-a",
+        { kind: "agent", agentId: "agent-1" },
+        "agent_agent-1",
+      ),
+    );
+
+    store.navigateBack();
+    store.recordNavigation(
+      entry("/h/server-1/workspace/workspace-a", { kind: "new_tab" }, "tab_1"),
+    );
+
+    const snapshot = store.getSnapshot();
+    expect(snapshot.replay).toBeNull();
+    expect(snapshot.entries).toHaveLength(2);
+    expect(snapshot.entries[0].tabId).toBe("tab_1");
   });
 
   it("resets to an empty history", () => {

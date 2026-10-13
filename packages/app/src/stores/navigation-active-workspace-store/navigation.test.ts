@@ -14,6 +14,7 @@ import type { Agent, WorkspaceDescriptor } from "@/stores/session-store";
 interface RecordedTab {
   workspaceKey: string;
   target: WorkspaceTabTarget;
+  tabId?: string;
   pin: boolean;
 }
 
@@ -30,8 +31,8 @@ function createFakeDeps(overrides: Partial<NavigateToWorkspaceDeps> = {}) {
     getSessionWorkspaces: () => null,
     getSessionAgents: () => [] as Agent[],
     isWorkspaceLayoutHydrated: () => true,
-    openTab: ({ workspaceKey, target, pin = false }) => {
-      openedTabs.push({ workspaceKey, target, pin });
+    openTab: ({ workspaceKey, target, tabId, pin = false }) => {
+      openedTabs.push({ workspaceKey, target, tabId, pin });
       return target.kind === "agent" ? target.agentId : null;
     },
     rememberLastWorkspace: (selection) => remembered.push(selection),
@@ -164,6 +165,29 @@ describe("workspace navigation", () => {
       {
         workspaceKey: "server-1:workspace-a",
         target: { kind: "draft", draftId: "draft-1" },
+        pin: false,
+      },
+    ]);
+  });
+
+  it("forwards a remembered tab instance to the tab opener", () => {
+    const { deps, openedTabs } = createFakeDeps();
+
+    navigateToWorkspace(
+      {
+        serverId: "server-1",
+        workspaceId: "workspace-a",
+        target: { kind: "new_tab" },
+        tabId: "tab_1",
+      },
+      deps,
+    );
+
+    expect(openedTabs).toEqual([
+      {
+        workspaceKey: "server-1:workspace-a",
+        target: { kind: "new_tab" },
+        tabId: "tab_1",
         pin: false,
       },
     ]);

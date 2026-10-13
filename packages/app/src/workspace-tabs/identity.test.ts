@@ -2,6 +2,7 @@ import { describe, expect, it, test } from "vitest";
 import {
   buildDeterministicWorkspaceTabId,
   normalizeWorkspaceTabTarget,
+  workspaceTabPositionsEqual,
   workspaceTabTargetsEqual,
 } from "./identity";
 
@@ -14,6 +15,29 @@ describe("New tab identity", () => {
     expect(() => buildDeterministicWorkspaceTabId(target)).toThrow(
       "New tabs do not have deterministic target identities",
     );
+  });
+
+  it("counts as one visited position with any other blank tab", () => {
+    expect(workspaceTabPositionsEqual({ kind: "new_tab" }, { kind: "new_tab" })).toBe(true);
+    expect(workspaceTabPositionsEqual(null, { kind: "new_tab" })).toBe(false);
+  });
+});
+
+describe("workspace tab positions", () => {
+  it("compares every other target strictly", () => {
+    expect(workspaceTabPositionsEqual(null, null)).toBe(true);
+    expect(
+      workspaceTabPositionsEqual(
+        { kind: "agent", agentId: "agent-1" },
+        { kind: "agent", agentId: "agent-1" },
+      ),
+    ).toBe(true);
+    expect(
+      workspaceTabPositionsEqual(
+        { kind: "agent", agentId: "agent-1" },
+        { kind: "agent", agentId: "agent-2" },
+      ),
+    ).toBe(false);
   });
 });
 

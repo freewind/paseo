@@ -819,6 +819,56 @@ describe("workspace-layout-store actions", () => {
     ).toBe(first);
   });
 
+  it("reveals a blank tab on the pane placeholder instead of demanding a deterministic id", () => {
+    const workspaceKey = createWorkspaceKey();
+    const store = workspaceLayoutStore.getState();
+    const countBlankTabs = () =>
+      collectAllTabs(workspaceLayoutStore.getState().layoutByWorkspace[workspaceKey].root).filter(
+        (tab) => tab.target.kind === "new_tab",
+      ).length;
+
+    const first = store.openTab({ workspaceKey, target: { kind: "new_tab" }, intent: "reveal" });
+    const blankTabsAfterFirst = countBlankTabs();
+    const second = store.openTab({ workspaceKey, target: { kind: "new_tab" }, intent: "reveal" });
+
+    expect(first).toBeTruthy();
+    expect(second).toBe(first);
+    expect(countBlankTabs()).toBe(blankTabsAfterFirst);
+  });
+
+  it("reveals the tab instance it was given, not another one for the same target", () => {
+    const workspaceKey = createWorkspaceKey();
+    const store = workspaceLayoutStore.getState();
+    const first = store.openTab({ workspaceKey, target: { kind: "new_tab" }, intent: "new" })!;
+    const second = store.openTab({ workspaceKey, target: { kind: "new_tab" }, intent: "new" })!;
+    expect(first).not.toBe(second);
+
+    const revealed = store.openTab({
+      workspaceKey,
+      target: { kind: "new_tab" },
+      intent: "reveal",
+      tabId: first,
+    });
+
+    const root = workspaceLayoutStore.getState().layoutByWorkspace[workspaceKey].root;
+    expect(revealed).toBe(first);
+    expect(findPaneContainingTab(root, first)?.focusedTabId).toBe(first);
+  });
+
+  it("falls back to the target when the remembered tab instance is gone", () => {
+    const workspaceKey = createWorkspaceKey();
+    const store = workspaceLayoutStore.getState();
+
+    const revealed = store.openTab({
+      workspaceKey,
+      target: { kind: "agent", agentId: "agent-1" },
+      intent: "reveal",
+      tabId: "agent_missing",
+    });
+
+    expect(revealed).toBe("agent_agent-1");
+  });
+
   it("creates duplicate Pull request instances explicitly", () => {
     const workspaceKey = createWorkspaceKey();
     const store = workspaceLayoutStore.getState();
