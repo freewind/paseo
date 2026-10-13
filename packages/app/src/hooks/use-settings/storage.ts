@@ -120,7 +120,7 @@ export interface AppSettings {
   ttsEngine: string | null;
   /** Device speech rate multiplier, shared by preview and reply reading. */
   ttsRate: number;
-  /** Local conversation opt-ins, keyed by host and agent identity. */
+  /** Per-conversation read-aloud overrides, keyed by host and agent identity; absent follows the global switch. */
   ttsConversations: Record<string, boolean>;
   /** Desktop-only preferences for implicit opens into the ordinary side pane. */
   openInSidePane: OpenInSidePanePreferences;

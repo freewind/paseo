@@ -575,12 +575,14 @@ The native chat settings preview uses the selected device voice even when automa
 The client's saved speech rate applies to both previews and reply reading; old settings use normal speed.
 Changing the daemon's speech configuration does not change either client preference.
 
-Global read-aloud enables the feature, not every conversation. The composer owns a separate opt-in
-for each `(serverId, agentId)` on this device; new conversations are silent. Closing the active
-conversation's opt-in stops its utterance without changing other conversations' saved choices.
+Global read-aloud switches the whole feature on. Each `(serverId, agentId)` conversation on this
+device keeps its own saved choice: absent means "follow the global switch", so new conversations
+start reading while the global switch is on, and an explicit off keeps a conversation silent across
+reopens. Closing the active conversation's switch stops its utterance without changing other
+conversations' saved choices.
 Explicit cancellation, dictation start, and realtime speech onset also stop device read-aloud.
 The interrupted turn stays silent through provider teardown, including late text; a new turn may
-read again under the same saved conversation opt-in. Interruption is transient, not a preference change.
+read again under the same saved conversation choice. Interruption is transient, not a preference change.
 
 ### Keying convention: directory-backed vs workspace-owned
 
