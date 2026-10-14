@@ -24,19 +24,24 @@ export interface CommentDraftInput {
 }
 
 /**
+ * Trailing blank line left behind the appended content, so the next thing the user types
+ * starts on its own line instead of continuing the comment.
+ */
+const APPEND_TRAILING = "\n\n";
+
+/**
  * What the attach action puts in the composer: the quoted block, a blank line, then the
- * comment. Existing draft text stays where it is and the append lands after it.
+ * comment, then a blank line for whatever comes next. Existing draft text stays where it is
+ * and the append lands after it.
  */
 export function buildCommentDraftText(input: CommentDraftInput): string {
   const quoted = formatQuotedBlock(input.blockText);
   const comment = input.comment.trim();
   const appended = [quoted, comment].filter((part) => part.length > 0).join("\n\n");
   const existing = input.existingText.replace(/[ \t]+$/gm, "").trimEnd();
-  if (existing.length === 0) {
-    return appended;
-  }
   if (appended.length === 0) {
     return existing;
   }
-  return existing + "\n\n" + appended;
+  const inserted = existing.length === 0 ? appended : existing + "\n\n" + appended;
+  return inserted + APPEND_TRAILING;
 }
