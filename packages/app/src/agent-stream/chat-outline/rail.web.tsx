@@ -422,7 +422,6 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
           prompt={openPrompt}
           index={openIndex}
           total={prompts.length}
-          preview={openPrompt.preview}
           onRequestPromptText={onRequestPromptText}
           rowRef={openRowRef}
           panelRef={panelRef}

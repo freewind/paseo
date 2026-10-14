@@ -1157,6 +1157,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
               visible={chatOutlineSheet.visible}
               onClose={chatOutlineSheet.close}
               onJumpToPrompt={chatOutline.jumpToPrompt}
+              onRequestPromptText={chatOutline.fetchPromptText}
             />
             {(!isNearBottom || isTimelineDetached) && (
               <View style={scrollToBottomContainerStyle} pointerEvents="box-none">
