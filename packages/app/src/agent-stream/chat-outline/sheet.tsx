@@ -5,6 +5,9 @@ import { StyleSheet } from "react-native-unistyles";
 import { AdaptiveModalSheet, type SheetHeader } from "@/components/adaptive-modal-sheet";
 import { collapsePromptWhitespace, type ActivePromptSource, type ChatOutlinePrompt } from "./model";
 
+// Exact extension keeps compact web from resolving the platform-specific popover file.
+const { PromptDetailContent } = require("./prompt-detail.tsx") as typeof import("./prompt-detail");
+
 export interface ChatOutlineSheetControllerInput {
   isCompact: boolean;
   isActive: boolean;
@@ -50,6 +53,11 @@ export interface ChatOutlineSheetProps {
   visible: boolean;
   onClose: () => void;
   onJumpToPrompt: (seq: number) => void;
+  /**
+   * Reads a prompt's full text for the detail view. Callers that only need the compact
+   * index can omit it; their rows keep jumping straight to the transcript.
+   */
+  onRequestPromptText?: (seq: number) => Promise<string | null>;
 }
 
 export function ChatOutlineSheet({
@@ -58,13 +66,37 @@ export function ChatOutlineSheet({
   visible,
   onClose,
   onJumpToPrompt,
+  onRequestPromptText,
 }: ChatOutlineSheetProps) {
   const { t } = useTranslation();
   const activeSeq = useSyncExternalStore(activePrompt.subscribe, activePrompt.getActiveSeq);
-  const header = useMemo<SheetHeader>(
-    () => ({ title: t("settings.appearance.chatOutline.title") }),
-    [t],
+  const [selectedPromptSeq, setSelectedPromptSeq] = useState<number | null>(null);
+  const selectedPrompt = useMemo(
+    () => (selectedPromptSeq === null ? null : prompts.find((p) => p.seq === selectedPromptSeq)),
+    [prompts, selectedPromptSeq],
   );
+
+  useEffect(() => {
+    if (!visible) setSelectedPromptSeq(null);
+  }, [visible]);
+
+  useEffect(() => {
+    if (selectedPromptSeq !== null && selectedPrompt === undefined) setSelectedPromptSeq(null);
+  }, [selectedPrompt, selectedPromptSeq]);
+
+  const header = useMemo<SheetHeader>(() => {
+    if (selectedPrompt && onRequestPromptText) {
+      return {
+        title: t("settings.appearance.chatOutline.title"),
+        back: {
+          onPress: () => setSelectedPromptSeq(null),
+          label: t("common.actions.back"),
+          accessibilityLabel: t("common.actions.back"),
+        },
+      };
+    }
+    return { title: t("settings.appearance.chatOutline.title") };
+  }, [onRequestPromptText, selectedPrompt, t]);
 
   const handleJumpToPrompt = useCallback(
     (seq: number) => {
@@ -74,26 +106,62 @@ export function ChatOutlineSheet({
     [onClose, onJumpToPrompt],
   );
 
+  const handleRowPress = useCallback(
+    (seq: number) => {
+      if (onRequestPromptText) {
+        setSelectedPromptSeq(seq);
+        return;
+      }
+      handleJumpToPrompt(seq);
+    },
+    [handleJumpToPrompt, onRequestPromptText],
+  );
+
+  const showDetail =
+    selectedPrompt !== null && selectedPrompt !== undefined && !!onRequestPromptText;
+  const selectedPromptIndex =
+    selectedPrompt === null || selectedPrompt === undefined
+      ? -1
+      : prompts.findIndex((prompt) => prompt.seq === selectedPrompt.seq);
+
   return (
     <AdaptiveModalSheet
       header={header}
       visible={visible && prompts.length > 1}
       onClose={onClose}
       snapPoints={["75%", "92%"]}
+      scrollable={!showDetail}
       testID="chat-outline-sheet"
     >
-      <View style={styles.list}>
-        {prompts.map((prompt, index) => (
-          <ChatOutlinePromptRow
-            key={prompt.seq}
-            index={index}
-            total={prompts.length}
-            prompt={prompt}
-            isActive={prompt.seq === activeSeq}
-            onJumpToPrompt={handleJumpToPrompt}
-          />
-        ))}
-      </View>
+      {showDetail && selectedPrompt && onRequestPromptText ? (
+        <PromptDetailContent
+          prompt={selectedPrompt}
+          index={selectedPromptIndex}
+          total={prompts.length}
+          onRequestPromptText={onRequestPromptText}
+          onJumpToPrompt={onJumpToPrompt}
+          onClose={onClose}
+          style={styles.detail}
+          contentStyle={styles.detailContent}
+          actionsStyle={styles.detailActions}
+          testID={`chat-outline-sheet-detail-${selectedPrompt.seq}`}
+        />
+      ) : (
+        <View style={styles.list}>
+          {prompts.map((prompt, index) => (
+            <ChatOutlinePromptRow
+              key={prompt.seq}
+              index={index}
+              total={prompts.length}
+              prompt={prompt}
+              isActive={prompt.seq === activeSeq}
+              detailEnabled={!!onRequestPromptText}
+              onOpenPrompt={handleRowPress}
+              onJumpToPrompt={handleJumpToPrompt}
+            />
+          ))}
+        </View>
+      )}
     </AdaptiveModalSheet>
   );
 }
@@ -103,16 +171,23 @@ function ChatOutlinePromptRow({
   total,
   prompt,
   isActive,
+  detailEnabled,
+  onOpenPrompt,
   onJumpToPrompt,
 }: {
   index: number;
   total: number;
   prompt: ChatOutlinePrompt;
   isActive: boolean;
+  detailEnabled: boolean;
+  onOpenPrompt: (seq: number) => void;
   onJumpToPrompt: (seq: number) => void;
 }) {
   const accessibilityState = useMemo(() => ({ selected: isActive }), [isActive]);
-  const handlePress = useCallback(() => onJumpToPrompt(prompt.seq), [onJumpToPrompt, prompt.seq]);
+  const handlePress = useCallback(() => {
+    if (detailEnabled) onOpenPrompt(prompt.seq);
+    else onJumpToPrompt(prompt.seq);
+  }, [detailEnabled, onJumpToPrompt, onOpenPrompt, prompt.seq]);
   const handleStyle = useCallback(
     ({ pressed }: { pressed: boolean }) => [
       styles.row,
@@ -143,6 +218,17 @@ function ChatOutlinePromptRow({
 const styles = StyleSheet.create((theme) => ({
   list: {
     gap: theme.spacing[2],
+  },
+  detail: {
+    flex: 1,
+    minHeight: 0,
+  },
+  detailContent: {
+    paddingHorizontal: 0,
+    paddingTop: 0,
+  },
+  detailActions: {
+    paddingHorizontal: 0,
   },
   row: {
     minHeight: 48,

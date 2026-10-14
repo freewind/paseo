@@ -1,19 +1,16 @@
-import React, { useCallback, useEffect, useRef, useState, type ReactElement } from "react";
-import { ScrollView, Text, View } from "react-native";
+import React, { useEffect, useRef, useState, type ReactElement } from "react";
+import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
-import { useTranslation } from "react-i18next";
-import { Copy, X } from "lucide-react-native";
 import { inlineUnistylesStyle } from "@/styles/unistyles-inline-style";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/contexts/toast-context";
-import { copyToClipboard } from "@/utils/copy-to-clipboard";
 import {
   PROMPT_DETAIL_GAP,
   PROMPT_DETAIL_MAX_HEIGHT,
   PROMPT_DETAIL_WIDTH,
-  TEXT_ROW_LINE_HEIGHT,
   type ChatOutlinePrompt,
 } from "./model";
+// An extension-qualified import is required here: `./prompt-detail` resolves back to this
+// platform file on web and creates a self-import.
+const { PromptDetailContent } = require("./prompt-detail.tsx") as typeof import("./prompt-detail");
 
 interface Rect {
   x: number;
@@ -47,7 +44,6 @@ interface PromptDetailPopoverProps {
   prompt: ChatOutlinePrompt;
   index: number;
   total: number;
-  preview: string;
   onRequestPromptText: (seq: number) => Promise<string | null>;
   rowRef: React.RefObject<View | null>;
   panelRef: React.RefObject<View | null>;
@@ -60,20 +56,14 @@ export function PromptDetailPopover({
   prompt,
   index,
   total,
-  preview,
   onRequestPromptText,
   rowRef,
   panelRef,
   onJumpToPrompt,
   onClose,
 }: PromptDetailPopoverProps): ReactElement | null {
-  const { t } = useTranslation();
-  const toast = useToast();
-  const [fullText, setFullText] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [frame, setFrame] = useState<ReturnType<typeof computePopoverPosition>>(null);
   const measureEpoch = useRef(0);
-  const textEpoch = useRef(0);
 
   useEffect(() => {
     const request = measureEpoch;
@@ -90,90 +80,19 @@ export function PromptDetailPopover({
     };
   }, [panelRef, prompt.seq, rowRef]);
 
-  useEffect(() => {
-    const request = textEpoch;
-    const epoch = ++request.current;
-    setIsLoading(true);
-    setFullText(null);
-    void onRequestPromptText(prompt.seq).then((text) => {
-      if (request.current === epoch) {
-        setFullText(text);
-        setIsLoading(false);
-      }
-      return null;
-    });
-    return () => {
-      request.current++;
-    };
-  }, [onRequestPromptText, prompt.seq]);
-
-  const handleJump = useCallback(() => {
-    onJumpToPrompt(prompt.seq);
-    onClose();
-  }, [onClose, onJumpToPrompt, prompt.seq]);
-
-  // The popover exists to show the whole prompt, so copy the loaded text and fall back to
-  // the index preview only while the daemon read is still in flight.
-  const handleCopy = useCallback(async () => {
-    const text = fullText ?? preview;
-    if (!text) return;
-    try {
-      await copyToClipboard(text);
-      toast.copied();
-    } catch {
-      toast.error(t("common.errors.unableToCopy"));
-    }
-  }, [fullText, preview, t, toast]);
-
   // Mount only after measurement, so no frame paints at an unmeasured position.
   if (!frame) return null;
 
   return (
-    <View
-      collapsable={false}
+    <PromptDetailContent
+      prompt={prompt}
+      index={index}
+      total={total}
+      onRequestPromptText={onRequestPromptText}
+      onJumpToPrompt={onJumpToPrompt}
+      onClose={onClose}
       style={[styles.popover, inlineUnistylesStyle(frame)]}
-      role="dialog"
-      accessibilityLabel={`${index + 1} of ${total}: ${preview}`}
-      testID={`chat-outline-prompt-detail-${prompt.seq}`}
-    >
-      <ScrollView
-        style={styles.body}
-        contentContainerStyle={styles.bodyContent}
-        showsVerticalScrollIndicator
-        testID={`chat-outline-prompt-detail-scroll-${prompt.seq}`}
-      >
-        <Text style={styles.bodyText}>
-          {isLoading ? t("common.loading") : (fullText ?? preview)}
-        </Text>
-      </ScrollView>
-      <View style={styles.actions} testID={`chat-outline-prompt-detail-actions-${prompt.seq}`}>
-        <Button
-          variant="secondary"
-          size="xs"
-          leftIcon={Copy}
-          onPress={handleCopy}
-          testID={`chat-outline-prompt-detail-copy-${prompt.seq}`}
-        >
-          {`🌿 ${t("common.actions.copy")}`}
-        </Button>
-        <Button
-          variant="secondary"
-          size="xs"
-          onPress={handleJump}
-          testID={`chat-outline-prompt-detail-jump-${prompt.seq}`}
-        >
-          {t("agentStream.chatOutline.jumpToPrompt")}
-        </Button>
-        <Button
-          variant="secondary"
-          size="xs"
-          leftIcon={X}
-          onPress={onClose}
-          accessibilityLabel={t("common.actions.close")}
-          testID={`chat-outline-prompt-detail-close-${prompt.seq}`}
-        />
-      </View>
-    </View>
+    />
   );
 }
 
@@ -188,25 +107,5 @@ const styles = StyleSheet.create((theme) => ({
     paddingVertical: theme.spacing[2],
     zIndex: 3,
     ...theme.shadow.md,
-  },
-  body: {
-    flexShrink: 1,
-  },
-  bodyContent: {
-    paddingHorizontal: theme.spacing[3],
-    paddingVertical: theme.spacing[1],
-  },
-  bodyText: {
-    fontSize: theme.fontSize.base,
-    lineHeight: TEXT_ROW_LINE_HEIGHT,
-    color: theme.colors.foreground,
-  },
-  actions: {
-    flexShrink: 0,
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: theme.spacing[2],
-    paddingHorizontal: theme.spacing[3],
-    paddingTop: theme.spacing[2],
   },
 }));
