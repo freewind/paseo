@@ -20,18 +20,24 @@ describe("buildCommentDraftText", () => {
   it("quotes the block, a blank line, then the comment", () => {
     expect(
       buildCommentDraftText({ existingText: "", blockText: "some claim", comment: "not true" }),
-    ).toBe("> some claim\n\nnot true");
+    ).toBe("> some claim\n\nnot true\n\n");
   });
 
   it("appends after an existing draft", () => {
     expect(
       buildCommentDraftText({ existingText: "draft", blockText: "some claim", comment: "why" }),
-    ).toBe("draft\n\n> some claim\n\nwhy");
+    ).toBe("draft\n\n> some claim\n\nwhy\n\n");
   });
 
-  it("trims the comment and skips the gap when there is none", () => {
+  it("leaves a trailing blank line after a quoted block with no comment", () => {
     expect(
       buildCommentDraftText({ existingText: "", blockText: "some claim", comment: "  " }),
-    ).toBe("> some claim");
+    ).toBe("> some claim\n\n");
+  });
+
+  it("does not add a trailing blank line when there is nothing to append", () => {
+    expect(buildCommentDraftText({ existingText: "draft", blockText: "  ", comment: "  " })).toBe(
+      "draft",
+    );
   });
 });
