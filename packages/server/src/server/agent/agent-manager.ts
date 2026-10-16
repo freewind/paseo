@@ -1212,6 +1212,33 @@ export class AgentManager {
     return this.timelineStore.fetch(id, options);
   }
 
+  /**
+   * Full conversation rows for export: durable committed rows plus live rows not yet
+   * flushed, deduped by seq, in seq order. Export reads this instead of one store so a
+   * daemon restart never truncates the transcript mid-conversation.
+   */
+  async getConversationExportRows(id: string): Promise<AgentTimelineRow[]> {
+    this.requireAgent(id);
+    const durableRows = this.durableTimelineStore
+      ? projectTimelineRows({
+          rows: await this.durableTimelineStore.getCommittedRows(id),
+          mode: "projected",
+        }).map((entry) => Object.assign({ seq: entry.seqEnd }, entry))
+      : [];
+    const maxDurableSeq = durableRows.reduce((max, row) => Math.max(max, row.seq), 0);
+    const liveRows = this.timelineStore.has(id)
+      ? this.timelineStore
+          .getRows(id)
+          .map((row) => Object.assign({ seq: row.seqEnd }, row))
+          .filter((row) => row.seq > maxDurableSeq)
+      : [];
+    const rowsBySeq = new Map<number, AgentTimelineRow>();
+    for (const row of [...durableRows, ...liveRows]) {
+      rowsBySeq.set(row.seq, row);
+    }
+    return [...rowsBySeq.values()].sort((left, right) => left.seq - right.seq);
+  }
+
   listProviderSubagents(parentAgentId: string): ProviderSubagentDescriptor[] {
     this.requirePublicAgent(parentAgentId);
     return this.providerSubagents.list(parentAgentId);
