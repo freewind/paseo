@@ -87,6 +87,14 @@ export interface PiModel {
   compat?: unknown;
 }
 
+export interface PiSessionEntry {
+  type?: string;
+  id?: string;
+  parentId?: string | null;
+  timestamp?: string;
+  message?: { role?: unknown; responseId?: unknown } & Record<string, unknown>;
+}
+
 export interface PiSessionState {
   model?: PiModel | null;
   thinkingLevel: PiThinkingLevel;
@@ -139,6 +147,7 @@ export type PiRpcCommand =
   | { id?: string; type: "abort" }
   | { id?: string; type: "get_state" }
   | { id?: string; type: "get_messages" }
+  | { id?: string; type: "get_entries" }
   | { id?: string; type: "get_available_models" }
   | { id?: string; type: "set_model"; provider: string; modelId: string }
   | { id?: string; type: "set_thinking_level"; level: PiThinkingLevel }
