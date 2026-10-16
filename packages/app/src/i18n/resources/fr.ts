@@ -131,6 +131,16 @@ export const fr: TranslationResources = {
     },
   },
   composer: {
+    quickReplies: {
+      title: "Réponses rapides",
+      edit: "Gérer les réponses rapides",
+      editTitle: "Gérer les réponses rapides",
+      add: "Ajouter",
+      placeholder: "Saisissez une réponse à enregistrer",
+      empty: "Aucune réponse rapide. Ajoutez-en une pour l'envoyer d'un geste.",
+      delete: "Supprimer",
+      save: "Enregistrer",
+    },
     readAloud: {
       start: "Activer la lecture de cette conversation",
       stop: "Désactiver la lecture de cette conversation",

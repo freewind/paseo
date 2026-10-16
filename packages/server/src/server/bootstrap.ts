@@ -183,6 +183,7 @@ import type {
   AgentSkillSelection,
   FirstAgentContext,
   PluginSource,
+  QuickReply,
   TerminalProfile,
 } from "@getpaseo/protocol/messages";
 import type {
@@ -413,6 +414,7 @@ export interface PaseoDaemonConfig {
   appendSystemPrompt?: string;
   terminalProfiles?: TerminalProfile[];
   agentProfiles?: AgentProfile[];
+  quickReplies?: QuickReply[];
   skillSelection?: AgentSkillSelection;
   pluginsEnabled?: boolean;
   plugins?: Record<string, PluginSource>;
@@ -595,6 +597,10 @@ function createInitialMutableDaemonConfig(config: PaseoDaemonConfig): MutableDae
 
   if (config.agentProfiles !== undefined) {
     initialConfig.agentProfiles = config.agentProfiles;
+  }
+
+  if (config.quickReplies !== undefined) {
+    initialConfig.quickReplies = config.quickReplies;
   }
 
   return initialConfig;

@@ -92,6 +92,11 @@ import {
 import { useVoiceOptional } from "@/contexts/voice-context";
 import { useToast } from "@/contexts/toast-context";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useQuickReplies } from "@/quick-replies/use-quick-replies";
+import { QuickRepliesBar } from "@/quick-replies/quick-replies-bar";
+import { QuickRepliesEditor } from "@/quick-replies/quick-replies-editor";
+import { QuickRepliesMenu } from "@/quick-replies/quick-replies-menu";
+import type { QuickReply } from "@getpaseo/protocol/messages";
 import { Shortcut } from "@/components/ui/shortcut";
 import { useShortcutKeys } from "@/hooks/use-shortcut-keys";
 import { AutocompletePopover } from "@/components/ui/autocomplete-popover";
@@ -1212,6 +1217,18 @@ function ComposerVoiceModeButton({
   );
 }
 
+/**
+ * Renders the message input under the MessageInput render profile. Split out so the composer's
+ * own JSX stays inside the configured jsx-max-depth around an already-deep input area.
+ */
+function ComposerInputSurface(props: React.ComponentProps<typeof StableMessageInput>) {
+  return (
+    <RenderProfile id="MessageInput">
+      <StableMessageInput {...props} />
+    </RenderProfile>
+  );
+}
+
 export function Composer({ isPaneFocused, ...props }: ComposerProps) {
   // A compact overlay panel (agent list, explorer) covers the pane without taking its
   // focus. The composer gives up input from the moment the user asks for the panel,
@@ -1312,6 +1329,22 @@ function ComposerContentImpl({
 
   const isCompactFormFactor = useIsCompactFormFactor();
   const isCompactLayout = resolveCompactLayout(isCompactLayoutOverride, isCompactFormFactor);
+  const quickReplies = useQuickReplies(serverId);
+  const [isQuickRepliesEditorOpen, setIsQuickRepliesEditorOpen] = useState(false);
+
+  const openQuickRepliesEditor = useCallback(() => {
+    setIsQuickRepliesEditorOpen(true);
+  }, []);
+  const closeQuickRepliesEditor = useCallback(() => {
+    setIsQuickRepliesEditorOpen(false);
+  }, []);
+  const saveQuickRepliesFromEditor = useCallback(
+    (next: QuickReply[]) => {
+      setIsQuickRepliesEditorOpen(false);
+      void quickReplies.saveReplies(next);
+    },
+    [quickReplies],
+  );
   const isDesktopWebBreakpoint = resolveIsDesktopWebBreakpoint(isCompactFormFactor);
   const hasFinePointer = useHasFinePointer();
   const isDesktopLayout = resolveIsDesktopWebBreakpoint(isCompactLayout);
@@ -1754,6 +1787,27 @@ function ComposerContentImpl({
     if (newImages.length === 0) return;
     addImages(newImages);
   }, [addImages, pickImages]);
+
+  /** Quick replies append to the latest draft (newline-separated) and submit immediately. */
+  const handleQuickReplySelect = useCallback(
+    (text: string) => {
+      const draft = textSource.getSnapshot();
+      const merged = draft.trim().length > 0 ? `${draft}\n${text}` : text;
+      handleSubmit({ text: merged, attachments: [], cwd });
+    },
+    [cwd, handleSubmit, textSource],
+  );
+
+  const quickRepliesMenu = useMemo(() => {
+    if (!quickReplies.isSupported) return null;
+    return (
+      <QuickRepliesMenu
+        replies={quickReplies.replies}
+        onSelect={handleQuickReplySelect}
+        onEdit={openQuickRepliesEditor}
+      />
+    );
+  }, [handleQuickReplySelect, openQuickRepliesEditor, quickReplies]);
 
   const handlePasteImage = useCallback(async () => {
     try {
@@ -2412,8 +2466,123 @@ function ComposerContentImpl({
     ? t("composer.github.searching")
     : t("composer.github.noResults");
 
+  const quickRepliesBar =
+    !isCompactLayout && quickReplies.isSupported ? (
+      <QuickRepliesBar
+        replies={quickReplies.replies}
+        onSelect={handleQuickReplySelect}
+        onEdit={openQuickRepliesEditor}
+      />
+    ) : null;
+
+  const messageInputNode = (
+    <View
+      ref={messageInputContainerRef}
+      style={[
+        styles.messageInputContainer,
+        ...(quickRepliesBar ? [styles.inputWithQuickReplies] : []),
+      ]}
+    >
+      <View style={quickRepliesBar ? styles.messageInputInner : undefined}>
+        <ComposerAutocompleteBinding
+          text={textSource}
+          cursor={cursor}
+          inputRef={messageInputRef}
+          anchorRef={messageInputContainerRef}
+          show={mode.showAutocomplete}
+          ref={autocompleteRef}
+          configuration={autocompleteConfiguration}
+        />
+        <ComposerForgeBinding
+          text={textSource}
+          configuration={forgeConfiguration}
+          ref={forgeAutoAttachRef}
+          onResolvingChange={setIsForgeResolving}
+        />
+
+        {/* MessageInput handles everything: text, dictation, attachments, all buttons */}
+        <ComposerInputSurface
+          ref={messageInputRef}
+          value={textSource.getSnapshot()}
+          onChangeText={setUserInput}
+          onSubmit={handleSubmit}
+          hasExternalContent={hasExternalContent}
+          allowEmptySubmit={allowEmptySubmit}
+          submitButtonAccessibilityLabel={submitButtonAccessibilityLabel}
+          submitButtonTestID={submitButtonTestID}
+          submitIcon={submitIcon}
+          isSubmitDisabled={isSubmitDisabled}
+          isSubmitLoading={isSubmitLoadingVisible}
+          preserveHeightOnSubmit={submitBehavior === "preserve-and-lock"}
+          attachments={selectedAttachments}
+          cwd={cwd}
+          attachmentMenuItems={attachmentMenuItems}
+          onAttachButtonRef={handleAttachButtonRef}
+          onAddImages={addImages}
+          onPasteImages={handleNativePasteImages}
+          client={client}
+          isReadyForDictation={isDictationReady}
+          placeholder={messagePlaceholder}
+          autoFocus={messageInputAutoFocus}
+          autoFocusKey={`${serverId}:${agentId}:${autoFocusKey ?? ""}`}
+          disabled={isSubmitLoading}
+          leftContent={leftContent}
+          beforeVoiceContent={beforeVoiceContent}
+          rightContent={rightContent}
+          activeActionContent={activeActionContent}
+          voiceServerId={serverId}
+          voiceAgentId={agentId}
+          showVoiceButton={appSettings.showVoiceButton}
+          isAgentRunning={isAgentRunning}
+          defaultSendBehavior={activeSendBehavior}
+          onQueue={handleQueue}
+          onSubmitLoadingPress={submitLoadingPressHandler}
+          onKeyPress={handleCommandKeyPress}
+          onSelectionChange={handleSelectionChange}
+          onFocusChange={handleFocusChange}
+          onHeightChange={onComposerHeightChange}
+          inputWrapperStyle={inputWrapperStyle}
+          attachmentSlot={attachmentTray}
+          inputMode={inputMode}
+          readOnly={readOnly}
+          textReplacement={textReplacement}
+          submitLabel={submitLabel}
+          quickRepliesMenu={quickRepliesMenu}
+        />
+        <Combobox
+          options={githubSearchOptions}
+          value=""
+          onSelect={noop}
+          keepOpenOnSelect
+          searchable
+          searchPlaceholder={t("composer.github.searchPlaceholder", {
+            context: forgePresentation.changeRequestContext,
+          })}
+          title={t("composer.github.title", {
+            context: forgePresentation.changeRequestContext,
+          })}
+          open={isGithubPickerOpen}
+          onOpenChange={handleGithubPickerOpenChange}
+          onSearchQueryChange={setGithubSearchQuery}
+          desktopPlacement="top-start"
+          anchorRef={attachButtonRef}
+          emptyText={githubEmptyText}
+          renderOption={renderGithubPickerOption}
+        />
+        {pluginAttachments.picker}
+      </View>
+    </View>
+  );
+
   return (
     <>
+      <QuickRepliesEditor
+        visible={isQuickRepliesEditorOpen}
+        mountKey={isQuickRepliesEditorOpen ? "open" : "closed"}
+        replies={quickReplies.replies}
+        onSave={saveQuickRepliesFromEditor}
+        onClose={closeQuickRepliesEditor}
+      />
       <ComposerKeyboardRegistration
         handlerId={keyboardHandlerIdRef.current}
         messageInputRef={messageInputRef}
@@ -2436,97 +2605,7 @@ function ComposerContentImpl({
             {isFullscreen ? null : queueList}
             {!isFullscreen && sendErrorNode}
 
-            <View ref={messageInputContainerRef} style={messageInputContainerStyle}>
-              <ComposerAutocompleteBinding
-                text={textSource}
-                cursor={cursor}
-                inputRef={messageInputRef}
-                anchorRef={messageInputContainerRef}
-                show={mode.showAutocomplete && !isFullscreen}
-                ref={autocompleteRef}
-                configuration={autocompleteConfiguration}
-              />
-              <ComposerForgeBinding
-                text={textSource}
-                configuration={forgeConfiguration}
-                ref={forgeAutoAttachRef}
-                onResolvingChange={setIsForgeResolving}
-              />
-
-              {/* MessageInput handles everything: text, dictation, attachments, all buttons */}
-              <RenderProfile id="MessageInput">
-                <StableMessageInput
-                  ref={messageInputRef}
-                  editingSession={editingSession}
-                  submissionError={sendErrorNode}
-                  value={textSource.getSnapshot()}
-                  onChangeText={setUserInput}
-                  onSubmit={handleSubmit}
-                  hasExternalContent={hasExternalContent}
-                  allowEmptySubmit={allowEmptySubmit}
-                  submitButtonAccessibilityLabel={submitButtonAccessibilityLabel}
-                  submitButtonTestID={submitButtonTestID}
-                  submitIcon={submitIcon}
-                  isSubmitDisabled={isSubmitDisabled}
-                  isSubmitLoading={isSubmitLoadingVisible}
-                  preserveHeightOnSubmit={submitBehavior === "preserve-and-lock"}
-                  attachments={selectedAttachments}
-                  cwd={cwd}
-                  attachmentMenuItems={attachmentMenuItems}
-                  onAttachButtonRef={handleAttachButtonRef}
-                  onAddImages={addImages}
-                  onPasteImages={handleNativePasteImages}
-                  client={client}
-                  isReadyForDictation={isDictationReady}
-                  placeholder={messagePlaceholder}
-                  autoFocus={messageInputAutoFocus}
-                  autoFocusKey={`${serverId}:${agentId}:${autoFocusKey ?? ""}`}
-                  disabled={isSubmitLoading}
-                  leftContent={leftContent}
-                  beforeVoiceContent={beforeVoiceContent}
-                  rightContent={rightContent}
-                  activeActionContent={activeActionContent}
-                  voiceServerId={serverId}
-                  voiceAgentId={agentId}
-                  showVoiceButton={appSettings.showVoiceButton}
-                  isAgentRunning={isAgentRunning}
-                  defaultSendBehavior={activeSendBehavior}
-                  onQueue={handleQueue}
-                  onSubmitLoadingPress={submitLoadingPressHandler}
-                  onKeyPress={handleCommandKeyPress}
-                  onSelectionChange={handleSelectionChange}
-                  onFocusChange={handleFocusChange}
-                  onHeightChange={onComposerHeightChange}
-                  inputWrapperStyle={inputWrapperStyle}
-                  attachmentSlot={attachmentTray}
-                  inputMode={inputMode}
-                  readOnly={readOnly}
-                  textReplacement={textReplacement}
-                  submitLabel={submitLabel}
-                />
-              </RenderProfile>
-              <Combobox
-                options={githubSearchOptions}
-                value=""
-                onSelect={noop}
-                keepOpenOnSelect
-                searchable
-                searchPlaceholder={t("composer.github.searchPlaceholder", {
-                  context: forgePresentation.changeRequestContext,
-                })}
-                title={t("composer.github.title", {
-                  context: forgePresentation.changeRequestContext,
-                })}
-                open={isGithubPickerOpen}
-                onOpenChange={handleGithubPickerOpenChange}
-                onSearchQueryChange={setGithubSearchQuery}
-                desktopPlacement="top-start"
-                anchorRef={attachButtonRef}
-                emptyText={githubEmptyText}
-                renderOption={renderGithubPickerOption}
-              />
-              {pluginAttachments.picker}
-            </View>
+            {messageInputNode}
           </View>
         </View>
       </View>
@@ -2586,10 +2665,21 @@ const styles = StyleSheet.create((theme: Theme) => ({
     maxWidth: theme.contentMaxWidth,
     gap: theme.spacing[3],
   },
+  inputWithQuickReplies: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+  },
+  messageInputInner: {
+    flex: 1,
+    minWidth: 0,
+    position: "relative",
+    flexShrink: 1,
+  },
   messageInputContainer: {
     flexShrink: 1,
     position: "relative",
-    width: "100%",
+    flex: 1,
+    minWidth: 0,
     gap: theme.spacing[3],
   },
   cancelButton: {

@@ -129,6 +129,16 @@ export const ar: TranslationResources = {
     },
   },
   composer: {
+    quickReplies: {
+      title: "الردود السريعة",
+      edit: "إدارة الردود السريعة",
+      editTitle: "إدارة الردود السريعة",
+      add: "إضافة",
+      placeholder: "اكتب ردًا لحفظه",
+      empty: "لا توجد ردود سريعة بعد. أضف ردًا لإرساله بلمسة واحدة.",
+      delete: "حذف",
+      save: "حفظ",
+    },
     readAloud: { start: "بدء قراءة هذه المحادثة", stop: "إيقاف قراءة هذه المحادثة" },
     placeholders: {
       desktop: "أرسل رسالة إلى الوكيل أو ضع علامة على @files أو استخدم /commands و /skills",

@@ -129,6 +129,16 @@ export const zhCN: TranslationResources = {
     },
   },
   composer: {
+    quickReplies: {
+      title: "常用回复",
+      edit: "管理常用回复",
+      editTitle: "管理常用回复",
+      add: "新增",
+      placeholder: "输入要保存的回复",
+      empty: "还没有常用回复。添加一条即可一键发送。",
+      delete: "删除",
+      save: "保存",
+    },
     readAloud: { start: "开启此对话朗读", stop: "关闭此对话朗读" },
     placeholders: {
       desktop: "给 Agent 发消息，标记 @files，或使用 /commands 和 /skills",
