@@ -1641,7 +1641,11 @@ export function processAgentStreamEvent(
     cursorChanged: sequencing.cursorChanged,
     acknowledgedClientMessageIds: streamResult.acknowledgedClientMessageIds ?? [],
     ...(sequencing.shouldApplyStreamEvent && event.type === "timeline" && event.item.type === "todo"
-      ? { taskSnapshot: event.item.items }
+      ? {
+          taskSnapshot: event.item.items.filter(
+            (task): task is TodoEntry => task.status !== "deleted",
+          ),
+        }
       : {}),
     sideEffects: sequencing.sideEffects,
   };

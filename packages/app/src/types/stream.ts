@@ -1540,14 +1540,17 @@ function reduceTimelineEvent(
         reduceTimelineToolCall(state, event, item, timestamp, timelineCursor),
       );
     case "todo": {
-      const items: TodoEntry[] = (item.items ?? []).map((todo) => ({
-        text: todo.text,
-        completed: todo.completed,
-        id: todo.id,
-        status: todo.status,
-        activeForm: todo.activeForm,
-        description: todo.description,
-      }));
+      // Tombstones exist only in provider snapshots; the live timeline never shows them.
+      const items: TodoEntry[] = (item.items ?? [])
+        .filter((todo): todo is TodoEntry => todo.status !== "deleted")
+        .map((todo) => ({
+          text: todo.text,
+          completed: todo.completed,
+          id: todo.id,
+          status: todo.status,
+          activeForm: todo.activeForm,
+          description: todo.description,
+        }));
       return finalizeActiveThoughts(
         appendTodoList(state, event.provider, items, timestamp, timelineCursor),
       );

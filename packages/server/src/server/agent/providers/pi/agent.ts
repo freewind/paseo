@@ -5,6 +5,7 @@ import { join, resolve as resolvePath } from "node:path";
 import type { Logger } from "pino";
 import stripAnsi from "strip-ansi";
 import { z } from "zod";
+import { ConversationTaskItemSchema } from "@getpaseo/protocol/messages";
 
 import {
   type AgentCapabilityFlags,
@@ -30,6 +31,7 @@ import {
   type AgentSlashCommand,
   type AgentSlashCommandKind,
   type AgentStreamEvent,
+  type AgentTaskSnapshotItem,
   type FetchCatalogOptions,
   type SteerActiveTurnOptions,
   type SteerResult,
@@ -667,10 +669,32 @@ function createPiPaseoExtensionFile({
 
 	function toCapturedUserEntry(entry) {
 	  return {
-	      id: entry.id,
-	      parentId: entry.parentId ?? null,
-	      text: readTextContent(entry.message.content),
-	    };
+	    id: entry.id,
+	    parentId: entry.parentId ?? null,
+	    text: readTextContent(entry.message.content),
+	  };
+	}
+
+	function toTodoSnapshot(entries) {
+	  let snapshot = null;
+	  for (const entry of entries) {
+	    const message = entry && entry.type === "message" ? entry.message : null;
+	    if (!message || message.role !== "toolResult" || message.toolName !== "todo") continue;
+	    const details = message.details;
+	    if (!details || !Array.isArray(details.tasks) || typeof details.nextId !== "number") continue;
+	    snapshot = details.tasks.map((task) => ({
+	      id: typeof task.id === "number" ? String(task.id) : task.id,
+	      text: task.subject,
+	      ...(task.status ? { status: task.status } : {}),
+	      completed: task.status === "completed",
+	      ...(task.activeForm ? { activeForm: task.activeForm } : {}),
+	      ...(task.description ? { description: task.description } : {}),
+	      ...(Array.isArray(task.blockedBy) ? { blockedBy: task.blockedBy } : {}),
+	      ...(task.owner ? { owner: task.owner } : {}),
+	      ...(task.metadata && typeof task.metadata === "object" ? { metadata: task.metadata } : {}),
+	    }));
+	  }
+	  return snapshot;
 	}
 
 	function emitEntryCapture(ctx, reason, requestId) {
@@ -683,6 +707,7 @@ function createPiPaseoExtensionFile({
 	        treeEntries: toCapturedUserEntries(ctx.sessionManager.getEntries()),
 	        // The entries getMessages() replays, so the nth one is the nth replayed user message.
 	        contextEntries: toCapturedUserEntries(ctx.sessionManager.buildContextEntries()),
+	        todoSnapshot: toTodoSnapshot(ctx.sessionManager.getBranch()),
 	      }),
 	    "info",
 	  );
@@ -1206,6 +1231,7 @@ export class PiRpcAgentSession implements AgentSession {
   currentLeafOverrideId: string | null | undefined;
   private readonly contextUserEntries: PiCapturedEntry[] = [];
   private readonly treeUserEntriesById = new Map<string, PiCapturedEntry>();
+  private conversationTaskSnapshot: AgentTaskSnapshotItem[] | null = null;
   private readonly pendingExtensionResults = new Map<string, PendingExtensionResult>();
   private outOfBandCompactionEmit: ((event: AgentStreamEvent) => void) | null = null;
   private outOfBandCompactionStarted = false;
@@ -1450,6 +1476,13 @@ export class PiRpcAgentSession implements AgentSession {
       thinkingOptionId: this.state.thinkingLevel,
       modeId: this.currentModeId,
     };
+  }
+
+  async getConversationTaskSnapshot(): Promise<AgentTaskSnapshotItem[] | null> {
+    // A running turn rejects the capture prompt; the last turn-end snapshot is then
+    // current enough, and null lets the export fall back to the timeline's todo item.
+    await this.requestEntryCapture("task-snapshot").catch(() => undefined);
+    return this.conversationTaskSnapshot;
   }
 
   async getAvailableModes(): Promise<AgentMode[]> {
@@ -1991,6 +2024,12 @@ export class PiRpcAgentSession implements AgentSession {
       treeEntries: parseCapturedEntries(payload.treeEntries),
       contextEntries: parseCapturedEntries(payload.contextEntries),
     });
+    if (Array.isArray(payload.todoSnapshot)) {
+      const parsed = ConversationTaskItemSchema.array().safeParse(payload.todoSnapshot);
+      if (parsed.success) {
+        this.conversationTaskSnapshot = parsed.data;
+      }
+    }
     if (typeof payload.requestId === "string") {
       this.resolveExtensionResult(payload.requestId, undefined);
     }
