@@ -1111,6 +1111,7 @@ interface NativeExpandableBadgeShimmerProps {
   peakWidth: number;
   durationSeconds: number;
   gradientId: string;
+  multiline: boolean;
 }
 
 const NativeExpandableBadgeShimmer = memo(function NativeExpandableBadgeShimmer({
@@ -1121,6 +1122,7 @@ const NativeExpandableBadgeShimmer = memo(function NativeExpandableBadgeShimmer(
   peakWidth,
   durationSeconds,
   gradientId,
+  multiline,
 }: NativeExpandableBadgeShimmerProps) {
   const isPanelActive = useRetainedPanelActive();
   const shimmerTranslateX = useSharedValue(0);
@@ -1186,7 +1188,7 @@ const NativeExpandableBadgeShimmer = memo(function NativeExpandableBadgeShimmer(
           {label}
         </Text>
         {secondaryLabel ? (
-          <Text style={nativeSecondaryMaskStyle} numberOfLines={1}>
+          <Text style={nativeSecondaryMaskStyle} numberOfLines={multiline ? undefined : 1}>
             {secondaryLabel}
           </Text>
         ) : (
@@ -1194,7 +1196,14 @@ const NativeExpandableBadgeShimmer = memo(function NativeExpandableBadgeShimmer(
         )}
       </View>
     ),
-    [nativeShimmerMaskStyle, nativeLabelMaskStyle, nativeSecondaryMaskStyle, label, secondaryLabel],
+    [
+      nativeShimmerMaskStyle,
+      nativeLabelMaskStyle,
+      nativeSecondaryMaskStyle,
+      label,
+      secondaryLabel,
+      multiline,
+    ],
   );
 
   return (
@@ -1621,6 +1630,7 @@ interface ExpandableBadgeSecondaryLabelProps {
   secondaryLabelStyle: StyleProp<TextStyle>;
   shouldMeasureWebShimmer: boolean;
   onSecondaryLayout: (event: LayoutChangeEvent) => void;
+  multiline: boolean;
 }
 
 function ExpandableBadgeSecondaryLabel({
@@ -1628,6 +1638,7 @@ function ExpandableBadgeSecondaryLabel({
   secondaryLabelStyle,
   shouldMeasureWebShimmer,
   onSecondaryLayout,
+  multiline,
 }: ExpandableBadgeSecondaryLabelProps) {
   if (!secondaryLabel) {
     return null;
@@ -1635,7 +1646,7 @@ function ExpandableBadgeSecondaryLabel({
   return (
     <Text
       style={secondaryLabelStyle}
-      numberOfLines={1}
+      numberOfLines={multiline ? undefined : 1}
       onLayout={shouldMeasureWebShimmer ? onSecondaryLayout : undefined}
     >
       {secondaryLabel}
@@ -1649,6 +1660,7 @@ interface ExpandableBadgeWebShimmerOverlayProps {
   shimmerLabelTextStyle: StyleProp<TextStyle>;
   shimmerSecondaryTextStyle: StyleProp<TextStyle>;
   showOpenFileButton: boolean;
+  multiline: boolean;
 }
 
 function ExpandableBadgeWebShimmerOverlay({
@@ -1657,6 +1669,7 @@ function ExpandableBadgeWebShimmerOverlay({
   shimmerLabelTextStyle,
   shimmerSecondaryTextStyle,
   showOpenFileButton,
+  multiline,
 }: ExpandableBadgeWebShimmerOverlayProps) {
   return (
     <View style={expandableBadgeStylesheet.shimmerOverlay} pointerEvents="none">
@@ -1664,7 +1677,7 @@ function ExpandableBadgeWebShimmerOverlay({
         {label}
       </Text>
       {secondaryLabel ? (
-        <Text style={shimmerSecondaryTextStyle} numberOfLines={1}>
+        <Text style={shimmerSecondaryTextStyle} numberOfLines={multiline ? undefined : 1}>
           {secondaryLabel}
         </Text>
       ) : null}
@@ -1704,6 +1717,7 @@ interface ExpandableBadgeLabelRowProps {
   onOpenFilePress: (event: GestureResponderEvent) => void;
   onOpenFileHoverIn: () => void;
   onOpenFileHoverOut: () => void;
+  multiline: boolean;
 }
 
 function ExpandableBadgeLabelRow({
@@ -1730,6 +1744,7 @@ function ExpandableBadgeLabelRow({
   onOpenFilePress,
   onOpenFileHoverIn,
   onOpenFileHoverOut,
+  multiline,
 }: ExpandableBadgeLabelRowProps) {
   const { t } = useTranslation();
   return (
@@ -1749,6 +1764,7 @@ function ExpandableBadgeLabelRow({
         secondaryLabelStyle={secondaryLabelStyle}
         shouldMeasureWebShimmer={shouldMeasureWebShimmer}
         onSecondaryLayout={onSecondaryLayout}
+        multiline={multiline}
       />
       {showOpenFileButton ? (
         <Pressable
@@ -1774,6 +1790,7 @@ function ExpandableBadgeLabelRow({
           shimmerLabelTextStyle={shimmerLabelTextStyle}
           shimmerSecondaryTextStyle={shimmerSecondaryTextStyle}
           showOpenFileButton={showOpenFileButton}
+          multiline={multiline}
         />
       ) : null}
       {isNativeShimmer ? (
@@ -1785,6 +1802,7 @@ function ExpandableBadgeLabelRow({
           peakWidth={nativeShimmerPeakWidth}
           durationSeconds={shimmerDuration}
           gradientId={nativeGradientId}
+          multiline={multiline}
         />
       ) : null}
     </View>
@@ -1980,6 +1998,7 @@ export const ExpandableBadge = memo(function ExpandableBadge({
   testID,
 }: ExpandableBadgeProps) {
   const resolvedDisableOuterSpacing = useDisableOuterSpacing(disableOuterSpacing);
+  const { settings } = useAppSettings();
   const [isHovered, setIsHovered] = useState(false);
   const [isOpenFileHovered, setIsOpenFileHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
@@ -2270,6 +2289,7 @@ export const ExpandableBadge = memo(function ExpandableBadge({
             onOpenFilePress={handleOpenFilePress}
             onOpenFileHoverIn={handleOpenFileHoverIn}
             onOpenFileHoverOut={handleOpenFileHoverOut}
+            multiline={settings.workspaceTitleMultiline}
           />
           {isExpanded && trailingAction ? (
             <View style={expandableBadgeStylesheet.trailingAction}>{trailingAction}</View>

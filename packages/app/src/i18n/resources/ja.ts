@@ -2500,7 +2500,7 @@ export const ja: TranslationResources = {
         title: "🌿 ワークスペースの行",
         titleLines: {
           label: "🌿 タイトルの行数",
-          hint: "🌿 長いワークスペースのタイトルを複数行に折り返す",
+          hint: "🌿 長いワークスペースのタイトルやツール呼び出しの概要を複数行に折り返す",
         },
       },
       sidebar: {
