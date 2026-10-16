@@ -655,6 +655,7 @@ export const ar: TranslationResources = {
         copyResumeCommand: "نسخ أمر السيرة الذاتية",
         copyAgentId: "نسخ معرف الوكيل",
         copyConversationMarkdown: "نسخ المحادثة بصيغة Markdown",
+        copyAgentAsNewConversation: "نسخ كمحادثة جديدة",
         copyTerminalId: "نسخ معرف المحطة",
         copyFilePath: "Copy file path",
         rename: "إعادة تسمية",
@@ -700,6 +701,8 @@ export const ar: TranslationResources = {
       },
       toasts: {
         copyFailed: "فشل النسخ",
+        cloneUnavailable: "النسخ كمحادثة جديدة غير متاح على هذا المضيف",
+        cloneFailed: "فشل نسخ المحادثة",
         agentIdCopiedLabel: "AgentID",
         terminalIdCopiedLabel: "معرف المحطة",
         resumeCommandCopiedLabel: "أمر الاستئناف",

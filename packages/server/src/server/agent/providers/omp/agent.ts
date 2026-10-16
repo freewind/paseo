@@ -1107,6 +1107,10 @@ export class OmpAgentSession implements AgentSession {
     };
   }
 
+  async getActiveLeafEntryId(): Promise<string | null> {
+    return this.runtimeSession.activeBranchEntryId ?? null;
+  }
+
   async interrupt(): Promise<void> {
     const turnId = this.activeTurnId;
     await this.runtimeSession.abort();
@@ -2356,6 +2360,17 @@ export class OmpAgentClient implements AgentClient {
       sessionId: fork.sessionId,
       nativeHandle: fork.sessionFile,
     };
+  }
+
+  /** Full copy of the active branch; the leaf comes from the live session via the manager. */
+  async cloneSession(
+    handle: AgentPersistenceHandle,
+    input: { leafEntryId?: string },
+  ): Promise<AgentPersistenceHandle> {
+    if (!input.leafEntryId) {
+      throw new Error("OMP clone requires the live session's leaf entry id");
+    }
+    return await this.forkSession(handle, { upToMessageId: input.leafEntryId });
   }
 
   async resumeSession(

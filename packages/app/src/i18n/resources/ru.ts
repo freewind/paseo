@@ -664,6 +664,7 @@ export const ru: TranslationResources = {
         copyResumeCommand: "Копировать команду продолжения",
         copyAgentId: "Скопировать идентификатор агента",
         copyConversationMarkdown: "Копировать диалог в Markdown",
+        copyAgentAsNewConversation: "Копировать как новый диалог",
         copyTerminalId: "Скопировать идентификатор терминала",
         copyFilePath: "Скопировать путь к файлу",
         rename: "Переименовать",
@@ -709,6 +710,8 @@ export const ru: TranslationResources = {
       },
       toasts: {
         copyFailed: "Не удалось скопировать",
+        cloneUnavailable: "Копирование как новый диалог недоступно на этом хосте",
+        cloneFailed: "Не удалось скопировать диалог",
         agentIdCopiedLabel: "ID агента",
         terminalIdCopiedLabel: "Идентификатор терминала",
         resumeCommandCopiedLabel: "команда продолжения",

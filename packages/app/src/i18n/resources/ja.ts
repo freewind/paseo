@@ -663,6 +663,7 @@ export const ja: TranslationResources = {
         copyResumeCommand: "再開コマンドをコピー",
         copyAgentId: "エージェントIDをコピー",
         copyConversationMarkdown: "Markdown 形式で会話をコピー",
+        copyAgentAsNewConversation: "新規会話としてコピー",
         copyTerminalId: "ターミナルIDをコピー",
         copyFilePath: "ファイルパスをコピー",
         rename: "名前を変更",
@@ -709,6 +710,8 @@ export const ja: TranslationResources = {
       },
       toasts: {
         copyFailed: "コピーに失敗しました",
+        cloneUnavailable: "このホストでは新規会話としてコピーできません",
+        cloneFailed: "会話のコピーに失敗しました",
         agentIdCopiedLabel: "エージェントID",
         terminalIdCopiedLabel: "ターミナルID",
         resumeCommandCopiedLabel: "再開コマンド",

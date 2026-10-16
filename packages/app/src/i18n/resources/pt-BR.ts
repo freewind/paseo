@@ -662,6 +662,7 @@ export const ptBR: TranslationResources = {
         copyResumeCommand: "Copiar comando de retomada",
         copyAgentId: "Copiar ID do agente",
         copyConversationMarkdown: "Copiar conversa em Markdown",
+        copyAgentAsNewConversation: "Copiar como nova conversa",
         copyTerminalId: "Copiar ID do terminal",
         copyFilePath: "Copiar caminho do arquivo",
         rename: "Renomear",
@@ -707,6 +708,8 @@ export const ptBR: TranslationResources = {
       },
       toasts: {
         copyFailed: "Falha ao copiar",
+        cloneUnavailable: "Copiar como nova conversa não está disponível neste host",
+        cloneFailed: "Falha ao copiar a conversa",
         agentIdCopiedLabel: "ID do agente",
         terminalIdCopiedLabel: "ID do terminal",
         resumeCommandCopiedLabel: "comando de retomada",

@@ -534,6 +534,8 @@ export interface WorkspaceDesktopTabsRowProps {
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
   onCopyConversationMarkdown: (agentId: string) => Promise<void> | void;
+  onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
+  canCloneAgent?: boolean;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
@@ -1033,6 +1035,8 @@ function ResolvedWorkspaceDesktopTabsRow({
   onCopyResumeCommand,
   onCopyAgentId,
   onCopyConversationMarkdown,
+  onCopyAgentAsNew,
+  canCloneAgent,
   onCopyTerminalId,
   onCopyFilePath,
   onReloadAgent,
@@ -1118,6 +1122,7 @@ function ResolvedWorkspaceDesktopTabsRow({
       copyResumeCommand: t("workspace.tabs.menu.copyResumeCommand"),
       copyAgentId: t("workspace.tabs.menu.copyAgentId"),
       copyConversationMarkdown: t("workspace.tabs.menu.copyConversationMarkdown"),
+      copyAgentAsNew: t("workspace.tabs.menu.copyAgentAsNewConversation"),
       copyTerminalId: t("workspace.tabs.menu.copyTerminalId"),
       copyFilePath: t("workspace.tabs.menu.copyFilePath"),
       rename: t("workspace.tabs.menu.rename"),
@@ -1301,6 +1306,8 @@ function ResolvedWorkspaceDesktopTabsRow({
           onCopyResumeCommand={onCopyResumeCommand}
           onCopyAgentId={onCopyAgentId}
           onCopyConversationMarkdown={onCopyConversationMarkdown}
+          onCopyAgentAsNew={onCopyAgentAsNew}
+          canCloneAgent={canCloneAgent}
           onCopyTerminalId={onCopyTerminalId}
           onCopyFilePath={onCopyFilePath}
           onReloadAgent={onReloadAgent}
@@ -1334,6 +1341,8 @@ function ResolvedWorkspaceDesktopTabsRow({
       onCloseTabsToRight,
       onCopyAgentId,
       onCopyConversationMarkdown,
+      onCopyAgentAsNew,
+      canCloneAgent,
       onCopyTerminalId,
       onCopyFilePath,
       onCopyResumeCommand,
@@ -1460,6 +1469,8 @@ function ResolvedDesktopTabChip({
   onCopyResumeCommand,
   onCopyAgentId,
   onCopyConversationMarkdown,
+  onCopyAgentAsNew,
+  canCloneAgent,
   onCopyTerminalId,
   onCopyFilePath,
   onReloadAgent,
@@ -1489,6 +1500,8 @@ function ResolvedDesktopTabChip({
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
   onCopyConversationMarkdown: (agentId: string) => Promise<void> | void;
+  onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
+  canCloneAgent?: boolean;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
@@ -1525,6 +1538,8 @@ function ResolvedDesktopTabChip({
         onCopyResumeCommand,
         onCopyAgentId,
         onCopyConversationMarkdown,
+        onCopyAgentAsNew,
+        canCloneAgent,
         onCopyTerminalId,
         onCopyFilePath,
         onReloadAgent,
@@ -1547,6 +1562,8 @@ function ResolvedDesktopTabChip({
       onCloseTabsToRight,
       onCopyAgentId,
       onCopyConversationMarkdown,
+      onCopyAgentAsNew,
+      canCloneAgent,
       onCopyTerminalId,
       onCopyFilePath,
       onCopyResumeCommand,

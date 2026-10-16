@@ -109,6 +109,8 @@ interface SplitContainerProps {
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
   onCopyConversationMarkdown: (agentId: string) => Promise<void> | void;
+  onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
+  canCloneAgent?: boolean;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
@@ -323,6 +325,8 @@ export function SplitContainer({
   onCopyResumeCommand,
   onCopyAgentId,
   onCopyConversationMarkdown,
+  onCopyAgentAsNew,
+  canCloneAgent,
   onCopyTerminalId,
   onCopyFilePath,
   onReloadAgent,
@@ -665,6 +669,8 @@ export function SplitContainer({
                   onCopyResumeCommand={onCopyResumeCommand}
                   onCopyAgentId={onCopyAgentId}
                   onCopyConversationMarkdown={onCopyConversationMarkdown}
+                  onCopyAgentAsNew={onCopyAgentAsNew}
+                  canCloneAgent={canCloneAgent}
                   onCopyTerminalId={onCopyTerminalId}
                   onCopyFilePath={onCopyFilePath}
                   onReloadAgent={onReloadAgent}
@@ -722,6 +728,8 @@ export function SplitContainer({
                   onCopyResumeCommand={onCopyResumeCommand}
                   onCopyAgentId={onCopyAgentId}
                   onCopyConversationMarkdown={onCopyConversationMarkdown}
+                  onCopyAgentAsNew={onCopyAgentAsNew}
+                  canCloneAgent={canCloneAgent}
                   onCopyTerminalId={onCopyTerminalId}
                   onCopyFilePath={onCopyFilePath}
                   onReloadAgent={onReloadAgent}
@@ -940,6 +948,8 @@ function SplitNodeView({
   onCopyResumeCommand,
   onCopyAgentId,
   onCopyConversationMarkdown,
+  onCopyAgentAsNew,
+  canCloneAgent,
   onCopyTerminalId,
   onCopyFilePath,
   onReloadAgent,
@@ -1029,6 +1039,8 @@ function SplitNodeView({
             onCopyResumeCommand={onCopyResumeCommand}
             onCopyAgentId={onCopyAgentId}
             onCopyConversationMarkdown={onCopyConversationMarkdown}
+            onCopyAgentAsNew={onCopyAgentAsNew}
+            canCloneAgent={canCloneAgent}
             onCopyTerminalId={onCopyTerminalId}
             onCopyFilePath={onCopyFilePath}
             onReloadAgent={onReloadAgent}
@@ -1082,6 +1094,8 @@ function SplitNodeView({
               onCopyResumeCommand={onCopyResumeCommand}
               onCopyAgentId={onCopyAgentId}
               onCopyConversationMarkdown={onCopyConversationMarkdown}
+              onCopyAgentAsNew={onCopyAgentAsNew}
+              canCloneAgent={canCloneAgent}
               onCopyTerminalId={onCopyTerminalId}
               onCopyFilePath={onCopyFilePath}
               onReloadAgent={onReloadAgent}
@@ -1143,6 +1157,8 @@ function SplitPaneView({
   onCopyResumeCommand,
   onCopyAgentId,
   onCopyConversationMarkdown,
+  onCopyAgentAsNew,
+  canCloneAgent,
   onCopyTerminalId,
   onCopyFilePath,
   onReloadAgent,
@@ -1279,6 +1295,8 @@ function SplitPaneView({
             onCopyResumeCommand={onCopyResumeCommand}
             onCopyAgentId={onCopyAgentId}
             onCopyConversationMarkdown={onCopyConversationMarkdown}
+            onCopyAgentAsNew={onCopyAgentAsNew}
+            canCloneAgent={canCloneAgent}
             onCopyTerminalId={onCopyTerminalId}
             onCopyFilePath={onCopyFilePath}
             onReloadAgent={onReloadAgent}

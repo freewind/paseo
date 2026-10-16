@@ -668,6 +668,7 @@ export const es: TranslationResources = {
         copyResumeCommand: "Copiar comando de reanudación",
         copyAgentId: "Copiar ID del agente",
         copyConversationMarkdown: "Copiar conversación como Markdown",
+        copyAgentAsNewConversation: "Copiar como conversación nueva",
         copyTerminalId: "Copiar ID del terminal",
         copyFilePath: "Copy file path",
         rename: "Rebautizar",
@@ -714,6 +715,8 @@ export const es: TranslationResources = {
       },
       toasts: {
         copyFailed: "Copia fallida",
+        cloneUnavailable: "Copiar como conversación nueva no está disponible en este host",
+        cloneFailed: "No se pudo copiar la conversación",
         agentIdCopiedLabel: "AgentID",
         terminalIdCopiedLabel: "ID del terminal",
         resumeCommandCopiedLabel: "reanudar el comando",
