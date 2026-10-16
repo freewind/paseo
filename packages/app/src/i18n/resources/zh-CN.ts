@@ -2315,7 +2315,7 @@ export const zhCN: TranslationResources = {
         title: "🌿 工作区行",
         titleLines: {
           label: "🌿 标题行数",
-          hint: "🌿 允许较长的工作区标题换行显示为多行",
+          hint: "🌿 允许较长的工作区标题和工具调用摘要换行显示为多行",
         },
       },
       sidebar: {

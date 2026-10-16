@@ -2345,7 +2345,7 @@ export const es: TranslationResources = {
         title: "🌿 Filas de espacios de trabajo",
         titleLines: {
           label: "🌿 Líneas del título",
-          hint: "🌿 Permitir que los títulos largos de espacios de trabajo ocupen varias líneas",
+          hint: "🌿 Permitir que los títulos largos de espacios de trabajo y los resúmenes de llamadas de herramientas ocupen varias líneas",
         },
       },
       sidebar: {

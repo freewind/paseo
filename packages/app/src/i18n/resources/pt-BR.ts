@@ -2323,7 +2323,7 @@ export const ptBR: TranslationResources = {
         title: "🌿 Linhas de workspace",
         titleLines: {
           label: "🌿 Linhas do título",
-          hint: "🌿 Permitir que títulos longos de workspace ocupem várias linhas",
+          hint: "🌿 Permitir que títulos longos de workspace e resumos de chamadas de ferramenta ocupem várias linhas",
         },
       },
       sidebar: {

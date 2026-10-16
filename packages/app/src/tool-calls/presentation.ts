@@ -44,6 +44,11 @@ function displayStatus(status: ToolCallStatus): ToolCallDisplayInput["status"] {
   return status === "executing" ? "running" : status;
 }
 
+/** The summary shows the command's first physical line; the full command stays in the detail. */
+function firstPhysicalLine(text: string): string {
+  return text.split(/\r?\n/, 1)[0] ?? text;
+}
+
 function displayDetail(detail: ToolCallDetail | undefined): ToolCallDetail {
   return detail ?? { type: "unknown", input: null, output: null };
 }
@@ -60,6 +65,10 @@ export function buildToolCallPresentation(
     metadata: input.metadata,
     cwd: input.cwd,
   });
+  const summary =
+    detailForDisplay.type === "shell" && displayModel.summary
+      ? firstPhysicalLine(displayModel.summary)
+      : displayModel.summary;
   const isLoadingDetails = isPendingToolCallDetail({
     detail: input.detail,
     status: input.status,
@@ -69,7 +78,7 @@ export function buildToolCallPresentation(
 
   return {
     displayName: displayModel.displayName,
-    summary: displayModel.summary,
+    summary,
     errorText: displayModel.errorText,
     icon: input.resolveIcon(input.toolName, input.detail),
     isLoadingDetails,

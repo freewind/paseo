@@ -2417,7 +2417,7 @@ export const en = {
         title: "🌿 Workspace rows",
         titleLines: {
           label: "🌿 Title lines",
-          hint: "🌿 Allow long workspace titles to wrap onto multiple lines",
+          hint: "🌿 Allow long workspace titles and tool call summaries to wrap onto multiple lines",
         },
       },
       sidebar: {

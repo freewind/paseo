@@ -2299,7 +2299,7 @@ export const ko: TranslationResources = {
         title: "🌿 워크스페이스 행",
         titleLines: {
           label: "🌿 제목 줄 수",
-          hint: "🌿 긴 워크스페이스 제목을 여러 줄로 줄바꿈",
+          hint: "🌿 긴 워크스페이스 제목과 도구 호출 요약을 여러 줄로 줄바꿈",
         },
       },
       sidebar: {
