@@ -124,6 +124,16 @@ export const en = {
     },
   },
   composer: {
+    quickReplies: {
+      title: "Quick replies",
+      edit: "Manage quick replies",
+      editTitle: "Manage quick replies",
+      add: "Add",
+      placeholder: "Type a reply to save",
+      empty: "No quick replies yet. Add one to send it with a tap.",
+      delete: "Delete",
+      save: "Save",
+    },
     readAloud: {
       start: "Start reading this conversation aloud",
       stop: "Stop reading this conversation aloud",
