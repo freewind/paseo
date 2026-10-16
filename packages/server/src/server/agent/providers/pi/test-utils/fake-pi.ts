@@ -10,6 +10,7 @@ import type {
   PiPromptAck,
   PiRpcSlashCommand,
   PiRuntimeEvent,
+  PiSessionEntry,
   PiSessionState,
   PiSessionStats,
 } from "../rpc-types.js";
@@ -271,6 +272,10 @@ export class FakePiSession implements PiRuntimeSession {
 
   async getMessages(): Promise<PiAgentMessage[]> {
     return this.messages;
+  }
+
+  async getEntries(): Promise<PiSessionEntry[]> {
+    return this.messages.map((message) => ({ type: "message", message }));
   }
 
   async getAvailableModels(_timeoutMs?: number | null): Promise<PiModel[]> {

@@ -22,6 +22,7 @@ import type {
   PiRpcCommand,
   PiRpcSlashCommand,
   PiRuntimeEvent,
+  PiSessionEntry,
   PiSessionState,
   PiSessionStats,
 } from "./rpc-types.js";
@@ -165,6 +166,11 @@ class PiCliRuntimeSession implements PiRuntimeSession {
   async getMessages(): Promise<PiAgentMessage[]> {
     const data = (await this.request({ type: "get_messages" })) as { messages?: PiAgentMessage[] };
     return data.messages ?? [];
+  }
+
+  async getEntries(): Promise<PiSessionEntry[]> {
+    const data = (await this.request({ type: "get_entries" })) as { entries?: PiSessionEntry[] };
+    return data.entries ?? [];
   }
 
   async getAvailableModels(timeoutMs?: number | null): Promise<PiModel[]> {

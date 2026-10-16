@@ -75,6 +75,7 @@ import {
   type PiExtensionEventOutput,
 } from "./extensions/index.js";
 import { revertPiConversation } from "./rewind.js";
+import { forkPiSessionFile } from "./fork.js";
 import { listPiImportableSessions, readPiImportSessionConfig } from "./session-descriptor.js";
 import type { PiRuntime, PiRuntimeSession, PiStartSessionInput } from "./runtime.js";
 import type {
@@ -82,6 +83,7 @@ import type {
   PiAgentMessage,
   PiImageContent,
   PiModel,
+  PiSessionEntry,
   PiRpcSlashCommand,
   PiRuntimeEvent,
   PiSessionState,
@@ -939,6 +941,43 @@ function parseExtensionMarkerPayload(
   }
 }
 
+interface PiBranchReplay {
+  messages: PiAgentMessage[];
+  userEntries: PiCapturedUserMessageEntry[];
+}
+
+/**
+ * The full active branch as replayable messages. Entries carry the same message objects the
+ * RPC surfaces; unknown roles (system checkpoints) are not timeline rows. User rows keep
+ * their native entry ids so fork/rewind targets survive the replay.
+ */
+function buildBranchReplay(entries: readonly PiSessionEntry[]): PiBranchReplay {
+  const messages: PiAgentMessage[] = [];
+  const userEntries: PiCapturedUserMessageEntry[] = [];
+  for (const entry of entries) {
+    const message = entry.message;
+    if (!message || !isReplayablePiRole(message.role)) continue;
+    const typed = message as PiAgentMessage;
+    messages.push(typed);
+    if (typed.role === "user" && entry.id) {
+      userEntries.push({ id: entry.id, text: getUserMessageText(typed.content) });
+    }
+  }
+  return { messages, userEntries };
+}
+
+function isReplayablePiRole(
+  role: unknown,
+): role is "user" | "custom" | "assistant" | "toolResult" | "bashExecution" {
+  return (
+    role === "user" ||
+    role === "custom" ||
+    role === "assistant" ||
+    role === "toolResult" ||
+    role === "bashExecution"
+  );
+}
+
 function parseCapturedEntries(value: unknown): PiCapturedEntry[] {
   if (!Array.isArray(value)) {
     return [];
@@ -1459,6 +1498,24 @@ export class PiRpcAgentSession implements AgentSession {
 
   async *streamHistory(): AsyncGenerator<AgentStreamEvent> {
     await this.requestEntryCapture("history");
+    // The replay shows the full active branch, so pre-compaction history stays visible in a
+    // resumed or forked copy; the model's own context still follows Pi's compaction state.
+    const branch = await this.requestBranchEntries().catch(() => null);
+    if (branch) {
+      const replay = buildBranchReplay(branch);
+      yield* streamPiHistory(
+        this.provider,
+        replay.messages,
+        replay.userEntries,
+        {},
+        // At most eight 2 MiB child files per replay; later cards retain their summaries.
+        createPiExtensionHost(this.logger, undefined, 16 * 1024 * 1024),
+        this.closeController.signal,
+      );
+      return;
+    }
+    // COMPAT(piGetEntries): added in v0.11.0 for pi binaries without get_entries;
+    // remove once the supported pi floor ships it and this fallback can go.
     yield* streamPiHistory(
       this.provider,
       await this.runtimeSession.getMessages(),
@@ -1468,6 +1525,17 @@ export class PiRpcAgentSession implements AgentSession {
       createPiExtensionHost(this.logger, undefined, 16 * 1024 * 1024),
       this.closeController.signal,
     );
+  }
+
+  /**
+   * Raw session entries on the active branch, root-first. Null when the binary predates
+   * the get_entries RPC.
+   */
+  private async requestBranchEntries(): Promise<PiSessionEntry[]> {
+    const data = (await this.runtimeSession.request({ type: "get_entries" })) as {
+      entries?: PiSessionEntry[];
+    };
+    return data.entries ?? [];
   }
 
   async getRuntimeInfo(): Promise<AgentRuntimeInfo> {
@@ -2613,6 +2681,31 @@ export class PiRpcAgentClient implements AgentClient {
     }
   }
 
+  /**
+   * Branches Pi's persisted session at a boundary without touching the source: the copy is a
+   * new session file the manager can resume under a fresh agent id, so tool calls and their
+   * results carry over intact. Entry ids, response ids, and generated replay ids are all
+   * accepted as boundaries.
+   */
+  async forkSession(
+    handle: AgentPersistenceHandle,
+    input: { upToMessageId: string },
+  ): Promise<AgentPersistenceHandle> {
+    const sessionFile = handle.nativeHandle;
+    if (!sessionFile) {
+      throw new Error("Pi fork requires a native session file handle");
+    }
+    const fork = await forkPiSessionFile({
+      sessionFile,
+      upToEntryId: input.upToMessageId,
+    });
+    return {
+      ...handle,
+      sessionId: fork.sessionId,
+      nativeHandle: fork.sessionFile,
+    };
+  }
+
   async resumeSession(
     handle: AgentPersistenceHandle,
     overrides?: Partial<AgentSessionConfig>,
@@ -2622,7 +2715,6 @@ export class PiRpcAgentClient implements AgentClient {
     if (!sessionFile) {
       throw new Error("Pi resume requires a native session file handle");
     }
-
     const persistenceMetadata = parsePersistenceMetadata(handle.metadata);
     const resumeConfig = buildResumeConfig(persistenceMetadata, overrides, this.provider);
 
