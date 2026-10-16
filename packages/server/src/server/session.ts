@@ -2648,6 +2648,8 @@ export class Session {
         return this.handleAgentTimelineSearchRequest(msg, source);
       case "agent.export_conversation.request":
         return this.handleAgentExportConversationRequest(msg, source);
+      case "agent.clone.request":
+        return this.handleAgentCloneRequest(msg, source);
       case "agent.timeline.list_prompts.request":
         return this.handleAgentTimelineListPromptsRequest(msg, source);
       case "agent.provider_subagents.list.request":
@@ -7885,6 +7887,58 @@ export class Session {
         },
         source,
       );
+    }
+  }
+
+  private async handleAgentCloneRequest(
+    msg: Extract<SessionInboundMessage, { type: "agent.clone.request" }>,
+    source?: object,
+  ): Promise<void> {
+    const respond = (payload: {
+      newAgentId: string | null;
+      newWorkspaceId?: string;
+      error: string | null;
+    }) => {
+      this.emitForSource(
+        {
+          type: "agent.clone.response",
+          payload: {
+            requestId: msg.requestId,
+            sourceAgentId: msg.sourceAgentId,
+            ...payload,
+          },
+        },
+        source,
+      );
+    };
+    try {
+      const sourceAgent = await ensureAgentLoaded(msg.sourceAgentId, {
+        agentManager: this.agentManager,
+        agentStorage: this.agentStorage,
+        logger: this.sessionLogger,
+      });
+      let newWorkspaceId: string | undefined;
+      if (msg.targetWorkspace === "new") {
+        newWorkspaceId = await this.createForkWorkspace(sourceAgent);
+      }
+      const clone = await this.agentManager.cloneAgent({
+        sourceAgentId: msg.sourceAgentId,
+        workspaceId: newWorkspaceId,
+      });
+      respond({
+        newAgentId: clone.id,
+        ...(newWorkspaceId ? { newWorkspaceId } : {}),
+        error: null,
+      });
+    } catch (error) {
+      this.sessionLogger.error(
+        { err: error, sourceAgentId: msg.sourceAgentId },
+        "Failed to handle agent.clone.request",
+      );
+      respond({
+        newAgentId: null,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 

@@ -1588,6 +1588,22 @@ export class ClaudeAgentClient implements AgentClient {
     };
   }
 
+  /** SDK forkSession copies the full transcript when no boundary is given. */
+  async cloneSession(
+    handle: AgentPersistenceHandle,
+    _input: { leafEntryId?: string },
+  ): Promise<AgentPersistenceHandle> {
+    if (!handle.sessionId) {
+      throw new Error("Cannot clone: persistence handle has no sessionId");
+    }
+    const fork = await this.rewindSdk.forkSession(handle.sessionId, {});
+    return {
+      ...handle,
+      sessionId: fork.sessionId,
+      nativeHandle: fork.sessionId,
+    };
+  }
+
   async getCatalogCacheKey(_options: FetchCatalogOptions): Promise<string> {
     // This client discovers through host configuration, independent of project cwd.
     return "host";

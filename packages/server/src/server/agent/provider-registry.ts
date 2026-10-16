@@ -476,6 +476,7 @@ export function wrapSessionProvider(provider: AgentProvider, inner: AgentSession
     revertFiles: inner.revertFiles?.bind(inner),
     revertBoth: inner.revertBoth?.bind(inner),
     getConversationTaskSnapshot: inner.getConversationTaskSnapshot?.bind(inner),
+    getActiveLeafEntryId: inner.getActiveLeafEntryId?.bind(inner),
     tryHandleOutOfBand: inner.tryHandleOutOfBand?.bind(inner),
   } satisfies ForwardedAgentSession;
 }

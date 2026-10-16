@@ -61,6 +61,7 @@ import { openWorkspacePullRequest } from "@/workspace-tabs/open-supporting-view"
 import { type ExplorerCheckoutContext } from "@/stores/explorer-checkout-context";
 import { traceInstant } from "@/performance/native-trace";
 import { useSessionStore, type WorkspaceDescriptor } from "@/stores/session-store";
+import { navigateToWorkspace } from "@/stores/navigation-active-workspace-store";
 import {
   canDismissPaneInLayout,
   collectAllTabs,
@@ -457,6 +458,8 @@ interface MobileWorkspaceTabSwitcherProps {
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
   onCopyConversationMarkdown: (agentId: string) => Promise<void> | void;
+  onCopyAgentAsNew: (agentId: string) => Promise<void> | void;
+  canCloneAgent: boolean;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
@@ -566,6 +569,8 @@ function MobileWorkspaceTabOption({
   onCopyResumeCommand,
   onCopyAgentId,
   onCopyConversationMarkdown,
+  onCopyAgentAsNew,
+  canCloneAgent,
   onCopyTerminalId,
   onCopyFilePath,
   onReloadAgent,
@@ -587,6 +592,8 @@ function MobileWorkspaceTabOption({
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
   onCopyConversationMarkdown: (agentId: string) => Promise<void> | void;
+  onCopyAgentAsNew: (agentId: string) => Promise<void> | void;
+  canCloneAgent: boolean;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
@@ -609,6 +616,7 @@ function MobileWorkspaceTabOption({
       copyResumeCommand: t("workspace.tabs.menu.copyResumeCommand"),
       copyAgentId: t("workspace.tabs.menu.copyAgentId"),
       copyConversationMarkdown: t("workspace.tabs.menu.copyConversationMarkdown"),
+      copyAgentAsNew: t("workspace.tabs.menu.copyAgentAsNewConversation"),
       copyTerminalId: t("workspace.tabs.menu.copyTerminalId"),
       copyFilePath: t("workspace.tabs.menu.copyFilePath"),
       rename: t("workspace.tabs.menu.rename"),
@@ -635,6 +643,8 @@ function MobileWorkspaceTabOption({
     onCopyResumeCommand,
     onCopyAgentId,
     onCopyConversationMarkdown,
+    onCopyAgentAsNew,
+    canCloneAgent,
     onCopyTerminalId,
     onCopyFilePath,
     onReloadAgent,
@@ -711,6 +721,8 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
   onCopyResumeCommand,
   onCopyAgentId,
   onCopyConversationMarkdown,
+  onCopyAgentAsNew,
+  canCloneAgent,
   onCopyTerminalId,
   onCopyFilePath,
   onReloadAgent,
@@ -778,6 +790,8 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
           onCopyResumeCommand={onCopyResumeCommand}
           onCopyAgentId={onCopyAgentId}
           onCopyConversationMarkdown={onCopyConversationMarkdown}
+          onCopyAgentAsNew={onCopyAgentAsNew}
+          canCloneAgent={canCloneAgent}
           onCopyTerminalId={onCopyTerminalId}
           onCopyFilePath={onCopyFilePath}
           onReloadAgent={onReloadAgent}
@@ -799,6 +813,8 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
       onCopyResumeCommand,
       onCopyAgentId,
       onCopyConversationMarkdown,
+      onCopyAgentAsNew,
+      canCloneAgent,
       onCopyTerminalId,
       onCopyFilePath,
       onReloadAgent,
@@ -2982,6 +2998,41 @@ function WorkspaceScreenContent({
     [normalizedServerId, toast, t],
   );
 
+  const supportsCloneAgent = useSessionStore(
+    (state) => state.sessions[normalizedServerId]?.serverInfo?.features?.agentCloneSession === true,
+  );
+
+  const handleCopyAgentAsNew = useCallback(
+    async (agentId: string) => {
+      if (!agentId) return;
+      if (!client || !isConnected) {
+        toast.error(t("workspace.terminal.hostDisconnected"));
+        return;
+      }
+      if (!supportsCloneAgent) {
+        toast.error(t("workspace.tabs.toasts.cloneUnavailable"));
+        return;
+      }
+      try {
+        const result = await client.cloneAgent(agentId, { targetWorkspace: "same" });
+        if (!result.newAgentId) {
+          toast.error(t("workspace.tabs.toasts.cloneFailed"));
+          return;
+        }
+        navigateToWorkspace({
+          serverId: normalizedServerId,
+          workspaceId: result.newWorkspaceId ?? normalizedWorkspaceId,
+          target: { kind: "agent", agentId: result.newAgentId },
+        });
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : t("workspace.tabs.toasts.cloneFailed"),
+        );
+      }
+    },
+    [client, isConnected, normalizedServerId, normalizedWorkspaceId, supportsCloneAgent, t, toast],
+  );
+
   const handleReloadAgent = useCallback(
     async (agentId: string) => {
       if (!client || !isConnected) {
@@ -4247,6 +4298,8 @@ function WorkspaceScreenContent({
         onCopyResumeCommand={handleCopyResumeCommand}
         onCopyAgentId={handleCopyAgentId}
         onCopyConversationMarkdown={handleCopyConversationMarkdown}
+        onCopyAgentAsNew={handleCopyAgentAsNew}
+        canCloneAgent={supportsCloneAgent}
         onCopyTerminalId={handleCopyTerminalId}
         onCopyFilePath={handleCopyFilePath}
         onReloadAgent={handleReloadAgent}
@@ -4284,6 +4337,8 @@ function WorkspaceScreenContent({
     handleCopyResumeCommand,
     handleCopyAgentId,
     handleCopyConversationMarkdown,
+    handleCopyAgentAsNew,
+    supportsCloneAgent,
     handleCopyTerminalId,
     handleCopyFilePath,
     handleReloadAgent,
@@ -4328,6 +4383,8 @@ function WorkspaceScreenContent({
           onCopyResumeCommand={handleCopyResumeCommand}
           onCopyAgentId={handleCopyAgentId}
           onCopyConversationMarkdown={handleCopyConversationMarkdown}
+          onCopyAgentAsNew={handleCopyAgentAsNew}
+          canCloneAgent={supportsCloneAgent}
           onCopyTerminalId={handleCopyTerminalId}
           onCopyFilePath={handleCopyFilePath}
           onReloadAgent={handleReloadAgent}
@@ -4354,6 +4411,8 @@ function WorkspaceScreenContent({
             onCopyResumeCommand={handleCopyResumeCommand}
             onCopyAgentId={handleCopyAgentId}
             onCopyConversationMarkdown={handleCopyConversationMarkdown}
+            onCopyAgentAsNew={handleCopyAgentAsNew}
+            canCloneAgent={supportsCloneAgent}
             onCopyTerminalId={handleCopyTerminalId}
             onCopyFilePath={handleCopyFilePath}
             onReloadAgent={handleReloadAgent}

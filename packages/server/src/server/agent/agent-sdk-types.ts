@@ -703,6 +703,8 @@ export interface AgentSession {
    * live timeline's last todo item.
    */
   getConversationTaskSnapshot?(): Promise<AgentTaskSnapshotItem[] | null>;
+  /** The active branch's leaf entry id in the provider's own session, for full-session clones. */
+  getActiveLeafEntryId?(): Promise<string | null>;
   revertFiles?(input: { messageId: string }): Promise<void>;
   revertBoth?(input: { messageId: string }): Promise<void>;
   /**
@@ -807,6 +809,15 @@ export interface AgentClient {
   forkSession?(
     handle: AgentPersistenceHandle,
     input: { upToMessageId: string },
+  ): Promise<AgentPersistenceHandle>;
+  /**
+   * Copy the session's full active branch into a new persisted session, without a boundary.
+   * Providers that cannot clone offline must omit this; callers surface the absence instead
+   * of falling back to a lossy summary.
+   */
+  cloneSession?(
+    handle: AgentPersistenceHandle,
+    input: { leafEntryId?: string },
   ): Promise<AgentPersistenceHandle>;
   getDiagnostic?(): Promise<{ diagnostic: string }>;
   /**

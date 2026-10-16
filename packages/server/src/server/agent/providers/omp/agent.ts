@@ -1106,6 +1106,10 @@ export class OmpAgentSession implements AgentSession {
     };
   }
 
+  async getActiveLeafEntryId(): Promise<string | null> {
+    return this.runtimeSession.activeBranchEntryId ?? null;
+  }
+
   async interrupt(): Promise<void> {
     const turnId = this.activeTurnId;
     await this.runtimeSession.abort();
