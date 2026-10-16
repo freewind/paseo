@@ -49,6 +49,7 @@ import type {
 } from "../terminal/terminal-manager.js";
 import { TerminalSessionController } from "../terminal/terminal-session-controller.js";
 import type { TerminalActivity } from "@getpaseo/protocol/terminal-activity";
+import type { AgentTaskSnapshotItem } from "@getpaseo/protocol/agent-types";
 import type { BinaryFrame } from "@getpaseo/protocol/binary-frames/index";
 import { CursorError } from "./pagination/cursor.js";
 import { SortablePager, type SortSpec } from "./pagination/sortable-pager.js";
@@ -112,6 +113,7 @@ import type {
   AgentTimelineCursor,
   AgentTimelineFetchDirection,
   AgentTimelineFetchResult,
+  AgentTimelineRow,
   ManagedAgent,
 } from "./agent/agent-manager.js";
 import { createAgentCommand } from "./agent/create-agent/create.js";
@@ -364,6 +366,16 @@ type AgentDirectoryRequestMessage = FetchAgentsRequestMessage | FetchAgentHistor
 function agentDirectorySearchQuery(request: AgentDirectoryRequestMessage): string {
   if (request.type !== "fetch_agent_history_request") return "";
   return request.search?.trim() ?? "";
+}
+
+function lastTimelineTasks(rows: readonly AgentTimelineRow[]): AgentTaskSnapshotItem[] {
+  for (let index = rows.length - 1; index >= 0; index -= 1) {
+    const item = rows[index]?.item;
+    if (item?.type === "todo") {
+      return Array.from(item.items);
+    }
+  }
+  return [];
 }
 type FetchAgentsRequestFilter = NonNullable<FetchAgentsRequestMessage["filter"]>;
 type FetchAgentsRequestSort = NonNullable<FetchAgentsRequestMessage["sort"]>[number];
@@ -2761,6 +2773,8 @@ export class Session {
         return this.handleAgentTimelineAppendRequest(msg);
       case "agent.timeline.search.request":
         return this.handleAgentTimelineSearchRequest(msg, source);
+      case "agent.export_conversation.request":
+        return this.handleAgentExportConversationRequest(msg, source);
       case "agent.timeline.list_prompts.request":
         return this.handleAgentTimelineListPromptsRequest(msg, source);
       case "agent.provider_subagents.list.request":
@@ -7957,6 +7971,69 @@ export class Session {
             epoch: "",
             locations: [],
             nextCursor: null,
+            error: error instanceof Error ? error.message : String(error),
+          },
+        },
+        source,
+      );
+    }
+  }
+
+  private async handleAgentExportConversationRequest(
+    msg: Extract<SessionInboundMessage, { type: "agent.export_conversation.request" }>,
+    source?: object,
+  ): Promise<void> {
+    try {
+      const snapshot = await ensureAgentLoaded(msg.agentId, {
+        agentManager: this.agentManager,
+        agentStorage: this.agentStorage,
+        logger: this.sessionLogger,
+      });
+      const rows = await this.agentManager.getConversationExportRows(msg.agentId);
+      const providerTasks = snapshot.session?.getConversationTaskSnapshot
+        ? await snapshot.session.getConversationTaskSnapshot()
+        : null;
+      const tasks = providerTasks ?? lastTimelineTasks(rows);
+      const { epoch } = this.agentManager.fetchTimeline(msg.agentId, {
+        direction: "tail",
+        limit: 1,
+      });
+      this.emitForSource(
+        {
+          type: "agent.export_conversation.response",
+          payload: {
+            requestId: msg.requestId,
+            agentId: msg.agentId,
+            epoch,
+            entries: rows.map((row) => ({
+              provider: snapshot.provider,
+              item: row.item,
+              timestamp: row.timestamp,
+              seqStart: row.seq,
+              seqEnd: row.seq,
+              sourceSeqRanges: [],
+              collapsed: [],
+            })),
+            tasks,
+            error: null,
+          },
+        },
+        source,
+      );
+    } catch (error) {
+      this.sessionLogger.error(
+        { err: error, agentId: msg.agentId },
+        "Failed to handle agent.export_conversation.request",
+      );
+      this.emitForSource(
+        {
+          type: "agent.export_conversation.response",
+          payload: {
+            requestId: msg.requestId,
+            agentId: msg.agentId,
+            epoch: "",
+            entries: [],
+            tasks: [],
             error: error instanceof Error ? error.message : String(error),
           },
         },

@@ -4,6 +4,7 @@ import type {
   AgentFeatureToggle,
   AgentProviderNotice,
   AgentTaskItem,
+  AgentTaskSnapshotItem,
   JsonValue,
   ProviderOptions,
   ToolPolicy,
@@ -18,6 +19,7 @@ export type {
   AgentFeatureToggle,
   AgentProviderNotice,
   AgentTaskItem,
+  AgentTaskSnapshotItem,
 };
 
 export type AgentProvider = string;
@@ -705,6 +707,12 @@ export interface AgentSession {
   setThinkingOption?(thinkingOptionId: string | null): Promise<void | AgentProviderNotice>;
   setFeature?(featureId: string, value: unknown): Promise<void>;
   revertConversation?(input: { messageId: string }): Promise<void>;
+  /**
+   * The provider's full-fidelity task snapshot for conversation export (dependencies, owner,
+   * metadata, tombstones). Null when the provider has none; the export falls back to the
+   * live timeline's last todo item.
+   */
+  getConversationTaskSnapshot?(): Promise<AgentTaskSnapshotItem[] | null>;
   revertFiles?(input: { messageId: string }): Promise<void>;
   revertBoth?(input: { messageId: string }): Promise<void>;
   /**

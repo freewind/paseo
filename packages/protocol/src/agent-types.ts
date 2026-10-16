@@ -371,10 +371,21 @@ export interface AgentTaskItem {
   text: string;
   completed: boolean;
   id?: string;
-  status?: "pending" | "in_progress" | "completed";
+  status?: "pending" | "in_progress" | "completed" | "deleted";
   activeForm?: string;
   /** Long-form body for the task. Optional: most providers only carry a title. */
   description?: string;
+}
+
+/**
+ * Full-fidelity task for the conversation-export payload. Carries the fields live
+ * timeline items deliberately omit (dependencies, owner, metadata) so old clients
+ * that strip or reject unknown shapes never see them outside the export RPC.
+ */
+export interface AgentTaskSnapshotItem extends AgentTaskItem {
+  blockedBy?: Array<string | number>;
+  owner?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export type AgentTimelineItem =

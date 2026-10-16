@@ -7,6 +7,7 @@ import { useToast } from "@/contexts/toast-context";
 import { getHostRuntimeStore, useHostRuntimeIsConnected } from "@/runtime/host-runtime";
 import { resolveCloseAgentTabPolicy } from "@/subagents/close-tab-policy";
 import { buildConversationMarkdown } from "@/timeline/conversation-markdown";
+import type { AgentTaskSnapshotItem, AgentTimelineItem } from "@getpaseo/protocol/agent-types";
 import { useArchiveAgent } from "@/hooks/use-archive-agent";
 import { useSessionStore } from "@/stores/session-store";
 import { useWorkspaceLayoutStore } from "@/stores/workspace-layout-store";
@@ -47,6 +48,16 @@ function readAgentIdForTab(workspaceKey: string, tabId: string): string | null {
     .getWorkspaceTabs(workspaceKey)
     .find((candidate) => candidate.tabId === tabId);
   return tab?.target.kind === "agent" ? tab.target.agentId : null;
+}
+
+function tasksFromTimelineItems(items: readonly AgentTimelineItem[]): AgentTaskSnapshotItem[] {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    const item = items[index];
+    if (item?.type === "todo") {
+      return Array.from(item.items);
+    }
+  }
+  return [];
 }
 
 /**
@@ -132,9 +143,10 @@ export function useHideWorkspaceAgentTab({
 }
 
 /**
- * Copies a whole agent conversation as Markdown: one unbounded timeline fetch (`limit: 0` asks
- * for every row in the tail window) keeps the transcript independent of what the user has
- * scrolled to, and only user and assistant text survives the projection.
+ * Copies a whole agent conversation as Markdown. On daemons advertising `conversationExport`,
+ * one unbounded export RPC merges the durable and live timeline so a daemon restart never
+ * truncates the transcript, and carries the provider's full task snapshot; otherwise it falls
+ * back to the in-memory tail fetch the feature predates, with tasks from that window.
  */
 export function useCopyAgentConversationMarkdown({
   serverId,
@@ -145,6 +157,9 @@ export function useCopyAgentConversationMarkdown({
   const toast = useToast();
   const isConnected = useHostRuntimeIsConnected(serverId);
   const client = useSessionStore((state) => state.sessions[serverId]?.client ?? null);
+  const supportsConversationExport = useSessionStore(
+    (state) => state.sessions[serverId]?.serverInfo?.features?.conversationExport === true,
+  );
 
   return useCallback(
     async (agentId: string) => {
@@ -155,16 +170,26 @@ export function useCopyAgentConversationMarkdown({
       }
       toast.show(t("workspace.tabs.toasts.copyingConversation"), { durationMs: null });
       try {
-        const page = await client.fetchAgentTimeline(agentId, {
-          direction: "tail",
-          limit: 0,
-          projection: "projected",
-        });
-        if (page.error) {
-          toast.error(page.error);
-          return;
+        let items: AgentTimelineItem[];
+        let tasks: AgentTaskSnapshotItem[] = [];
+        if (supportsConversationExport) {
+          const payload = await client.exportAgentConversation(agentId);
+          items = payload.entries.map((entry) => entry.item);
+          tasks = payload.tasks;
+        } else {
+          const page = await client.fetchAgentTimeline(agentId, {
+            direction: "tail",
+            limit: 0,
+            projection: "projected",
+          });
+          if (page.error) {
+            toast.error(page.error);
+            return;
+          }
+          items = page.entries.map((entry) => entry.item);
+          tasks = tasksFromTimelineItems(items);
         }
-        const markdown = buildConversationMarkdown(page.entries.map((entry) => entry.item));
+        const markdown = buildConversationMarkdown(items, tasks);
         if (!markdown) {
           toast.error(t("workspace.tabs.toasts.conversationMarkdownEmpty"));
           return;
@@ -175,7 +200,7 @@ export function useCopyAgentConversationMarkdown({
         toast.error(t("workspace.tabs.toasts.copyFailed"));
       }
     },
-    [client, isConnected, t, toast],
+    [client, isConnected, supportsConversationExport, t, toast],
   );
 }
 

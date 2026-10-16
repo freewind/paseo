@@ -710,6 +710,11 @@ export type AgentTimelinePromptIndexPayload = Extract<
   { type: "agent.timeline.list_prompts.response" }
 >["payload"];
 
+export type AgentExportConversationPayload = Extract<
+  SessionOutboundMessage,
+  { type: "agent.export_conversation.response" }
+>["payload"];
+
 export type ProviderSubagentListPayload = Extract<
   SessionOutboundMessage,
   { type: "agent.provider_subagents.list.response" }
@@ -3584,6 +3589,20 @@ export class DaemonClient {
       throw new Error(payload.error);
     }
 
+    return payload;
+  }
+
+  async exportAgentConversation(
+    agentId: string,
+    options: { requestId?: string; timeout?: number } = {},
+  ): Promise<AgentExportConversationPayload> {
+    const payload = await this.sendCorrelatedSessionRequest({
+      requestId: options.requestId,
+      message: { type: "agent.export_conversation.request", agentId },
+      responseType: "agent.export_conversation.response",
+      timeout: options.timeout,
+    });
+    if (payload.error) throw new Error(payload.error);
     return payload;
   }
 
