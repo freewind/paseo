@@ -9,6 +9,7 @@ export interface WorkspaceTabMenuLabels {
   copyResumeCommand: string;
   copyAgentId: string;
   copyConversationMarkdown: string;
+  copyAgentAsNew: string;
   copyTerminalId: string;
   copyFilePath: string;
   rename: string;
@@ -28,6 +29,7 @@ export const DEFAULT_WORKSPACE_TAB_MENU_LABELS: WorkspaceTabMenuLabels = {
   copyResumeCommand: i18n.t("workspace.tabs.menu.copyResumeCommand"),
   copyAgentId: i18n.t("workspace.tabs.menu.copyAgentId"),
   copyConversationMarkdown: i18n.t("workspace.tabs.menu.copyConversationMarkdown"),
+  copyAgentAsNew: i18n.t("workspace.tabs.menu.copyAgentAsNewConversation"),
   copyTerminalId: i18n.t("workspace.tabs.menu.copyTerminalId"),
   copyFilePath: i18n.t("workspace.tabs.menu.copyFilePath"),
   rename: i18n.t("workspace.tabs.menu.rename"),
@@ -84,6 +86,9 @@ interface BuildWorkspaceTabMenuEntriesInput {
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
   onCopyConversationMarkdown: (agentId: string) => Promise<void> | void;
+  /** Full-session copy into a new conversation; present only when the daemon advertises it. */
+  onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
+  canCloneAgent?: boolean;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
@@ -105,6 +110,8 @@ interface BuildWorkspaceDesktopTabActionsInput {
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
   onCopyConversationMarkdown: (agentId: string) => Promise<void> | void;
+  onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
+  canCloneAgent?: boolean;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
@@ -196,6 +203,8 @@ export function buildWorkspaceTabMenuEntries(
     onCopyResumeCommand,
     onCopyAgentId,
     onCopyConversationMarkdown,
+    onCopyAgentAsNew,
+    canCloneAgent = false,
     onCopyTerminalId,
     onCopyFilePath,
     onReloadAgent,
@@ -247,6 +256,18 @@ export function buildWorkspaceTabMenuEntries(
         void onCopyConversationMarkdown(agentId);
       },
     });
+    if (canCloneAgent && onCopyAgentAsNew) {
+      entries.push({
+        kind: "item",
+        key: "copy-agent-as-new",
+        label: labels.copyAgentAsNew,
+        icon: "copy",
+        testID: `${menuTestIDBase}-copy-agent-as-new`,
+        onSelect: () => {
+          void onCopyAgentAsNew(agentId);
+        },
+      });
+    }
   }
 
   if (tab.target.kind === "terminal") {
@@ -396,6 +417,8 @@ export function buildWorkspaceDesktopTabActions(
       onCopyResumeCommand: input.onCopyResumeCommand,
       onCopyAgentId: input.onCopyAgentId,
       onCopyConversationMarkdown: input.onCopyConversationMarkdown,
+      onCopyAgentAsNew: input.onCopyAgentAsNew,
+      canCloneAgent: input.canCloneAgent,
       onCopyTerminalId: input.onCopyTerminalId,
       onCopyFilePath: input.onCopyFilePath,
       onReloadAgent: input.onReloadAgent,

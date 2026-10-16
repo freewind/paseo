@@ -1556,6 +1556,13 @@ export class PiRpcAgentSession implements AgentSession {
     return this.conversationTaskSnapshot;
   }
 
+  async getActiveLeafEntryId(): Promise<string | null> {
+    const data = (await this.runtimeSession.request({ type: "get_entries" })) as {
+      leafId?: string | null;
+    };
+    return data.leafId ?? null;
+  }
+
   async getAvailableModes(): Promise<AgentMode[]> {
     return [];
   }
@@ -2704,6 +2711,17 @@ export class PiRpcAgentClient implements AgentClient {
       sessionId: fork.sessionId,
       nativeHandle: fork.sessionFile,
     };
+  }
+
+  /** Full copy of the active branch; the leaf comes from the live session via the manager. */
+  async cloneSession(
+    handle: AgentPersistenceHandle,
+    input: { leafEntryId?: string },
+  ): Promise<AgentPersistenceHandle> {
+    if (!input.leafEntryId) {
+      throw new Error("Pi clone requires the live session's leaf entry id");
+    }
+    return await this.forkSession(handle, { upToMessageId: input.leafEntryId });
   }
 
   async resumeSession(

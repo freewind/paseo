@@ -1949,6 +1949,24 @@ export const AgentExportConversationRequestMessageSchema = z.object({
   requestId: z.string(),
 });
 
+export const AgentCloneRequestMessageSchema = z.object({
+  type: z.literal("agent.clone.request"),
+  sourceAgentId: z.string(),
+  requestId: z.string(),
+  targetWorkspace: z.enum(["same", "new"]).optional(),
+});
+
+export const AgentCloneResponseMessageSchema = z.object({
+  type: z.literal("agent.clone.response"),
+  payload: z.object({
+    requestId: z.string(),
+    sourceAgentId: z.string(),
+    newAgentId: z.string().nullable(),
+    newWorkspaceId: z.string().optional(),
+    error: z.string().nullable(),
+  }),
+});
+
 export const ProviderSubagentListRequestMessageSchema = z.object({
   type: z.literal("agent.provider_subagents.list.request"),
   parentAgentId: z.string(),
@@ -3379,6 +3397,7 @@ export const SessionInboundMessageSchema = z.discriminatedUnion("type", [
   AgentTimelineSearchRequestMessageSchema,
   AgentTimelineListPromptsRequestMessageSchema,
   AgentExportConversationRequestMessageSchema,
+  AgentCloneRequestMessageSchema,
   ProviderSubagentListRequestMessageSchema,
   ProviderSubagentTimelineRequestMessageSchema,
   SetAgentTimelineSubscriptionRequestMessageSchema,
@@ -3790,6 +3809,8 @@ export const ServerInfoStatusPayloadSchema = z
         agentForkSession: z.boolean().optional(),
         // COMPAT(conversationExport): added in v0.11.0, remove gate after 2027-04-05.
         conversationExport: z.boolean().optional(),
+        // COMPAT(agentCloneSession): added in v0.11.0, remove gate after 2027-04-05.
+        agentCloneSession: z.boolean().optional(),
         // COMPAT(providerSubagents): added in v0.1.107, remove gate after 2027-01-12.
         providerSubagents: z.boolean().optional(),
         // COMPAT(projectedSubagentTimeline): added after v0.8.0, remove gates after 2027-03-14; retain wire field.
@@ -7098,6 +7119,7 @@ export const SessionOutboundMessageSchema = z.discriminatedUnion("type", [
   AgentTimelineSearchResponseMessageSchema,
   AgentTimelineListPromptsResponseMessageSchema,
   AgentExportConversationResponseMessageSchema,
+  AgentCloneResponseMessageSchema,
   ProviderSubagentListResponseMessageSchema,
   ProviderSubagentTimelineResponseMessageSchema,
   ProviderSubagentUpdateMessageSchema,
@@ -7328,6 +7350,7 @@ export type AgentTimelineListPromptsResponseMessage = z.infer<
 export type AgentExportConversationResponseMessage = z.infer<
   typeof AgentExportConversationResponseMessageSchema
 >;
+export type AgentCloneResponseMessage = z.infer<typeof AgentCloneResponseMessageSchema>;
 export type AgentForkContextResponseMessage = z.infer<typeof AgentForkContextResponseMessageSchema>;
 export type AgentForkResponseMessage = z.infer<typeof AgentForkResponseMessageSchema>;
 export type CancelAgentResponseMessage = z.infer<typeof CancelAgentResponseMessageSchema>;

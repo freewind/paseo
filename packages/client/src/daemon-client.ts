@@ -715,6 +715,11 @@ export type AgentExportConversationPayload = Extract<
   { type: "agent.export_conversation.response" }
 >["payload"];
 
+export type AgentClonePayload = Extract<
+  SessionOutboundMessage,
+  { type: "agent.clone.response" }
+>["payload"];
+
 export type ProviderSubagentListPayload = Extract<
   SessionOutboundMessage,
   { type: "agent.provider_subagents.list.response" }
@@ -3600,6 +3605,24 @@ export class DaemonClient {
       requestId: options.requestId,
       message: { type: "agent.export_conversation.request", agentId },
       responseType: "agent.export_conversation.response",
+      timeout: options.timeout,
+    });
+    if (payload.error) throw new Error(payload.error);
+    return payload;
+  }
+
+  async cloneAgent(
+    sourceAgentId: string,
+    options: { targetWorkspace?: "same" | "new"; requestId?: string; timeout?: number } = {},
+  ): Promise<AgentClonePayload> {
+    const payload = await this.sendCorrelatedSessionRequest({
+      requestId: options.requestId,
+      message: {
+        type: "agent.clone.request",
+        sourceAgentId,
+        ...(options.targetWorkspace ? { targetWorkspace: options.targetWorkspace } : {}),
+      },
+      responseType: "agent.clone.response",
       timeout: options.timeout,
     });
     if (payload.error) throw new Error(payload.error);

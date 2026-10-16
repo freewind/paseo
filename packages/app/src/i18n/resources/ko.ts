@@ -673,6 +673,7 @@ export const ko: TranslationResources = {
         copyResumeCommand: "재개 명령 복사",
         copyAgentId: "에이전트 ID 복사",
         copyConversationMarkdown: "Markdown 대화 복사",
+        copyAgentAsNewConversation: "새 대화로 복사",
         copyTerminalId: "터미널 ID 복사",
         copyFilePath: "파일 경로 복사",
         rename: "이름 변경",
@@ -719,6 +720,8 @@ export const ko: TranslationResources = {
       },
       toasts: {
         copyFailed: "복사 실패",
+        cloneUnavailable: "이 호스트에서는 새 대화로 복사할 수 없습니다",
+        cloneFailed: "대화 복사에 실패했습니다",
         agentIdCopiedLabel: "에이전트 ID",
         terminalIdCopiedLabel: "터미널 ID",
         resumeCommandCopiedLabel: "재개 명령",

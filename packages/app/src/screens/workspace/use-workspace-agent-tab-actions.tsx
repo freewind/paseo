@@ -31,6 +31,7 @@ import {
 } from "@/screens/workspace/use-workspace-tab-rename";
 import { useHostFeature } from "@/runtime/host-features";
 import { markWorkspaceUnread } from "@/workspace/mark-unread";
+import { navigateToWorkspace } from "@/stores/navigation-active-workspace-store";
 import { canMarkAgentUnread } from "@/workspace/agent-unread-policy";
 
 /** Rename only ever touches agents from this list, so the terminal branch of the hook is unreachable. */
@@ -220,6 +221,8 @@ export interface WorkspaceAgentTabActions {
   onCopyResumeCommand: (agentId: string) => Promise<void>;
   onCopyAgentId: (agentId: string) => Promise<void>;
   onCopyConversationMarkdown: (agentId: string) => Promise<void>;
+  onCopyAgentAsNew: (agentId: string) => Promise<void>;
+  canCloneAgent: boolean;
   onReloadAgent: (agentId: string) => Promise<void>;
   onRenameTab: (tab: WorkspaceTabDescriptor) => void;
   onCloseTab: (tabId: string) => Promise<void>;
@@ -367,6 +370,41 @@ export function useWorkspaceAgentTabActions({
   );
 
   const onCopyConversationMarkdown = useCopyAgentConversationMarkdown({ serverId });
+
+  const supportsCloneAgent = useSessionStore(
+    (state) => state.sessions[serverId]?.serverInfo?.features?.agentCloneSession === true,
+  );
+
+  const onCopyAgentAsNew = useCallback(
+    async (agentId: string) => {
+      if (!agentId) return;
+      if (!client || !isConnected) {
+        toast.error(t("workspace.terminal.hostDisconnected"));
+        return;
+      }
+      if (!supportsCloneAgent) {
+        toast.error(t("workspace.tabs.toasts.cloneUnavailable"));
+        return;
+      }
+      try {
+        const result = await client.cloneAgent(agentId, { targetWorkspace: "same" });
+        if (!result.newAgentId) {
+          toast.error(t("workspace.tabs.toasts.cloneFailed"));
+          return;
+        }
+        navigateToWorkspace({
+          serverId,
+          workspaceId: result.newWorkspaceId ?? workspaceId,
+          target: { kind: "agent", agentId: result.newAgentId },
+        });
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : t("workspace.tabs.toasts.cloneFailed"),
+        );
+      }
+    },
+    [client, isConnected, serverId, supportsCloneAgent, t, toast, workspaceId],
+  );
 
   const onReloadAgent = useCallback(
     async (agentId: string) => {
@@ -608,6 +646,8 @@ export function useWorkspaceAgentTabActions({
     onCopyResumeCommand,
     onCopyAgentId,
     onCopyConversationMarkdown,
+    onCopyAgentAsNew,
+    canCloneAgent: supportsCloneAgent,
     onReloadAgent,
     onRenameTab: handleRenameTab,
     onCloseTab,

@@ -3403,6 +3403,62 @@ export class AgentManager {
       "agent.fork.start",
     );
     const forkedHandle = await client.forkSession(handle, { upToMessageId: providerMessageId });
+    const fork = await this.resumeForkedAgent(source, forkedHandle, input.workspaceId);
+    this.logger.info(
+      { sourceAgentId: input.sourceAgentId, newAgentId: fork.id, provider: source.provider },
+      "agent.fork.complete",
+    );
+    return fork;
+  }
+
+  /**
+   * Copies the source agent's full conversation into a brand new agent id: the provider
+   * clones its persisted active branch, and the new agent resumes that copy. The source
+   * agent, its session, and its timeline are never touched. Only stable persisted state is
+   * copied — not the running turn, queued prompts, or pending permissions.
+   */
+  async cloneAgent(input: {
+    sourceAgentId: string;
+    /** Overrides the source's workspace, so a copy can land in a fresh one. */
+    workspaceId?: string;
+  }): Promise<ManagedAgent> {
+    const source = this.requireSessionAgent(input.sourceAgentId);
+    if (isAgentBusy(source.lifecycle)) {
+      throw new Error("Cannot copy the conversation while a turn is running");
+    }
+    const handle = source.session.describePersistence();
+    if (!handle) {
+      throw new Error(`Provider '${source.provider}' has no persisted session to clone`);
+    }
+    const client = this.requireClient(source.provider);
+    if (!client.cloneSession) {
+      throw new Error(`Provider '${source.provider}' does not support cloning a session`);
+    }
+
+    this.logger.info(
+      { sourceAgentId: input.sourceAgentId, provider: source.provider },
+      "agent.clone.start",
+    );
+    const leafEntryId = source.session.getActiveLeafEntryId
+      ? await source.session.getActiveLeafEntryId()
+      : null;
+    const forkedHandle = await client.cloneSession(handle, {
+      leafEntryId: leafEntryId ?? undefined,
+    });
+    const clone = await this.resumeForkedAgent(source, forkedHandle, input.workspaceId);
+    this.logger.info(
+      { sourceAgentId: input.sourceAgentId, newAgentId: clone.id, provider: source.provider },
+      "agent.clone.complete",
+    );
+    return clone;
+  }
+
+  /** Resumes a forked/cloned persistence handle under the source's config and identity. */
+  private async resumeForkedAgent(
+    source: ActiveManagedAgent,
+    forkedHandle: AgentPersistenceHandle,
+    workspaceId: string | undefined,
+  ): Promise<ManagedAgent> {
     const overrides: Partial<AgentSessionConfig> = {
       provider: source.provider,
       cwd: source.cwd,
@@ -3419,14 +3475,10 @@ export class AgentManager {
     if (source.config.mcpServers) overrides.mcpServers = source.config.mcpServers;
     const fork = await this.resumeAgentFromPersistence(forkedHandle, overrides, undefined, {
       labels: source.labels,
-      workspaceId: input.workspaceId ?? source.workspaceId,
+      workspaceId: workspaceId ?? source.workspaceId,
       owner: source.owner,
     });
     await this.hydrateTimelineFromProvider(fork.id, { force: true, broadcast: true });
-    this.logger.info(
-      { sourceAgentId: input.sourceAgentId, newAgentId: fork.id, provider: source.provider },
-      "agent.fork.complete",
-    );
     return fork;
   }
 

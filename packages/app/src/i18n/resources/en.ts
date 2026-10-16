@@ -674,6 +674,7 @@ export const en = {
         copyResumeCommand: "Copy resume command",
         copyAgentId: "Copy agent id",
         copyConversationMarkdown: "复制 Markdown 对话",
+        copyAgentAsNewConversation: "Copy as new conversation",
         copyTerminalId: "Copy terminal id",
         copyFilePath: "Copy file path",
         rename: "Rename",
@@ -719,6 +720,8 @@ export const en = {
       },
       toasts: {
         copyFailed: "Copy failed",
+        cloneUnavailable: "Copying as a new conversation is not available on this host",
+        cloneFailed: "Failed to copy the conversation",
         agentIdCopiedLabel: "Agent ID",
         terminalIdCopiedLabel: "Terminal ID",
         resumeCommandCopiedLabel: "resume command",
