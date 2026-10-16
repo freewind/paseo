@@ -129,6 +129,16 @@ export const ja: TranslationResources = {
     },
   },
   composer: {
+    quickReplies: {
+      title: "よく使う返信",
+      edit: "よく使う返信を管理",
+      editTitle: "よく使う返信を管理",
+      add: "追加",
+      placeholder: "保存する返信を入力",
+      empty: "よく使う返信はまだありません。追加するとワンタップで送信できます。",
+      delete: "削除",
+      save: "保存",
+    },
     readAloud: { start: "この会話の読み上げを開始", stop: "この会話の読み上げを停止" },
     placeholders: {
       desktop: "エージェントにメッセージ、@ファイル、/コマンドや/スキルを入力",

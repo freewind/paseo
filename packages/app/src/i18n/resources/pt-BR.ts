@@ -129,6 +129,16 @@ export const ptBR: TranslationResources = {
     },
   },
   composer: {
+    quickReplies: {
+      title: "Respostas rápidas",
+      edit: "Gerenciar respostas rápidas",
+      editTitle: "Gerenciar respostas rápidas",
+      add: "Adicionar",
+      placeholder: "Digite uma resposta para salvar",
+      empty: "Ainda não há respostas rápidas. Adicione uma para enviar com um toque.",
+      delete: "Excluir",
+      save: "Salvar",
+    },
     readAloud: { start: "Ativar leitura desta conversa", stop: "Desativar leitura desta conversa" },
     placeholders: {
       desktop: "Envie uma mensagem ao agente, marque @files ou use /commands e /skills",

@@ -128,6 +128,16 @@ export const ko: TranslationResources = {
     },
   },
   composer: {
+    quickReplies: {
+      title: "빠른 답변",
+      edit: "빠른 답변 관리",
+      editTitle: "빠른 답변 관리",
+      add: "추가",
+      placeholder: "저장할 답변 입력",
+      empty: "빠른 답변이 아직 없습니다. 추가하면 한 번에 보낼 수 있습니다.",
+      delete: "삭제",
+      save: "저장",
+    },
     readAloud: { start: "이 대화 읽기 시작", stop: "이 대화 읽기 중지" },
     placeholders: {
       desktop: "에이전트에게 메시지를 보내거나 @files 태그, /commands, /skills를 사용하세요",
