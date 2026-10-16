@@ -15,7 +15,10 @@ function collectPlainText(node: ASTNode | null | undefined): string {
   if (!node) {
     return "";
   }
-  if (node.type === "text" && typeof node.content === "string") {
+  // Inline code carries its source in `content` like block tokens do. Without reading it here,
+  // a walk that starts below the block (a table cell holding only inline code) quotes as empty,
+  // and MarkdownCommentableBlock then never mounts its menu.
+  if ((node.type === "text" || node.type === "code_inline") && typeof node.content === "string") {
     return node.content;
   }
   const children: ASTNode[] = Array.isArray(node.children) ? node.children : [];
