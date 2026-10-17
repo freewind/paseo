@@ -1,13 +1,16 @@
 import { memo, useCallback, useMemo, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { StyleSheet } from "react-native-unistyles";
 import { CheckCircle2, Circle, ClipboardList, Plus, Trash2 } from "lucide-react-native";
 import { withUnistyles } from "react-native-unistyles";
-import type { AgentMemo } from "@getpaseo/protocol/messages";
+import type { AgentMemo, ImageAttachment } from "@getpaseo/protocol/messages";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { EditingTextInput } from "@/components/ui/text-input";
+import { AttachmentLightbox, type ImageLightboxSource } from "@/components/attachment-lightbox";
+import { encodeAttachmentsForSend } from "@/attachments/service";
+import type { AttachmentMetadata } from "@/attachments/types";
 import type { Theme } from "@/styles/theme";
+import { AgentMemoComposer } from "./agent-memo-composer";
 import { useAgentMemos } from "./use-agent-memos";
 import { useHostFeature } from "@/runtime/host-features";
 
@@ -40,10 +43,28 @@ export const AgentMemosRail = memo(function AgentMemosRail({
   const { t } = useTranslation();
   const supported = useHostFeature(serverId, "agentMemos");
   const supportsCompletion = useHostFeature(serverId, "agentMemoCompletion");
+  const supportsImages = useHostFeature(serverId, "agentMemoImages");
   const { memos, addMemo, setMemoCompleted, deleteMemo } = useAgentMemos({ serverId, agentId });
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [lightboxSource, setLightboxSource] = useState<ImageLightboxSource | null>(null);
 
   const handleToggle = useCallback(() => setIsExpanded((open) => !open), []);
+  const handleStartAdding = useCallback(() => setIsAdding(true), []);
+  const handleCancelAdd = useCallback(() => setIsAdding(false), []);
+  const handleCloseLightbox = useCallback(() => setLightboxSource(null), []);
+  const handleOpenMemoImage = useCallback(
+    (image: ImageAttachment) => setLightboxSource({ type: "uri", uri: memoImageUri(image) }),
+    [],
+  );
+  const handleAddMemo = useCallback(
+    async (text: string, images: readonly AttachmentMetadata[]) => {
+      const encoded = await encodeAttachmentsForSend(images);
+      await addMemo(text, encoded);
+      setIsAdding(false);
+    },
+    [addMemo],
+  );
   const handleMemoDelete = useCallback(
     (memoId: string) => void deleteMemo(memoId).catch(() => undefined),
     [deleteMemo],
@@ -91,12 +112,31 @@ export const AgentMemosRail = memo(function AgentMemosRail({
                 onUse={handleMemoPress}
                 onCompletedChange={handleMemoCompletedChange}
                 onDelete={handleMemoDelete}
+                onOpenImage={handleOpenMemoImage}
               />
             ))
           )}
-          <AddMemoRow onAdd={addMemo} />
+          {isAdding ? (
+            <AgentMemoComposer
+              onSubmit={handleAddMemo}
+              onCancel={handleCancelAdd}
+              canAttachImages={supportsImages}
+            />
+          ) : (
+            <Pressable
+              style={styles.addRow}
+              onPress={handleStartAdding}
+              accessibilityRole="button"
+              accessibilityLabel={t("agentMemos.add")}
+              testID="agent-memo-add"
+            >
+              <ThemedAddPlus size={13} />
+              <Text style={styles.addText}>{t("agentMemos.add")}</Text>
+            </Pressable>
+          )}
         </View>
       ) : null}
+      <AttachmentLightbox source={lightboxSource} onClose={handleCloseLightbox} />
     </View>
   );
 });
@@ -109,12 +149,14 @@ function AgentMemoRow({
   onUse,
   onCompletedChange,
   onDelete,
+  onOpenImage,
 }: {
   entry: AgentMemo;
   supportsCompletion: boolean;
   onUse: (text: string) => void;
   onCompletedChange: (memoId: string, completed: boolean) => void;
   onDelete: (memoId: string) => void;
+  onOpenImage: (image: ImageAttachment) => void;
 }) {
   const { t } = useTranslation();
   const isCompleted = entry.completed === true;
@@ -125,6 +167,14 @@ function AgentMemoRow({
   );
   const handleDelete = useCallback(() => onDelete(entry.id), [entry.id, onDelete]);
   const accessibilityState = useMemo(() => ({ checked: isCompleted }), [isCompleted]);
+  const memoImageEntries = useMemo(
+    () =>
+      (entry.images ?? []).map((image, index) => ({
+        key: `${entry.id}:image:${index}`,
+        image,
+      })),
+    [entry.id, entry.images],
+  );
   return (
     <View style={styles.row}>
       {supportsCompletion ? (
@@ -140,27 +190,36 @@ function AgentMemoRow({
           {isCompleted ? <ThemedCheckCircle2 size={14} /> : <ThemedCircle size={14} />}
         </Pressable>
       ) : null}
-      <Tooltip delayDuration={300}>
-        <TooltipTrigger asChild>
-          <Pressable
-            style={styles.memoButton}
-            onPress={handleUse}
-            accessibilityRole="button"
-            accessibilityLabel={t("agentMemos.useMemo")}
-            testID={`agent-memo-item-${entry.id}`}
-          >
-            <Text
-              numberOfLines={1}
-              style={isCompleted ? styles.memoTextCompleted : styles.memoText}
+      <View style={styles.rowBody}>
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>
+            <Pressable
+              style={styles.memoButton}
+              onPress={handleUse}
+              accessibilityRole="button"
+              accessibilityLabel={t("agentMemos.useMemo")}
+              testID={`agent-memo-item-${entry.id}`}
             >
-              {entry.text}
-            </Text>
-          </Pressable>
-        </TooltipTrigger>
-        <TooltipContent side="left" align="center" offset={8}>
-          <Text style={styles.tooltipText}>{entry.text}</Text>
-        </TooltipContent>
-      </Tooltip>
+              <Text
+                numberOfLines={1}
+                style={isCompleted ? styles.memoTextCompleted : styles.memoText}
+              >
+                {entry.text}
+              </Text>
+            </Pressable>
+          </TooltipTrigger>
+          <TooltipContent side="left" align="center" offset={8}>
+            <Text style={styles.tooltipText}>{entry.text}</Text>
+          </TooltipContent>
+        </Tooltip>
+        {entry.images && entry.images.length > 0 ? (
+          <View style={styles.memoImageRow}>
+            {memoImageEntries.map(({ key, image }) => (
+              <MemoImageThumb key={key} image={image} onOpen={onOpenImage} />
+            ))}
+          </View>
+        ) : null}
+      </View>
       <Pressable
         onPress={handleDelete}
         accessibilityRole="button"
@@ -175,68 +234,30 @@ function AgentMemoRow({
   );
 }
 
-function AddMemoRow({ onAdd }: { onAdd: (text: string) => void }) {
-  const { t } = useTranslation();
-  const [isAdding, setIsAdding] = useState(false);
-  const [draft, setDraft] = useState("");
-  const handleStartAdding = useCallback(() => setIsAdding(true), []);
-  const handleCancel = useCallback(() => setIsAdding(false), []);
-  const submit = useCallback(() => {
-    const trimmed = draft.trim();
-    if (!trimmed) {
-      setIsAdding(false);
-      setDraft("");
-      return;
-    }
-    onAdd(trimmed);
-    setDraft("");
-    setIsAdding(false);
-  }, [draft, onAdd]);
-
-  if (!isAdding) {
-    return (
-      <Pressable
-        style={styles.addRow}
-        onPress={handleStartAdding}
-        accessibilityRole="button"
-        accessibilityLabel={t("agentMemos.add")}
-        testID="agent-memo-add"
-      >
-        <ThemedAddPlus size={13} />
-        <Text style={styles.addText}>{t("agentMemos.add")}</Text>
-      </Pressable>
-    );
-  }
-
-  return <MemoInput draft={draft} setDraft={setDraft} submit={submit} cancel={handleCancel} />;
+/** Inline base64 is the storage shape, so a memo image needs no URL resolution. */
+function memoImageUri(image: ImageAttachment): string {
+  return `data:${image.mimeType};base64,${image.data}`;
 }
 
-function MemoInput({
-  draft,
-  setDraft,
-  submit,
-  cancel,
+function MemoImageThumb({
+  image,
+  onOpen,
 }: {
-  draft: string;
-  setDraft: (text: string) => void;
-  submit: () => void;
-  cancel: () => void;
+  image: ImageAttachment;
+  onOpen: (image: ImageAttachment) => void;
 }) {
   const { t } = useTranslation();
+  const source = useMemo(() => ({ uri: memoImageUri(image) }), [image]);
+  const handlePress = useCallback(() => onOpen(image), [image, onOpen]);
   return (
-    <View style={styles.addRow}>
-      <EditingTextInput
-        initialValue={draft}
-        onChangeText={setDraft}
-        onSubmitEditing={submit}
-        onBlur={cancel}
-        placeholder={t("agentMemos.placeholder")}
-        autoFocus
-        multiline={false}
-        style={styles.input}
-        testID="agent-memo-input"
-      />
-    </View>
+    <Pressable
+      onPress={handlePress}
+      accessibilityRole="button"
+      accessibilityLabel={t("composer.attachments.openImage")}
+      testID="agent-memo-image"
+    >
+      <Image source={source} style={styles.memoImage} />
+    </Pressable>
   );
 }
 
@@ -275,6 +296,23 @@ const styles = StyleSheet.create((theme) => ({
     flexDirection: "row",
     alignItems: "center",
     gap: theme.spacing[1],
+  },
+  rowBody: {
+    flex: 1,
+    minWidth: 0,
+    gap: theme.spacing[1],
+  },
+  memoImageRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing[1],
+    paddingHorizontal: theme.spacing[2],
+  },
+  memoImage: {
+    width: 40,
+    height: 40,
+    borderRadius: theme.borderRadius.sm,
+    backgroundColor: theme.colors.surface2,
   },
   memoButton: {
     flex: 1,
@@ -316,9 +354,5 @@ const styles = StyleSheet.create((theme) => ({
   addText: {
     color: theme.colors.foregroundMuted,
     fontSize: theme.fontSize.sm,
-  },
-  input: {
-    flex: 1,
-    minWidth: 160,
   },
 }));

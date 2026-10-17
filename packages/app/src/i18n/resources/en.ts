@@ -352,6 +352,7 @@ export const en = {
     delete: "Delete memo",
     markDone: "Mark as done",
     markNotDone: "Mark as not done",
+    attachImage: "Attach image",
   },
   message: {
     diagram: {

@@ -10,6 +10,7 @@ import {
 import { CreationClient } from "./creation/index.js";
 import type { CreationSnapshot } from "@getpaseo/protocol/messages";
 import type { AgentMemo } from "@getpaseo/protocol/messages";
+import type { ImageAttachment } from "@getpaseo/protocol/messages";
 
 export interface AgentMemoOperationPayload {
   requestId: string;
@@ -3345,11 +3346,17 @@ export class DaemonClient {
   async addAgentMemo(
     agentId: string,
     text: string,
+    images?: readonly ImageAttachment[],
     options?: { requestId?: string; timeout?: number },
   ): Promise<AgentMemoOperationPayload> {
     const payload = await this.sendCorrelatedSessionRequest({
       requestId: options?.requestId,
-      message: { type: "agent.memo.add.request", agentId, text },
+      message: {
+        type: "agent.memo.add.request",
+        agentId,
+        text,
+        images: images as ImageAttachment[] | undefined,
+      },
       responseType: "agent.memo.add.response",
       timeout: options?.timeout,
     });
@@ -3361,11 +3368,18 @@ export class DaemonClient {
     agentId: string,
     memoId: string,
     text: string,
+    images?: readonly ImageAttachment[],
     options?: { requestId?: string; timeout?: number },
   ): Promise<AgentMemoOperationPayload> {
     const payload = await this.sendCorrelatedSessionRequest({
       requestId: options?.requestId,
-      message: { type: "agent.memo.update.request", agentId, memoId, text },
+      message: {
+        type: "agent.memo.update.request",
+        agentId,
+        memoId,
+        text,
+        images: images as ImageAttachment[] | undefined,
+      },
       responseType: "agent.memo.update.response",
       timeout: options?.timeout,
     });

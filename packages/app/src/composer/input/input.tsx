@@ -480,7 +480,12 @@ function usePasteImagesEffect(args: PasteImagesEffectArgs): void {
       const imageFiles = collectImageFilesFromClipboardData(event.clipboardData);
       if (imageFiles.length === 0) return;
 
-      event.preventDefault();
+      // Only swallow the default paste when the clipboard carries no text. Preventing it
+      // unconditionally drops the text of a copy that holds a screenshot and words together.
+      const hasPlainText = (event.clipboardData?.getData("text/plain") ?? "").trim().length > 0;
+      if (!hasPlainText) {
+        event.preventDefault();
+      }
 
       void filesToImageAttachments(imageFiles)
         .then((pastedAttachments) => {
