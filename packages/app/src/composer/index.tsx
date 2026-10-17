@@ -84,12 +84,14 @@ import {
   type QueuedComposerMessage,
 } from "@/composer/actions";
 import { useVoiceOptional } from "@/contexts/voice-context";
+import { useContainerWidthBelow } from "@/hooks/use-container-width";
 import { useToast } from "@/contexts/toast-context";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useQuickReplies } from "@/quick-replies/use-quick-replies";
 import { QuickRepliesBar } from "@/quick-replies/quick-replies-bar";
 import { QuickRepliesEditor } from "@/quick-replies/quick-replies-editor";
-import { QuickRepliesMenu } from "@/quick-replies/quick-replies-menu";
+import { QuickRepliesSheet } from "@/quick-replies/quick-replies-sheet";
+import { QUICK_REPLIES_GUTTER_BREAKPOINT } from "@/quick-replies/layout";
 import type { QuickReply } from "@getpaseo/protocol/messages";
 import { Shortcut } from "@/components/ui/shortcut";
 import { useShortcutKeys } from "@/hooks/use-shortcut-keys";
@@ -1010,6 +1012,15 @@ interface ComposerProps {
   /** Optional panel/container layout breakpoint. Defaults to the screen breakpoint. */
   isCompactLayout?: boolean;
   /**
+   * Whether the host wants the desktop gutter to carry quick replies. Omit it to let the
+   * composer decide from its own measured width — the agent pane passes its pane-level decision
+   * so the gutter and the pane's track entry can never both appear.
+   */
+  quickRepliesGutterVisible?: boolean;
+  /** Compact entry state, owned by the pane that renders the entry. */
+  quickRepliesSheetVisible?: boolean;
+  onQuickRepliesSheetVisibleChange?: (visible: boolean) => void;
+  /**
    * What this composer is for. Terminal drops the chat-agent affordances and
    * uses the terminal font; see `@/composer/input-mode`. Callers set the mode
    * and nothing else — never branch on it at the call site.
@@ -1307,6 +1318,9 @@ function ComposerContentImpl({
   agentControls,
   inputWrapperStyle,
   isCompactLayout: isCompactLayoutOverride,
+  quickRepliesGutterVisible,
+  quickRepliesSheetVisible = false,
+  onQuickRepliesSheetVisibleChange,
   inputMode = "chat",
   readOnly = false,
   submitLabel,
@@ -1352,6 +1366,9 @@ function ComposerContentImpl({
   const closeQuickRepliesEditor = useCallback(() => {
     setIsQuickRepliesEditorOpen(false);
   }, []);
+  const closeQuickRepliesSheet = useCallback(() => {
+    onQuickRepliesSheetVisibleChange?.(false);
+  }, [onQuickRepliesSheetVisibleChange]);
   const saveQuickRepliesFromEditor = useCallback(
     (next: QuickReply[]) => {
       setIsQuickRepliesEditorOpen(false);
@@ -1359,6 +1376,8 @@ function ComposerContentImpl({
     },
     [quickReplies],
   );
+  const { onLayout: onInputAreaLayout, isBelow: isInputAreaTooNarrowForQuickReplies } =
+    useContainerWidthBelow(QUICK_REPLIES_GUTTER_BREAKPOINT, { initialIsBelow: true });
   const isDesktopWebBreakpoint = resolveIsDesktopWebBreakpoint(isCompactFormFactor);
   const isDesktopLayout = resolveIsDesktopWebBreakpoint(isCompactLayout);
   const messagePlaceholder = resolveMessagePlaceholder(inputMode, isDesktopLayout, t, placeholder);
@@ -1808,17 +1827,6 @@ function ComposerContentImpl({
     },
     [cwd, handleSubmit, textSource],
   );
-
-  const quickRepliesMenu = useMemo(() => {
-    if (!quickReplies.isSupported) return null;
-    return (
-      <QuickRepliesMenu
-        replies={quickReplies.replies}
-        onSelect={handleQuickReplySelect}
-        onEdit={openQuickRepliesEditor}
-      />
-    );
-  }, [handleQuickReplySelect, openQuickRepliesEditor, quickReplies]);
 
   const handlePasteImage = useCallback(async () => {
     try {
@@ -2469,111 +2477,101 @@ function ComposerContentImpl({
     ? t("composer.github.searching")
     : t("composer.github.noResults");
 
-  const quickRepliesBar =
-    !isCompactLayout && quickReplies.isSupported ? (
-      <QuickRepliesBar
-        replies={quickReplies.replies}
-        onSelect={handleQuickReplySelect}
-        onEdit={openQuickRepliesEditor}
-      />
-    ) : null;
+  // The gutter is a sibling of the centered input column, so it only earns its place once the
+  // container has room for both. A host that owns the compact entry passes the decision in, which
+  // keeps the gutter and that entry mutually exclusive by construction.
+  const showsQuickRepliesGutter =
+    quickReplies.isSupported &&
+    !isCompactLayout &&
+    (quickRepliesGutterVisible ?? !isInputAreaTooNarrowForQuickReplies);
 
   const messageInputNode = (
-    <View
-      ref={messageInputContainerRef}
-      style={[
-        styles.messageInputContainer,
-        ...(quickRepliesBar ? [styles.inputWithQuickReplies] : []),
-      ]}
-    >
-      <View style={quickRepliesBar ? styles.messageInputInner : undefined}>
-        <ComposerAutocompleteBinding
-          text={textSource}
-          cursor={cursor}
-          inputRef={messageInputRef}
-          anchorRef={messageInputContainerRef}
-          show={mode.showAutocomplete}
-          ref={autocompleteRef}
-          configuration={autocompleteConfiguration}
-        />
-        <ComposerForgeBinding
-          text={textSource}
-          configuration={forgeConfiguration}
-          ref={forgeAutoAttachRef}
-          onResolvingChange={setIsForgeResolving}
-        />
+    <View ref={messageInputContainerRef} style={styles.messageInputContainer}>
+      <ComposerAutocompleteBinding
+        text={textSource}
+        cursor={cursor}
+        inputRef={messageInputRef}
+        anchorRef={messageInputContainerRef}
+        show={mode.showAutocomplete}
+        ref={autocompleteRef}
+        configuration={autocompleteConfiguration}
+      />
+      <ComposerForgeBinding
+        text={textSource}
+        configuration={forgeConfiguration}
+        ref={forgeAutoAttachRef}
+        onResolvingChange={setIsForgeResolving}
+      />
 
-        {/* MessageInput handles everything: text, dictation, attachments, all buttons */}
-        <ComposerInputSurface
-          ref={messageInputRef}
-          value={textSource.getSnapshot()}
-          onChangeText={setUserInput}
-          onSubmit={handleSubmit}
-          hasExternalContent={hasExternalContent}
-          allowEmptySubmit={allowEmptySubmit}
-          submitButtonAccessibilityLabel={submitButtonAccessibilityLabel}
-          submitButtonTestID={submitButtonTestID}
-          submitIcon={submitIcon}
-          isSubmitDisabled={isSubmitDisabled}
-          isSubmitLoading={isSubmitLoadingVisible}
-          preserveHeightOnSubmit={submitBehavior === "preserve-and-lock"}
-          attachments={selectedAttachments}
-          cwd={cwd}
-          attachmentMenuItems={attachmentMenuItems}
-          onAttachButtonRef={handleAttachButtonRef}
-          onAddImages={addImages}
-          onPasteImages={handleNativePasteImages}
-          client={client}
-          isReadyForDictation={isDictationReady}
-          placeholder={messagePlaceholder}
-          autoFocus={messageInputAutoFocus}
-          autoFocusKey={`${serverId}:${agentId}:${autoFocusKey ?? ""}`}
-          disabled={isSubmitLoading}
-          leftContent={leftContent}
-          beforeVoiceContent={beforeVoiceContent}
-          rightContent={rightContent}
-          activeActionContent={activeActionContent}
-          voiceServerId={serverId}
-          voiceAgentId={agentId}
-          showVoiceButton={appSettings.showVoiceButton}
-          isAgentRunning={isAgentRunning}
-          defaultSendBehavior={activeSendBehavior}
-          onQueue={handleQueue}
-          onSubmitLoadingPress={submitLoadingPressHandler}
-          onKeyPress={handleCommandKeyPress}
-          onSelectionChange={handleSelectionChange}
-          onFocusChange={handleFocusChange}
-          onHeightChange={onComposerHeightChange}
-          inputWrapperStyle={inputWrapperStyle}
-          attachmentSlot={attachmentTray}
-          inputMode={inputMode}
-          readOnly={readOnly}
-          textReplacement={textReplacement}
-          submitLabel={submitLabel}
-          quickRepliesMenu={quickRepliesMenu}
-        />
-        <Combobox
-          options={githubSearchOptions}
-          value=""
-          onSelect={noop}
-          keepOpenOnSelect
-          searchable
-          searchPlaceholder={t("composer.github.searchPlaceholder", {
-            context: forgePresentation.changeRequestContext,
-          })}
-          title={t("composer.github.title", {
-            context: forgePresentation.changeRequestContext,
-          })}
-          open={isGithubPickerOpen}
-          onOpenChange={handleGithubPickerOpenChange}
-          onSearchQueryChange={setGithubSearchQuery}
-          desktopPlacement="top-start"
-          anchorRef={attachButtonRef}
-          emptyText={githubEmptyText}
-          renderOption={renderGithubPickerOption}
-        />
-        {pluginAttachments.picker}
-      </View>
+      {/* MessageInput handles everything: text, dictation, attachments, all buttons */}
+      <ComposerInputSurface
+        ref={messageInputRef}
+        value={textSource.getSnapshot()}
+        onChangeText={setUserInput}
+        onSubmit={handleSubmit}
+        hasExternalContent={hasExternalContent}
+        allowEmptySubmit={allowEmptySubmit}
+        submitButtonAccessibilityLabel={submitButtonAccessibilityLabel}
+        submitButtonTestID={submitButtonTestID}
+        submitIcon={submitIcon}
+        isSubmitDisabled={isSubmitDisabled}
+        isSubmitLoading={isSubmitLoadingVisible}
+        preserveHeightOnSubmit={submitBehavior === "preserve-and-lock"}
+        attachments={selectedAttachments}
+        cwd={cwd}
+        attachmentMenuItems={attachmentMenuItems}
+        onAttachButtonRef={handleAttachButtonRef}
+        onAddImages={addImages}
+        onPasteImages={handleNativePasteImages}
+        client={client}
+        isReadyForDictation={isDictationReady}
+        placeholder={messagePlaceholder}
+        autoFocus={messageInputAutoFocus}
+        autoFocusKey={`${serverId}:${agentId}:${autoFocusKey ?? ""}`}
+        disabled={isSubmitLoading}
+        leftContent={leftContent}
+        beforeVoiceContent={beforeVoiceContent}
+        rightContent={rightContent}
+        activeActionContent={activeActionContent}
+        voiceServerId={serverId}
+        voiceAgentId={agentId}
+        showVoiceButton={appSettings.showVoiceButton}
+        isAgentRunning={isAgentRunning}
+        defaultSendBehavior={activeSendBehavior}
+        onQueue={handleQueue}
+        onSubmitLoadingPress={submitLoadingPressHandler}
+        onKeyPress={handleCommandKeyPress}
+        onSelectionChange={handleSelectionChange}
+        onFocusChange={handleFocusChange}
+        onHeightChange={onComposerHeightChange}
+        inputWrapperStyle={inputWrapperStyle}
+        attachmentSlot={attachmentTray}
+        inputMode={inputMode}
+        readOnly={readOnly}
+        textReplacement={textReplacement}
+        submitLabel={submitLabel}
+      />
+      <Combobox
+        options={githubSearchOptions}
+        value=""
+        onSelect={noop}
+        keepOpenOnSelect
+        searchable
+        searchPlaceholder={t("composer.github.searchPlaceholder", {
+          context: forgePresentation.changeRequestContext,
+        })}
+        title={t("composer.github.title", {
+          context: forgePresentation.changeRequestContext,
+        })}
+        open={isGithubPickerOpen}
+        onOpenChange={handleGithubPickerOpenChange}
+        onSearchQueryChange={setGithubSearchQuery}
+        desktopPlacement="top-start"
+        anchorRef={attachButtonRef}
+        emptyText={githubEmptyText}
+        renderOption={renderGithubPickerOption}
+      />
+      {pluginAttachments.picker}
     </View>
   );
 
@@ -2586,6 +2584,15 @@ function ComposerContentImpl({
         onSave={saveQuickRepliesFromEditor}
         onClose={closeQuickRepliesEditor}
       />
+      {quickReplies.isSupported ? (
+        <QuickRepliesSheet
+          visible={quickRepliesSheetVisible}
+          replies={quickReplies.replies}
+          onSelect={handleQuickReplySelect}
+          onEdit={openQuickRepliesEditor}
+          onClose={closeQuickRepliesSheet}
+        />
+      ) : null}
       <ComposerKeyboardRegistration
         handlerId={keyboardHandlerIdRef.current}
         messageInputRef={messageInputRef}
@@ -2599,13 +2606,32 @@ function ComposerContentImpl({
       <View style={animatedStaticStyles.container}>
         <AttachmentLightbox source={lightboxSource} onClose={handleLightboxClose} />
         {/* Input area */}
-        <View style={inputAreaContainerStyle}>
-          <View style={styles.inputAreaContent}>
+        <View
+          style={[inputAreaContainerStyle, showsQuickRepliesGutter && styles.inputAreaRow]}
+          onLayout={onInputAreaLayout}
+        >
+          {showsQuickRepliesGutter ? <View style={styles.inputAreaSpacer} /> : null}
+          <View
+            style={
+              showsQuickRepliesGutter
+                ? [styles.inputAreaContent, styles.inputAreaContentBesideQuickReplies]
+                : styles.inputAreaContent
+            }
+          >
             {queueList}
             {sendErrorNode}
 
             {messageInputNode}
           </View>
+          {showsQuickRepliesGutter ? (
+            <View style={styles.quickRepliesGutter}>
+              <QuickRepliesBar
+                replies={quickReplies.replies}
+                onSelect={handleQuickReplySelect}
+                onEdit={openQuickRepliesEditor}
+              />
+            </View>
+          ) : null}
         </View>
       </View>
     </>
@@ -2646,15 +2672,34 @@ const styles = StyleSheet.create((theme: Theme) => ({
     maxWidth: theme.contentMaxWidth,
     gap: theme.spacing[3],
   },
-  inputWithQuickReplies: {
+  // The row host: a centered input column with one empty spacer on each side and the quick
+  // replies gutter on the right. Equal spacers keep the column exactly where it sits today.
+  inputAreaRow: {
     flexDirection: "row",
     alignItems: "flex-end",
+    gap: theme.spacing[3],
   },
-  messageInputInner: {
-    flex: 1,
-    minWidth: 0,
-    position: "relative",
+  inputAreaSpacer: {
+    flexGrow: 1,
     flexShrink: 1,
+    flexBasis: 0,
+  },
+  // The column stops at its max width, so the leftover splits between the spacers instead of
+  // stretching the input past the transcript above it.
+  inputAreaContentBesideQuickReplies: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: theme.contentMaxWidth,
+    width: "auto",
+    minWidth: 0,
+  },
+  quickRepliesGutter: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    alignItems: "stretch",
+    justifyContent: "flex-end",
   },
   messageInputContainer: {
     flexShrink: 1,
