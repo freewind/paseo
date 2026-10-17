@@ -3373,6 +3373,22 @@ export class DaemonClient {
     return payload;
   }
 
+  async setAgentMemoCompleted(
+    agentId: string,
+    memoId: string,
+    completed: boolean,
+    options?: { requestId?: string; timeout?: number },
+  ): Promise<AgentMemoOperationPayload> {
+    const payload = await this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "agent.memo.set_completed.request", agentId, memoId, completed },
+      responseType: "agent.memo.set_completed.response",
+      timeout: options?.timeout,
+    });
+    if (payload.error) throw new Error(payload.error);
+    return payload;
+  }
+
   async deleteAgentMemo(
     agentId: string,
     memoId: string,

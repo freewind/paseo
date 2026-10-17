@@ -1,24 +1,31 @@
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { StyleSheet } from "react-native-unistyles";
-import { ClipboardList, Plus, Trash2 } from "lucide-react-native";
+import { CheckCircle2, Circle, ClipboardList, Plus, Trash2 } from "lucide-react-native";
 import { withUnistyles } from "react-native-unistyles";
+import type { AgentMemo } from "@getpaseo/protocol/messages";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { EditingTextInput } from "@/components/ui/text-input";
+import type { Theme } from "@/styles/theme";
 import { useAgentMemos } from "./use-agent-memos";
 import { useHostFeature } from "@/runtime/host-features";
 
 const ThemedClipboardList = withUnistyles(ClipboardList);
 const ThemedTrash2 = withUnistyles(Trash2);
+const mutedIconMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
+const ThemedCircle = withUnistyles(Circle, mutedIconMapping);
+const completedIconMapping = (theme: Theme) => ({ color: theme.colors.accent });
+const ThemedCheckCircle2 = withUnistyles(CheckCircle2, completedIconMapping);
 
 /**
  * The agent's memos, in the gutter beside the transcript.
  *
  * A memo is one line collapsed; hovering (web) or long-pressing opens its full text.
- * Clicking appends it to the composer on a new line and deletes it on the server —
- * a memo is a note to self with exactly one use, so spent memos leave the list. The
- * undo toast covers the accidental click.
+ * The list behaves like a todo list: pressing the text appends it to the composer on a
+ * new line and leaves the memo in place, the checkbox marks it done, and only the trash
+ * button removes it. Completion is stored on the daemon with the memo, so every client
+ * sees the same state.
  */
 export const AgentMemosRail = memo(function AgentMemosRail({
   serverId,
@@ -32,7 +39,8 @@ export const AgentMemosRail = memo(function AgentMemosRail({
 }) {
   const { t } = useTranslation();
   const supported = useHostFeature(serverId, "agentMemos");
-  const { memos, addMemo, deleteMemo } = useAgentMemos({ serverId, agentId });
+  const supportsCompletion = useHostFeature(serverId, "agentMemoCompletion");
+  const { memos, addMemo, setMemoCompleted, deleteMemo } = useAgentMemos({ serverId, agentId });
   const [isExpanded, setIsExpanded] = useState(false);
 
   const handleToggle = useCallback(() => setIsExpanded((open) => !open), []);
@@ -40,15 +48,18 @@ export const AgentMemosRail = memo(function AgentMemosRail({
     (memoId: string) => void deleteMemo(memoId).catch(() => undefined),
     [deleteMemo],
   );
+  const handleMemoCompletedChange = useCallback(
+    (memoId: string, completed: boolean) =>
+      void setMemoCompleted(memoId, completed).catch(() => undefined),
+    [setMemoCompleted],
+  );
 
+  // Pressing the text only appends it; the memo stays until the trash button removes it.
   const handleMemoPress = useCallback(
-    (memoId: string, text: string) => {
+    (text: string) => {
       onAppendToComposer(text);
-      void deleteMemo(memoId).catch(() => {
-        // Delete failure keeps the memo; the appended text stays harmless.
-      });
     },
-    [deleteMemo, onAppendToComposer],
+    [onAppendToComposer],
   );
 
   if (!supported) {
@@ -76,7 +87,9 @@ export const AgentMemosRail = memo(function AgentMemosRail({
               <AgentMemoRow
                 key={entry.id}
                 entry={entry}
+                supportsCompletion={supportsCompletion}
                 onUse={handleMemoPress}
+                onCompletedChange={handleMemoCompletedChange}
                 onDelete={handleMemoDelete}
               />
             ))
@@ -92,18 +105,41 @@ const ThemedAddPlus = withUnistyles(Plus);
 
 function AgentMemoRow({
   entry,
+  supportsCompletion,
   onUse,
+  onCompletedChange,
   onDelete,
 }: {
-  entry: AgentMemoRowMemo;
-  onUse: (memoId: string, text: string) => void;
+  entry: AgentMemo;
+  supportsCompletion: boolean;
+  onUse: (text: string) => void;
+  onCompletedChange: (memoId: string, completed: boolean) => void;
   onDelete: (memoId: string) => void;
 }) {
   const { t } = useTranslation();
-  const handleUse = useCallback(() => onUse(entry.id, entry.text), [entry, onUse]);
-  const handleDelete = useCallback(() => onDelete(entry.id), [entry, onDelete]);
+  const isCompleted = entry.completed === true;
+  const handleUse = useCallback(() => onUse(entry.text), [entry.text, onUse]);
+  const handleToggleCompleted = useCallback(
+    () => onCompletedChange(entry.id, !isCompleted),
+    [entry.id, isCompleted, onCompletedChange],
+  );
+  const handleDelete = useCallback(() => onDelete(entry.id), [entry.id, onDelete]);
+  const accessibilityState = useMemo(() => ({ checked: isCompleted }), [isCompleted]);
   return (
     <View style={styles.row}>
+      {supportsCompletion ? (
+        <Pressable
+          style={styles.checkButton}
+          onPress={handleToggleCompleted}
+          accessibilityRole="checkbox"
+          accessibilityState={accessibilityState}
+          accessibilityLabel={isCompleted ? t("agentMemos.markNotDone") : t("agentMemos.markDone")}
+          testID={`agent-memo-toggle-${entry.id}`}
+          hitSlop={6}
+        >
+          {isCompleted ? <ThemedCheckCircle2 size={14} /> : <ThemedCircle size={14} />}
+        </Pressable>
+      ) : null}
       <Tooltip delayDuration={300}>
         <TooltipTrigger asChild>
           <Pressable
@@ -113,7 +149,10 @@ function AgentMemoRow({
             accessibilityLabel={t("agentMemos.useMemo")}
             testID={`agent-memo-item-${entry.id}`}
           >
-            <Text numberOfLines={1} style={styles.memoText}>
+            <Text
+              numberOfLines={1}
+              style={isCompleted ? styles.memoTextCompleted : styles.memoText}
+            >
               {entry.text}
             </Text>
           </Pressable>
@@ -134,12 +173,6 @@ function AgentMemoRow({
       </Pressable>
     </View>
   );
-}
-
-interface AgentMemoRowMemo {
-  id: string;
-  text: string;
-  createdAt: string;
 }
 
 function AddMemoRow({ onAdd }: { onAdd: (text: string) => void }) {
@@ -253,6 +286,14 @@ const styles = StyleSheet.create((theme) => ({
   memoText: {
     color: theme.colors.foreground,
     fontSize: theme.fontSize.sm,
+  },
+  memoTextCompleted: {
+    color: theme.colors.foregroundMuted,
+    fontSize: theme.fontSize.sm,
+    textDecorationLine: "line-through",
+  },
+  checkButton: {
+    padding: theme.spacing[1],
   },
   deleteButton: {
     padding: theme.spacing[1],

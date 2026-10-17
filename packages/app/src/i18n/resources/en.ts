@@ -343,6 +343,16 @@ export const en = {
       archive: "Archive",
     },
   },
+  agentMemos: {
+    toggle: "Agent memos",
+    add: "Add memo",
+    placeholder: "New memo",
+    empty: "No memos yet",
+    useMemo: "Append memo to composer",
+    delete: "Delete memo",
+    markDone: "Mark as done",
+    markNotDone: "Mark as not done",
+  },
   message: {
     diagram: {
       diagram: "Diagram",
@@ -358,14 +368,6 @@ export const en = {
       copyTurn: "Copy turn",
       copyMessage: "Copy message",
       regenerate: "Regenerate from here",
-      agentMemos: {
-        toggle: "Agent memos",
-        add: "Add memo",
-        placeholder: "New memo",
-        empty: "No memos yet",
-        useMemo: "Append memo to composer",
-        delete: "Delete memo",
-      },
       forkMenu: "Fork chat from here",
       forkInNewTab: "Fork in a new tab",
       forkInNewWorkspace: "Fork in a new workspace",

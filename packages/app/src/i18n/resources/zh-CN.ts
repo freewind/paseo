@@ -343,6 +343,16 @@ export const zhCN: TranslationResources = {
       archive: "归档",
     },
   },
+  agentMemos: {
+    toggle: "Agent 备忘",
+    add: "添加备忘",
+    placeholder: "新备忘",
+    empty: "还没有备忘",
+    useMemo: "把备忘追加到输入框",
+    delete: "删除备忘",
+    markDone: "标记为完成",
+    markNotDone: "标记为未完成",
+  },
   message: {
     diagram: {
       diagram: "图表",
@@ -358,14 +368,6 @@ export const zhCN: TranslationResources = {
       copyTurn: "复制回合",
       copyMessage: "复制消息",
       regenerate: "从此处重新生成",
-      agentMemos: {
-        toggle: "Agent 备忘",
-        add: "添加备忘",
-        placeholder: "新备忘",
-        empty: "还没有备忘",
-        useMemo: "把备忘追加到输入框",
-        delete: "删除备忘",
-      },
       forkMenu: "分叉消息",
       forkInNewTab: "分叉到新标签页",
       forkInNewWorkspace: "分叉到新工作区",
