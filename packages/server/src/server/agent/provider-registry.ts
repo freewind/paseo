@@ -435,6 +435,10 @@ function mergeModelAdditions(
 // Every session member must cross this boundary, including optional capabilities.
 type ForwardedAgentSession = { [K in keyof Required<AgentSession>]: AgentSession[K] };
 
+// Same contract for the client: a member added to AgentClient must be forwarded here, not
+// silently dropped. Optional members are still listed, so `undefined` is an explicit answer.
+type ForwardedAgentClient = { [K in keyof Required<AgentClient>]: AgentClient[K] };
+
 export function wrapSessionProvider(provider: AgentProvider, inner: AgentSession): AgentSession {
   return {
     provider,
@@ -655,7 +659,7 @@ function wrapClientProvider(
     getCatalogCacheKey: inner.getCatalogCacheKey?.bind(inner),
     isAvailable: (signal, options) => inner.isAvailable(signal, options),
     getDiagnostic: inner.getDiagnostic?.bind(inner),
-  };
+  } satisfies ForwardedAgentClient;
 }
 
 function createRegistryEntry(
