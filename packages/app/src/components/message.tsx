@@ -126,6 +126,7 @@ import { isWeb, isNative } from "@/constants/platform";
 import type { AgentCapabilityFlags } from "@getpaseo/protocol/agent-types";
 import { RewindMenu, type RewindMode } from "@/components/rewind/rewind-menu";
 import { useRewindAgentMutation } from "@/components/rewind/use-rewind-agent-mutation";
+import type { RegenerateUserMessageInput } from "@/components/rewind/regenerate-user-message";
 import {
   AssistantForkMenu,
   type AssistantForkChoice,
@@ -157,6 +158,8 @@ interface UserMessageProps {
   isLastInGroup?: boolean;
   isPending?: boolean;
   disableOuterSpacing?: boolean;
+  /** Resend this message verbatim after rewinding it away; absent when unavailable. */
+  onRegenerate?: (input: RegenerateUserMessageInput) => Promise<void>;
 }
 
 const MessageOuterSpacingContext = createContext(false);
@@ -450,6 +453,41 @@ function UserMessageImagePill({ image, onOpen, accessibilityLabel }: UserMessage
 
 const MESSAGE_TEXT_DATASET = { messageText: "true" };
 
+interface UserMessageRegenerateButtonProps {
+  visible: boolean;
+  disabled: boolean;
+  onPress: () => void | Promise<void>;
+}
+
+function resolveRegenerateIconColor(input: { disabled: boolean; hovered: boolean }) {
+  if (input.disabled) return foregroundMutedColorMapping;
+  return input.hovered ? foregroundColorMapping : foregroundMutedColorMapping;
+}
+
+function UserMessageRegenerateButton({
+  visible,
+  disabled,
+  onPress,
+}: UserMessageRegenerateButtonProps) {
+  const { t } = useTranslation();
+  if (!visible) return null;
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={t("message.actions.regenerate")}
+      testID="user-message-regenerate"
+      style={userMessageStylesheet.copyButton}
+      hitSlop={8}
+    >
+      {({ hovered }) => (
+        <ThemedRefreshCw size={16} uniProps={resolveRegenerateIconColor({ disabled, hovered })} />
+      )}
+    </Pressable>
+  );
+}
+
 export const UserMessage = memo(function UserMessage({
   serverId,
   agentId,
@@ -464,6 +502,7 @@ export const UserMessage = memo(function UserMessage({
   isLastInGroup = true,
   isPending = false,
   disableOuterSpacing,
+  onRegenerate,
 }: UserMessageProps) {
   const isCompact = useIsCompactFormFactor();
   const { t } = useTranslation();
@@ -479,11 +518,26 @@ export const UserMessage = memo(function UserMessage({
   const hasImages = images.length > 0;
   const hasAttachments = attachments.length > 0;
   const showTrailingRow = !isPending && hasText && (isCompact || isNative || isHovered);
+  const showRegenerate = Boolean(onRegenerate && messageId && !isPending);
   const formattedTimestamp = useMemo(
     () => formatMessageTimestamp(new Date(timestamp)),
     [timestamp],
   );
   const rewindMutation = useRewindAgentMutation({ serverId, agentId, client, messageId });
+  const [isRegenerating, setIsRegenerating] = useState(false);
+
+  const handleRegenerate = useCallback(async () => {
+    if (!onRegenerate || !messageId || isRegenerating) return;
+    setIsRegenerating(true);
+    try {
+      // Rewind first; only a successful rewind resends, so the message is never both
+      // present and about to repeat.
+      await rewindMutation.rewindAgent({ mode: "conversation", rewoundText: "" });
+      await onRegenerate({ text: message, images, attachments });
+    } finally {
+      setIsRegenerating(false);
+    }
+  }, [onRegenerate, messageId, isRegenerating, rewindMutation, message, images, attachments]);
 
   const handlePointerEnter = useCallback(() => setIsHovered(true), []);
   const handlePointerLeave = useCallback(() => setIsHovered(false), []);
@@ -591,6 +645,11 @@ export const UserMessage = memo(function UserMessage({
                 onRewind={handleRewind}
               />
             ) : null}
+            <UserMessageRegenerateButton
+              visible={showRegenerate}
+              disabled={isRegenerating || rewindMutation.isPending}
+              onPress={handleRegenerate}
+            />
             <TurnCopyButton
               getContent={getMessageContent}
               containerStyle={userMessageStylesheet.copyButton}
