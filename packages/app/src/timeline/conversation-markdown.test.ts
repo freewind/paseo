@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import type { AgentTimelineItem } from "@getpaseo/protocol/agent-types";
+import type { AgentTaskSnapshotItem, AgentTimelineItem } from "@getpaseo/protocol/agent-types";
 import { buildConversationMarkdown } from "./conversation-markdown";
 
 const toolCall: AgentTimelineItem = {
@@ -54,5 +54,35 @@ describe("buildConversationMarkdown", () => {
   test("returns an empty string when no user or assistant text exists", () => {
     expect(buildConversationMarkdown([toolCall])).toBe("");
     expect(buildConversationMarkdown([])).toBe("");
+  });
+
+  test("opens with the agent title as plain text when one is given", () => {
+    const items: AgentTimelineItem[] = [{ type: "user_message", text: "你好" }];
+
+    expect(buildConversationMarkdown(items, undefined, { agentTitle: "修复登录跳转" })).toBe(
+      "修复登录跳转\n\n## User\n\n你好",
+    );
+  });
+
+  test("trims the title and skips empty titles without leaving a blank opener", () => {
+    const items: AgentTimelineItem[] = [{ type: "user_message", text: "你好" }];
+
+    expect(buildConversationMarkdown(items, undefined, { agentTitle: "   " })).toBe(
+      "## User\n\n你好",
+    );
+    expect(buildConversationMarkdown(items, undefined, { agentTitle: null })).toBe(
+      "## User\n\n你好",
+    );
+    expect(buildConversationMarkdown(items)).toBe("## User\n\n你好");
+  });
+
+  test("applies the title even to a tasks-only copy", () => {
+    const tasks = [
+      { id: 1, text: "ship it", completed: true, status: "completed", blockedBy: [] },
+    ] as unknown as readonly AgentTaskSnapshotItem[];
+
+    expect(buildConversationMarkdown([], tasks, { agentTitle: "Release" })).toBe(
+      "Release\n\n## Tasks\n\n- [x] #1 ship it",
+    );
   });
 });
