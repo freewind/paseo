@@ -35,6 +35,7 @@ import {
 } from "@/composer/pill-styles";
 import { getActiveMessageSubmissions } from "@/composer/submission/model";
 import { RewindComposerRestoreProvider } from "@/components/rewind/composer-restore";
+import { AgentMemosRail } from "@/agent-memos/agent-memos-rail";
 import {
   regenerateUserMessage,
   type RegenerateUserMessageInput,
@@ -1685,8 +1686,23 @@ function ActiveAgentComposer({
     ],
   );
 
+  const handleMemoAppendToComposer = useCallback(
+    (memoText: string) => {
+      const current = agentInputDraft.textSource.getSnapshot();
+      const next =
+        current.trim().length > 0 ? `${current.replace(/\s+$/, "")}\n${memoText}` : memoText;
+      agentInputDraft.replaceText(next);
+    },
+    [agentInputDraft],
+  );
+
   return (
     <View style={animatedStaticStyles.inputAreaWrapper} onLayout={onInputAreaLayout}>
+      <AgentMemosRail
+        serverId={serverId}
+        agentId={agentId}
+        onAppendToComposer={handleMemoAppendToComposer}
+      />
       <Composer
         agentId={agentId}
         serverId={serverId}
