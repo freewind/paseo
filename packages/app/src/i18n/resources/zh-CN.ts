@@ -1173,6 +1173,12 @@ export const zhCN: TranslationResources = {
       description: "更改或清除侧边栏筛选以查看工作区。",
       clear: "清除筛选",
     },
+    nameSearch: {
+      placeholder: "搜索项目、工作区、Agent",
+      clear: "清除搜索",
+      noMatchesTitle: "没有匹配项",
+      noMatchesDescription: "侧边栏中没有与该搜索匹配的内容。",
+    },
     pinned: {
       title: "已置顶",
     },

@@ -109,6 +109,18 @@ vi.mock("@/components/ui/dropdown-menu", () => ({
 
 vi.mock("@/utils/confirm-dialog", () => ({ confirmDialog: vi.fn(() => Promise.resolve(true)) }));
 
+// The agent list now reads the name-search model; tests that don't exercise the search get an
+// empty one, which keeps every row visible with no highlight.
+vi.mock("@/components/sidebar/sidebar-model", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/sidebar/sidebar-model")>();
+  return {
+    ...actual,
+    useSidebarModel: () => ({
+      nameSearchMatches: { projects: [], workspaces: new Map(), agents: new Map() },
+    }),
+  };
+});
+
 vi.stubGlobal("React", React);
 vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
 
