@@ -2558,6 +2558,10 @@ export const es: TranslationResources = {
           label: "🌿 Líneas del título",
           hint: "🌿 Permitir que los títulos largos de espacios de trabajo y los resúmenes de llamadas de herramientas ocupen varias líneas",
         },
+        toolArgsMultiline: {
+          label: "🌿 Argumentos de herramientas",
+          hint: "🌿 Muestra los argumentos de las herramientas completos, en varias líneas",
+        },
       },
       sidebar: {
         header: {
