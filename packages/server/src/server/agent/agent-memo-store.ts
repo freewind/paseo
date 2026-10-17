@@ -4,8 +4,44 @@ import { z } from "zod";
 import type { Logger } from "pino";
 
 import { writeJsonFileAtomic } from "../atomic-file.js";
-import { AGENT_MEMOS_MAX_PER_AGENT } from "@getpaseo/protocol/agent-memo-limits";
+import {
+  AGENT_MEMO_IMAGE_MAX_BYTES,
+  AGENT_MEMO_MAX_IMAGES,
+  AGENT_MEMOS_MAX_PER_AGENT,
+} from "@getpaseo/protocol/agent-memo-limits";
 import { AgentMemoSchema, type AgentMemo } from "@getpaseo/protocol/messages";
+
+type MemoImage = NonNullable<AgentMemo["images"]>[number];
+
+/** Base64 carries 3 bytes per 4 characters, so this is the encoded ceiling for one image. */
+function decodedBase64Bytes(data: string): number {
+  let padding = 0;
+  if (data.endsWith("==")) {
+    padding = 2;
+  } else if (data.endsWith("=")) {
+    padding = 1;
+  }
+  return Math.floor((data.length * 3) / 4) - padding;
+}
+
+/**
+ * Rejects images the store will not persist. Inline base64 is the whole reason this check
+ * lives here: one oversized memo would otherwise be written into the JSON file verbatim.
+ */
+function assertMemoImages(images: readonly MemoImage[] | undefined): void {
+  if (!images || images.length === 0) return;
+  if (images.length > AGENT_MEMO_MAX_IMAGES) {
+    throw new Error(`A memo holds at most ${AGENT_MEMO_MAX_IMAGES} images`);
+  }
+  for (const image of images) {
+    if (!image.mimeType.startsWith("image/")) {
+      throw new Error(`Memo image must be an image, got ${image.mimeType}`);
+    }
+    if (decodedBase64Bytes(image.data) > AGENT_MEMO_IMAGE_MAX_BYTES) {
+      throw new Error(`Memo image exceeds ${AGENT_MEMO_IMAGE_MAX_BYTES} bytes`);
+    }
+  }
+}
 
 const AGENT_MEMOS_SCHEMA = z.object({
   version: z.literal(1).default(1),
@@ -44,13 +80,15 @@ export class AgentMemoStore {
     return this.snapshot().memosByAgentId[agentId] ?? [];
   }
 
-  async add(agentId: string, text: string): Promise<AgentMemo> {
+  async add(agentId: string, text: string, images?: readonly MemoImage[]): Promise<AgentMemo> {
+    assertMemoImages(images);
     return this.enqueue(async () => {
       await this.load();
       const memo: AgentMemo = {
         id: `memo_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
         text,
         createdAt: new Date().toISOString(),
+        ...(images && images.length > 0 ? { images: [...images] } : {}),
       };
       const memos = this.snapshot().memosByAgentId[agentId] ?? [];
       if (memos.length >= AGENT_MEMOS_MAX_PER_AGENT) {
@@ -67,7 +105,13 @@ export class AgentMemoStore {
     });
   }
 
-  async update(agentId: string, memoId: string, text: string): Promise<AgentMemo> {
+  async update(
+    agentId: string,
+    memoId: string,
+    text: string,
+    images?: readonly MemoImage[],
+  ): Promise<AgentMemo> {
+    assertMemoImages(images);
     return this.enqueue(async () => {
       await this.load();
       const memos = this.snapshot().memosByAgentId[agentId] ?? [];
@@ -75,7 +119,11 @@ export class AgentMemoStore {
       if (index < 0) {
         throw new Error(`Memo not found: ${memoId}`);
       }
-      const updated: AgentMemo = { ...memos[index]!, text };
+      const updated: AgentMemo = {
+        ...memos[index]!,
+        text,
+        ...(images === undefined ? {} : { images: images.length > 0 ? [...images] : undefined }),
+      };
       const next = [...memos];
       next[index] = updated;
       await this.persist({

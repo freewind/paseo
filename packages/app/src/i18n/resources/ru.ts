@@ -356,6 +356,7 @@ export const ru: TranslationResources = {
     delete: "Удалить заметку",
     markDone: "Отметить как выполненное",
     markNotDone: "Отметить как невыполненное",
+    attachImage: "Прикрепить изображение",
   },
   message: {
     diagram: {

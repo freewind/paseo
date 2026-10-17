@@ -356,6 +356,7 @@ export const ptBR: TranslationResources = {
     delete: "Excluir nota",
     markDone: "Marcar como concluído",
     markNotDone: "Marcar como não concluído",
+    attachImage: "Anexar imagem",
   },
   message: {
     diagram: {

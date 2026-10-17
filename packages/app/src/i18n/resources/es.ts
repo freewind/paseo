@@ -360,6 +360,7 @@ export const es: TranslationResources = {
     delete: "Eliminar nota",
     markDone: "Marcar como hecho",
     markNotDone: "Marcar como pendiente",
+    attachImage: "Adjuntar imagen",
   },
   message: {
     diagram: {

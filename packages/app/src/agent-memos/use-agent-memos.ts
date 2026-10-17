@@ -1,5 +1,5 @@
 import { useCallback, useSyncExternalStore } from "react";
-import type { AgentMemo } from "@getpaseo/protocol/messages";
+import type { AgentMemo, ImageAttachment } from "@getpaseo/protocol/messages";
 import { useSessionStore } from "@/stores/session-store";
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
 
@@ -15,8 +15,8 @@ export function useAgentMemos(input: {
   agentId: string | null | undefined;
 }): {
   memos: readonly AgentMemo[];
-  addMemo: (text: string) => Promise<void>;
-  updateMemo: (memoId: string, text: string) => Promise<void>;
+  addMemo: (text: string, images?: readonly ImageAttachment[]) => Promise<void>;
+  updateMemo: (memoId: string, text: string, images?: readonly ImageAttachment[]) => Promise<void>;
   setMemoCompleted: (memoId: string, completed: boolean) => Promise<void>;
   deleteMemo: (memoId: string) => Promise<void>;
 } {
@@ -41,22 +41,22 @@ export function useAgentMemos(input: {
   const memos = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   const addMemo = useCallback(
-    async (text: string) => {
+    async (text: string, images?: readonly ImageAttachment[]) => {
       if (!agentId) throw new Error("Memo: agent unavailable");
       const client = getHostRuntimeStore().getClient(serverId);
       if (!client) throw new Error("Memo: daemon client unavailable");
-      const payload = await client.addAgentMemo(agentId, text);
+      const payload = await client.addAgentMemo(agentId, text, images);
       useSessionStore.getState().setAgentMemos(serverId, agentId, payload.memos);
     },
     [agentId, serverId],
   );
 
   const updateMemo = useCallback(
-    async (memoId: string, text: string) => {
+    async (memoId: string, text: string, images?: readonly ImageAttachment[]) => {
       if (!agentId) throw new Error("Memo: agent unavailable");
       const client = getHostRuntimeStore().getClient(serverId);
       if (!client) throw new Error("Memo: daemon client unavailable");
-      const payload = await client.updateAgentMemo(agentId, memoId, text);
+      const payload = await client.updateAgentMemo(agentId, memoId, text, images);
       useSessionStore.getState().setAgentMemos(serverId, agentId, payload.memos);
     },
     [agentId, serverId],

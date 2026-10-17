@@ -352,6 +352,7 @@ export const zhCN: TranslationResources = {
     delete: "删除备忘",
     markDone: "标记为完成",
     markNotDone: "标记为未完成",
+    attachImage: "附加图片",
   },
   message: {
     diagram: {

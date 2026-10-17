@@ -357,6 +357,7 @@ export const ja: TranslationResources = {
     delete: "メモを削除",
     markDone: "完了にする",
     markNotDone: "未完了に戻す",
+    attachImage: "画像を添付",
   },
   message: {
     diagram: {
