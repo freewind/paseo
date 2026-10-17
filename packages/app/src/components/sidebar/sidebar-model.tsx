@@ -9,6 +9,7 @@ import { useSidebarWorkspaceEntries } from "@/hooks/use-sidebar-workspace-entrie
 import { usePinnedSidebarKeys, type PinnedSidebarGroups } from "@/hooks/use-sidebar-pins";
 import { useSidebarCollapsedSectionsStore } from "@/stores/sidebar-collapsed-sections-store";
 import { useSessionStore } from "@/stores/session-store";
+import { useShallow } from "zustand/shallow";
 import {
   hasActiveSidebarLabelFilter,
   useSidebarViewStore,
@@ -137,14 +138,24 @@ export function SidebarModelProvider({
   // filters already kept, and its parent-keeping rules read the rows this list holds.
   // Agent titles come from the live session store. Subscribing once here (not per row) keeps
   // the filter's cost to one selector; the map is rebuilt when the agents map is replaced.
-  const agentsByWorkspaceId = useSessionStore((state) =>
-    hasNameSearch
-      ? list.workspacePlacements.map((placement) => ({
-          workspaceKey: placement.workspaceKey,
-          agents: state.sessions[placement.serverId]?.agents ?? null,
-        }))
-      : [],
+  // The selector returns the agents maps themselves and the pairing is built in a memo below:
+  // a selector that builds fresh objects re-renders on every store tick and spins forever.
+  const agentMapsByServerId = useSessionStore(
+    useShallow((state) =>
+      hasNameSearch
+        ? list.workspacePlacements.map(
+            (placement) => state.sessions[placement.serverId]?.agents ?? null,
+          )
+        : EMPTY_AGENT_MAPS,
+    ),
   );
+  const agentsByWorkspaceId = useMemo(() => {
+    if (!hasNameSearch) return EMPTY_AGENTS_BY_WORKSPACE_ID;
+    return list.workspacePlacements.map((placement, index) => ({
+      workspaceKey: placement.workspaceKey,
+      agents: agentMapsByServerId[index] ?? null,
+    }));
+  }, [agentMapsByServerId, hasNameSearch, list.workspacePlacements]);
   const agentTitlesMap = useMemo(() => {
     const titles = new Map<string, string>();
     for (const entry of agentsByWorkspaceId) {
@@ -300,6 +311,8 @@ export function useSidebarModel(): SidebarModel {
 const EMPTY_PROJECT_MATCHES: SidebarNameFilterResult["projects"] = [];
 const EMPTY_WORKSPACE_MATCHES: SidebarNameFilterResult["workspaces"] = new Map();
 const EMPTY_AGENT_MATCHES: SidebarNameFilterResult["agents"] = new Map();
+const EMPTY_AGENT_MAPS: readonly never[] = [];
+const EMPTY_AGENTS_BY_WORKSPACE_ID: readonly never[] = [];
 
 /** Root-agent ids for one workspace, from the agents the name filter already subscribed to. */
 function workspaceAgentIds(
