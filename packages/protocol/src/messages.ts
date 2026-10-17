@@ -22,6 +22,7 @@ import { TerminalActivitySchema } from "./terminal-activity.js";
 import { CLIENT_CAPS } from "./client-capabilities.js";
 import { AGENT_LIFECYCLE_STATUSES } from "./agent-lifecycle.js";
 import { MAX_EXPLICIT_AGENT_TITLE_CHARS } from "./agent-title-limits.js";
+import { AGENT_MEMO_MAX_CHARS } from "./agent-memo-limits.js";
 import { AgentProviderSchema } from "./provider-manifest.js";
 import { ProviderPaseoToolsPolicySchema } from "./provider-config.js";
 import { TOOL_CALL_ICON_NAMES } from "./agent-types.js";
@@ -1562,6 +1563,72 @@ export const AgentTimelineAppendRequestSchema = z.object({
     kind: z.string(),
     version: z.number().int().positive(),
     data: JsonWireValueSchema,
+  }),
+});
+
+// Agent memos are server-stored snippets a user pins to an agent and can click into the
+// composer. Storage lives on the daemon so every client sees the same list; ordering is
+// creation order and ids are server-issued so concurrent clients cannot collide.
+export const AgentMemoSchema = z.object({
+  id: z.string(),
+  text: z.string().min(1).max(AGENT_MEMO_MAX_CHARS),
+  createdAt: z.string(),
+});
+export type AgentMemo = z.infer<typeof AgentMemoSchema>;
+
+export const AgentMemoAddRequestSchema = z.object({
+  type: z.literal("agent.memo.add.request"),
+  requestId: z.string(),
+  agentId: z.string(),
+  text: z.string().trim().min(1).max(AGENT_MEMO_MAX_CHARS),
+});
+
+export const AgentMemoAddResponseSchema = z.object({
+  type: z.literal("agent.memo.add.response"),
+  payload: z.object({
+    requestId: z.string(),
+    agentId: z.string(),
+    memo: AgentMemoSchema.nullable(),
+    memos: z.array(AgentMemoSchema),
+    error: z.string().nullable(),
+  }),
+});
+
+export const AgentMemoUpdateRequestSchema = z.object({
+  type: z.literal("agent.memo.update.request"),
+  requestId: z.string(),
+  agentId: z.string(),
+  memoId: z.string(),
+  text: z.string().trim().min(1).max(AGENT_MEMO_MAX_CHARS),
+});
+
+export const AgentMemoUpdateResponseSchema = z.object({
+  type: z.literal("agent.memo.update.response"),
+  payload: z.object({
+    requestId: z.string(),
+    agentId: z.string(),
+    memoId: z.string(),
+    memo: AgentMemoSchema.nullable(),
+    memos: z.array(AgentMemoSchema),
+    error: z.string().nullable(),
+  }),
+});
+
+export const AgentMemoDeleteRequestSchema = z.object({
+  type: z.literal("agent.memo.delete.request"),
+  requestId: z.string(),
+  agentId: z.string(),
+  memoId: z.string(),
+});
+
+export const AgentMemoDeleteResponseSchema = z.object({
+  type: z.literal("agent.memo.delete.response"),
+  payload: z.object({
+    requestId: z.string(),
+    agentId: z.string(),
+    memoId: z.string(),
+    memos: z.array(AgentMemoSchema),
+    error: z.string().nullable(),
   }),
 });
 
@@ -3297,6 +3364,9 @@ export const SessionInboundMessageSchema = z.discriminatedUnion("type", [
   PluginRemoveRequestSchema,
   PluginRpcInvokeRequestSchema,
   AgentTimelineAppendRequestSchema,
+  AgentMemoAddRequestSchema,
+  AgentMemoUpdateRequestSchema,
+  AgentMemoDeleteRequestSchema,
   AgentSkillsGetStatusRequestSchema,
   AgentSkillsReconcileRequestSchema,
   AgentSkillsUninstallRequestSchema,
@@ -3684,6 +3754,9 @@ export const ServerInfoStatusPayloadSchema = z
         pluginThemes: z.boolean().optional(),
         pluginSettings: z.boolean().optional(),
         pluginTimelineItems: z.boolean().optional(),
+        // COMPAT(agentMemos): added in v0.11.0, remove gate after 2027-05-05.
+        // Server-stored agent memos; clients gate the composer/pane surface on this.
+        agentMemos: z.boolean().optional(),
         // COMPAT(skillManagement): added in v0.4.0, remove gate after 2027-08-16.
         skillManagement: z.boolean().optional(),
         // COMPAT(terminalRestoreModes): added in v0.1.81, remove gate after 2026-11-23.
@@ -6926,6 +6999,9 @@ export const SessionOutboundMessageSchema = z.discriminatedUnion("type", [
   PluginRemoveResponseSchema,
   PluginRpcInvokeResponseSchema,
   AgentTimelineAppendResponseSchema,
+  AgentMemoAddResponseSchema,
+  AgentMemoUpdateResponseSchema,
+  AgentMemoDeleteResponseSchema,
   AgentSkillsGetStatusResponseSchema,
   AgentSkillsReconcileResponseSchema,
   AgentSkillsUninstallResponseSchema,
