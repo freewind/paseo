@@ -714,6 +714,14 @@ export const ptBR: TranslationResources = {
         renameTerminal: "Renomear terminal",
         renameAgent: "Renomear agente",
       },
+      transfer: {
+        title: 'Mover "{{agent}}" para um espaço de trabalho',
+        confirm: "Mover agente",
+        createAtProjectRoot: "Criar espaço de trabalho em {{project}}",
+        moving: "Movendo agente…",
+        moved: "Agente movido",
+        failed: "Falha ao mover o agente",
+      },
       actions: {
         newTab: "Nova aba",
         newAgent: "Novo agente",

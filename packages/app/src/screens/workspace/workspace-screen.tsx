@@ -128,6 +128,7 @@ import {
 import { useWorkspace } from "@/stores/session-store-hooks";
 import { useSidebarWorkspacePinController } from "@/hooks/use-sidebar-workspace-pin";
 import { useHostFeature } from "@/runtime/host-features";
+import { useAgentTransferWorkspace } from "./use-agent-transfer-workspace";
 import { useAgentReadState } from "@/hooks/use-agent-read-state";
 import { useWorkspaceReadState } from "@/hooks/use-workspace-read-state";
 import type { WorkspaceLabelTarget } from "@/workspace-labels/picker";
@@ -629,6 +630,7 @@ function MobileWorkspaceTabOption({
   const tabMenuLabels = useMemo<WorkspaceTabMenuLabels>(
     () => ({
       copyResumeCommand: t("workspace.tabs.menu.copyResumeCommand"),
+      moveToWorkspace: t("workspace.tabs.menu.moveToWorkspace"),
       copyAgentId: t("workspace.tabs.menu.copyAgentId"),
       copyConversationMarkdown: t("workspace.tabs.menu.copyConversationMarkdown"),
       copyAgentAsNew: t("workspace.tabs.menu.copyAgentAsNewConversation"),
@@ -2953,6 +2955,15 @@ function WorkspaceScreenContent({
   const supportsCloneAgent = useSessionStore(
     (state) => state.sessions[normalizedServerId]?.serverInfo?.features?.agentCloneSession === true,
   );
+  const supportsAgentTransferWorkspace = useSessionStore(
+    (state) =>
+      state.sessions[normalizedServerId]?.serverInfo?.features?.agentTransferWorkspace === true,
+  );
+  const { onMoveAgentToWorkspace, transferModal: transferWorkspaceModal } =
+    useAgentTransferWorkspace({
+      serverId: normalizedServerId,
+      enabled: supportsAgentTransferWorkspace,
+    });
 
   const handleCopyAgentAsNew = useCallback(
     async (agentId: string) => {
@@ -4344,6 +4355,7 @@ function WorkspaceScreenContent({
         onCopyConversationMarkdown={handleCopyConversationMarkdown}
         onCopyAgentAsNew={handleCopyAgentAsNew}
         canCloneAgent={supportsCloneAgent}
+        onMoveAgentToWorkspace={onMoveAgentToWorkspace}
         onCopyTerminalId={handleCopyTerminalId}
         onCopyFilePath={handleCopyFilePath}
         onReloadAgent={handleReloadAgent}
@@ -4382,6 +4394,7 @@ function WorkspaceScreenContent({
     handleCopyConversationMarkdown,
     handleCopyAgentAsNew,
     supportsCloneAgent,
+    onMoveAgentToWorkspace,
     handleCopyTerminalId,
     handleCopyFilePath,
     handleReloadAgent,
@@ -4482,6 +4495,7 @@ function WorkspaceScreenContent({
             onCopyConversationMarkdown={handleCopyConversationMarkdown}
             onCopyAgentAsNew={handleCopyAgentAsNew}
             canCloneAgent={supportsCloneAgent}
+            onMoveAgentToWorkspace={onMoveAgentToWorkspace}
             onCopyTerminalId={handleCopyTerminalId}
             onCopyFilePath={handleCopyFilePath}
             onReloadAgent={handleReloadAgent}
@@ -4667,6 +4681,7 @@ function WorkspaceScreenContent({
           onSubmit={handleRenameModalSubmit}
           onClose={handleRenameModalClose}
         />
+        {transferWorkspaceModal}
       </View>
     </RenderProfile>
   );

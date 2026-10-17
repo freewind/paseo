@@ -12,6 +12,7 @@ import {
   Circle,
   Pencil,
   RotateCw,
+  FolderInput,
   X,
 } from "lucide-react-native";
 import {
@@ -34,6 +35,7 @@ const ThemedEyeOff = withUnistyles(EyeOff);
 const ThemedCircle = withUnistyles(Circle);
 const ThemedCopyX = withUnistyles(CopyX);
 const ThemedPencil = withUnistyles(Pencil);
+const ThemedFolderInput = withUnistyles(FolderInput);
 const ThemedX = withUnistyles(X);
 
 const mutedColorMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
@@ -68,6 +70,8 @@ function MobileTabDropdownMenuItem({
         return <ThemedCircle size={16} uniProps={mutedColorMapping} />;
       case "pencil":
         return <ThemedPencil size={16} uniProps={mutedColorMapping} />;
+      case "folder-input":
+        return <ThemedFolderInput size={16} uniProps={mutedColorMapping} />;
       case "x":
         return <ThemedX size={16} uniProps={mutedColorMapping} />;
       default:

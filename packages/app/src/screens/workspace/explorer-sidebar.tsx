@@ -25,6 +25,7 @@ interface ExplorerSidebarDockProps extends Pick<
   | "onCopyConversationMarkdown"
   | "onCopyAgentAsNew"
   | "canCloneAgent"
+  | "onMoveAgentToWorkspace"
   | "onCopyTerminalId"
   | "onCopyFilePath"
   | "onReloadAgent"

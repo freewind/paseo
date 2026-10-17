@@ -7,6 +7,7 @@ export type WorkspaceTabMenuSurface = "desktop" | "mobile";
 
 export interface WorkspaceTabMenuLabels {
   copyResumeCommand: string;
+  moveToWorkspace: string;
   copyAgentId: string;
   copyConversationMarkdown: string;
   copyAgentAsNew: string;
@@ -27,6 +28,7 @@ export interface WorkspaceTabMenuLabels {
 
 export const DEFAULT_WORKSPACE_TAB_MENU_LABELS: WorkspaceTabMenuLabels = {
   copyResumeCommand: i18n.t("workspace.tabs.menu.copyResumeCommand"),
+  moveToWorkspace: i18n.t("workspace.tabs.menu.moveToWorkspace"),
   copyAgentId: i18n.t("workspace.tabs.menu.copyAgentId"),
   copyConversationMarkdown: i18n.t("workspace.tabs.menu.copyConversationMarkdown"),
   copyAgentAsNew: i18n.t("workspace.tabs.menu.copyAgentAsNewConversation"),
@@ -59,6 +61,7 @@ export type WorkspaceTabMenuEntry =
         | "eye-off"
         | "circle"
         | "pencil"
+        | "folder-input"
         | "x";
       hint?: string;
       tooltip?: string;
@@ -89,6 +92,8 @@ interface BuildWorkspaceTabMenuEntriesInput {
   /** Full-session copy into a new conversation; present only when the daemon advertises it. */
   onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
   canCloneAgent?: boolean;
+  /** Move this agent to a different workspace; present only when the daemon advertises it. */
+  onMoveAgentToWorkspace?: (agentId: string) => void;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
@@ -112,6 +117,7 @@ interface BuildWorkspaceDesktopTabActionsInput {
   onCopyConversationMarkdown: (agentId: string) => Promise<void> | void;
   onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
   canCloneAgent?: boolean;
+  onMoveAgentToWorkspace?: (agentId: string) => void;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
@@ -205,6 +211,7 @@ export function buildWorkspaceTabMenuEntries(
     onCopyConversationMarkdown,
     onCopyAgentAsNew,
     canCloneAgent = false,
+    onMoveAgentToWorkspace,
     onCopyTerminalId,
     onCopyFilePath,
     onReloadAgent,
@@ -265,6 +272,18 @@ export function buildWorkspaceTabMenuEntries(
         testID: `${menuTestIDBase}-copy-agent-as-new`,
         onSelect: () => {
           void onCopyAgentAsNew(agentId);
+        },
+      });
+    }
+    if (onMoveAgentToWorkspace) {
+      entries.push({
+        kind: "item",
+        key: "move-to-workspace",
+        label: labels.moveToWorkspace,
+        icon: "folder-input",
+        testID: `${menuTestIDBase}-move-to-workspace`,
+        onSelect: () => {
+          onMoveAgentToWorkspace(agentId);
         },
       });
     }

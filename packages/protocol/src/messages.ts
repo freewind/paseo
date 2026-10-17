@@ -2038,6 +2038,32 @@ export const AgentCloneResponseMessageSchema = z.object({
   }),
 });
 
+/**
+ * Move an existing agent to another workspace on the same daemon: same agent id,
+ * same provider session, same history — only `workspaceId` ownership and the
+ * execution `cwd` change. Running agents are rejected; the new workspace's `cwd`
+ * must exist. No disk directory is moved.
+ */
+export const AgentTransferWorkspaceRequestMessageSchema = z.object({
+  type: z.literal("agent.transfer_workspace.request"),
+  requestId: z.string(),
+  agentId: z.string(),
+  targetWorkspaceId: z.string(),
+  /** Used when creating a workspace as part of the transfer; ignored otherwise. */
+  newWorkspaceTitle: z.string().optional(),
+});
+
+export const AgentTransferWorkspaceResponseMessageSchema = z.object({
+  type: z.literal("agent.transfer_workspace.response"),
+  payload: z.object({
+    requestId: z.string(),
+    agentId: z.string(),
+    /** Set when the transfer created a workspace for a project without one. */
+    newWorkspaceId: z.string().nullable(),
+    error: z.string().nullable(),
+  }),
+});
+
 export const ProviderSubagentListRequestMessageSchema = z.object({
   type: z.literal("agent.provider_subagents.list.request"),
   parentAgentId: z.string(),
@@ -3472,6 +3498,7 @@ export const SessionInboundMessageSchema = z.discriminatedUnion("type", [
   AgentTimelineListPromptsRequestMessageSchema,
   AgentExportConversationRequestMessageSchema,
   AgentCloneRequestMessageSchema,
+  AgentTransferWorkspaceRequestMessageSchema,
   ProviderSubagentListRequestMessageSchema,
   ProviderSubagentTimelineRequestMessageSchema,
   SetAgentTimelineSubscriptionRequestMessageSchema,
@@ -3884,6 +3911,8 @@ export const ServerInfoStatusPayloadSchema = z
         agentForkContextCursor: z.boolean().optional(),
         // COMPAT(agentForkSession): added in v0.11.0, remove gate after 2027-04-05.
         agentForkSession: z.boolean().optional(),
+        // COMPAT(agentTransferWorkspace): added in v0.11.0, remove gate after 2027-05-05.
+        agentTransferWorkspace: z.boolean().optional(),
         // COMPAT(conversationExport): added in v0.11.0, remove gate after 2027-04-05.
         conversationExport: z.boolean().optional(),
         // COMPAT(agentCloneSession): added in v0.11.0, remove gate after 2027-04-05.
@@ -7202,6 +7231,7 @@ export const SessionOutboundMessageSchema = z.discriminatedUnion("type", [
   AgentTimelineListPromptsResponseMessageSchema,
   AgentExportConversationResponseMessageSchema,
   AgentCloneResponseMessageSchema,
+  AgentTransferWorkspaceResponseMessageSchema,
   ProviderSubagentListResponseMessageSchema,
   ProviderSubagentTimelineResponseMessageSchema,
   ProviderSubagentUpdateMessageSchema,

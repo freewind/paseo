@@ -707,6 +707,14 @@ export const ar: TranslationResources = {
         renameTerminal: "إعادة تسمية المحطة",
         renameAgent: "إعادة تسمية الوكيل",
       },
+      transfer: {
+        title: 'نقل "{{agent}}" إلى مساحة عمل',
+        confirm: "نقل الوكيل",
+        createAtProjectRoot: "إنشاء مساحة عمل في {{project}}",
+        moving: "جارٍ نقل الوكيل…",
+        moved: "تم نقل الوكيل",
+        failed: "فشل نقل الوكيل",
+      },
       actions: {
         newTab: "علامة تبويب جديدة",
         newAgent: "وكيل جديد",

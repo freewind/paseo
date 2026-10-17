@@ -716,6 +716,14 @@ export const ru: TranslationResources = {
         renameTerminal: "Переименовать терминал",
         renameAgent: "Переименовать агента",
       },
+      transfer: {
+        title: 'Переместить "{{agent}}" в рабочее пространство',
+        confirm: "Переместить агента",
+        createAtProjectRoot: "Создать рабочее пространство в {{project}}",
+        moving: "Перемещение агента…",
+        moved: "Агент перемещён",
+        failed: "Не удалось переместить агента",
+      },
       actions: {
         newTab: "Новая вкладка",
         newAgent: "Новый агент",

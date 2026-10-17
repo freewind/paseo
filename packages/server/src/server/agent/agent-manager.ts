@@ -189,6 +189,8 @@ interface TimeoutOptions {
   onLateError?: (error: unknown) => void;
 }
 
+import { areEquivalentPaths } from "../../utils/path.js";
+
 function formatProviderList(providers: readonly string[]): string {
   return providers.length > 0 ? providers.join(", ") : "none";
 }
@@ -1586,6 +1588,72 @@ export class AgentManager {
         this.reloadAgentSessionInternal(agentId, overrides, options),
       ),
     );
+  }
+
+  /**
+   * Move an agent to another workspace: same agent id, same provider session, same
+   * history; only `workspaceId` ownership and the execution `cwd` change. The provider
+   * session is closed and resumed under the target cwd through the same reload lane a
+   * user-facing refresh uses, so providers that derive state from cwd (transcript
+   * lookup, spawn dir, ACP load) re-derive it consistently.
+   */
+  moveAgentToWorkspace(
+    agentId: string,
+    target: { workspaceId: string; cwd: string },
+  ): Promise<ManagedAgent> {
+    return this.trackAgentRegistrationOperation(
+      this.runLifecycleMutation(agentId, () => this.moveAgentToWorkspaceInternal(agentId, target)),
+    );
+  }
+
+  private async moveAgentToWorkspaceInternal(
+    agentId: string,
+    target: { workspaceId: string; cwd: string },
+  ): Promise<ManagedAgent> {
+    this.assertAcceptingAgentRegistrations();
+    const existing = this.requireSessionAgent(agentId);
+    if (this.hasInFlightRun(agentId)) {
+      throw new Error("Cannot move the workspace while a turn is running");
+    }
+    if (
+      existing.workspaceId === target.workspaceId &&
+      areEquivalentPaths(existing.cwd, target.cwd)
+    ) {
+      return existing;
+    }
+
+    // Close and native restore share the lifecycle lane with reload, so no new run
+    // can acquire the writer between the ownership write and the session resume.
+    const registry = this.requireRegistry();
+    const record = await registry.get(agentId);
+    if (!record) {
+      throw new Error(`Agent not found: ${agentId}`);
+    }
+    const previousWorkspaceId = record.workspaceId;
+    const previousCwd = record.cwd;
+    await registry.upsert({
+      ...record,
+      workspaceId: target.workspaceId,
+      cwd: target.cwd,
+      updatedAt: new Date().toISOString(),
+    });
+
+    try {
+      return await this.reloadAgentSessionInternal(agentId, { cwd: target.cwd });
+    } catch (error) {
+      // The record is the ownership authority; roll it back before surfacing the
+      // failure so a failed transfer leaves the agent exactly where it was.
+      await registry.upsert({
+        ...record,
+        workspaceId: previousWorkspaceId,
+        cwd: previousCwd,
+        updatedAt: new Date().toISOString(),
+      });
+      if (this.getAgent(agentId)) {
+        this.notifyAgentState(agentId);
+      }
+      throw error;
+    }
   }
 
   private async reloadAgentSessionInternal(

@@ -709,6 +709,14 @@ export const zhCN: TranslationResources = {
         renameTerminal: "重命名 Terminal",
         renameAgent: "重命名 Agent",
       },
+      transfer: {
+        title: '把 "{{agent}}" 移动到工作区',
+        confirm: "移动 Agent",
+        createAtProjectRoot: "在 {{project}} 中创建工作区",
+        moving: "正在移动 Agent…",
+        moved: "Agent 已移动",
+        failed: "移动 Agent 失败",
+      },
       actions: {
         newTab: "新建标签页",
         newAgent: "新建 Agent",

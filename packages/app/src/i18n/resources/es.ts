@@ -721,6 +721,14 @@ export const es: TranslationResources = {
         renameTerminal: "Cambiar nombre de terminal",
         renameAgent: "Cambiar nombre del agente",
       },
+      transfer: {
+        title: 'Mover "{{agent}}" a un espacio de trabajo',
+        confirm: "Mover agente",
+        createAtProjectRoot: "Crear espacio de trabajo en {{project}}",
+        moving: "Moviendo agente…",
+        moved: "Agente movido",
+        failed: "Error al mover el agente",
+      },
       actions: {
         newTab: "Nueva pestaña",
         newAgent: "Nuevo agente",
