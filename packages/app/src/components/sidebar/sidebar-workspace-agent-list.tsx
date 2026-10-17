@@ -115,6 +115,7 @@ export const SidebarWorkspaceAgentList = memo(function SidebarWorkspaceAgentList
         onCopyConversationMarkdown: actions.onCopyConversationMarkdown,
         onCopyAgentAsNew: actions.onCopyAgentAsNew,
         canCloneAgent: actions.canCloneAgent,
+        onMoveAgentToWorkspace: actions.onMoveAgentToWorkspace,
         // Unreachable: the list only holds agent tabs, which the menu never offers these for.
         onCopyTerminalId: noopAsync,
         onCopyFilePath: noopAsync,
@@ -164,6 +165,7 @@ export const SidebarWorkspaceAgentList = memo(function SidebarWorkspaceAgentList
         );
       })}
       {actions.renameModal}
+      {actions.transferWorkspaceModal}
     </View>
   );
 });

@@ -141,6 +141,7 @@ import {
 import type { StoredAgentRecord } from "./agent/agent-storage.js";
 import type { AgentStorage } from "./agent/agent-storage.js";
 import type { AgentMemoStore } from "./agent/agent-memo-store.js";
+import { areEquivalentPaths } from "../utils/path.js";
 import {
   ImportSessionsRequestError,
   importProviderSession,
@@ -2660,6 +2661,8 @@ export class Session {
         return this.handleAgentExportConversationRequest(msg, source);
       case "agent.clone.request":
         return this.handleAgentCloneRequest(msg, source);
+      case "agent.transfer_workspace.request":
+        return this.handleAgentTransferWorkspaceRequest(msg, source);
       case "agent.timeline.list_prompts.request":
         return this.handleAgentTimelineListPromptsRequest(msg, source);
       case "agent.provider_subagents.list.request":
@@ -8337,6 +8340,119 @@ export class Session {
       );
       respond({
         newAgentId: null,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * Transfer an agent to a target workspace on this daemon. When the target project
+   * has no directory-backed workspace yet, `newWorkspaceTitle` creates one at the
+   * project root — no worktree, no initial message; the agent's own history stays.
+   * Failures roll the ownership record back, so the agent stays put.
+   */
+  private async handleAgentTransferWorkspaceRequest(
+    msg: Extract<SessionInboundMessage, { type: "agent.transfer_workspace.request" }>,
+    source?: object,
+  ): Promise<void> {
+    const respond = (payload: {
+      agentId: string;
+      newWorkspaceId: string | null;
+      error: string | null;
+    }) => {
+      this.emitForSource(
+        {
+          type: "agent.transfer_workspace.response",
+          payload: { requestId: msg.requestId, ...payload },
+        },
+        source,
+      );
+    };
+    try {
+      await ensureAgentLoaded(msg.agentId, {
+        agentManager: this.agentManager,
+        agentStorage: this.agentStorage,
+        logger: this.sessionLogger,
+      });
+      const agent = this.agentManager.getAgent(msg.agentId);
+      if (!agent) {
+        throw new Error(`Agent not found: ${msg.agentId}`);
+      }
+      if (this.agentManager.hasInFlightRun(msg.agentId)) {
+        throw new Error("Cannot move the workspace while a turn is running");
+      }
+
+      let targetWorkspaceId = msg.targetWorkspaceId;
+      let createdWorkspaceId: string | null = null;
+      let targetWorkspace = await this.workspaceRegistry.get(targetWorkspaceId);
+      if (targetWorkspace?.archivedAt) {
+        throw new Error(`Workspace is archived: ${targetWorkspaceId}`);
+      }
+      if (!targetWorkspace) {
+        // No workspace by that id: treat the id as a project id and create a
+        // plain directory-backed workspace at the project root.
+        const project = await this.projectRegistry.get(msg.targetWorkspaceId);
+        if (!project || project.archivedAt) {
+          throw new Error(`Workspace not found: ${msg.targetWorkspaceId}`);
+        }
+        const created = await this.workspaceProvisioning.createWorkspaceForDirectory(
+          project.rootPath,
+          msg.newWorkspaceTitle ?? null,
+          project.projectId,
+        );
+        await this.registerWorkspaceForImportedAgent(created);
+        targetWorkspaceId = created.workspaceId;
+        createdWorkspaceId = created.workspaceId;
+        targetWorkspace = created;
+      }
+
+      const record = await this.agentStorage.get(msg.agentId);
+      const sourceCwd = agent.cwd ?? record?.cwd;
+      if (!sourceCwd) {
+        throw new Error(`Agent ${msg.agentId} has no cwd to move from`);
+      }
+      if (areEquivalentPaths(sourceCwd, targetWorkspace.cwd)) {
+        // Same directory: only ownership changes, no session resume needed.
+        await this.agentStorage.upsert({
+          ...(record ?? {
+            id: msg.agentId,
+            provider: agent.provider,
+            cwd: sourceCwd,
+            createdAt: agent.createdAt.toISOString(),
+            updatedAt: new Date().toISOString(),
+            labels: agent.labels,
+            lastStatus: agent.lifecycle,
+            config: null,
+            persistence: null,
+          }),
+          workspaceId: targetWorkspaceId,
+          updatedAt: new Date().toISOString(),
+        });
+        if (record) {
+          const live = this.agentManager.getAgent(msg.agentId);
+          if (live) {
+            live.workspaceId = targetWorkspaceId;
+            this.agentManager.notifyAgentState(msg.agentId);
+          }
+        }
+        respond({ agentId: msg.agentId, newWorkspaceId: createdWorkspaceId, error: null });
+        return;
+      }
+
+      const moved = await this.agentManager.moveAgentToWorkspace(msg.agentId, {
+        workspaceId: targetWorkspaceId,
+        cwd: targetWorkspace.cwd,
+      });
+      void moved;
+      respond({ agentId: msg.agentId, newWorkspaceId: createdWorkspaceId, error: null });
+    } catch (error) {
+      this.sessionLogger.error(
+        { err: error, agentId: msg.agentId },
+        "Failed to handle agent.transfer_workspace.request",
+      );
+      respond({
+        agentId: msg.agentId,
+        newWorkspaceId: null,
         error: error instanceof Error ? error.message : String(error),
       });
     }
