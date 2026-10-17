@@ -201,6 +201,13 @@ export default defineConfig({
         find: /^lucide-react-native$/,
         replacement: path.resolve(__dirname, "test-stubs/lucide-react-native.ts"),
       },
+      // Its CJS entry require()s react-native, whose entry ships untranspiled Flow
+      // (`import typeof`) that nothing in the Node test runtime can parse. No test
+      // asserts real floating positioning; the combobox only needs the hook's shape.
+      {
+        find: /^@floating-ui\/react-native$/,
+        replacement: path.resolve(__dirname, "test-stubs/floating-ui-react-native.ts"),
+      },
     ],
   },
 });

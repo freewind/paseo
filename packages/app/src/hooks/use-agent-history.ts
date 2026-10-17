@@ -76,9 +76,13 @@ export async function fetchAgentHistoryPage(input: {
   serverId: string;
   cursor: string | null;
   search?: string;
+  projectKeys?: readonly string[];
 }): Promise<AgentHistoryPage> {
   const payload = await input.client.fetchAgentHistory({
     ...(input.search ? { search: input.search } : {}),
+    ...(input.projectKeys && input.projectKeys.length > 0
+      ? { filter: { projectKeys: [...input.projectKeys] } }
+      : {}),
     sort: AGENT_HISTORY_SORT,
     page: input.cursor
       ? { limit: AGENT_HISTORY_PAGE_LIMIT, cursor: input.cursor }
@@ -161,6 +165,7 @@ export async function fetchAgentHistoryBatch(input: {
   hosts: readonly AgentHistoryHost[];
   cursorByServerId: AgentHistoryCursorByServerId | null;
   search?: string;
+  projectKeys?: readonly string[];
 }): Promise<AgentHistoryBatchPage> {
   const cursorByServerId = input.cursorByServerId ?? {};
   const hasCursorFilter = Object.keys(cursorByServerId).length > 0;
@@ -175,6 +180,7 @@ export async function fetchAgentHistoryBatch(input: {
         serverId: host.serverId,
         cursor: cursorByServerId[host.serverId] ?? null,
         ...(input.search ? { search: input.search } : {}),
+        ...(input.projectKeys ? { projectKeys: input.projectKeys } : {}),
       });
       return { host, page };
     }),
@@ -218,6 +224,7 @@ export function useAgentHistory(options: {
   serverId?: string | null;
   enabled?: boolean;
   search?: string;
+  projectKeys?: readonly string[];
 }): AgentHistoryResult {
   const { t } = useTranslation();
   const daemons = useHosts();
@@ -274,12 +281,18 @@ export function useAgentHistory(options: {
     const trimmed = options.search?.trim() ?? "";
     return isSearchSupported ? trimmed : "";
   }, [isSearchSupported, options.search]);
+  const projectKeys = useMemo(
+    () => (options.projectKeys ?? []).filter((key) => key.trim().length > 0),
+    [options.projectKeys],
+  );
+  const projectKeysKey = projectKeys.join(",");
   const queryKey = useMemo(
     () => [
       ...(serverId ? agentHistoryQueryKey(serverId) : allAgentHistoryQueryKey(targetServerIds)),
       search,
+      projectKeysKey,
     ],
-    [search, serverId, targetServerIds],
+    [search, projectKeysKey, serverId, targetServerIds],
   );
   const serverLabelById = useMemo(
     () => new Map(daemons.map((daemon) => [daemon.serverId, daemon.label])),
@@ -298,6 +311,9 @@ export function useAgentHistory(options: {
     staleTime: 30_000,
     initialPageParam: null,
     getNextPageParam: getNextAgentHistoryPageParam,
+    // Changing the project filter invalidates the key, so this closure only needs
+    // the values captured for the current query.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
     queryFn: async ({ pageParam }) => {
       if (targetHosts.length === 0) {
         throw new Error(t("workspace.terminal.hostDisconnected"));
@@ -306,6 +322,7 @@ export function useAgentHistory(options: {
         hosts: targetHosts,
         cursorByServerId: pageParam,
         ...(search ? { search } : {}),
+        ...(projectKeys.length > 0 ? { projectKeys } : {}),
       });
     },
   });
