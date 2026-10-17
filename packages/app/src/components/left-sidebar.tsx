@@ -591,6 +591,8 @@ function MobileSidebar({
           </Pressable>
         </WindowChromeSafeArea>
 
+        {workspacesSectionHeaderElement}
+
         {isInitialLoad && !hasActiveHostFilter ? (
           <SidebarAgentListSkeleton />
         ) : (
@@ -616,7 +618,6 @@ function MobileSidebar({
             onImportSession={handleImportSession}
             parentGestureRef={closeGestureRef}
             dragGestureHostActive={active}
-            listHeaderComponent={workspacesSectionHeaderElement}
           />
         )}
 
@@ -778,6 +779,8 @@ function DesktopSidebar({
           <SidebarNavRows style={sidebarHeaderGroupStyle} />
         </View>
 
+        {workspacesSectionHeaderElement}
+
         {isInitialLoad && !hasActiveHostFilter ? (
           <SidebarAgentListSkeleton />
         ) : (
@@ -800,7 +803,6 @@ function DesktopSidebar({
             onRefresh={handleRefresh}
             onAddProject={handleOpenProject}
             onImportSession={handleImportSession}
-            listHeaderComponent={workspacesSectionHeaderElement}
           />
         )}
 
@@ -892,11 +894,10 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: "center",
     justifyContent: "space-between",
     gap: theme.spacing[2],
-    flex: 1,
-    minWidth: 0,
-    // Rendered inside the scroll's listContent (paddingHorizontal spacing[2]). The title
-    // lands at spacing[2] left to align with project icons. Settings2's painted path stops
-    // inside its 14px SVG, so 4px aligns the ink rather than the SVG box to the row rail.
+    // Rendered as a fixed row between the nav group and the workspace list, outside the
+    // scroll container, so the row carries the list's own paddingHorizontal inset. The
+    // title lands at spacing[2] left to align with project icons. Settings2's painted path
+    // stops inside its 14px SVG, so 4px aligns the ink rather than the SVG box to the rail.
     paddingLeft: theme.spacing[2],
     paddingRight: 4,
     paddingTop: theme.spacing[1],
