@@ -1223,6 +1223,12 @@ export const es: TranslationResources = {
       description: "Cambia o borra los filtros de la barra lateral para ver espacios de trabajo.",
       clear: "Borrar filtros",
     },
+    nameSearch: {
+      placeholder: "Buscar proyectos, espacios de trabajo, agentes",
+      clear: "Borrar búsqueda",
+      noMatchesTitle: "Sin coincidencias",
+      noMatchesDescription: "Nada en la barra lateral coincide con esta búsqueda.",
+    },
     pinned: {
       title: "Anclados",
     },

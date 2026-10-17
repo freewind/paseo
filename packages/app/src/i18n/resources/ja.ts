@@ -1196,6 +1196,12 @@ export const ja: TranslationResources = {
         "ワークスペースを表示するにはサイドバーのフィルターを変更またはクリアしてください。",
       clear: "フィルターをクリア",
     },
+    nameSearch: {
+      placeholder: "プロジェクト・ワークスペース・エージェントを検索",
+      clear: "検索をクリア",
+      noMatchesTitle: "一致なし",
+      noMatchesDescription: "サイドバーにこの検索に一致するものはありません。",
+    },
     pinned: {
       title: "固定済み",
     },

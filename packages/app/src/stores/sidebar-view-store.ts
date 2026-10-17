@@ -63,6 +63,9 @@ interface SidebarViewStoreState {
   labelFilter: SidebarLabelFilter;
   projectScrollOffset: number;
   statusScrollOffset: number;
+  /** Live sidebar name search; intentionally not persisted. */
+  nameSearch: string;
+  setNameSearch: (value: string) => void;
   setGroupMode: (mode: SidebarGroupMode) => void;
   setProjectScrollOffset: (offset: number) => void;
   setStatusScrollOffset: (offset: number) => void;
@@ -198,6 +201,8 @@ export const useSidebarViewStore = create<SidebarViewStoreState>()(
       labelFilter: emptyLabelFilter(),
       projectScrollOffset: 0,
       statusScrollOffset: 0,
+      nameSearch: "",
+      setNameSearch: (value) => set({ nameSearch: value }),
       setGroupMode: (mode) => set({ groupMode: mode }),
       setProjectScrollOffset: (offset) =>
         set({ projectScrollOffset: Number.isFinite(offset) ? Math.max(0, offset) : 0 }),

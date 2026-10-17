@@ -4,6 +4,9 @@ import { useTranslation } from "react-i18next";
 import { StyleSheet } from "react-native-unistyles";
 import { navigateToAgent } from "@/utils/navigate-to-agent";
 import { useActiveWorkspaceSelection } from "@/stores/navigation-active-workspace-store";
+import { useSidebarModel } from "@/components/sidebar/sidebar-model";
+import { HighlightedText } from "@/components/ui/highlighted-text";
+import type { MatchRange } from "@getpaseo/protocol/search/text-match";
 import { useAppSettings } from "@/hooks/use-settings";
 import { useIsCompactFormFactor } from "@/constants/layout";
 import { usePanelStore } from "@/stores/panel-store";
@@ -39,6 +42,8 @@ interface SidebarWorkspaceAgentRowItemProps {
   row: SidebarWorkspaceAgentRow;
   isActive: boolean;
   label: string;
+  /** Name-search highlight over `label`; absent when the search is off or missed this row. */
+  highlightRanges?: readonly MatchRange[];
   /** The agent's own state, read exactly as the tab strip's icon reads it. */
   statusBucket: SidebarStateBucket | null;
   menuEntries: WorkspaceTabMenuEntry[];
@@ -66,11 +71,19 @@ export const SidebarWorkspaceAgentList = memo(function SidebarWorkspaceAgentList
   const { serverId, workspaceId, workspaceKey } = workspace;
   const isCompactLayout = useIsCompactFormFactor();
   const showMobileAgent = usePanelStore((state) => state.showMobileAgent);
-  const rows = useSidebarWorkspaceAgentRows(workspaceKey);
+  const layoutRows = useSidebarWorkspaceAgentRows(workspaceKey);
   const focusedTabId = useFocusedWorkspaceTabId(workspaceKey);
   const isWorkspaceActive = useActiveWorkspaceKey(serverId, workspaceId);
   const titles = useSessionStore((state) => state.sessions[serverId]?.agents ?? null);
   const statusBuckets = useSidebarWorkspaceAgentStatusBuckets(serverId);
+  // The name search narrows these rows to the agents it kept and hands each row its highlight.
+  // Outside a search the maps are empty and every row stays with no highlight.
+  const nameSearchMatches = useSidebarModel().nameSearchMatches;
+  const agentMatches = nameSearchMatches.agents;
+  const rows = useMemo(() => {
+    if (agentMatches.size === 0) return layoutRows;
+    return layoutRows.filter((row) => agentMatches.has(row.agentId));
+  }, [layoutRows, agentMatches]);
   // The same "Title lines" setting that lets a workspace title wrap governs the agent rows nested
   // under it, so a long agent title stops ending in a lone ellipsis under the ⋯ menu.
   const {
@@ -132,18 +145,24 @@ export const SidebarWorkspaceAgentList = memo(function SidebarWorkspaceAgentList
 
   return (
     <View style={styles.list} testID={`sidebar-workspace-agents-${workspaceKey}`}>
-      {rows.map((row, index) => (
-        <SidebarWorkspaceAgentRowItem
-          key={row.tabId}
-          row={row}
-          isActive={isWorkspaceActive && focusedTabId === row.tabId}
-          label={agentTabLabel(titles?.get(row.agentId)?.title, row.agentId)}
-          statusBucket={statusBuckets.get(row.agentId) ?? null}
-          menuEntries={menuEntriesFor(descriptors[index], index)}
-          multilineTitle={workspaceTitleMultiline}
-          onPress={openAgent(row.agentId)}
-        />
-      ))}
+      {rows.map((row, index) => {
+        const agentHighlight = agentMatches.get(row.agentId);
+        return (
+          <SidebarWorkspaceAgentRowItem
+            key={row.tabId}
+            row={row}
+            isActive={isWorkspaceActive && focusedTabId === row.tabId}
+            label={agentTabLabel(titles?.get(row.agentId)?.title, row.agentId)}
+            highlightRanges={
+              agentHighlight && agentHighlight.ranges.length > 0 ? agentHighlight.ranges : undefined
+            }
+            statusBucket={statusBuckets.get(row.agentId) ?? null}
+            menuEntries={menuEntriesFor(descriptors[index], index)}
+            multilineTitle={workspaceTitleMultiline}
+            onPress={openAgent(row.agentId)}
+          />
+        );
+      })}
       {actions.renameModal}
     </View>
   );
@@ -153,6 +172,7 @@ const SidebarWorkspaceAgentRowItem = memo(function SidebarWorkspaceAgentRowItem(
   row,
   isActive,
   label,
+  highlightRanges,
   statusBucket,
   menuEntries,
   multilineTitle,
@@ -185,13 +205,23 @@ const SidebarWorkspaceAgentRowItem = memo(function SidebarWorkspaceAgentRowItem(
           bucket={statusBucket}
           testID={`sidebar-workspace-agent-status-${row.tabId}`}
         />
-        <Text
-          numberOfLines={multilineTitle ? undefined : 1}
-          style={[styles.label, isActive && styles.labelActive]}
-          testID={`sidebar-workspace-agent-title-${row.tabId}`}
-        >
-          {label}
-        </Text>
+        {highlightRanges ? (
+          <HighlightedText
+            text={label}
+            ranges={highlightRanges}
+            style={styles.label}
+            numberOfLines={multilineTitle ? undefined : 1}
+            testID={`sidebar-workspace-agent-title-${row.tabId}`}
+          />
+        ) : (
+          <Text
+            numberOfLines={multilineTitle ? undefined : 1}
+            style={[styles.label, isActive && styles.labelActive]}
+            testID={`sidebar-workspace-agent-title-${row.tabId}`}
+          >
+            {label}
+          </Text>
+        )}
       </Pressable>
       <MobileTabTrailingAccessory
         menuTestIDBase={`sidebar-workspace-agent-menu-${row.tabId}`}

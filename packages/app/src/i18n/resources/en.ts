@@ -1195,6 +1195,12 @@ export const en = {
       description: "Change or clear the sidebar filters to see workspaces.",
       clear: "Clear filters",
     },
+    nameSearch: {
+      placeholder: "Search projects, workspaces, agents",
+      clear: "Clear search",
+      noMatchesTitle: "No matches",
+      noMatchesDescription: "Nothing in the sidebar matches this search.",
+    },
     pinned: {
       title: "Pinned",
     },

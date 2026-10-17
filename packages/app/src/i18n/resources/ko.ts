@@ -1189,6 +1189,12 @@ export const ko: TranslationResources = {
       description: "워크스페이스를 보려면 사이드바 필터를 변경하거나 지우세요.",
       clear: "필터 지우기",
     },
+    nameSearch: {
+      placeholder: "프로젝트, 워크스페이스, 에이전트 검색",
+      clear: "검색 지우기",
+      noMatchesTitle: "일치 항목 없음",
+      noMatchesDescription: "사이드바에 이 검색과 일치하는 항목이 없습니다.",
+    },
     pinned: {
       title: "고정됨",
     },

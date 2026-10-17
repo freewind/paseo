@@ -1223,6 +1223,12 @@ export const fr: TranslationResources = {
         "Modifiez ou effacez les filtres de la barre latérale pour afficher les espaces de travail.",
       clear: "Effacer les filtres",
     },
+    nameSearch: {
+      placeholder: "Rechercher projets, espaces de travail, agents",
+      clear: "Effacer la recherche",
+      noMatchesTitle: "Aucun résultat",
+      noMatchesDescription: "Rien dans la barre latérale ne correspond à cette recherche.",
+    },
     pinned: {
       title: "Épinglés",
     },

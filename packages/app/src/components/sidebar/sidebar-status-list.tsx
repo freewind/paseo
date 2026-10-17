@@ -26,6 +26,7 @@ import { type SidebarWorkspaceEntry } from "@/hooks/use-sidebar-workspaces-list"
 import type { StatusBucket } from "@/hooks/sidebar-status-view-model";
 import type { SidebarWorkspaceGroup } from "@/components/sidebar/sidebar-labels";
 import { SidebarFilterEmptyState } from "@/components/sidebar/empty-states";
+import { SidebarNameSearchEmptyState } from "@/components/sidebar/sidebar-name-search-empty-state";
 import type { HostBadgeModel } from "@/hosts/appearance";
 import { isWeb as platformIsWeb, isNative as platformIsNative } from "@/constants/platform";
 import { useIsCompactFormFactor } from "@/constants/layout";
@@ -129,6 +130,8 @@ interface StatusWorkspaceListProps {
   listHeaderComponent?: ReactNode;
   /** Swaps the group list for the label filter's empty state. Never the header above it. */
   sidebarFilterEmpty?: boolean;
+  /** Swaps the group list for the name-search empty state. Never the header above it. */
+  sidebarNameSearchEmpty?: boolean;
   parentGestureRef?: MutableRefObject<GestureType | undefined>;
   dragGestureHostActive?: boolean;
 }
@@ -146,6 +149,7 @@ export function SidebarStatusWorkspaceList({
   onPinnedWorkspaceReorder,
   listHeaderComponent,
   sidebarFilterEmpty = false,
+  sidebarNameSearchEmpty = false,
   parentGestureRef,
   dragGestureHostActive,
 }: StatusWorkspaceListProps) {
@@ -217,6 +221,23 @@ export function SidebarStatusWorkspaceList({
       supportsPinningByServerId,
     ],
   );
+  const renderStatusBody = () => {
+    if (sidebarFilterEmpty) return <SidebarFilterEmptyState />;
+    if (sidebarNameSearchEmpty) return <SidebarNameSearchEmptyState />;
+    return (
+      <StatusGroupList
+        groups={groups}
+        collapsedWorkspaceGroupKeys={collapsedWorkspaceGroupKeys}
+        projectIconByProjectViewKey={projectIconByProjectViewKey}
+        shortcutIndex={statusShortcutIndex}
+        showShortcutBadges={showShortcutBadges}
+        onWorkspacePress={onWorkspacePress}
+        hostBadgeByServerId={hostBadgeByServerId}
+        supportsPinningByServerId={supportsPinningByServerId}
+        onToggleWorkspacePin={onToggleWorkspacePin}
+      />
+    );
+  };
   const content = (
     <>
       {pinnedWorkspaces.length > 0 ? (
@@ -248,21 +269,7 @@ export function SidebarStatusWorkspaceList({
         </View>
       ) : null}
       {listHeaderComponent}
-      {sidebarFilterEmpty ? (
-        <SidebarFilterEmptyState />
-      ) : (
-        <StatusGroupList
-          groups={groups}
-          collapsedWorkspaceGroupKeys={collapsedWorkspaceGroupKeys}
-          projectIconByProjectViewKey={projectIconByProjectViewKey}
-          shortcutIndex={statusShortcutIndex}
-          showShortcutBadges={showShortcutBadges}
-          onWorkspacePress={onWorkspacePress}
-          hostBadgeByServerId={hostBadgeByServerId}
-          supportsPinningByServerId={supportsPinningByServerId}
-          onToggleWorkspacePin={onToggleWorkspacePin}
-        />
-      )}
+      {renderStatusBody()}
     </>
   );
 

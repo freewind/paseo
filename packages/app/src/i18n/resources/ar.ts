@@ -1180,6 +1180,12 @@ export const ar: TranslationResources = {
       description: "غيّر عوامل تصفية الشريط الجانبي أو امسحها لعرض مساحات العمل.",
       clear: "مسح عوامل التصفية",
     },
+    nameSearch: {
+      placeholder: "ابحث في المشاريع ومساحات العمل والوكلاء",
+      clear: "مسح البحث",
+      noMatchesTitle: "لا توجد تطابقات",
+      noMatchesDescription: "لا يوجد في الشريط الجانبي ما يطابق هذا البحث.",
+    },
     pinned: {
       title: "المثبتة",
     },
