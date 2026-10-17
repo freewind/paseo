@@ -12,11 +12,17 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { AgentList } from "@/components/agent-list";
 import { SearchField } from "@/components/ui/search-field";
 import { HostFilter } from "@/components/hosts/host-filter";
+import {
+  ALL_PROJECTS_OPTION_ID,
+  ProjectFilter,
+  type ProjectFilterOption,
+} from "@/components/hosts/project-filter";
 import { ALL_HOSTS_OPTION_ID } from "@/components/hosts/host-picker";
 import { type AgentHistoryHostError, useAgentHistory } from "@/hooks/use-agent-history";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useImportSession } from "@/hooks/use-import-session";
 import { useHosts } from "@/runtime/host-runtime";
+import { useWorkspaceStructure } from "@/stores/session-store-hooks";
 import { backToChat } from "@/utils/back-to-chat";
 
 /** Long enough that a typed word is one request, short enough to feel live. */
@@ -60,6 +66,35 @@ function resolveEmptyText(input: {
   return "No sessions for this host";
 }
 
+const ALL_PROJECTS_OPTION: ProjectFilterOption = {
+  id: ALL_PROJECTS_OPTION_ID,
+  label: "All projects",
+};
+
+/**
+ * One option per project the connected hosts expose, keyed by the server-side `projectKey` the
+ * history filter narrows by. Projects whose key is unknown (older daemons) are skipped — they
+ * cannot be filtered on reliably, and "All projects" still lists their sessions.
+ */
+export function buildHistoryProjectOptions(input: {
+  projects: readonly { viewKey: string; projectKey: string | null; projectName: string }[];
+}): ProjectFilterOption[] {
+  const byKey = new Map<string, string>();
+  for (const project of input.projects) {
+    if (!project.projectKey) continue;
+    if (!byKey.has(project.projectKey)) {
+      byKey.set(project.projectKey, project.projectName);
+    }
+  }
+  return [
+    ALL_PROJECTS_OPTION,
+    ...Array.from(byKey, ([projectKey, projectName]) => ({
+      id: projectKey,
+      label: projectName,
+    })).sort((left, right) => left.label.localeCompare(right.label)),
+  ];
+}
+
 export function SessionsScreen() {
   const isFocused = useIsFocused();
 
@@ -70,12 +105,16 @@ export function SessionsScreen() {
   return <SessionsScreenContent />;
 }
 
+// The filter row's three independent gates plus the list's four render branches put this just
+// over the budget; the branches are flat and each reads as its own row.
+// oxlint-disable-next-line complexity
 function SessionsScreenContent() {
   const { theme } = useUnistyles();
   const { t } = useTranslation();
   const importSession = useImportSession();
   const hosts = useHosts();
   const [selectedHost, setSelectedHost] = useState(ALL_HOSTS_OPTION_ID);
+  const [selectedProject, setSelectedProject] = useState(ALL_PROJECTS_OPTION_ID);
   const [searchInput, setSearchInput] = useState("");
   const search = useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS).trim();
   const historyServerId = selectedHost === ALL_HOSTS_OPTION_ID ? null : selectedHost;
@@ -93,7 +132,14 @@ function SessionsScreenContent() {
   } = useAgentHistory({
     serverId: historyServerId,
     search,
+    projectKeys: selectedProject === ALL_PROJECTS_OPTION_ID ? [] : [selectedProject],
   });
+  const allServerIds = useMemo(() => hosts.map((host) => host.serverId), [hosts]);
+  const structure = useWorkspaceStructure(allServerIds);
+  const projectOptions = useMemo(
+    () => buildHistoryProjectOptions({ projects: structure.projects }),
+    [structure.projects],
+  );
   const isSearching = isSearchSupported && search.length > 0;
 
   useEffect(() => {
@@ -104,6 +150,17 @@ function SessionsScreenContent() {
       setSelectedHost(ALL_HOSTS_OPTION_ID);
     }
   }, [hosts, selectedHost]);
+
+  // A project option naming a project no connected host exposes (it went away, or the host
+  // filter narrowed) resolves back to all projects rather than filtering everything out.
+  useEffect(() => {
+    if (
+      selectedProject !== ALL_PROJECTS_OPTION_ID &&
+      !projectOptions.some((option) => option.id === selectedProject)
+    ) {
+      setSelectedProject(ALL_PROJECTS_OPTION_ID);
+    }
+  }, [projectOptions, selectedProject]);
 
   const [isManualRefresh, setIsManualRefresh] = useState(false);
 
@@ -119,8 +176,18 @@ function SessionsScreenContent() {
     isAllHosts: selectedHost === ALL_HOSTS_OPTION_ID,
   });
   const showHostFilter = hosts.length > 1;
-  const showFilterRow = showHostFilter || isSearchSupported;
+  const showProjectFilter = projectOptions.length > 2;
+  const showFilterRow = showHostFilter || showProjectFilter || isSearchSupported;
   const showLoadError = isError && agents.length === 0;
+
+  const handleSelectProject = useCallback(
+    (projectKey: string) => setSelectedProject(projectKey),
+    [],
+  );
+  const sessionsProjectOptionTestID = useCallback(
+    (projectKey: string) => `sessions-project-filter-item-${projectKey}`,
+    [],
+  );
 
   const handleBack = useCallback(() => {
     backToChat();
@@ -150,32 +217,43 @@ function SessionsScreenContent() {
     );
   }, [hasMore, isLoadingMore, isSearchTruncated, loadMore, t]);
 
+  const filterRow = showFilterRow ? (
+    <View style={styles.filterContainer}>
+      {isSearchSupported ? (
+        <SearchField
+          value={searchInput}
+          onChangeText={setSearchInput}
+          placeholder={t("sessions.searchPlaceholder")}
+          clearAccessibilityLabel={t("sessions.actions.clearSearch")}
+          testID="sessions-search-input"
+          clearTestID="sessions-search-clear"
+        />
+      ) : null}
+      {showProjectFilter ? (
+        <ProjectFilter
+          options={projectOptions}
+          selectedProject={selectedProject}
+          onSelectProject={handleSelectProject}
+          triggerTestID="sessions-project-filter-trigger"
+          optionTestID={sessionsProjectOptionTestID}
+        />
+      ) : null}
+      {showHostFilter ? (
+        <HostFilter
+          hosts={hosts}
+          selectedHost={selectedHost}
+          onSelectHost={setSelectedHost}
+          triggerTestID="sessions-host-filter-trigger"
+          hostOptionTestID={sessionsHostOptionTestID}
+        />
+      ) : null}
+    </View>
+  ) : null;
+
   return (
     <View style={styles.container}>
       <MenuHeader title={t("sessions.title")} />
-      {showFilterRow ? (
-        <View style={styles.filterContainer}>
-          {isSearchSupported ? (
-            <SearchField
-              value={searchInput}
-              onChangeText={setSearchInput}
-              placeholder={t("sessions.searchPlaceholder")}
-              clearAccessibilityLabel={t("sessions.actions.clearSearch")}
-              testID="sessions-search-input"
-              clearTestID="sessions-search-clear"
-            />
-          ) : null}
-          {showHostFilter ? (
-            <HostFilter
-              hosts={hosts}
-              selectedHost={selectedHost}
-              onSelectHost={setSelectedHost}
-              triggerTestID="sessions-host-filter-trigger"
-              hostOptionTestID={sessionsHostOptionTestID}
-            />
-          ) : null}
-        </View>
-      ) : null}
+      {filterRow}
       {hostErrors.length > 0 ? <SessionHostErrorsBanner errors={hostErrors} t={t} /> : null}
       {isInitialLoad ? (
         <View style={styles.loadingContainer}>

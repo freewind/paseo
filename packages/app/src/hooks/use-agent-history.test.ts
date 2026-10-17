@@ -644,4 +644,46 @@ describe("fetchAgentHistoryPage", () => {
       }),
     ).rejects.toThrow("No connected hosts could load agent history");
   });
+
+  it("passes the project filter to the daemon on every page", async () => {
+    const client = createClient([
+      historyPayload({
+        entries: [
+          historyEntry({
+            id: "in-project",
+            cwd: "/repo/a",
+            updatedAt: "2026-04-01T10:00:00.000Z",
+          }),
+        ],
+        hasMore: true,
+        nextCursor: "cursor-2",
+      }),
+    ]);
+
+    await fetchAgentHistoryBatch({
+      hosts: [
+        { serverId: "server-a", serverLabel: "MacBook", client },
+      ] satisfies AgentHistoryHost[],
+      cursorByServerId: null,
+      projectKeys: ["remote:github.com/acme/repo"],
+    });
+
+    expect(client.calls[0]?.filter).toEqual({
+      projectKeys: ["remote:github.com/acme/repo"],
+    });
+  });
+
+  it("omits the filter when no project is selected", async () => {
+    const client = createClient([
+      historyPayload({
+        entries: [
+          historyEntry({ id: "any", cwd: "/repo/a", updatedAt: "2026-04-01T10:00:00.000Z" }),
+        ],
+      }),
+    ]);
+
+    await fetchAgentHistoryPage({ client, serverId: "server-1", cursor: null });
+
+    expect(client.calls[0]?.filter).toBeUndefined();
+  });
 });
