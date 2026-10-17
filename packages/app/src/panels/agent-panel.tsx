@@ -63,6 +63,8 @@ import {
 } from "@/hooks/use-agent-screen-state-machine";
 import { useArchiveAgent } from "@/hooks/use-archive-agent";
 import { useContainerWidthBelow } from "@/hooks/use-container-width";
+import { useIsQuickRepliesSupported } from "@/quick-replies/use-quick-replies";
+import { QUICK_REPLIES_GUTTER_BREAKPOINT } from "@/quick-replies/layout";
 import { reconcileMissingAgentStateWithPresentAgent } from "@/panels/agent-panel-load-state";
 import { TimelineSyncStatus } from "@/timeline/sync-status";
 import { usePaneContext, usePaneFocus } from "@/panels/pane-context";
@@ -1194,6 +1196,19 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   // The dock lays out fullscreen for the same session the composer edits in.
   const composerEditingSession = useComposerEditingSession("chat");
   const isComposerFullscreen = useComposerFullscreen(composerEditingSession);
+  const [isQuickRepliesSheetOpen, setIsQuickRepliesSheetOpen] = useState(false);
+  const quickRepliesAvailable = useIsQuickRepliesSupported(serverId);
+  // One pane-width reading decides both surfaces: the composer's gutter when there is room for
+  // it beside the centered input column, and this row's entry when there is not.
+  const { onLayout: onPaneLayout, isBelow: isQuickRepliesGutterNarrow } = useContainerWidthBelow(
+    QUICK_REPLIES_GUTTER_BREAKPOINT,
+    { initialIsBelow: true },
+  );
+  const hasQuickRepliesEntry = quickRepliesAvailable && isQuickRepliesGutterNarrow;
+  const showsQuickRepliesGutter = quickRepliesAvailable && !isQuickRepliesGutterNarrow;
+  const openQuickRepliesSheet = useCallback(() => {
+    setIsQuickRepliesSheetOpen(true);
+  }, []);
   const openChatOutline = useCallback(
     () => streamViewRef.current?.openChatOutline(),
     [streamViewRef],
@@ -1214,6 +1229,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     tasks,
     archiveFinishedStatus: archiveFinishedSubagents.status,
     hasPluginComposerPills,
+    hasQuickRepliesEntry,
   });
   const rawAgentInputDraft = useAgentInputDraft({
     draftKey: buildDraftStoreKey({
@@ -1290,6 +1306,9 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
         onAttentionPromptSend={onAttentionPromptSend}
         onComposerHeightChange={handleComposerHeightChange}
         onMessageSent={handleMessageSent}
+        quickRepliesGutterVisible={showsQuickRepliesGutter}
+        quickRepliesSheetVisible={isQuickRepliesSheetOpen}
+        onQuickRepliesSheetVisibleChange={setIsQuickRepliesSheetOpen}
       />
     </RenderProfile>
   ) : null;
@@ -1327,6 +1346,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
           hasPluginComposerPills={hasPluginComposerPills}
           chatOutlineAvailable={chatOutlineAvailable}
           onOpenChatOutline={openChatOutline}
+          hasQuickRepliesEntry={hasQuickRepliesEntry}
+          onOpenQuickReplies={openQuickRepliesSheet}
         />
       ) : null}
     </View>
@@ -1368,7 +1389,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
       setText={agentInputDraft.replaceText}
       onRewindComplete={handleRewindComplete}
     >
-      <View style={styles.root}>
+      <View style={styles.root} onLayout={onPaneLayout}>
         {dock}
 
         {isArchivingCurrentAgent ? (
@@ -1573,6 +1594,9 @@ const AgentComposerSection = memo(function AgentComposerSection({
   onAttentionPromptSend,
   onComposerHeightChange,
   onMessageSent,
+  quickRepliesGutterVisible,
+  quickRepliesSheetVisible,
+  onQuickRepliesSheetVisibleChange,
 }: {
   agentId?: string;
   serverId: string;
@@ -1587,6 +1611,9 @@ const AgentComposerSection = memo(function AgentComposerSection({
   onAttentionPromptSend: () => void;
   onComposerHeightChange: (height: number) => void;
   onMessageSent: () => void;
+  quickRepliesGutterVisible: boolean;
+  quickRepliesSheetVisible: boolean;
+  onQuickRepliesSheetVisibleChange: (visible: boolean) => void;
 }) {
   if (!agentId) {
     return null;
@@ -1611,6 +1638,9 @@ const AgentComposerSection = memo(function AgentComposerSection({
       onAttentionPromptSend={onAttentionPromptSend}
       onComposerHeightChange={onComposerHeightChange}
       onMessageSent={onMessageSent}
+      quickRepliesGutterVisible={quickRepliesGutterVisible}
+      quickRepliesSheetVisible={quickRepliesSheetVisible}
+      onQuickRepliesSheetVisibleChange={onQuickRepliesSheetVisibleChange}
     />
   );
 });
@@ -1627,6 +1657,9 @@ function ActiveAgentComposer({
   onAttentionPromptSend,
   onComposerHeightChange,
   onMessageSent,
+  quickRepliesGutterVisible,
+  quickRepliesSheetVisible,
+  onQuickRepliesSheetVisibleChange,
 }: {
   agentId: string;
   serverId: string;
@@ -1639,6 +1672,9 @@ function ActiveAgentComposer({
   onAttentionPromptSend: () => void;
   onComposerHeightChange: (height: number) => void;
   onMessageSent: () => void;
+  quickRepliesGutterVisible: boolean;
+  quickRepliesSheetVisible: boolean;
+  onQuickRepliesSheetVisibleChange: (visible: boolean) => void;
 }) {
   const isCompactFormFactor = useIsCompactFormFactor();
   const { onLayout: onInputAreaLayout, isBelow: isCompactComposerLayout } = useContainerWidthBelow(
@@ -1755,6 +1791,9 @@ function ActiveAgentComposer({
         onMessageSent={onMessageSent}
         onClientSlashCommand={handleClientSlashCommand}
         isCompactLayout={isCompactComposerLayout}
+        quickRepliesGutterVisible={quickRepliesGutterVisible}
+        quickRepliesSheetVisible={quickRepliesSheetVisible}
+        onQuickRepliesSheetVisibleChange={onQuickRepliesSheetVisibleChange}
       />
     </View>
   );

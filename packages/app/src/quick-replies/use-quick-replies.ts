@@ -11,11 +11,16 @@ export interface UseQuickRepliesResult {
   saveReplies: (next: QuickReply[]) => Promise<void>;
 }
 
-export function useQuickReplies(serverId: string | null): UseQuickRepliesResult {
-  const { config, patchConfig } = useDaemonConfig(serverId);
-  const isSupported = useSessionStore(
+/** Whether the connected daemon knows quick replies at all. Hosts gate the entry on this. */
+export function useIsQuickRepliesSupported(serverId: string | null): boolean {
+  return useSessionStore(
     (state) => state.sessions[serverId ?? ""]?.serverInfo?.features?.quickReplies === true,
   );
+}
+
+export function useQuickReplies(serverId: string | null): UseQuickRepliesResult {
+  const { config, patchConfig } = useDaemonConfig(serverId);
+  const isSupported = useIsQuickRepliesSupported(serverId);
 
   const saveReplies = useCallback(
     async (next: QuickReply[]) => {
