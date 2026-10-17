@@ -1960,6 +1960,7 @@ export const ar: TranslationResources = {
     tooltip: "الترجيع إلى هذه الرسالة",
     warning: "لا يمكن التراجع عن هذا الإجراء",
     actions: {
+      regenerate: "إعادة توليد الرد",
       conversation: "ترجيع المحادثة",
       files: "ترجيع الملفات",
       both: "ترجيع المحادثة والملفات",

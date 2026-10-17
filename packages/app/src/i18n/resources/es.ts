@@ -2015,6 +2015,7 @@ export const es: TranslationResources = {
     tooltip: "Rebobinar a este mensaje",
     warning: "Esta acción no se puede deshacer.",
     actions: {
+      regenerate: "Regenerar respuesta",
       conversation: "Rebobinar conversación",
       files: "Rebobinar archivos",
       both: "Rebobinar conversaciones y archivos",

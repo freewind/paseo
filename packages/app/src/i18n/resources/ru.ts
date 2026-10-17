@@ -1994,6 +1994,7 @@ export const ru: TranslationResources = {
     tooltip: "Вернуться к этому сообщению",
     warning: "Это действие нельзя отменить.",
     actions: {
+      regenerate: "Сгенерировать ответ заново",
       conversation: "Откатить диалог",
       files: "Откатить файлы",
       both: "Откатить диалог и файлы",

@@ -2026,6 +2026,7 @@ export const fr: TranslationResources = {
       conversation: "Revenir en arrière sur la conversation",
       files: "Revenir en arrière sur les fichiers",
       both: "Revenir en arrière sur la conversation et les fichiers",
+      regenerate: "Régénérer la réponse",
     },
     errors: {
       failed: "Impossible de faire revenir l’agent en arrière",

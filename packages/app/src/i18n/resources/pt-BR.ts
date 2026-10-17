@@ -1995,6 +1995,7 @@ export const ptBR: TranslationResources = {
     tooltip: "Voltar para esta mensagem",
     warning: "Esta ação não pode ser desfeita",
     actions: {
+      regenerate: "Regenerar resposta",
       conversation: "Reverter conversa",
       files: "Reverter arquivos",
       both: "Reverter conversa e arquivos",

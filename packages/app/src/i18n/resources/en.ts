@@ -1992,6 +1992,7 @@ export const en = {
     tooltip: "Rewind to this message",
     warning: "This action cannot be undone",
     actions: {
+      regenerate: "Regenerate answer",
       conversation: "Rewind conversation",
       files: "Rewind files",
       both: "Rewind conversation and files",
