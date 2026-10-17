@@ -144,8 +144,6 @@ export interface MessageInputProps {
   beforeVoiceContent?: React.ReactNode;
   /** Auxiliary content to render on the right side after the voice button. */
   rightContent?: React.ReactNode;
-  /** Mobile quick replies entry: an icon + menu node built by the host composer. */
-  quickRepliesMenu?: React.ReactNode;
   /** Primary action to render when the agent is active and the composer has no sendable content. */
   activeActionContent?: React.ReactNode;
   voiceServerId?: string;
@@ -1090,7 +1088,6 @@ interface ResolvedMessageInputProps {
   leftContent: React.ReactNode;
   beforeVoiceContent: React.ReactNode;
   rightContent: React.ReactNode;
-  quickRepliesMenu: React.ReactNode;
   activeActionContent: React.ReactNode;
   voiceServerId: string | undefined;
   voiceAgentId: string | undefined;
@@ -1139,7 +1136,6 @@ function resolveMessageInputProps(props: MessageInputProps): ResolvedMessageInpu
     leftContent: props.leftContent,
     beforeVoiceContent: props.beforeVoiceContent,
     rightContent: props.rightContent,
-    quickRepliesMenu: props.quickRepliesMenu,
     activeActionContent: props.activeActionContent,
     voiceServerId: props.voiceServerId,
     voiceAgentId: props.voiceAgentId,
@@ -1196,7 +1192,6 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
       leftContent,
       beforeVoiceContent,
       rightContent,
-      quickRepliesMenu,
       activeActionContent,
       voiceServerId,
       voiceAgentId,
@@ -1886,7 +1881,6 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
 
             {/* Right: voice button, contextual button (realtime/send/cancel) */}
             <View style={styles.rightButtonGroup}>
-              {quickRepliesMenu}
               {beforeVoiceContent}
               <MessageInputVoiceButton
                 showVoice={mode.showVoice}
