@@ -355,6 +355,7 @@ export const ar: TranslationResources = {
     delete: "حذف المذكرة",
     markDone: "تحديد كمنجز",
     markNotDone: "تحديد كغير منجز",
+    attachImage: "إرفاق صورة",
   },
   message: {
     diagram: {

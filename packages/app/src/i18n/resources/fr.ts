@@ -363,6 +363,7 @@ export const fr: TranslationResources = {
     delete: "Supprimer le mémo",
     markDone: "Marquer comme fait",
     markNotDone: "Marquer comme non fait",
+    attachImage: "Joindre une image",
   },
   message: {
     diagram: {

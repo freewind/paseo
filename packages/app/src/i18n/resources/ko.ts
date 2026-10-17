@@ -356,6 +356,7 @@ export const ko: TranslationResources = {
     delete: "메모 삭제",
     markDone: "완료로 표시",
     markNotDone: "미완료로 표시",
+    attachImage: "이미지 첨부",
   },
   message: {
     diagram: {

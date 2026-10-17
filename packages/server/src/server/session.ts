@@ -7958,7 +7958,7 @@ export class Session {
         agentStorage: this.agentStorage,
         logger: this.sessionLogger,
       });
-      const memo = await this.agentMemoStore.add(msg.agentId, msg.text);
+      const memo = await this.agentMemoStore.add(msg.agentId, msg.text, msg.images);
       this.emit({
         type: "agent.memo.add.response",
         payload: {
@@ -7987,7 +7987,7 @@ export class Session {
     msg: Extract<SessionInboundMessage, { type: "agent.memo.update.request" }>,
   ): Promise<void> {
     try {
-      const memo = await this.agentMemoStore.update(msg.agentId, msg.memoId, msg.text);
+      const memo = await this.agentMemoStore.update(msg.agentId, msg.memoId, msg.text, msg.images);
       this.emit({
         type: "agent.memo.update.response",
         payload: {

@@ -2019,6 +2019,8 @@ export class VoiceAssistantWebSocketServer {
         agentMemos: true,
         // COMPAT(agentMemoCompletion): added in v0.11.0, remove gate after 2027-05-05.
         agentMemoCompletion: true,
+        // COMPAT(agentMemoImages): added in v0.11.0, remove gate after 2027-05-05.
+        agentMemoImages: true,
         // COMPAT(agentTransferWorkspace): added in v0.11.0, remove gate after 2027-05-05.
         agentTransferWorkspace: true,
         // COMPAT(skillManagement): added in v0.4.0, remove gate after 2027-08-16.
