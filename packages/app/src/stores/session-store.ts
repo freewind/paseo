@@ -2,6 +2,7 @@ import equal from "fast-deep-equal";
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
+import type { AgentMemo } from "@getpaseo/protocol/messages";
 import type { ViewedTimelineOwner } from "@/timeline/viewed-timeline-sync";
 import type { AgentDirectoryEntry } from "@/types/agent-directory";
 import {
@@ -394,6 +395,7 @@ export interface SessionState {
   agentStreamTail: Map<string, StreamItem[]>;
   agentStreamHead: Map<string, StreamItem[]>;
   agentTasks: Map<string, TodoEntry[]>;
+  agentMemos: Map<string, readonly AgentMemo[]>;
   messageSubmissions: Map<string, MessageSubmissionRecord[]>;
   agentTimelineCursor: Map<string, AgentTimelineCursorState>;
   agentTimelineHasOlder: Map<string, boolean>;
@@ -542,6 +544,9 @@ interface SessionStoreActions {
     },
   ) => void;
 
+  // Agent memos (server-stored, full-list replacement on every mutation)
+  setAgentMemos: (serverId: string, agentId: string, memos: readonly AgentMemo[]) => void;
+
   // Initializing agents
   setInitializingAgents: (
     serverId: string,
@@ -642,6 +647,7 @@ function createInitialSessionState(
     agentStreamTail: new Map(),
     agentStreamHead: new Map(),
     agentTasks: new Map(),
+    agentMemos: new Map(),
     messageSubmissions: new Map(),
     agentTimelineCursor: new Map(),
     agentTimelineHasOlder: new Map(),
@@ -1467,6 +1473,26 @@ export const useSessionStore = create<SessionStore>()(
             sessions: {
               ...prev.sessions,
               [serverId]: { ...session, initializingAgents: nextState },
+            },
+          };
+        });
+      },
+
+      // Agent memos (server-stored, full-list replacement on every mutation)
+      setAgentMemos: (serverId, agentId, memos) => {
+        set((prev) => {
+          const session = prev.sessions[serverId];
+          if (!session) {
+            return prev;
+          }
+          const next = new Map(session.agentMemos);
+          if (memos.length > 0) next.set(agentId, memos);
+          else next.delete(agentId);
+          return {
+            ...prev,
+            sessions: {
+              ...prev.sessions,
+              [serverId]: { ...session, agentMemos: next },
             },
           };
         });

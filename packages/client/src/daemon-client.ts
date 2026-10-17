@@ -17,6 +17,24 @@ import {
 } from "./connection/index.js";
 import { CreationClient } from "./creation/index.js";
 import type { CreationSnapshot } from "@getpaseo/protocol/messages";
+import type { AgentMemo } from "@getpaseo/protocol/messages";
+
+export interface AgentMemoOperationPayload {
+  requestId: string;
+  agentId: string;
+  memo: AgentMemo | null;
+  memoId?: string;
+  memos: AgentMemo[];
+  error: string | null;
+}
+
+export interface AgentMemoDeletePayload {
+  requestId: string;
+  agentId: string;
+  memoId: string;
+  memos: AgentMemo[];
+  error: string | null;
+}
 import type { z } from "zod";
 import type { SessionEventSubscription } from "@getpaseo/protocol/messages";
 import { CLIENT_CAPS, type ClientCapability } from "@getpaseo/protocol/client-capabilities";
@@ -3640,6 +3658,52 @@ export class DaemonClient {
       responseType: "agent.timeline.append.response",
     });
     return { seq: payload.seq, epoch: payload.epoch };
+  }
+
+  async addAgentMemo(
+    agentId: string,
+    text: string,
+    options?: { requestId?: string; timeout?: number },
+  ): Promise<AgentMemoOperationPayload> {
+    const payload = await this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "agent.memo.add.request", agentId, text },
+      responseType: "agent.memo.add.response",
+      timeout: options?.timeout,
+    });
+    if (payload.error) throw new Error(payload.error);
+    return payload;
+  }
+
+  async updateAgentMemo(
+    agentId: string,
+    memoId: string,
+    text: string,
+    options?: { requestId?: string; timeout?: number },
+  ): Promise<AgentMemoOperationPayload> {
+    const payload = await this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "agent.memo.update.request", agentId, memoId, text },
+      responseType: "agent.memo.update.response",
+      timeout: options?.timeout,
+    });
+    if (payload.error) throw new Error(payload.error);
+    return payload;
+  }
+
+  async deleteAgentMemo(
+    agentId: string,
+    memoId: string,
+    options?: { requestId?: string; timeout?: number },
+  ): Promise<AgentMemoDeletePayload> {
+    const payload = await this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "agent.memo.delete.request", agentId, memoId },
+      responseType: "agent.memo.delete.response",
+      timeout: options?.timeout,
+    });
+    if (payload.error) throw new Error(payload.error);
+    return payload;
   }
 
   async searchAgentTimeline({

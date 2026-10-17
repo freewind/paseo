@@ -141,6 +141,7 @@ import {
 } from "./agent/agent-sdk-types.js";
 import type { StoredAgentRecord } from "./agent/agent-storage.js";
 import type { AgentStorage } from "./agent/agent-storage.js";
+import type { AgentMemoStore } from "./agent/agent-memo-store.js";
 import {
   ImportSessionsRequestError,
   importProviderSession,
@@ -474,6 +475,7 @@ export interface SessionOptions {
   worktreesRoot?: string;
   agentManager: AgentManager;
   agentStorage: AgentStorage;
+  agentMemoStore: AgentMemoStore;
   messageReceipts: Pick<MessageReceipts, "send">;
   agentMessages: AgentMessageDelivery;
   creationService: Pick<CreationService, "create" | "subscribe">;
@@ -753,6 +755,7 @@ export class Session {
 
   private agentManager: AgentManager;
   private readonly agentStorage: AgentStorage;
+  private readonly agentMemoStore: AgentMemoStore;
   private readonly projectRegistry: ProjectRegistry;
   private readonly workspaceRegistry: WorkspaceRegistry;
   private readonly agentDirectory: AgentDirectory;
@@ -938,6 +941,7 @@ export class Session {
     });
     this.agentManager = agentManager;
     this.agentStorage = agentStorage;
+    this.agentMemoStore = options.agentMemoStore;
     this.projectRegistry = projectRegistry;
     this.workspaceRegistry = workspaceRegistry;
     this.directorySync = resolveDirectorySync(directorySync);
@@ -2771,6 +2775,12 @@ export class Session {
         return this.handleFetchAgentTimelineRequest(msg, source);
       case "agent.timeline.append.request":
         return this.handleAgentTimelineAppendRequest(msg);
+      case "agent.memo.add.request":
+        return this.handleAgentMemoAddRequest(msg);
+      case "agent.memo.update.request":
+        return this.handleAgentMemoUpdateRequest(msg);
+      case "agent.memo.delete.request":
+        return this.handleAgentMemoDeleteRequest(msg);
       case "agent.timeline.search.request":
         return this.handleAgentTimelineSearchRequest(msg, source);
       case "agent.export_conversation.request":
@@ -7926,6 +7936,106 @@ export class Session {
       type: "agent.timeline.append.response",
       payload: { requestId: msg.requestId, seq, epoch },
     });
+  }
+
+  /**
+   * Agent memos are server-stored, so every mutation replies with the full list and
+   * the change broadcasts to all connected clients through the normal agent snapshot
+   * refresh each client already performs on its own cadence — the memo payload rides
+   * the response, and other clients see the new list on their next agent fetch.
+   */
+  private async handleAgentMemoAddRequest(
+    msg: Extract<SessionInboundMessage, { type: "agent.memo.add.request" }>,
+  ): Promise<void> {
+    try {
+      await ensureAgentLoaded(msg.agentId, {
+        agentManager: this.agentManager,
+        agentStorage: this.agentStorage,
+        logger: this.sessionLogger,
+      });
+      const memo = await this.agentMemoStore.add(msg.agentId, msg.text);
+      this.emit({
+        type: "agent.memo.add.response",
+        payload: {
+          requestId: msg.requestId,
+          agentId: msg.agentId,
+          memo,
+          memos: this.agentMemoStore.list(msg.agentId),
+          error: null,
+        },
+      });
+    } catch (error) {
+      this.emit({
+        type: "agent.memo.add.response",
+        payload: {
+          requestId: msg.requestId,
+          agentId: msg.agentId,
+          memo: null,
+          memos: this.agentMemoStore.list(msg.agentId),
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+    }
+  }
+
+  private async handleAgentMemoUpdateRequest(
+    msg: Extract<SessionInboundMessage, { type: "agent.memo.update.request" }>,
+  ): Promise<void> {
+    try {
+      const memo = await this.agentMemoStore.update(msg.agentId, msg.memoId, msg.text);
+      this.emit({
+        type: "agent.memo.update.response",
+        payload: {
+          requestId: msg.requestId,
+          agentId: msg.agentId,
+          memoId: msg.memoId,
+          memo,
+          memos: this.agentMemoStore.list(msg.agentId),
+          error: null,
+        },
+      });
+    } catch (error) {
+      this.emit({
+        type: "agent.memo.update.response",
+        payload: {
+          requestId: msg.requestId,
+          agentId: msg.agentId,
+          memoId: msg.memoId,
+          memo: null,
+          memos: this.agentMemoStore.list(msg.agentId),
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+    }
+  }
+
+  private async handleAgentMemoDeleteRequest(
+    msg: Extract<SessionInboundMessage, { type: "agent.memo.delete.request" }>,
+  ): Promise<void> {
+    try {
+      await this.agentMemoStore.delete(msg.agentId, msg.memoId);
+      this.emit({
+        type: "agent.memo.delete.response",
+        payload: {
+          requestId: msg.requestId,
+          agentId: msg.agentId,
+          memoId: msg.memoId,
+          memos: this.agentMemoStore.list(msg.agentId),
+          error: null,
+        },
+      });
+    } catch (error) {
+      this.emit({
+        type: "agent.memo.delete.response",
+        payload: {
+          requestId: msg.requestId,
+          agentId: msg.agentId,
+          memoId: msg.memoId,
+          memos: this.agentMemoStore.list(msg.agentId),
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+    }
   }
 
   private async handleAgentTimelineSearchRequest(

@@ -23,6 +23,7 @@ import { randomUUID } from "node:crypto";
 import { monitorEventLoopDelay } from "node:perf_hooks";
 import type { AgentManager, AgentMetricsSnapshot } from "./agent/agent-manager.js";
 import type { AgentStorage } from "./agent/agent-storage.js";
+import type { AgentMemoStore } from "./agent/agent-memo-store.js";
 import type { DownloadTokenStore } from "./file-download/token-store.js";
 import type { TerminalManager } from "../terminal/terminal-manager.js";
 import type pino from "pino";
@@ -558,6 +559,7 @@ export class VoiceAssistantWebSocketServer {
   private readonly daemonRuntimeConfig: DaemonRuntimeConfig | undefined;
   private readonly agentManager: AgentManager;
   private readonly agentStorage: AgentStorage;
+  private readonly agentMemoStore: AgentMemoStore;
   private readonly messageReceipts: MessageReceipts;
   readonly agentMessages: AgentMessageDelivery;
   private readonly creationService: CreationService;
@@ -647,6 +649,7 @@ export class VoiceAssistantWebSocketServer {
     serverId: string,
     agentManager: AgentManager,
     agentStorage: AgentStorage,
+    agentMemoStore: AgentMemoStore,
     downloadTokenStore: DownloadTokenStore,
     paseoHome: string,
     daemonConfigStore: DaemonConfigStore,
@@ -732,6 +735,7 @@ export class VoiceAssistantWebSocketServer {
           "Agent message batch dispatch failed",
         ),
     });
+    this.agentMemoStore = agentMemoStore;
     this.messageReceipts = new MessageReceipts(join(paseoHome, "agent-requests"));
     this.creationService = new CreationService(
       join(paseoHome, "creations"),
@@ -1600,6 +1604,7 @@ export class VoiceAssistantWebSocketServer {
       worktreesRoot: this.worktreesRoot,
       agentManager: this.agentManager,
       agentStorage: this.agentStorage,
+      agentMemoStore: this.agentMemoStore,
       messageReceipts: this.messageReceipts,
       agentMessages: this.agentMessages,
       creationService: this.creationService,
@@ -2010,6 +2015,8 @@ export class VoiceAssistantWebSocketServer {
         pluginThemes: true,
         pluginSettings: true,
         pluginTimelineItems: true,
+        // COMPAT(agentMemos): added in v0.11.0, remove gate after 2027-05-05.
+        agentMemos: true,
         // COMPAT(skillManagement): added in v0.4.0, remove gate after 2027-08-16.
         skillManagement: true,
         // COMPAT(terminalRestoreModes): added in v0.1.81, remove gate after 2026-11-23.
