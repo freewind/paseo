@@ -366,6 +366,7 @@ export const fr: TranslationResources = {
       copyCode: "Copier le code",
       copyTurn: "Copier le tour",
       copyMessage: "Copier le message",
+      regenerate: "Régénérer à partir d'ici",
       forkMenu: "Dupliquer le message",
       forkInNewTab: "Dupliquer dans un nouvel onglet",
       forkInNewWorkspace: "Dupliquer dans un nouvel espace de travail",

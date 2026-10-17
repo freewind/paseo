@@ -273,6 +273,8 @@ export interface AgentStreamViewHandle {
   openChatOutline(): void;
 }
 
+import type { RegenerateUserMessageInput } from "@/components/rewind/regenerate-user-message";
+
 export interface AgentStreamViewProps {
   agentId: string;
   serverId?: string;
@@ -292,6 +294,8 @@ export interface AgentStreamViewProps {
   onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
   onChatOutlineAvailabilityChange?: (available: boolean) => void;
   readOnly?: boolean;
+  /** Resend a user message verbatim after a rewind removed it and its successors. */
+  onRegenerateUserMessage?: (input: RegenerateUserMessageInput) => Promise<void>;
   historyPagination?: {
     hasOlder: boolean;
     isLoadingOlder: boolean;
@@ -322,6 +326,25 @@ function useRetainedValue<T>(value: T, active: boolean): T {
   return active ? value : retainedRef.current;
 }
 const EMPTY_PENDING_MESSAGE_SUBMISSIONS: readonly PendingMessageSubmission[] = [];
+
+/**
+ * Build one regenerate callback per user message, or undefined when the surface is
+ * read-only or a turn is open. Returned as a stable top-level function so the JSX
+ * never allocates a fresh closure in the render body.
+ */
+function createRegenerateHandler(
+  onRegenerateUserMessage: ((input: RegenerateUserMessageInput) => Promise<void>) | undefined,
+  unavailable: boolean,
+  item: Extract<StreamItem, { kind: "user_message" }>,
+): ((input: RegenerateUserMessageInput) => Promise<void>) | undefined {
+  if (!onRegenerateUserMessage || unavailable) return undefined;
+  return () =>
+    onRegenerateUserMessage({
+      text: item.text,
+      images: item.images,
+      attachments: item.attachments,
+    });
+}
 const GROUPED_TOOL_CALL_DETAIL_MAX_HEIGHT = 200;
 
 function resolveBottomOverlayControlOffset(clearance: number | undefined): number {
@@ -347,6 +370,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
       onOpenWorkspaceFile,
       onChatOutlineAvailabilityChange,
       readOnly = false,
+      onRegenerateUserMessage,
       historyPagination,
     },
     ref,
@@ -718,6 +742,13 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
 
     const renderUserMessageItem = useCallback(
       (layoutItem: StreamLayoutItem, item: Extract<StreamItem, { kind: "user_message" }>) => {
+        // A running turn cannot be rewound, so the handler is withheld while one is open.
+        // The component keys the row by messageId, so the closure is stable per message.
+        const regenerate = createRegenerateHandler(
+          onRegenerateUserMessage,
+          readOnly || isTurnActive,
+          item,
+        );
         return (
           <UserMessage
             serverId={resolvedServerId}
@@ -735,10 +766,20 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
               item.clientMessageId !== undefined &&
               pendingClientMessageIds.has(item.clientMessageId)
             }
+            onRegenerate={regenerate}
           />
         );
       },
-      [context.capabilities, agentId, client, pendingClientMessageIds, resolvedServerId],
+      [
+        context.capabilities,
+        agentId,
+        client,
+        pendingClientMessageIds,
+        resolvedServerId,
+        onRegenerateUserMessage,
+        readOnly,
+        isTurnActive,
+      ],
     );
 
     const renderAssistantMessageItem = useCallback(
