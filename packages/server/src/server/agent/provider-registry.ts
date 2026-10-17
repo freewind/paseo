@@ -481,6 +481,47 @@ export function wrapSessionProvider(provider: AgentProvider, inner: AgentSession
   } satisfies ForwardedAgentSession;
 }
 
+/**
+ * Optional client capabilities are forwarded through helpers rather than inline ternaries: the
+ * forwarding rules are per-capability, and keeping them out of the wrapper body keeps that body
+ * readable.
+ */
+function forwardListCommands(
+  inner: AgentClient,
+  providerOptions: ProviderOptions | undefined,
+): AgentClient["listCommands"] {
+  const listCommands = inner.listCommands?.bind(inner);
+  if (!listCommands) {
+    return undefined;
+  }
+  return async (config) =>
+    await listCommands({
+      ...config,
+      provider: inner.provider,
+      providerOptions: mergeProviderOptions(providerOptions, config.providerOptions),
+    });
+}
+
+/**
+ * Offline copy/branch: the inner provider works on its own native handle, and the handle it hands
+ * back carries this wrapper's provider so the manager resumes the copy here.
+ */
+function forwardSessionCopy<Args>(
+  provider: AgentProvider,
+  inner: AgentClient,
+  copy:
+    | ((handle: AgentPersistenceHandle, input: Args) => Promise<AgentPersistenceHandle>)
+    | undefined,
+): ((handle: AgentPersistenceHandle, input: Args) => Promise<AgentPersistenceHandle>) | undefined {
+  if (!copy) {
+    return undefined;
+  }
+  return async (handle, input) => ({
+    ...(await copy({ ...handle, provider: inner.provider }, input)),
+    provider,
+  });
+}
+
 function wrapClientProvider(
   provider: AgentProvider,
   inner: AgentClient,
@@ -564,6 +605,7 @@ function wrapClientProvider(
             providerOptions: mergeProviderOptions(providerOptions, config.providerOptions),
           })
       : undefined,
+    listCommands: forwardListCommands(inner, providerOptions),
     listImportableSessions: listImportableSessions
       ? async (options) => await listImportableSessions({ ...options, providerOptions })
       : undefined,
@@ -606,6 +648,8 @@ function wrapClientProvider(
     unarchiveNativeSession: unarchiveNativeSession
       ? async (handle) => await unarchiveNativeSession({ ...handle, provider: inner.provider })
       : undefined,
+    forkSession: forwardSessionCopy(provider, inner, inner.forkSession?.bind(inner)),
+    cloneSession: forwardSessionCopy(provider, inner, inner.cloneSession?.bind(inner)),
     getCatalogCacheKey: inner.getCatalogCacheKey?.bind(inner),
     isAvailable: (signal, options) => inner.isAvailable(signal, options),
     getDiagnostic: inner.getDiagnostic?.bind(inner),
