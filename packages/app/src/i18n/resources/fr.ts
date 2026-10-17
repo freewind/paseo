@@ -1926,6 +1926,7 @@ export const fr: TranslationResources = {
     tooltip: "Revenez à ce message",
     warning: "Cette action ne peut pas être annulée",
     actions: {
+      regenerate: "Régénérer la réponse",
       conversation: "Rembobiner la conversation",
       files: "Rembobiner les fichiers",
       both: "Rembobiner la conversation et les fichiers",

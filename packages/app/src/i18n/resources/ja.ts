@@ -1888,6 +1888,7 @@ export const ja: TranslationResources = {
     tooltip: "このメッセージに巻き戻す",
     warning: "この操作は元に戻せません",
     actions: {
+      regenerate: "回答を再生成",
       conversation: "会話を巻き戻す",
       files: "ファイルを巻き戻す",
       both: "会話とファイルを巻き戻す",

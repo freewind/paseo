@@ -44,7 +44,6 @@ import {
   Scissors,
   MicVocal,
   FileSymlink,
-  RefreshCw,
 } from "lucide-react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { ICON_SIZE, type Theme } from "@/styles/theme";
@@ -143,6 +142,8 @@ interface UserMessageProps {
   disableOuterSpacing?: boolean;
   /** Resend this message verbatim after rewinding it away; absent when unavailable. */
   onRegenerate?: (input: RegenerateUserMessageInput) => Promise<void>;
+  /** A turn is open, so resend is offered but not selectable. */
+  isRegenerateDisabled?: boolean;
 }
 
 const MessageOuterSpacingContext = createContext(false);
@@ -190,9 +191,6 @@ const ThemedMicVocal = withUnistyles(MicVocal);
 const ThemedFileSymlinkIcon = withUnistyles(FileSymlink);
 const ThemedTriangleAlertIcon = withUnistyles(TriangleAlertIcon);
 const ThemedChevronRightIcon = withUnistyles(ChevronRight);
-const ThemedRefreshCw = withUnistyles(RefreshCw, (theme) => ({
-  color: theme.colors.foregroundMuted,
-}));
 const ThemedLoadingSpinner = withUnistyles(LoadingSpinner);
 const ThemedNotificationInfo = withUnistyles(Info);
 const ThemedNotificationWarning = withUnistyles(TriangleAlertIcon);
@@ -449,39 +447,21 @@ function UserMessageImagePill({ image, onOpen, accessibilityLabel }: UserMessage
 
 const MESSAGE_TEXT_DATASET = { messageText: "true" };
 
-interface UserMessageRegenerateButtonProps {
-  visible: boolean;
-  disabled: boolean;
-  onPress: () => void | Promise<void>;
+/** Resend is offered only for a settled message on a host that can resend it at all. */
+function resolveCanRegenerate(input: {
+  onRegenerate: UserMessageProps["onRegenerate"];
+  messageId: string | undefined;
+  isPending: boolean;
+}): boolean {
+  return Boolean(input.onRegenerate && input.messageId && !input.isPending);
 }
 
-function resolveRegenerateIconColor(input: { disabled: boolean; hovered: boolean }) {
-  if (input.disabled) return foregroundMutedColorMapping;
-  return input.hovered ? foregroundColorMapping : foregroundMutedColorMapping;
-}
-
-function UserMessageRegenerateButton({
-  visible,
-  disabled,
-  onPress,
-}: UserMessageRegenerateButtonProps) {
-  const { t } = useTranslation();
-  if (!visible) return null;
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityLabel={t("message.actions.regenerate")}
-      testID="user-message-regenerate"
-      style={userMessageStylesheet.copyButton}
-      hitSlop={8}
-    >
-      {({ hovered }) => (
-        <ThemedRefreshCw size={16} uniProps={resolveRegenerateIconColor({ disabled, hovered })} />
-      )}
-    </Pressable>
-  );
+/** The item stays visible while a turn is open, so it reads as unavailable rather than missing. */
+function resolveRegenerateDisabled(
+  isRegenerateDisabled: boolean,
+  isRegenerating: boolean,
+): boolean {
+  return isRegenerateDisabled || isRegenerating;
 }
 
 export const UserMessage = memo(function UserMessage({
@@ -499,6 +479,7 @@ export const UserMessage = memo(function UserMessage({
   isPending = false,
   disableOuterSpacing,
   onRegenerate,
+  isRegenerateDisabled = false,
 }: UserMessageProps) {
   const isCompact = useIsCompactFormFactor();
   const { t } = useTranslation();
@@ -514,7 +495,7 @@ export const UserMessage = memo(function UserMessage({
   const hasImages = images.length > 0;
   const hasAttachments = attachments.length > 0;
   const showTrailingRow = !isPending && hasText && (isCompact || isNative || isHovered);
-  const showRegenerate = Boolean(onRegenerate && messageId && !isPending);
+  const canRegenerate = resolveCanRegenerate({ onRegenerate, messageId, isPending });
   const formattedTimestamp = useMemo(
     () => formatMessageTimestamp(new Date(timestamp)),
     [timestamp],
@@ -639,13 +620,13 @@ export const UserMessage = memo(function UserMessage({
                 isPending={rewindMutation.isPending}
                 rewoundText={message}
                 onRewind={handleRewind}
+                onRegenerate={canRegenerate ? handleRegenerate : undefined}
+                isRegenerateDisabled={resolveRegenerateDisabled(
+                  isRegenerateDisabled,
+                  isRegenerating,
+                )}
               />
             ) : null}
-            <UserMessageRegenerateButton
-              visible={showRegenerate}
-              disabled={isRegenerating || rewindMutation.isPending}
-              onPress={handleRegenerate}
-            />
             <TurnCopyButton
               getContent={getMessageContent}
               containerStyle={userMessageStylesheet.copyButton}

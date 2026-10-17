@@ -1879,6 +1879,7 @@ export const ko: TranslationResources = {
     tooltip: "이 메시지로 되감기",
     warning: "이 작업은 되돌릴 수 없습니다",
     actions: {
+      regenerate: "답변 다시 생성",
       conversation: "대화 되감기",
       files: "파일 되감기",
       both: "대화와 파일 되감기",
