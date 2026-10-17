@@ -13,6 +13,7 @@ import type { AgentTimelineItem, AgentTaskSnapshotItem } from "@getpaseo/protoco
 export function buildConversationMarkdown(
   items: readonly AgentTimelineItem[],
   tasks?: readonly AgentTaskSnapshotItem[],
+  options?: { agentTitle?: string | null },
 ): string {
   const sections: { role: "User" | "Assistant"; parts: string[] }[] = [];
   for (const item of items) {
@@ -28,9 +29,25 @@ export function buildConversationMarkdown(
   const conversation = sections
     .map((section) => `## ${section.role}\n\n${section.parts.join("\n\n")}`)
     .join("\n\n");
+  const body = withTaskSection(conversation, tasks);
+  return withAgentTitle(body, options?.agentTitle);
+}
+
+function withTaskSection(conversation: string, tasks?: readonly AgentTaskSnapshotItem[]): string {
   const taskSection = buildTaskSnapshotSection(tasks);
   if (!taskSection) return conversation;
   return conversation ? `${conversation}\n\n${taskSection}` : taskSection;
+}
+
+/**
+ * The agent title opens the copy as plain text, one blank line before the body. No `#`:
+ * the title is a name, not a heading level, and pasting `# ...` into a rich-text target
+ * turns the name into a foreign heading.
+ */
+function withAgentTitle(body: string, agentTitle?: string | null): string {
+  const title = agentTitle?.trim();
+  if (!title) return body;
+  return body ? `${title}\n\n${body}` : title;
 }
 
 /**

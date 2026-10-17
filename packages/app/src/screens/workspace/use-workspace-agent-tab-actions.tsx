@@ -190,7 +190,9 @@ export function useCopyAgentConversationMarkdown({
           items = page.entries.map((entry) => entry.item);
           tasks = tasksFromTimelineItems(items);
         }
-        const markdown = buildConversationMarkdown(items, tasks);
+        const agentTitle =
+          useSessionStore.getState().sessions[serverId]?.agents.get(agentId)?.title ?? null;
+        const markdown = buildConversationMarkdown(items, tasks, { agentTitle });
         if (!markdown) {
           toast.error(t("workspace.tabs.toasts.conversationMarkdownEmpty"));
           return;
@@ -201,7 +203,7 @@ export function useCopyAgentConversationMarkdown({
         toast.error(t("workspace.tabs.toasts.copyFailed"));
       }
     },
-    [client, isConnected, supportsConversationExport, t, toast],
+    [client, isConnected, supportsConversationExport, serverId, t, toast],
   );
 }
 
