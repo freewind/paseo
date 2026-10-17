@@ -6,6 +6,7 @@ import type { Logger } from "pino";
 import { writeJsonFileAtomic } from "../atomic-file.js";
 import {
   AGENT_MEMO_IMAGE_MAX_BYTES,
+  AGENT_MEMO_IMAGES_TOTAL_MAX_BYTES,
   AGENT_MEMO_MAX_IMAGES,
   AGENT_MEMOS_MAX_PER_AGENT,
 } from "@getpaseo/protocol/agent-memo-limits";
@@ -40,6 +41,40 @@ function assertMemoImages(images: readonly MemoImage[] | undefined): void {
     if (decodedBase64Bytes(image.data) > AGENT_MEMO_IMAGE_MAX_BYTES) {
       throw new Error(`Memo image exceeds ${AGENT_MEMO_IMAGE_MAX_BYTES} bytes`);
     }
+  }
+}
+
+/** Base64 characters are what the JSON file holds, so this is the stored size of one memo. */
+function memoImagesBytes(images: readonly MemoImage[] | undefined): number {
+  if (!images || images.length === 0) return 0;
+  let total = 0;
+  for (const image of images) {
+    total += image.data.length;
+  }
+  return total;
+}
+
+/**
+ * Rejects a write that would push one agent's memos over the image budget. The daemon
+ * re-serializes the whole file on every memo mutation, so the per-agent total is the number
+ * that matters, not one memo's size. `replacedMemoId` excludes the memo being replaced so its
+ * old images are not counted twice.
+ */
+function assertMemoImagesBudget(input: {
+  agentId: string;
+  memos: readonly AgentMemo[];
+  nextImages: readonly MemoImage[] | undefined;
+  replacedMemoId?: string;
+}): void {
+  let total = memoImagesBytes(input.nextImages);
+  for (const memo of input.memos) {
+    if (memo.id === input.replacedMemoId) continue;
+    total += memoImagesBytes(memo.images);
+  }
+  if (total > AGENT_MEMO_IMAGES_TOTAL_MAX_BYTES) {
+    throw new Error(
+      `Agent memo images for ${input.agentId} total ${total} base64 bytes, over the ${AGENT_MEMO_IMAGES_TOTAL_MAX_BYTES}-byte budget`,
+    );
   }
 }
 
@@ -94,6 +129,7 @@ export class AgentMemoStore {
       if (memos.length >= AGENT_MEMOS_MAX_PER_AGENT) {
         throw new Error(`Agent has reached the maximum of ${AGENT_MEMOS_MAX_PER_AGENT} memos`);
       }
+      assertMemoImagesBudget({ agentId, memos, nextImages: images });
       await this.persist({
         ...this.snapshot(),
         memosByAgentId: {
@@ -124,6 +160,12 @@ export class AgentMemoStore {
         text,
         ...(images === undefined ? {} : { images: images.length > 0 ? [...images] : undefined }),
       };
+      assertMemoImagesBudget({
+        agentId,
+        memos,
+        nextImages: updated.images,
+        replacedMemoId: memoId,
+      });
       const next = [...memos];
       next[index] = updated;
       await this.persist({
