@@ -162,6 +162,15 @@ function useDisableOuterSpacing(disableOuterSpacing: boolean | undefined) {
   return disableOuterSpacing ?? contextValue;
 }
 
+/**
+ * One setting governs wrapping in the badge: long workspace titles, and unadapted tool
+ * arguments' full JSON. Kept behind a hook so the badge body stays under the complexity cap.
+ */
+function useBadgeAllowsMultilineText(): boolean {
+  const { settings } = useAppSettings();
+  return settings.workspaceTitleMultiline || settings.toolArgsMultiline;
+}
+
 const WEB_TOOLCALL_SHIMMER_KEYFRAME_ID = "paseo-toolcall-shimmer-keyframes";
 const WEB_TOOLCALL_SHIMMER_ANIMATION_NAME = "paseo-toolcall-shimmer";
 const MARKDOWN_ALLOWED_IMAGE_HANDLERS = [
@@ -2785,7 +2794,7 @@ export const ExpandableBadge = memo(function ExpandableBadge({
   testID,
 }: ExpandableBadgeProps) {
   const resolvedDisableOuterSpacing = useDisableOuterSpacing(disableOuterSpacing);
-  const { settings } = useAppSettings();
+  const allowMultilineText = useBadgeAllowsMultilineText();
   const [isHovered, setIsHovered] = useState(false);
   const [isOpenFileHovered, setIsOpenFileHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
@@ -3076,7 +3085,7 @@ export const ExpandableBadge = memo(function ExpandableBadge({
             onOpenFilePress={handleOpenFilePress}
             onOpenFileHoverIn={handleOpenFileHoverIn}
             onOpenFileHoverOut={handleOpenFileHoverOut}
-            multiline={settings.workspaceTitleMultiline}
+            multiline={allowMultilineText}
           />
           {isExpanded && trailingAction ? (
             <View style={expandableBadgeStylesheet.trailingAction}>{trailingAction}</View>

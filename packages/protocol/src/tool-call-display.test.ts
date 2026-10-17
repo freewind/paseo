@@ -21,21 +21,58 @@ describe("shared tool-call display mapping", () => {
     });
   });
 
-  it("does not infer summaries from unknown raw detail", () => {
+  it("shows the full raw input JSON for unknown detail", () => {
     const display = buildToolCallDisplayModel({
-      name: "exec_command",
+      name: "custom_tool",
       status: "running",
       error: null,
       detail: {
         type: "unknown",
-        input: { command: "npm test" },
+        input: { command: "npm test", nested: { deep: [1, 2] } },
         output: null,
       },
     });
 
     expect(display).toEqual({
-      displayName: "Exec command",
+      displayName: "Custom tool",
+      summary: '{"command":"npm test","nested":{"deep":[1,2]}}',
     });
+  });
+
+  it("shows string input verbatim and skips empty or null input", () => {
+    const stringInput = buildToolCallDisplayModel({
+      name: "custom_tool",
+      status: "running",
+      error: null,
+      detail: { type: "unknown", input: "hello world", output: null },
+    });
+    expect(stringInput.summary).toBe("hello world");
+
+    const nullInput = buildToolCallDisplayModel({
+      name: "custom_tool",
+      status: "running",
+      error: null,
+      detail: { type: "unknown", input: null, output: null },
+    });
+    expect(nullInput.summary).toBeUndefined();
+
+    const emptyObject = buildToolCallDisplayModel({
+      name: "custom_tool",
+      status: "running",
+      error: null,
+      detail: { type: "unknown", input: {}, output: null },
+    });
+    expect(emptyObject.summary).toBe("{}");
+  });
+
+  it("keeps canonical summaries for adapted tools", () => {
+    const shell = buildToolCallDisplayModel({
+      name: "bash",
+      status: "running",
+      error: null,
+      detail: { type: "shell", command: "npm run build" },
+    });
+    expect(shell).toEqual({ displayName: "Shell", summary: "npm run build" });
   });
 
   it("uses sub-agent detail for task label and description", () => {

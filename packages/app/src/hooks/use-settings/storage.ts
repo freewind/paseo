@@ -92,6 +92,8 @@ export interface AppSettings {
   syntaxTheme: SyntaxThemeId; // default "one"
   workspaceTitleSource: WorkspaceTitleSource;
   workspaceTitleMultiline: boolean;
+  /** Let unadapted tool-call argument JSON wrap instead of ending in an ellipsis. */
+  toolArgsMultiline: boolean;
   sidebarWorkspaceTrailing: SidebarWorkspaceTrailing;
   sidebarRowItems: SidebarRowItems;
   sidebarChecksDisplay: SidebarChecksDisplay;
@@ -170,6 +172,7 @@ export const DEFAULT_CLIENT_SETTINGS: AppSettings = {
   syntaxTheme: "one",
   workspaceTitleSource: "title",
   workspaceTitleMultiline: false,
+  toolArgsMultiline: false,
   sidebarWorkspaceTrailing: "diff",
   sidebarRowItems: DEFAULT_SIDEBAR_ROW_ITEMS,
   sidebarChecksDisplay: DEFAULT_SIDEBAR_CHECKS_DISPLAY,
@@ -272,6 +275,7 @@ const StoredAppSettingsSchema = z
     syntaxTheme: z.string().refine(isSyntaxThemeId).catch("one"),
     workspaceTitleSource: z.enum(["title", "branch"]).catch("title"),
     workspaceTitleMultiline: z.boolean().catch(false),
+    toolArgsMultiline: z.boolean().catch(false),
     sidebarWorkspaceTrailing: z.enum(["diff", "timestamp", "none"]).catch("diff"),
     sidebarRowItems: SidebarRowItemsSchema,
     sidebarChecksDisplay: z

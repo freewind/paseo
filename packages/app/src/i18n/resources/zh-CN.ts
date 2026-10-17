@@ -2336,6 +2336,10 @@ export const zhCN: TranslationResources = {
           label: "🌿 标题行数",
           hint: "🌿 允许较长的工作区标题和工具调用摘要换行显示为多行",
         },
+        toolArgsMultiline: {
+          label: "🌿 工具参数",
+          hint: "🌿 完整显示工具调用参数并允许换行，而不是单行截断",
+        },
       },
       sidebar: {
         header: {
