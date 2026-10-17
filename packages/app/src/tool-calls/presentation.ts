@@ -59,6 +59,15 @@ function displayDetail(detail: ToolCallDetail | undefined): ToolCallDetail {
   return detail ?? { type: "unknown", input: null, output: null };
 }
 
+/**
+ * Thinking shows only its title: the protocol's unknown-detail override carries no summary,
+ * but the fallback chain in `buildToolCallDisplayModel` would otherwise surface the raw
+ * arguments JSON, and mapped `plain_text` thinking details would surface their label.
+ */
+function isThinkingToolName(name: string): boolean {
+  return name.trim().toLowerCase() === "thinking";
+}
+
 export function buildToolCallPresentation(
   input: BuildToolCallPresentationInput,
 ): ToolCallPresentation {
@@ -76,10 +85,13 @@ export function buildToolCallPresentation(
     cwd: input.cwd,
     targetAgentTitle: input.targetAgentTitle,
   });
-  const summary =
-    detailForDisplay.type === "shell" && displayModel.summary
-      ? firstPhysicalLine(displayModel.summary)
-      : displayModel.summary;
+  let summary = displayModel.summary;
+  if (isThinkingToolName(input.toolName)) {
+    // Thinking shows only its title; see `isThinkingToolName`.
+    summary = undefined;
+  } else if (detailForDisplay.type === "shell" && displayModel.summary) {
+    summary = firstPhysicalLine(displayModel.summary);
+  }
   const isLoadingDetails = isPendingToolCallDetail({
     detail,
     status: input.status,
