@@ -742,13 +742,10 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
 
     const renderUserMessageItem = useCallback(
       (layoutItem: StreamLayoutItem, item: Extract<StreamItem, { kind: "user_message" }>) => {
-        // A running turn cannot be rewound, so the handler is withheld while one is open.
-        // The component keys the row by messageId, so the closure is stable per message.
-        const regenerate = createRegenerateHandler(
-          onRegenerateUserMessage,
-          readOnly || isTurnActive,
-          item,
-        );
+        // A read-only transcript cannot rewind, so resend is not offered there at all. An open
+        // turn keeps the item visible but disabled, so the menu never disappears under the
+        // pointer. The component keys the row by messageId, so the closure is stable per message.
+        const regenerate = createRegenerateHandler(onRegenerateUserMessage, readOnly, item);
         return (
           <UserMessage
             serverId={resolvedServerId}
@@ -767,6 +764,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
               pendingClientMessageIds.has(item.clientMessageId)
             }
             onRegenerate={regenerate}
+            isRegenerateDisabled={isTurnActive}
           />
         );
       },
