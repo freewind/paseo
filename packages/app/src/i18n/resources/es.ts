@@ -707,7 +707,7 @@ export const es: TranslationResources = {
         copyConversationMarkdown: "Copiar conversación como Markdown",
         copyAgentAsNewConversation: "Copiar como conversación nueva",
         copyTerminalId: "Copiar ID del terminal",
-        copyFilePath: "Copy file path",
+        copyFilePath: "Copiar ruta del archivo",
         rename: "Rebautizar",
         closeAbove: "Cerrar pestañas arriba",
         closeBelow: "Cerrar pestañas a continuación",
@@ -715,6 +715,7 @@ export const es: TranslationResources = {
         closeRight: "Cerrar pestañas a la derecha",
         closeOthers: "Cerrar otras pestañas",
         moveToMain: "Mover al panel principal",
+        moveToWorkspace: "Mover al espacio de trabajo",
         reloadAgent: "Recargar agente",
         reloadAgentTooltip:
           "Vuelva a cargar el agente para actualizar habilidades, MCP o estado de inicio de sesión.",

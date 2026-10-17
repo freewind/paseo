@@ -717,7 +717,7 @@ export const fr: TranslationResources = {
         copyConversationMarkdown: "Copier la conversation en Markdown",
         copyAgentAsNewConversation: "Copier comme nouvelle conversation",
         copyTerminalId: "Copier l'identifiant du terminal",
-        copyFilePath: "Copy file path",
+        copyFilePath: "Copier le chemin du fichier",
         rename: "Rebaptiser",
         closeAbove: "Fermer les onglets ci-dessus",
         closeBelow: "Fermer les onglets ci-dessous",
@@ -726,6 +726,7 @@ export const fr: TranslationResources = {
         closeOthers: "Fermer les autres onglets",
         moveToMain: "Déplacer vers le panneau principal",
         reloadAgent: "Recharger l’agent",
+        moveToWorkspace: "Déplacer vers l'espace de travail",
         reloadAgentTooltip:
           "Rechargez l’agent pour mettre à jour les skills, les MCP ou l’état de connexion.",
         hideAgent: "Masquer cet agent",

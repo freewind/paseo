@@ -704,6 +704,7 @@ export const zhCN: TranslationResources = {
         closeRight: "关闭右侧标签",
         closeOthers: "关闭其他标签",
         moveToMain: "移至主面板",
+        moveToWorkspace: "移动到工作区",
         reloadAgent: "重新加载 Agent",
         reloadAgentTooltip: "重新加载 Agent 以更新 skills、MCPs 或登录状态。",
         hideAgent: "隐藏该 Agent",

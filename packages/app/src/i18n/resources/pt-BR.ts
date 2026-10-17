@@ -709,6 +709,7 @@ export const ptBR: TranslationResources = {
         closeRight: "Fechar à direita",
         closeOthers: "Fechar outras abas",
         moveToMain: "Mover para o painel principal",
+        moveToWorkspace: "Mover para o espaço de trabalho",
         reloadAgent: "Recarregar agente",
         reloadAgentTooltip: "Recarregue o agente para atualizar skills, MCPs ou status de login.",
         hideAgent: "Ocultar este agente",
