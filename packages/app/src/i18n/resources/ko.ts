@@ -696,6 +696,14 @@ export const ko: TranslationResources = {
         renameTerminal: "터미널 이름 변경",
         renameAgent: "에이전트 이름 변경",
       },
+      transfer: {
+        title: '"{{agent}}"을(를) 워크스페이스로 이동',
+        confirm: "에이전트 이동",
+        createAtProjectRoot: "{{project}}에 워크스페이스 생성",
+        moving: "에이전트 이동 중…",
+        moved: "에이전트를 이동했습니다",
+        failed: "에이전트 이동 실패",
+      },
       actions: {
         newTab: "새 탭",
         newAgent: "새 에이전트",

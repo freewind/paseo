@@ -701,6 +701,14 @@ export const ja: TranslationResources = {
         renameTerminal: "ターミナルの名前を変更",
         renameAgent: "エージェントの名前を変更",
       },
+      transfer: {
+        title: '"{{agent}}"をワークスペースへ移動',
+        confirm: "エージェントを移動",
+        createAtProjectRoot: "{{project}}にワークスペースを作成",
+        moving: "エージェントを移動中…",
+        moved: "エージェントを移動しました",
+        failed: "エージェントの移動に失敗しました",
+      },
       actions: {
         newTab: "新しいタブ",
         newAgent: "新しいエージェント",

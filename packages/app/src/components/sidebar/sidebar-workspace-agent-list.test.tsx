@@ -54,6 +54,7 @@ vi.mock("@/contexts/toast-context", () => ({
 vi.mock("@/runtime/host-runtime", () => ({
   getHostRuntimeStore: () => ({ fetchAgentTimeline: vi.fn() }),
   useHostRuntimeIsConnected: () => true,
+  useHosts: () => [],
 }));
 
 vi.mock("@/hooks/use-archive-agent", () => ({

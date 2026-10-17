@@ -3388,6 +3388,26 @@ export class DaemonClient {
     return payload;
   }
 
+  async transferAgentWorkspace(
+    agentId: string,
+    targetWorkspaceId: string,
+    options?: { newWorkspaceTitle?: string; requestId?: string; timeout?: number },
+  ): Promise<{ agentId: string; newWorkspaceId: string | null }> {
+    const payload = await this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: {
+        type: "agent.transfer_workspace.request",
+        agentId,
+        targetWorkspaceId,
+        ...(options?.newWorkspaceTitle ? { newWorkspaceTitle: options.newWorkspaceTitle } : {}),
+      },
+      responseType: "agent.transfer_workspace.response",
+      timeout: options?.timeout,
+    });
+    if (payload.error) throw new Error(payload.error);
+    return { agentId: payload.agentId, newWorkspaceId: payload.newWorkspaceId };
+  }
+
   async searchAgentTimeline({
     agentId,
     query,

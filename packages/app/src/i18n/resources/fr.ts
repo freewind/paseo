@@ -706,6 +706,14 @@ export const fr: TranslationResources = {
         renameTerminal: "Renommer le terminal",
         renameAgent: "Renommer l'agent",
       },
+      transfer: {
+        title: 'Déplacer "{{agent}}" vers un espace de travail',
+        confirm: "Déplacer l'agent",
+        createAtProjectRoot: "Créer un espace de travail dans {{project}}",
+        moving: "Déplacement de l'agent…",
+        moved: "Agent déplacé",
+        failed: "Échec du déplacement de l'agent",
+      },
       actions: {
         newTab: "Nouvel onglet",
         newAgent: "Nouvel agent",

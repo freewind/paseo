@@ -696,6 +696,14 @@ export const en = {
         renameTerminal: "Rename terminal",
         renameAgent: "Rename agent",
       },
+      transfer: {
+        title: 'Move "{{agent}}" to workspace',
+        confirm: "Move agent",
+        createAtProjectRoot: "Create workspace in {{project}}",
+        moving: "Moving agent…",
+        moved: "Agent moved",
+        failed: "Failed to move agent",
+      },
       actions: {
         newTab: "New tab",
         newAgent: "New agent",

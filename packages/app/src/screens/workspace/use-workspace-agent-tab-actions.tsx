@@ -30,6 +30,7 @@ import {
   WorkspaceTabRenameModal,
 } from "@/screens/workspace/use-workspace-tab-rename";
 import { useHostFeature } from "@/runtime/host-features";
+import { useAgentTransferWorkspace } from "./use-agent-transfer-workspace";
 import { markWorkspaceUnread } from "@/workspace/mark-unread";
 import { navigateToWorkspace } from "@/stores/navigation-active-workspace-store";
 import { canMarkAgentUnread } from "@/workspace/agent-unread-policy";
@@ -225,6 +226,9 @@ export interface WorkspaceAgentTabActions {
   onCopyConversationMarkdown: (agentId: string) => Promise<void>;
   onCopyAgentAsNew: (agentId: string) => Promise<void>;
   canCloneAgent: boolean;
+  /** Present only when the daemon advertises `agentTransferWorkspace`. */
+  onMoveAgentToWorkspace?: (agentId: string) => void;
+  canMoveAgentToWorkspace: boolean;
   onReloadAgent: (agentId: string) => Promise<void>;
   onRenameTab: (tab: WorkspaceTabDescriptor) => void;
   onCloseTab: (tabId: string) => Promise<void>;
@@ -236,6 +240,8 @@ export interface WorkspaceAgentTabActions {
   canMarkAsUnread: (agentId: string) => boolean;
   /** Rendered once by the list that owns this hook, so the modal is not repeated per row. */
   renameModal: ReactElement | null;
+  /** Rendered once by the list that owns this hook; picks a transfer destination. */
+  transferWorkspaceModal: ReactElement | null;
 }
 
 /**
@@ -644,12 +650,22 @@ export function useWorkspaceAgentTabActions({
     [handleRenameModalClose, handleRenameModalSubmit, renamingTab],
   );
 
+  const supportsAgentTransferWorkspace = useSessionStore(
+    (state) => state.sessions[serverId]?.serverInfo?.features?.agentTransferWorkspace === true,
+  );
+  const { transferModal, onMoveAgentToWorkspace } = useAgentTransferWorkspace({
+    serverId,
+    enabled: supportsAgentTransferWorkspace && isConnected,
+  });
+
   return {
     onCopyResumeCommand,
     onCopyAgentId,
     onCopyConversationMarkdown,
     onCopyAgentAsNew,
     canCloneAgent: supportsCloneAgent,
+    onMoveAgentToWorkspace: supportsAgentTransferWorkspace ? onMoveAgentToWorkspace : undefined,
+    canMoveAgentToWorkspace: supportsAgentTransferWorkspace,
     onReloadAgent,
     onRenameTab: handleRenameTab,
     onCloseTab,
@@ -660,5 +676,6 @@ export function useWorkspaceAgentTabActions({
     onMarkAsUnread,
     canMarkAsUnread,
     renameModal,
+    transferWorkspaceModal: transferModal,
   };
 }
