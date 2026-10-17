@@ -1275,6 +1275,11 @@ const expandableBadgeStylesheet = StyleSheet.create((theme) => ({
     color: theme.colors.foregroundMuted,
     fontSize: theme.fontSize.base,
     fontWeight: theme.fontWeight.normal,
+  },
+  // The two-column row spaces the summary with a margin; the combined inline flow uses a
+  // leading space in the text itself (nested native Text ignores margins, web does not),
+  // so the column indent lives in this style instead of the shared one.
+  secondaryLabelColumnIndent: {
     marginLeft: theme.spacing[2],
   },
   secondaryLabelActive: {
@@ -1364,6 +1369,8 @@ const expandableBadgeStylesheet = StyleSheet.create((theme) => ({
 interface NativeExpandableBadgeShimmerProps {
   label: string;
   secondaryLabel?: string;
+  /** Mirrors the real row's combined-flow line cap; undefined keeps the two-column layout. */
+  secondaryLabelMaxLines?: number;
   rowWidth: number;
   rowHeight: number;
   peakWidth: number;
@@ -1375,6 +1382,7 @@ interface NativeExpandableBadgeShimmerProps {
 const NativeExpandableBadgeShimmer = memo(function NativeExpandableBadgeShimmer({
   label,
   secondaryLabel,
+  secondaryLabelMaxLines,
   rowWidth,
   rowHeight,
   peakWidth,
@@ -1439,8 +1447,21 @@ const NativeExpandableBadgeShimmer = memo(function NativeExpandableBadgeShimmer(
     [nativeShimmerPeakStyle, peakWidth, rowHeight],
   );
 
-  const maskElement = useMemo(
-    () => (
+  const maskElement = useMemo(() => {
+    if (secondaryLabelMaxLines !== undefined) {
+      return (
+        <View pointerEvents="none" style={nativeShimmerMaskStyle}>
+          <ExpandableBadgeInlineText
+            label={label}
+            secondaryLabel={secondaryLabel}
+            labelStyle={nativeLabelMaskStyle}
+            secondaryLabelStyle={nativeSecondaryMaskStyle}
+            maxLines={secondaryLabelMaxLines}
+          />
+        </View>
+      );
+    }
+    return (
       <View pointerEvents="none" style={nativeShimmerMaskStyle}>
         <Text style={nativeLabelMaskStyle} numberOfLines={1}>
           {label}
@@ -1453,16 +1474,16 @@ const NativeExpandableBadgeShimmer = memo(function NativeExpandableBadgeShimmer(
           <View style={expandableBadgeStylesheet.spacer} />
         )}
       </View>
-    ),
-    [
-      nativeShimmerMaskStyle,
-      nativeLabelMaskStyle,
-      nativeSecondaryMaskStyle,
-      label,
-      secondaryLabel,
-      multiline,
-    ],
-  );
+    );
+  }, [
+    secondaryLabelMaxLines,
+    nativeShimmerMaskStyle,
+    nativeLabelMaskStyle,
+    nativeSecondaryMaskStyle,
+    label,
+    secondaryLabel,
+    multiline,
+  ]);
 
   return (
     <View style={expandableBadgeStylesheet.shimmerOverlay} pointerEvents="none">
@@ -2468,6 +2489,11 @@ export const TodoListCard = memo(function TodoListCard({
 interface ExpandableBadgeProps {
   label: string;
   secondaryLabel?: string;
+  /**
+   * Combined line cap for the name+summary text flow; when set, the two strings render as
+   * one wrapping text capped at that many lines. Undefined keeps the two-column label row.
+   */
+  secondaryLabelMaxLines?: number;
   icon?: ComponentType<{ size?: number; color?: string }>;
   isExpanded: boolean;
   style?: StyleProp<ViewStyle>;
@@ -2513,9 +2539,45 @@ function ExpandableBadgeSecondaryLabel({
   );
 }
 
+interface ExpandableBadgeInlineTextProps {
+  label: string;
+  secondaryLabel?: string;
+  labelStyle: StyleProp<TextStyle>;
+  secondaryLabelStyle: StyleProp<TextStyle>;
+  /** Extra style for the whole flow; the web shimmer puts its animated text style here. */
+  outerStyle?: StyleProp<TextStyle>;
+  onLayout?: (event: LayoutChangeEvent) => void;
+  maxLines: number;
+}
+
+/**
+ * The tool-call title: name and summary as one continuous text flow, capped at
+ * `maxLines` total with a tail ellipsis. A single outer Text owns `numberOfLines`, so the
+ * summary wraps onto the name's line and reuses the full width underneath it — no reserved
+ * left column. The nested spans keep each part's own styling.
+ */
+function ExpandableBadgeInlineText({
+  label,
+  secondaryLabel,
+  labelStyle,
+  secondaryLabelStyle,
+  outerStyle,
+  onLayout,
+  maxLines,
+}: ExpandableBadgeInlineTextProps) {
+  return (
+    <Text style={outerStyle} numberOfLines={maxLines} ellipsizeMode="tail" onLayout={onLayout}>
+      <Text style={labelStyle}>{label}</Text>
+      {secondaryLabel ? <Text style={secondaryLabelStyle}>{` ${secondaryLabel}`}</Text> : null}
+    </Text>
+  );
+}
+
 interface ExpandableBadgeWebShimmerOverlayProps {
   label: string;
   secondaryLabel?: string;
+  /** Mirrors the real row's combined-flow line cap; undefined keeps the two-column layout. */
+  secondaryLabelMaxLines?: number;
   shimmerLabelTextStyle: StyleProp<TextStyle>;
   shimmerSecondaryTextStyle: StyleProp<TextStyle>;
   showOpenFileButton: boolean;
@@ -2525,11 +2587,25 @@ interface ExpandableBadgeWebShimmerOverlayProps {
 function ExpandableBadgeWebShimmerOverlay({
   label,
   secondaryLabel,
+  secondaryLabelMaxLines,
   shimmerLabelTextStyle,
   shimmerSecondaryTextStyle,
   showOpenFileButton,
   multiline,
 }: ExpandableBadgeWebShimmerOverlayProps) {
+  if (secondaryLabelMaxLines !== undefined) {
+    return (
+      <View style={expandableBadgeStylesheet.shimmerOverlay} pointerEvents="none">
+        <ExpandableBadgeInlineText
+          label={label}
+          secondaryLabel={secondaryLabel}
+          labelStyle={shimmerLabelTextStyle}
+          secondaryLabelStyle={shimmerSecondaryTextStyle}
+          maxLines={secondaryLabelMaxLines}
+        />
+      </View>
+    );
+  }
   return (
     <View style={expandableBadgeStylesheet.shimmerOverlay} pointerEvents="none">
       <Text style={shimmerLabelTextStyle} numberOfLines={1}>
@@ -2557,6 +2633,11 @@ interface ExpandableBadgeLabelRowProps {
   labelStyle: StyleProp<TextStyle>;
   secondaryLabel?: string;
   secondaryLabelStyle: StyleProp<TextStyle>;
+  /**
+   * Combined line cap for the name+summary text flow. Undefined keeps the two-column
+   * label row used by callers other than the tool-call title.
+   */
+  secondaryLabelMaxLines?: number;
   shouldMeasureWebShimmer: boolean;
   shouldMeasureNativeShimmer: boolean;
   isWebShimmer: boolean;
@@ -2584,6 +2665,7 @@ function ExpandableBadgeLabelRow({
   labelStyle,
   secondaryLabel,
   secondaryLabelStyle,
+  secondaryLabelMaxLines,
   shouldMeasureWebShimmer,
   shouldMeasureNativeShimmer,
   isWebShimmer,
@@ -2606,6 +2688,64 @@ function ExpandableBadgeLabelRow({
   multiline,
 }: ExpandableBadgeLabelRowProps) {
   const { t } = useTranslation();
+  if (secondaryLabelMaxLines !== undefined) {
+    return (
+      <View
+        style={expandableBadgeStylesheet.labelRow}
+        onLayout={shouldMeasureNativeShimmer ? onLabelRowLayout : undefined}
+      >
+        <ExpandableBadgeInlineText
+          label={label}
+          secondaryLabel={secondaryLabel}
+          labelStyle={labelStyle}
+          secondaryLabelStyle={secondaryLabelStyle}
+          onLayout={shouldMeasureWebShimmer ? onLabelLayout : undefined}
+          maxLines={secondaryLabelMaxLines}
+        />
+        {showOpenFileButton ? (
+          <Pressable
+            onPress={onOpenFilePress}
+            onHoverIn={onOpenFileHoverIn}
+            onHoverOut={onOpenFileHoverOut}
+            accessibilityRole="button"
+            accessibilityLabel={t("message.actions.openFile")}
+            testID="tool-call-open-file"
+            style={expandableBadgeStylesheet.openFileButton}
+            hitSlop={6}
+          >
+            <ThemedFileSymlinkIcon
+              size={14}
+              uniProps={isOpenFileHovered ? foregroundColorMapping : foregroundMutedColorMapping}
+            />
+          </Pressable>
+        ) : null}
+        {isWebShimmer ? (
+          <ExpandableBadgeWebShimmerOverlay
+            label={label}
+            secondaryLabel={secondaryLabel}
+            secondaryLabelMaxLines={secondaryLabelMaxLines}
+            shimmerLabelTextStyle={shimmerLabelTextStyle}
+            shimmerSecondaryTextStyle={shimmerSecondaryTextStyle}
+            showOpenFileButton={showOpenFileButton}
+            multiline={multiline}
+          />
+        ) : null}
+        {isNativeShimmer ? (
+          <NativeExpandableBadgeShimmer
+            label={label}
+            secondaryLabel={secondaryLabel}
+            secondaryLabelMaxLines={secondaryLabelMaxLines}
+            rowWidth={labelRowWidth}
+            rowHeight={labelRowHeight}
+            peakWidth={nativeShimmerPeakWidth}
+            durationSeconds={shimmerDuration}
+            gradientId={nativeGradientId}
+            multiline={multiline}
+          />
+        ) : null}
+      </View>
+    );
+  }
   return (
     <View
       style={expandableBadgeStylesheet.labelRow}
@@ -2688,6 +2828,13 @@ function ExpandableBadgeLabelRow({
 const LUCIDE_TOOL_ICON_NUDGE_LEFT: ViewStyle = { marginLeft: -1 };
 const LUCIDE_CHEVRON_NUDGE_LEFT: ViewStyle = { marginLeft: -4 };
 
+/** Memoizes the badge icon through `withUnistyles`; null when there is no icon. */
+function useExpandableBadgeIcon(
+  icon: ExpandableBadgeProps["icon"],
+): ComponentType<{ size?: number; uniProps?: typeof foregroundColorMapping }> | null {
+  return useMemo(() => (icon ? withUnistyles(icon) : null), [icon]);
+}
+
 function renderExpandableBadgeIcon({
   isError,
   isActive,
@@ -2736,6 +2883,38 @@ function renderExpandableBadgeIconSlot({
   return iconNode;
 }
 
+/**
+ * Shimmer timing and span metrics for the badge. Wraps `computeShimmerMetrics` so the
+ * inline-flow branch stays out of `ExpandableBadge`: when the title renders as one
+ * combined text flow (secondaryLabelMaxLines set), it is measured as a single text node
+ * (onLabelLayout), so the separately measured secondary span must stay out of the span
+ * math for the web shimmer track to cover the whole visible title.
+ */
+function useBadgeShimmerMetrics(input: {
+  label: string;
+  secondaryLabel?: string;
+  secondaryLabelMaxLines?: number;
+  isLoading: boolean;
+  labelRowWidth: number;
+  labelRowHeight: number;
+  labelOffsetX: number;
+  labelWidth: number;
+  secondaryOffsetX: number;
+  secondaryWidth: number;
+}) {
+  return computeShimmerMetrics({
+    label: input.label,
+    secondaryLabel: input.secondaryLabelMaxLines !== undefined ? undefined : input.secondaryLabel,
+    isLoading: input.isLoading,
+    labelRowWidth: input.labelRowWidth,
+    labelRowHeight: input.labelRowHeight,
+    labelOffsetX: input.labelOffsetX,
+    labelWidth: input.labelWidth,
+    secondaryOffsetX: input.secondaryOffsetX,
+    secondaryWidth: input.secondaryWidth,
+  });
+}
+
 function computeShimmerMetrics(input: {
   label: string;
   secondaryLabel: string | undefined;
@@ -2762,6 +2941,7 @@ function computeShimmerMetrics(input: {
   // measuring while idle so a retained badge has dimensions when it starts loading.
   const shouldMeasureWebShimmer = isWeb;
   const shouldMeasureNativeShimmer = input.isLoading && isNative;
+
   const isNativeShimmer =
     shouldMeasureNativeShimmer && input.labelRowWidth > 0 && input.labelRowHeight > 0;
   const webShimmerSpanStartX = input.labelOffsetX;
@@ -2838,10 +3018,117 @@ function buildShimmerTextStyle(input: {
   });
 }
 
+/**
+ * The badge's pressable chrome and label text styles. Split out of `ExpandableBadge` to
+ * keep the component under the complexity cap.
+ */
+function useExpandableBadgeStyles(input: {
+  isLastInSequence: boolean;
+  resolvedDisableOuterSpacing: boolean;
+  style: ExpandableBadgeProps["style"];
+  isPressed: boolean;
+  isInteractive: boolean;
+  isExpanded: boolean;
+  borderlessWhenExpanded: boolean;
+  isActive: boolean;
+  isLoading: boolean;
+  inlineFlow: boolean;
+  shimmerLabelStyle: StyleProp<TextStyle>;
+  shimmerSecondaryStyle: StyleProp<TextStyle>;
+}) {
+  const containerStyle = useMemo(
+    () => [
+      expandableBadgeStylesheet.container,
+      !input.resolvedDisableOuterSpacing &&
+        (input.isLastInSequence
+          ? expandableBadgeStylesheet.containerLastInSequence
+          : expandableBadgeStylesheet.containerSpacing),
+      input.style,
+    ],
+    [input.isLastInSequence, input.resolvedDisableOuterSpacing, input.style],
+  );
+
+  const pressableStyle = useMemo(
+    () => [
+      expandableBadgeStylesheet.pressable,
+      input.isPressed && input.isInteractive ? expandableBadgeStylesheet.pressablePressed : null,
+      input.isExpanded && expandableBadgeStylesheet.pressableExpanded,
+      input.isExpanded &&
+        !input.borderlessWhenExpanded &&
+        expandableBadgeStylesheet.pressableExpandedAttached,
+    ],
+    [input.borderlessWhenExpanded, input.isExpanded, input.isInteractive, input.isPressed],
+  );
+
+  const detailWrapperStyle = useMemo(
+    () => [
+      expandableBadgeStylesheet.detailWrapper,
+      input.borderlessWhenExpanded && expandableBadgeStylesheet.detailWrapperBorderless,
+    ],
+    [input.borderlessWhenExpanded],
+  );
+
+  const accessibilityState = useMemo(
+    () => (input.isInteractive ? { expanded: input.isExpanded } : undefined),
+    [input.isExpanded, input.isInteractive],
+  );
+
+  const labelStyle = useMemo(
+    () => [
+      expandableBadgeStylesheet.label,
+      input.isActive && expandableBadgeStylesheet.labelActive,
+      input.isLoading && expandableBadgeStylesheet.labelLoading,
+    ],
+    [input.isActive, input.isLoading],
+  );
+
+  const secondaryLabelStyle = useMemo(
+    () => [
+      expandableBadgeStylesheet.secondaryLabel,
+      input.isActive && expandableBadgeStylesheet.secondaryLabelActive,
+      // Only the two-column row indents the summary with a margin; the combined inline
+      // flow spaces it with the leading space inside the text itself.
+      input.inlineFlow ? null : expandableBadgeStylesheet.secondaryLabelColumnIndent,
+    ],
+    [input.isActive, input.inlineFlow],
+  );
+
+  const shimmerLabelTextStyle = useMemo(
+    () => [
+      expandableBadgeStylesheet.label,
+      input.isLoading && expandableBadgeStylesheet.labelLoading,
+      expandableBadgeStylesheet.shimmerText,
+      input.shimmerLabelStyle,
+    ],
+    [input.isLoading, input.shimmerLabelStyle],
+  );
+
+  const shimmerSecondaryTextStyle = useMemo(
+    () => [
+      expandableBadgeStylesheet.secondaryLabel,
+      expandableBadgeStylesheet.shimmerText,
+      input.shimmerSecondaryStyle,
+    ],
+    [input.shimmerSecondaryStyle],
+  );
+
+  return {
+    containerStyle,
+    pressableStyle,
+    detailWrapperStyle,
+    accessibilityState,
+    labelStyle,
+    secondaryLabelStyle,
+    shimmerLabelTextStyle,
+    shimmerSecondaryTextStyle,
+  };
+}
+
 export const ExpandableBadge = memo(function ExpandableBadge({
   label,
   style,
   secondaryLabel,
+  secondaryLabelMaxLines,
   icon,
   isExpanded,
   onToggle,
@@ -2888,16 +3175,21 @@ export const ExpandableBadge = memo(function ExpandableBadge({
   const handleOpenFileHoverIn = useCallback(() => setIsOpenFileHovered(true), []);
   const handleOpenFileHoverOut = useCallback(() => setIsOpenFileHovered(false), []);
 
+  const {
+    labelRowWidth,
+    labelRowHeight,
+    labelOffsetX,
+    labelWidth,
+    secondaryOffsetX,
+    secondaryWidth,
+    handleLabelRowLayout,
+    handleLabelLayout,
+    handleSecondaryLayout,
+  } = useBadgeShimmerMeasurements();
+
   const nativeGradientIdRef = useRef(
     `shimmer-gradient-${Math.random().toString(36).substring(2, 9)}`,
   );
-  const [labelRowWidth, setLabelRowWidth] = useState(0);
-  const [labelRowHeight, setLabelRowHeight] = useState(0);
-  const [labelOffsetX, setLabelOffsetX] = useState(0);
-  const [labelWidth, setLabelWidth] = useState(0);
-  const [secondaryOffsetX, setSecondaryOffsetX] = useState(0);
-  const [secondaryWidth, setSecondaryWidth] = useState(0);
-
   const {
     shimmerDuration,
     nativeShimmerPeakWidth,
@@ -2908,9 +3200,10 @@ export const ExpandableBadge = memo(function ExpandableBadge({
     webShimmerPeakWidth,
     webShimmerTrackStart,
     webShimmerTrackEnd,
-  } = computeShimmerMetrics({
+  } = useBadgeShimmerMetrics({
     label,
     secondaryLabel,
+    secondaryLabelMaxLines,
     isLoading,
     labelRowWidth,
     labelRowHeight,
@@ -2919,42 +3212,6 @@ export const ExpandableBadge = memo(function ExpandableBadge({
     secondaryOffsetX,
     secondaryWidth,
   });
-
-  const handleLabelRowLayout = useCallback(
-    (event: LayoutChangeEvent) => {
-      if (!shouldMeasureNativeShimmer) {
-        return;
-      }
-      const { width, height } = event.nativeEvent.layout;
-      setLabelRowWidth((previous) => (Math.abs(previous - width) > 0.5 ? width : previous));
-      setLabelRowHeight((previous) => (Math.abs(previous - height) > 0.5 ? height : previous));
-    },
-    [shouldMeasureNativeShimmer],
-  );
-
-  const handleLabelLayout = useCallback(
-    (event: LayoutChangeEvent) => {
-      if (!shouldMeasureWebShimmer) {
-        return;
-      }
-      const { x, width } = event.nativeEvent.layout;
-      setLabelOffsetX((previous) => (Math.abs(previous - x) > 0.5 ? x : previous));
-      setLabelWidth((previous) => (Math.abs(previous - width) > 0.5 ? width : previous));
-    },
-    [shouldMeasureWebShimmer],
-  );
-
-  const handleSecondaryLayout = useCallback(
-    (event: LayoutChangeEvent) => {
-      if (!shouldMeasureWebShimmer || !secondaryLabel) {
-        return;
-      }
-      const { x, width } = event.nativeEvent.layout;
-      setSecondaryOffsetX((previous) => (Math.abs(previous - x) > 0.5 ? x : previous));
-      setSecondaryWidth((previous) => (Math.abs(previous - width) > 0.5 ? width : previous));
-    },
-    [shouldMeasureWebShimmer, secondaryLabel],
-  );
 
   useEffect(() => {
     if (!isWebShimmer) {
@@ -3008,78 +3265,31 @@ export const ExpandableBadge = memo(function ExpandableBadge({
     ],
   );
 
-  const containerStyle = useMemo(
-    () => [
-      expandableBadgeStylesheet.container,
-      !resolvedDisableOuterSpacing &&
-        (isLastInSequence
-          ? expandableBadgeStylesheet.containerLastInSequence
-          : expandableBadgeStylesheet.containerSpacing),
-      style,
-    ],
-    [isLastInSequence, resolvedDisableOuterSpacing, style],
-  );
-
-  const pressableStyle = useMemo(
-    () => [
-      expandableBadgeStylesheet.pressable,
-      isPressed && isInteractive ? expandableBadgeStylesheet.pressablePressed : null,
-      isExpanded && expandableBadgeStylesheet.pressableExpanded,
-      isExpanded && !borderlessWhenExpanded && expandableBadgeStylesheet.pressableExpandedAttached,
-    ],
-    [borderlessWhenExpanded, isExpanded, isInteractive, isPressed],
-  );
-
-  const detailWrapperStyle = useMemo(
-    () => [
-      expandableBadgeStylesheet.detailWrapper,
-      borderlessWhenExpanded && expandableBadgeStylesheet.detailWrapperBorderless,
-    ],
-    [borderlessWhenExpanded],
-  );
-
-  const accessibilityState = useMemo(
-    () => (isInteractive ? { expanded: isExpanded } : undefined),
-    [isExpanded, isInteractive],
-  );
-
   const isActive = isHovered || isExpanded;
 
-  const labelStyle = useMemo(
-    () => [
-      expandableBadgeStylesheet.label,
-      isActive && expandableBadgeStylesheet.labelActive,
-      isLoading && expandableBadgeStylesheet.labelLoading,
-    ],
-    [isActive, isLoading],
-  );
-
-  const secondaryLabelStyle = useMemo(
-    () => [
-      expandableBadgeStylesheet.secondaryLabel,
-      isActive && expandableBadgeStylesheet.secondaryLabelActive,
-    ],
-    [isActive],
-  );
-
-  const shimmerLabelTextStyle = useMemo(
-    () => [
-      expandableBadgeStylesheet.label,
-      isLoading && expandableBadgeStylesheet.labelLoading,
-      expandableBadgeStylesheet.shimmerText,
-      shimmerLabelStyle,
-    ],
-    [isLoading, shimmerLabelStyle],
-  );
-
-  const shimmerSecondaryTextStyle = useMemo(
-    () => [
-      expandableBadgeStylesheet.secondaryLabel,
-      expandableBadgeStylesheet.shimmerText,
-      shimmerSecondaryStyle,
-    ],
-    [shimmerSecondaryStyle],
-  );
+  const {
+    containerStyle,
+    pressableStyle,
+    detailWrapperStyle,
+    accessibilityState,
+    labelStyle,
+    secondaryLabelStyle,
+    shimmerLabelTextStyle,
+    shimmerSecondaryTextStyle,
+  } = useExpandableBadgeStyles({
+    isLastInSequence,
+    resolvedDisableOuterSpacing,
+    style,
+    isPressed,
+    isInteractive,
+    isExpanded,
+    borderlessWhenExpanded,
+    isActive,
+    isLoading,
+    inlineFlow: secondaryLabelMaxLines !== undefined,
+    shimmerLabelStyle,
+    shimmerSecondaryStyle,
+  });
 
   const chevronStyle = useMemo(
     () => [
@@ -3092,7 +3302,7 @@ export const ExpandableBadge = memo(function ExpandableBadge({
     [isExpanded],
   );
 
-  const ThemedIcon = useMemo(() => (icon ? withUnistyles(icon) : null), [icon]);
+  const ThemedIcon = useExpandableBadgeIcon(icon);
   const iconNode = renderExpandableBadgeIcon({ isError, isActive, ThemedIcon });
   const iconSlotNode = renderExpandableBadgeIconSlot({
     showChevron: isInteractive && (isHovered || isExpanded),
@@ -3129,6 +3339,7 @@ export const ExpandableBadge = memo(function ExpandableBadge({
             labelStyle={labelStyle}
             secondaryLabel={secondaryLabel}
             secondaryLabelStyle={secondaryLabelStyle}
+            secondaryLabelMaxLines={secondaryLabelMaxLines}
             shouldMeasureWebShimmer={shouldMeasureWebShimmer}
             shouldMeasureNativeShimmer={shouldMeasureNativeShimmer}
             isWebShimmer={isWebShimmer}
@@ -3172,6 +3383,7 @@ export const ExpandableBadge = memo(function ExpandableBadge({
 function areExpandableBadgePropsEqual(previous: ExpandableBadgeProps, next: ExpandableBadgeProps) {
   if (previous.label !== next.label) return false;
   if (previous.secondaryLabel !== next.secondaryLabel) return false;
+  if (previous.secondaryLabelMaxLines !== next.secondaryLabelMaxLines) return false;
   if (previous.icon !== next.icon) return false;
   if (previous.isExpanded !== next.isExpanded) return false;
   if (previous.style !== next.style) return false;
@@ -3187,6 +3399,51 @@ function areExpandableBadgePropsEqual(previous: ExpandableBadgeProps, next: Expa
   if (previous.renderDetails !== next.renderDetails) return false;
   if (previous.trailingAction !== next.trailingAction) return false;
   return true;
+}
+
+/**
+ * Measured layout of the badge's label row and its text spans, for the shimmer effects.
+ * Split out of `ExpandableBadge` to keep the component under the complexity cap; the
+ * measurement callbacks measure whenever invoked so a retained badge has dimensions when a
+ * shimmer starts.
+ */
+function useBadgeShimmerMeasurements() {
+  const [labelRowWidth, setLabelRowWidth] = useState(0);
+  const [labelRowHeight, setLabelRowHeight] = useState(0);
+  const [labelOffsetX, setLabelOffsetX] = useState(0);
+  const [labelWidth, setLabelWidth] = useState(0);
+  const [secondaryOffsetX, setSecondaryOffsetX] = useState(0);
+  const [secondaryWidth, setSecondaryWidth] = useState(0);
+
+  const handleLabelRowLayout = useCallback((event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    setLabelRowWidth((previous) => (Math.abs(previous - width) > 0.5 ? width : previous));
+    setLabelRowHeight((previous) => (Math.abs(previous - height) > 0.5 ? height : previous));
+  }, []);
+
+  const handleLabelLayout = useCallback((event: LayoutChangeEvent) => {
+    const { x, width } = event.nativeEvent.layout;
+    setLabelOffsetX((previous) => (Math.abs(previous - x) > 0.5 ? x : previous));
+    setLabelWidth((previous) => (Math.abs(previous - width) > 0.5 ? width : previous));
+  }, []);
+
+  const handleSecondaryLayout = useCallback((event: LayoutChangeEvent) => {
+    const { x, width } = event.nativeEvent.layout;
+    setSecondaryOffsetX((previous) => (Math.abs(previous - x) > 0.5 ? x : previous));
+    setSecondaryWidth((previous) => (Math.abs(previous - width) > 0.5 ? width : previous));
+  }, []);
+
+  return {
+    labelRowWidth,
+    labelRowHeight,
+    labelOffsetX,
+    labelWidth,
+    secondaryOffsetX,
+    secondaryWidth,
+    handleLabelRowLayout,
+    handleLabelLayout,
+    handleSecondaryLayout,
+  };
 }
 
 interface ToolCallProps {
@@ -3371,6 +3628,7 @@ export const ToolCall = memo(function ToolCall({
       testID="tool-call-badge"
       label={presentation.displayName}
       secondaryLabel={presentation.summary}
+      secondaryLabelMaxLines={3}
       icon={presentation.icon}
       isExpanded={shouldRenderInline && isExpanded}
       onToggle={presentation.canOpenDetails ? handleToggle : undefined}
