@@ -350,6 +350,16 @@ export const ptBR: TranslationResources = {
       archive: "Arquivar",
     },
   },
+  agentMemos: {
+    toggle: "Notas do agente",
+    add: "Adicionar nota",
+    placeholder: "Nova nota",
+    empty: "Ainda não há notas",
+    useMemo: "Anexar nota ao composer",
+    delete: "Excluir nota",
+    markDone: "Marcar como concluído",
+    markNotDone: "Marcar como não concluído",
+  },
   message: {
     diagram: {
       diagram: "Diagrama",
@@ -365,14 +375,6 @@ export const ptBR: TranslationResources = {
       copyTurn: "Copiar turno",
       copyMessage: "Copiar mensagem",
       regenerate: "Regenerar a partir daqui",
-      agentMemos: {
-        toggle: "Notas do agente",
-        add: "Adicionar nota",
-        placeholder: "Nova nota",
-        empty: "Ainda não há notas",
-        useMemo: "Anexar nota ao composer",
-        delete: "Excluir nota",
-      },
       forkMenu: "Bifurcar mensagem",
       forkInNewTab: "Bifurcar em uma nova aba",
       forkInNewWorkspace: "Bifurcar em um novo workspace",

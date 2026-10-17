@@ -1611,6 +1611,8 @@ export const AgentMemoSchema = z.object({
   id: z.string(),
   text: z.string().min(1).max(AGENT_MEMO_MAX_CHARS),
   createdAt: z.string(),
+  // Optional so memos written before completion existed keep parsing; absent means open.
+  completed: z.boolean().optional(),
 });
 export type AgentMemo = z.infer<typeof AgentMemoSchema>;
 
@@ -1665,6 +1667,28 @@ export const AgentMemoDeleteResponseSchema = z.object({
     requestId: z.string(),
     agentId: z.string(),
     memoId: z.string(),
+    memos: z.array(AgentMemoSchema),
+    error: z.string().nullable(),
+  }),
+});
+
+// Completion is its own RPC because `agent.memo.update.request` carries required text:
+// a checkbox toggle must not have to invent text to flip one flag.
+export const AgentMemoSetCompletedRequestSchema = z.object({
+  type: z.literal("agent.memo.set_completed.request"),
+  requestId: z.string(),
+  agentId: z.string(),
+  memoId: z.string(),
+  completed: z.boolean(),
+});
+
+export const AgentMemoSetCompletedResponseSchema = z.object({
+  type: z.literal("agent.memo.set_completed.response"),
+  payload: z.object({
+    requestId: z.string(),
+    agentId: z.string(),
+    memoId: z.string(),
+    memo: AgentMemoSchema.nullable(),
     memos: z.array(AgentMemoSchema),
     error: z.string().nullable(),
   }),
@@ -3463,6 +3487,7 @@ export const SessionInboundMessageSchema = z.discriminatedUnion("type", [
   AgentMemoAddRequestSchema,
   AgentMemoUpdateRequestSchema,
   AgentMemoDeleteRequestSchema,
+  AgentMemoSetCompletedRequestSchema,
   AgentSkillsGetStatusRequestSchema,
   AgentSkillsReconcileRequestSchema,
   AgentSkillsUninstallRequestSchema,
@@ -3864,6 +3889,9 @@ export const ServerInfoStatusPayloadSchema = z
         // COMPAT(agentMemos): added in v0.11.0, remove gate after 2027-05-05.
         // Server-stored agent memos; clients gate the composer/pane surface on this.
         agentMemos: z.boolean().optional(),
+        // COMPAT(agentMemoCompletion): added in v0.11.0, remove gate after 2027-05-05.
+        // Memos persist a completed flag; clients gate the completion checkbox on this.
+        agentMemoCompletion: z.boolean().optional(),
         // COMPAT(skillManagement): added in v0.4.0, remove gate after 2027-08-16.
         skillManagement: z.boolean().optional(),
         // COMPAT(terminalRestoreModes): added in v0.1.81, remove gate after 2026-11-23.
@@ -7171,6 +7199,7 @@ export const SessionOutboundMessageSchema = z.discriminatedUnion("type", [
   AgentMemoAddResponseSchema,
   AgentMemoUpdateResponseSchema,
   AgentMemoDeleteResponseSchema,
+  AgentMemoSetCompletedResponseSchema,
   AgentSkillsGetStatusResponseSchema,
   AgentSkillsReconcileResponseSchema,
   AgentSkillsUninstallResponseSchema,

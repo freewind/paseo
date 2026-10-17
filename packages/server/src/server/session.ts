@@ -2782,6 +2782,8 @@ export class Session {
         return this.handleAgentMemoUpdateRequest(msg);
       case "agent.memo.delete.request":
         return this.handleAgentMemoDeleteRequest(msg);
+      case "agent.memo.set_completed.request":
+        return this.handleAgentMemoSetCompletedRequest(msg);
       case "agent.timeline.search.request":
         return this.handleAgentTimelineSearchRequest(msg, source);
       case "agent.export_conversation.request":
@@ -8000,6 +8002,37 @@ export class Session {
     } catch (error) {
       this.emit({
         type: "agent.memo.update.response",
+        payload: {
+          requestId: msg.requestId,
+          agentId: msg.agentId,
+          memoId: msg.memoId,
+          memo: null,
+          memos: this.agentMemoStore.list(msg.agentId),
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+    }
+  }
+
+  private async handleAgentMemoSetCompletedRequest(
+    msg: Extract<SessionInboundMessage, { type: "agent.memo.set_completed.request" }>,
+  ): Promise<void> {
+    try {
+      const memo = await this.agentMemoStore.setCompleted(msg.agentId, msg.memoId, msg.completed);
+      this.emit({
+        type: "agent.memo.set_completed.response",
+        payload: {
+          requestId: msg.requestId,
+          agentId: msg.agentId,
+          memoId: msg.memoId,
+          memo,
+          memos: this.agentMemoStore.list(msg.agentId),
+          error: null,
+        },
+      });
+    } catch (error) {
+      this.emit({
+        type: "agent.memo.set_completed.response",
         payload: {
           requestId: msg.requestId,
           agentId: msg.agentId,

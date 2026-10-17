@@ -89,6 +89,29 @@ export class AgentMemoStore {
     });
   }
 
+  /** Flips the completed flag without touching text; absent in storage means open. */
+  async setCompleted(agentId: string, memoId: string, completed: boolean): Promise<AgentMemo> {
+    return this.enqueue(async () => {
+      await this.load();
+      const memos = this.snapshot().memosByAgentId[agentId] ?? [];
+      const index = memos.findIndex((memo) => memo.id === memoId);
+      if (index < 0) {
+        throw new Error(`Memo not found: ${memoId}`);
+      }
+      const updated: AgentMemo = { ...memos[index]!, completed };
+      const next = [...memos];
+      next[index] = updated;
+      await this.persist({
+        ...this.snapshot(),
+        memosByAgentId: {
+          ...this.snapshot().memosByAgentId,
+          [agentId]: next,
+        },
+      });
+      return updated;
+    });
+  }
+
   async delete(agentId: string, memoId: string): Promise<boolean> {
     return this.enqueue(async () => {
       await this.load();

@@ -354,6 +354,16 @@ export const fr: TranslationResources = {
       archive: "Archiver",
     },
   },
+  agentMemos: {
+    toggle: "Mémos de l'agent",
+    add: "Ajouter un mémo",
+    placeholder: "Nouveau mémo",
+    empty: "Aucun mémo pour l'instant",
+    useMemo: "Ajouter le mémo au composer",
+    delete: "Supprimer le mémo",
+    markDone: "Marquer comme fait",
+    markNotDone: "Marquer comme non fait",
+  },
   message: {
     diagram: {
       diagram: "Diagramme",
@@ -375,14 +385,6 @@ export const fr: TranslationResources = {
       forkMissingWorkspace: "Cet agent n’est dans aucun espace de travail.",
       forkFailed: "Impossible de forker la conversation",
       regenerate: "Régénérer à partir d'ici",
-      agentMemos: {
-        toggle: "Mémos de l'agent",
-        add: "Ajouter un mémo",
-        placeholder: "Nouveau mémo",
-        empty: "Aucun mémo pour l'instant",
-        useMemo: "Ajouter le mémo au composer",
-        delete: "Supprimer le mémo",
-      },
       forkMenu: "Dupliquer le message",
       forkInNewTab: "Dupliquer dans un nouvel onglet",
       forkInNewWorkspace: "Dupliquer dans un nouvel espace de travail",

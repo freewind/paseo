@@ -350,6 +350,16 @@ export const ru: TranslationResources = {
       archive: "Архивировать",
     },
   },
+  agentMemos: {
+    toggle: "Заметки агента",
+    add: "Добавить заметку",
+    placeholder: "Новая заметка",
+    empty: "Заметок пока нет",
+    useMemo: "Добавить заметку в поле ввода",
+    delete: "Удалить заметку",
+    markDone: "Отметить как выполненное",
+    markNotDone: "Отметить как невыполненное",
+  },
   message: {
     diagram: {
       diagram: "Диаграмма",
@@ -365,14 +375,6 @@ export const ru: TranslationResources = {
       copyTurn: "Скопировать ответ",
       copyMessage: "Копировать сообщение",
       regenerate: "Перегенерировать отсюда",
-      agentMemos: {
-        toggle: "Заметки агента",
-        add: "Добавить заметку",
-        placeholder: "Новая заметка",
-        empty: "Заметок пока нет",
-        useMemo: "Добавить заметку в поле ввода",
-        delete: "Удалить заметку",
-      },
       forkMenu: "Форкнуть чат отсюда",
       forkInNewTab: "Создать форк в новой вкладке",
       forkInNewWorkspace: "Создать форк в новом рабочем пространстве",
