@@ -6,23 +6,25 @@ import { StyleSheet } from "react-native-unistyles";
 import { Button } from "@/components/ui/button";
 import { useSidebarViewStore } from "@/stores/sidebar-view-store";
 
-function SidebarEmptyStateCard({
+export function SidebarEmptyStateCard({
   testID,
   title,
   description,
   children,
 }: {
   testID: string;
-  title: string;
-  description: string;
+  title?: string;
+  description?: string;
   children: ReactNode;
 }) {
   return (
     <View style={styles.card} testID={testID}>
-      <View style={styles.copy}>
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.description}>{description}</Text>
-      </View>
+      {title || description ? (
+        <View style={styles.copy}>
+          {title ? <Text style={styles.title}>{title}</Text> : null}
+          {description ? <Text style={styles.description}>{description}</Text> : null}
+        </View>
+      ) : null}
       <View style={styles.actions}>{children}</View>
     </View>
   );

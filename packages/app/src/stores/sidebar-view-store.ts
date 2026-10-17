@@ -67,6 +67,9 @@ interface SidebarViewStoreState {
   toggleBackground: () => void;
   projectScrollOffset: number;
   statusScrollOffset: number;
+  /** Live sidebar name search; intentionally not persisted. */
+  nameSearch: string;
+  setNameSearch: (value: string) => void;
   setGroupMode: (mode: SidebarGroupMode) => void;
   setWorkspaceSort: (sort: WorkspaceSort) => void;
   setProjectScrollOffset: (offset: number) => void;
@@ -216,6 +219,8 @@ export const useSidebarViewStore = create<SidebarViewStoreState>()(
       toggleBackground: () => set((state) => ({ showBackground: !state.showBackground })),
       projectScrollOffset: 0,
       statusScrollOffset: 0,
+      nameSearch: "",
+      setNameSearch: (value) => set({ nameSearch: value }),
       setGroupMode: (mode) => set({ groupMode: mode }),
       setWorkspaceSort: (workspaceSort) => set({ workspaceSort }),
       setProjectScrollOffset: (offset) =>

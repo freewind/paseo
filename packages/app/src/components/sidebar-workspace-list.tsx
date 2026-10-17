@@ -117,6 +117,7 @@ import {
   SidebarFilterEmptyState,
   SidebarProjectEmptyState,
 } from "@/components/sidebar/empty-states";
+import { SidebarNameSearchEmptyState } from "@/components/sidebar/sidebar-name-search-empty-state";
 import { selectWorkspaceServiceSummary } from "@/components/sidebar/workspace-meta-row";
 import {
   SidebarWorkspaceTrailingContent,
@@ -155,6 +156,9 @@ import { useLocalDaemonServerId } from "@/hooks/use-is-local-daemon";
 import type { HostBadgeModel } from "@/hosts/appearance";
 import { useHostBadges } from "@/hosts/use-host-badges";
 import { useSidebarRowItems } from "@/components/sidebar/display-preferences/model";
+import type { SidebarNameFilterResult } from "@/components/sidebar/sidebar-name-filter";
+import { HighlightedText } from "@/components/ui/highlighted-text";
+import type { MatchRange } from "@getpaseo/protocol/search/text-match";
 import { PullRequestStateIcon } from "@/git/pull-request-state-icon";
 
 const workspaceKeyExtractor = (workspace: SidebarWorkspacePlacement) => workspace.workspaceKey;
@@ -224,6 +228,8 @@ interface SidebarWorkspaceListProps {
   hasProjectsBeforeFilter: boolean;
   /** Whether a project filter is actually being applied — the resolved list, not the stored one. */
   hasActiveProjectFilter: boolean;
+  /** Name-search highlight data per project/workspace/agent; projects empty when search is off. */
+  nameSearchMatches: SidebarNameFilterResult;
   workspaceEntriesByKey: ReadonlyMap<string, SidebarWorkspaceEntry>;
   collapsedProjectKeys: ReadonlySet<string>;
   onToggleProjectCollapsed: (projectViewKey: string) => void;
@@ -267,6 +273,8 @@ interface ProjectHeaderRowProps {
   removeProjectStatus?: "idle" | "pending";
   onToggleProjectHidden?: (projectViewKey: string) => void;
   dragHandleProps?: DraggableListDragHandleProps;
+  /** Name-search highlight over `displayName`; null when the search is off or did not hit. */
+  nameHighlightRanges?: readonly MatchRange[] | null;
 }
 
 interface WorkspaceRowInnerProps {
@@ -284,6 +292,8 @@ interface WorkspaceRowInnerProps {
   isCreating?: boolean;
   dragHandleProps?: DraggableListDragHandleProps;
   menuController: ReturnType<typeof useContextMenu> | null;
+  /** Name-search highlight for this row's title; absent when the search is off. */
+  nameHighlightRanges?: readonly MatchRange[];
   archiveLabel?: string;
   archiveStatus?: "idle" | "pending" | "success";
   archivePendingLabel?: string;
@@ -897,6 +907,7 @@ function ProjectHeaderRow({
   removeProjectStatus = "idle",
   onToggleProjectHidden,
   dragHandleProps,
+  nameHighlightRanges,
 }: ProjectHeaderRowProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
@@ -984,9 +995,18 @@ function ProjectHeaderRow({
         />
 
         <View style={styles.projectTitleGroup}>
-          <Text style={styles.projectTitle} numberOfLines={1}>
-            {displayName}
-          </Text>
+          {nameHighlightRanges ? (
+            <HighlightedText
+              text={displayName}
+              ranges={nameHighlightRanges}
+              style={styles.projectTitle}
+              numberOfLines={1}
+            />
+          ) : (
+            <Text style={styles.projectTitle} numberOfLines={1}>
+              {displayName}
+            </Text>
+          )}
         </View>
       </View>
       <ProjectRowTrailingActions
@@ -1106,6 +1126,7 @@ function WorkspaceRowInner({
   isPinned,
   onTogglePin,
   reserveIdleStatusIndicatorSpace = true,
+  nameHighlightRanges,
 }: WorkspaceRowInnerProps) {
   const isCompact = useIsCompactFormFactor();
   const [isPressed, setIsPressed] = useState(false);
@@ -1208,7 +1229,9 @@ function WorkspaceRowInner({
                   shortcutNumber={shortcutNumber}
                   showShortcutBadge={showShortcutBadge}
                   reserveIdleStatusIndicatorSpace={reserveIdleStatusIndicatorSpace}
+                  nameHighlightRanges={nameHighlightRanges}
                 >
+                  {" "}
                   <WorkspaceRowRightGroup
                     workspace={workspace}
                     backdrop={backdrop}
@@ -1258,6 +1281,7 @@ function WorkspaceRowWithMenu({
   onToggleWorkspacePin,
   reserveIdleStatusIndicatorSpace = true,
   isCreating = false,
+  nameHighlight,
 }: {
   workspace: SidebarWorkspaceEntry;
   hostBadge?: HostBadgeModel | null;
@@ -1275,6 +1299,8 @@ function WorkspaceRowWithMenu({
   onToggleWorkspacePin: ToggleSidebarWorkspacePin;
   reserveIdleStatusIndicatorSpace?: boolean;
   isCreating?: boolean;
+  /** Name-search highlight for this row's title; absent when the search is off. */
+  nameHighlight?: { ranges: readonly MatchRange[] };
 }) {
   const { t } = useTranslation();
   const toast = useToast();
@@ -1387,6 +1413,7 @@ function WorkspaceRowWithMenu({
         isPinned={isPinned}
         onTogglePin={onTogglePin}
         reserveIdleStatusIndicatorSpace={reserveIdleStatusIndicatorSpace}
+        nameHighlightRanges={nameHighlight?.ranges}
       />
       <WorkspaceRenameModal
         visible={isRenameOpen}
@@ -1417,6 +1444,8 @@ interface WorkspaceRowItemProps {
   drag?: () => void;
   isDragging?: boolean;
   dragHandleProps?: DraggableListDragHandleProps;
+  /** Name-search highlight for this row's title; absent when the search is off. */
+  nameHighlight?: { ranges: readonly MatchRange[] };
 }
 
 function WorkspaceRowItem({
@@ -1438,6 +1467,7 @@ function WorkspaceRowItem({
   drag,
   isDragging = false,
   dragHandleProps,
+  nameHighlight,
 }: WorkspaceRowItemProps) {
   const handlePress = useCallback(() => {
     if (!workspace.serverId) {
@@ -1460,6 +1490,7 @@ function WorkspaceRowItem({
       onToggleWorkspacePin={onToggleWorkspacePin}
       reserveIdleStatusIndicatorSpace={reserveIdleStatusIndicatorSpace}
       isCreating={isCreating}
+      nameHighlight={nameHighlight}
       selected={isWorkspaceSelected({
         selection: activeWorkspaceSelection,
         serverId: workspace.serverId,
@@ -1507,6 +1538,7 @@ function areWorkspaceRowItemPropsEqual(
     previous.drag === next.drag &&
     previous.isDragging === next.isDragging &&
     previous.dragHandleProps === next.dragHandleProps &&
+    previous.nameHighlight === next.nameHighlight &&
     previousSelected === nextSelected
   );
 }
@@ -1530,6 +1562,7 @@ function WorkspaceRow({
   reserveIdleStatusIndicatorSpace = true,
   isCreating = false,
   selected,
+  nameHighlight,
 }: {
   workspaceEntry: SidebarWorkspaceEntry | null;
   hostBadge?: HostBadgeModel | null;
@@ -1547,6 +1580,8 @@ function WorkspaceRow({
   reserveIdleStatusIndicatorSpace?: boolean;
   isCreating?: boolean;
   selected: boolean;
+  /** Name-search highlight for this row's title; absent when the search is off. */
+  nameHighlight?: { ranges: readonly MatchRange[] };
 }) {
   if (!workspaceEntry) {
     return null;
@@ -1570,6 +1605,7 @@ function WorkspaceRow({
       onToggleWorkspacePin={onToggleWorkspacePin}
       reserveIdleStatusIndicatorSpace={reserveIdleStatusIndicatorSpace}
       isCreating={isCreating}
+      nameHighlight={nameHighlight}
     />
   );
 }
@@ -1596,6 +1632,7 @@ function ProjectBlock({
   supportsMultiplicityByServerId,
   supportsPinningByServerId,
   onToggleWorkspacePin,
+  nameSearchMatches,
 }: {
   project: SidebarProjectEntry;
   workspaceEntriesByKey: ReadonlyMap<string, SidebarWorkspaceEntry>;
@@ -1618,6 +1655,8 @@ function ProjectBlock({
   supportsMultiplicityByServerId: ReadonlyMap<string, boolean>;
   supportsPinningByServerId: ReadonlyMap<string, boolean>;
   onToggleWorkspacePin: ToggleSidebarWorkspacePin;
+  /** Name-search highlight data; used for the project name and its workspace rows. */
+  nameSearchMatches: SidebarNameFilterResult;
 }) {
   const visibilityPolicy = useMemo(
     () => ({
@@ -1677,6 +1716,10 @@ function ProjectBlock({
           selectionEnabled={selectionEnabled}
           activeWorkspaceSelection={activeWorkspaceSelection}
           onWorkspacePress={onWorkspacePress}
+          nameHighlight={nameSearchMatches.workspaces.get(item.workspaceKey)}
+          drag={input?.drag}
+          isDragging={input?.isDragging}
+          dragHandleProps={input?.dragHandleProps}
         />
       );
     },
@@ -1692,6 +1735,7 @@ function ProjectBlock({
       shortcutIndexByWorkspaceKey,
       showShortcutBadges,
       workspaceEntriesByKey,
+      nameSearchMatches,
     ],
   );
 
@@ -1807,6 +1851,10 @@ function ProjectBlock({
         isProjectActive={active}
         onWorkspacePress={onWorkspacePress}
         onWorktreeCreated={onWorktreeCreated}
+        nameHighlightRanges={
+          nameSearchMatches.projects.find((kept) => kept.projectViewKey === project.viewKey)
+            ?.matchedRanges ?? null
+        }
         drag={drag}
         isDragging={isDragging}
         isArchiving={isRemovingProject}
@@ -1912,6 +1960,7 @@ export function SidebarWorkspaceList({
   projects,
   hasProjectsBeforeFilter,
   hasActiveProjectFilter,
+  nameSearchMatches,
   workspaceEntriesByKey,
   collapsedProjectKeys,
   onToggleProjectCollapsed,
@@ -1972,6 +2021,19 @@ export function SidebarWorkspaceList({
   // that produced the rows, so the question "what is on screen" is answered once.
   const projectIconByProjectViewKey = useProjectIcons({ projects: projectIconTargets });
 
+  // A name search that matches nothing swaps the list's body, like the label filter. The
+  // search field stays mounted (it lives in the header), so the user can always revise the
+  // query; the empty card offers the one-click way out.
+  const hasNameSearch =
+    nameSearchMatches.projects.length > 0 ||
+    nameSearchMatches.workspaces.size > 0 ||
+    nameSearchMatches.agents.size > 0;
+  const sidebarNameSearchEmpty =
+    hasNameSearch &&
+    projects.length === 0 &&
+    workspaceEntriesByKey.size === 0 &&
+    hasProjectsBeforeFilter;
+
   // A filter that matches nothing swaps the list's body and nothing above it. It used to replace
   // this whole subtree, which unmounted the header — and the header is where the display menu's
   // trigger lives, so filtering the last row away closed the menu you were filtering from.
@@ -1999,6 +2061,7 @@ export function SidebarWorkspaceList({
         onPinnedWorkspaceReorder={handlePinnedWorkspaceReorder}
         listHeaderComponent={listHeaderComponent}
         sidebarFilterEmpty={sidebarFilterEmpty}
+        sidebarNameSearchEmpty={sidebarNameSearchEmpty}
         parentGestureRef={parentGestureRef}
         dragGestureHostActive={dragGestureHostActive}
       />
@@ -2019,6 +2082,8 @@ export function SidebarWorkspaceList({
         listFooterComponent={listFooterComponent}
         listHeaderComponent={listHeaderComponent}
         sidebarFilterEmpty={sidebarFilterEmpty}
+        sidebarNameSearchEmpty={sidebarNameSearchEmpty}
+        nameSearchMatches={nameSearchMatches}
         hasActiveProjectFilter={hasActiveProjectFilter}
         parentGestureRef={parentGestureRef}
         dragGestureHostActive={dragGestureHostActive}
@@ -2053,6 +2118,7 @@ function SidebarGroupedModeList({
   onPinnedWorkspaceReorder,
   listHeaderComponent,
   sidebarFilterEmpty,
+  sidebarNameSearchEmpty,
   parentGestureRef,
   dragGestureHostActive,
 }: {
@@ -2068,6 +2134,7 @@ function SidebarGroupedModeList({
   onPinnedWorkspaceReorder: (workspaces: SidebarWorkspacePlacement[]) => void;
   listHeaderComponent?: ReactElement | null;
   sidebarFilterEmpty: boolean;
+  sidebarNameSearchEmpty: boolean;
   parentGestureRef?: MutableRefObject<GestureType | undefined>;
   dragGestureHostActive?: boolean;
 }) {
@@ -2095,6 +2162,7 @@ function SidebarGroupedModeList({
       onPinnedWorkspaceReorder={onPinnedWorkspaceReorder}
       listHeaderComponent={listHeaderComponent}
       sidebarFilterEmpty={sidebarFilterEmpty}
+      sidebarNameSearchEmpty={sidebarNameSearchEmpty}
       parentGestureRef={parentGestureRef}
       dragGestureHostActive={dragGestureHostActive}
     />
@@ -2141,6 +2209,8 @@ function ProjectModeList({
   listFooterComponent,
   listHeaderComponent,
   sidebarFilterEmpty,
+  sidebarNameSearchEmpty,
+  nameSearchMatches,
   hasActiveProjectFilter,
   parentGestureRef,
   dragGestureHostActive,
@@ -2161,6 +2231,8 @@ function ProjectModeList({
 > & {
   /** Swaps the list body for the label filter's empty state. Never the header above it. */
   sidebarFilterEmpty: boolean;
+  /** Swaps the list body for the name-search empty state. Never the header above it. */
+  sidebarNameSearchEmpty: boolean;
   projectIconByProjectViewKey: ReadonlyMap<string, string | null>;
   pathname: string;
   hostBadgeByServerId: ReadonlyMap<string, HostBadgeModel>;
@@ -2365,6 +2437,7 @@ function ProjectModeList({
           supportsMultiplicityByServerId={supportsMultiplicityByServerId}
           supportsPinningByServerId={supportsPinningByServerId}
           onToggleWorkspacePin={onToggleWorkspacePin}
+          nameSearchMatches={nameSearchMatches}
         />
       );
     },
@@ -2387,6 +2460,7 @@ function ProjectModeList({
       showShortcutBadges,
       workspaceEntriesByKey,
       creatingWorkspaceIds,
+      nameSearchMatches,
     ],
   );
 
@@ -2421,6 +2495,7 @@ function ProjectModeList({
           selectionEnabled={selectionEnabled}
           activeWorkspaceSelection={activeWorkspaceSelection}
           onWorkspacePress={onWorkspacePress}
+          nameHighlight={nameSearchMatches.workspaces.get(workspace.workspaceKey)}
           drag={drag}
           isDragging={isActive}
           dragHandleProps={dragHandleProps}
@@ -2439,6 +2514,7 @@ function ProjectModeList({
       onToggleWorkspacePin,
       projectIconByProjectViewKey,
       workspaceEntriesByKey,
+      nameSearchMatches,
     ],
   );
 
@@ -2470,6 +2546,15 @@ function ProjectModeList({
         containerStyle={styles.projectListContainer}
       />
     );
+
+  // Body swap shared by the two filters that can empty the list: the label filter's card
+  // clears both pinned filters, the name search's card clears the query. The header above
+  // stays mounted either way — it carries the way back in.
+  const renderProjectModeBody = () => {
+    if (sidebarFilterEmpty) return <SidebarFilterEmptyState />;
+    if (sidebarNameSearchEmpty) return <SidebarNameSearchEmptyState />;
+    return projectBody;
+  };
 
   const content = (
     <>
@@ -2517,10 +2602,11 @@ function ProjectModeList({
       {unpinnedProjects.length > 0 ||
       hasActiveHostFilter ||
       hasActiveProjectFilter ||
-      sidebarFilterEmpty
+      sidebarFilterEmpty ||
+      sidebarNameSearchEmpty
         ? listHeaderComponent
         : null}
-      {sidebarFilterEmpty ? <SidebarFilterEmptyState /> : projectBody}
+      {renderProjectModeBody()}
       {hiddenProjects.length > 0 ? (
         <>
           <SidebarGroupToggleRow

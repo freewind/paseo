@@ -24,6 +24,8 @@ import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import { TitlebarDragRegion } from "@/components/desktop/titlebar-drag-region";
 import { SidebarCloseButton } from "@/components/headers/sidebar-close-button";
 import { resolveDesktopSidebarWidth } from "@/components/desktop-sidebar-layout";
+import { SearchField } from "@/components/ui/search-field";
+import type { SidebarNameFilterResult } from "@/components/sidebar/sidebar-name-filter";
 import {
   SIDEBAR_RESIZE_ACTIVATION_OFFSET,
   SIDEBAR_RESIZE_FAIL_OFFSET,
@@ -87,6 +89,8 @@ interface SidebarSharedProps {
   projects: SidebarProjectEntry[];
   hasProjectsBeforeFilter: boolean;
   hasActiveProjectFilter: boolean;
+  /** Name-search highlight data; see `SidebarNameFilterResult`. */
+  nameSearchMatches: SidebarNameFilterResult;
   workspaceEntriesByKey: ReadonlyMap<string, SidebarWorkspaceEntry>;
   isInitialLoad: boolean;
   isRevalidating: boolean;
@@ -151,6 +155,7 @@ export const LeftSidebar = memo(function LeftSidebar({ active }: { active: boole
     toggleProjectHidden,
     groupMode,
     shortcutModel,
+    nameSearchMatches,
   } = useSidebarModel();
   const { shortcutIndexByWorkspaceKey } = shortcutModel;
 
@@ -234,6 +239,7 @@ export const LeftSidebar = memo(function LeftSidebar({ active }: { active: boole
     projects,
     hasProjectsBeforeFilter,
     hasActiveProjectFilter: resolvedProjectFilters.length > 0,
+    nameSearchMatches,
     workspaceEntriesByKey,
     isInitialLoad,
     isRevalidating,
@@ -526,6 +532,7 @@ function MobileSidebar({
   projects,
   hasProjectsBeforeFilter,
   hasActiveProjectFilter,
+  nameSearchMatches,
   workspaceEntriesByKey,
   isInitialLoad,
   isRevalidating,
@@ -609,6 +616,7 @@ function MobileSidebar({
             projects={projects}
             hasProjectsBeforeFilter={hasProjectsBeforeFilter}
             hasActiveProjectFilter={hasActiveProjectFilter}
+            nameSearchMatches={nameSearchMatches}
             workspaceEntriesByKey={workspaceEntriesByKey}
             isRefreshing={isManualRefresh && isRevalidating}
             onRefresh={handleRefresh}
@@ -642,6 +650,7 @@ function DesktopSidebar({
   projects,
   hasProjectsBeforeFilter,
   hasActiveProjectFilter,
+  nameSearchMatches,
   workspaceEntriesByKey,
   isInitialLoad,
   isRevalidating,
@@ -795,6 +804,7 @@ function DesktopSidebar({
             projects={projects}
             hasProjectsBeforeFilter={hasProjectsBeforeFilter}
             hasActiveProjectFilter={hasActiveProjectFilter}
+            nameSearchMatches={nameSearchMatches}
             workspaceEntriesByKey={workspaceEntriesByKey}
             isRefreshing={isManualRefresh && isRevalidating}
             onRefresh={handleRefresh}
@@ -826,24 +836,37 @@ function DesktopSidebar({
 }
 
 function WorkspacesSectionHeader() {
+  const nameSearch = useSidebarViewStore((state) => state.nameSearch);
+  const setNameSearch = useSidebarViewStore((state) => state.setNameSearch);
+  const { t } = useTranslation();
   return (
     <SidebarSectionHeader title="Workspaces">
-      <Tooltip delayDuration={300}>
-        <TooltipTrigger asChild>
-          <View>
-            <SidebarDisplayPreferencesMenu />
-          </View>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" align="center" offset={8}>
-          <IconTooltipContent label="Display preferences" />
-        </TooltipContent>
-      </Tooltip>
+      <SearchField
+        value={nameSearch}
+        onChangeText={setNameSearch}
+        placeholder={t("sidebar.nameSearch.placeholder")}
+        clearAccessibilityLabel={t("sidebar.nameSearch.clear")}
+        testID="sidebar-name-search"
+        clearTestID="sidebar-name-search-clear"
+      />
+      <View style={styles.workspacesSectionActions}>
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>
+            <View>
+              <SidebarDisplayPreferencesMenu />
+            </View>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" align="center" offset={8}>
+            <IconTooltipContent label="Display preferences" />
+          </TooltipContent>
+        </Tooltip>
+      </View>
     </SidebarSectionHeader>
   );
 }
 
-// Stable element so the sidebar list's listHeaderComponent prop keeps identity across
-// renders (WorkspacesSectionHeader takes no props).
+// WorkspacesSectionHeader now reads the name-search store itself, so the stable element keeps
+// identity while the field's content updates through the store rather than props.
 const workspacesSectionHeaderElement = <WorkspacesSectionHeader />;
 
 // Static styles for Animated.Views — must NOT use Unistyles dynamic theme to
@@ -872,6 +895,26 @@ const styles = StyleSheet.create((theme) => ({
   },
   sidebarHeaderGroupBelowChrome: {
     paddingTop: 0,
+  },
+  workspacesSectionActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: theme.spacing[2],
+    flex: 1,
+    minWidth: 0,
+    // Rendered inside the scroll's listContent (paddingHorizontal spacing[2]). The title
+    // lands at spacing[2] left to align with project icons. Settings2's painted path stops
+    // inside its 14px SVG, so 4px aligns the ink rather than the SVG box to the row rail.
+    paddingLeft: theme.spacing[2],
+    paddingRight: 4,
+    paddingTop: theme.spacing[1],
+    paddingBottom: theme.spacing[1],
+  },
+  workspacesSectionActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing[1],
   },
   sidebarContent: {
     flex: 1,

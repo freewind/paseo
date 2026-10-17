@@ -29,6 +29,8 @@ import { shouldRenderSyncedStatusLoader } from "@/utils/status-loader";
 import { StatusRing } from "@/components/status-ring";
 import { resolveSidebarWorkspacePrimaryLabel } from "@/components/sidebar/sidebar-workspace-title";
 import { DensityIcon } from "@/components/ui/density-icon";
+import { HighlightedText } from "@/components/ui/highlighted-text";
+import type { MatchRange } from "@getpaseo/protocol/search/text-match";
 import { TrailingActionScrim } from "@/components/ui/trailing-action-scrim";
 import { useWorkspaceLabelDefinitions } from "@/workspace-labels";
 
@@ -98,6 +100,7 @@ export const SidebarWorkspaceRowContent = memo(function SidebarWorkspaceRowConte
   shortcutNumber = null,
   showShortcutBadge = false,
   reserveIdleStatusIndicatorSpace = true,
+  nameHighlightRanges,
   children,
 }: {
   workspace: SidebarWorkspaceEntry;
@@ -115,6 +118,8 @@ export const SidebarWorkspaceRowContent = memo(function SidebarWorkspaceRowConte
   showShortcutBadge?: boolean;
   /** Keep the empty leading slot when the workspace has no active status. */
   reserveIdleStatusIndicatorSpace?: boolean;
+  /** Name-search highlight over the row's primary label; absent when the search is off. */
+  nameHighlightRanges?: readonly MatchRange[];
   children?: ReactNode;
 }) {
   const {
@@ -157,12 +162,21 @@ export const SidebarWorkspaceRowContent = memo(function SidebarWorkspaceRowConte
         <View style={styles.workspaceContentColumn}>
           <View style={styles.workspaceTitleRow}>
             <View style={sidebarWorkspaceRowStyles.titleWithCount}>
-              <Text
-                style={workspaceBranchTextStyle}
-                numberOfLines={workspaceTitleMultiline ? undefined : 1}
-              >
-                {workspaceLabel}
-              </Text>
+              {nameHighlightRanges && nameHighlightRanges.length > 0 ? (
+                <HighlightedText
+                  text={workspaceLabel}
+                  ranges={nameHighlightRanges}
+                  style={workspaceBranchTextStyle}
+                  numberOfLines={workspaceTitleMultiline ? undefined : 1}
+                />
+              ) : (
+                <Text
+                  style={workspaceBranchTextStyle}
+                  numberOfLines={workspaceTitleMultiline ? undefined : 1}
+                >
+                  {workspaceLabel}
+                </Text>
+              )}
               {workspace.activeAgentCount >= 2 ? (
                 <Text
                   style={sidebarWorkspaceRowStyles.agentCountText}

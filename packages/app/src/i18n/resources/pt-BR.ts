@@ -1289,6 +1289,12 @@ export const ptBR: TranslationResources = {
       description: "Altere ou limpe os filtros da barra lateral para ver espaços de trabalho.",
       clear: "Limpar filtros",
     },
+    nameSearch: {
+      placeholder: "Pesquisar projetos, espaços de trabalho, agentes",
+      clear: "Limpar pesquisa",
+      noMatchesTitle: "Nenhuma correspondência",
+      noMatchesDescription: "Nada na barra lateral corresponde a esta pesquisa.",
+    },
     pinned: {
       title: "Fixados",
     },
