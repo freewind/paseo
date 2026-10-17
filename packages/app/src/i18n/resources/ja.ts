@@ -348,6 +348,16 @@ export const ja: TranslationResources = {
       archive: "アーカイブ",
     },
   },
+  agentMemos: {
+    toggle: "エージェントメモ",
+    add: "メモを追加",
+    placeholder: "新しいメモ",
+    empty: "メモはまだありません",
+    useMemo: "メモを入力欄に追加",
+    delete: "メモを削除",
+    markDone: "完了にする",
+    markNotDone: "未完了に戻す",
+  },
   message: {
     diagram: {
       diagram: "図",
@@ -363,14 +373,6 @@ export const ja: TranslationResources = {
       copyTurn: "ターンをコピー",
       copyMessage: "メッセージをコピー",
       regenerate: "ここから再生成",
-      agentMemos: {
-        toggle: "エージェントメモ",
-        add: "メモを追加",
-        placeholder: "新しいメモ",
-        empty: "メモはまだありません",
-        useMemo: "メモを入力欄に追加",
-        delete: "メモを削除",
-      },
       forkMenu: "メッセージをフォーク",
       forkInNewTab: "新しいタブにフォーク",
       forkInNewWorkspace: "新しいワークスペースにフォーク",

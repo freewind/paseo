@@ -352,6 +352,16 @@ export const fr: TranslationResources = {
       archive: "Archive",
     },
   },
+  agentMemos: {
+    toggle: "Mémos de l'agent",
+    add: "Ajouter un mémo",
+    placeholder: "Nouveau mémo",
+    empty: "Aucun mémo pour l'instant",
+    useMemo: "Ajouter le mémo au composer",
+    delete: "Supprimer le mémo",
+    markDone: "Marquer comme fait",
+    markNotDone: "Marquer comme non fait",
+  },
   message: {
     diagram: {
       diagram: "Diagramme",
@@ -367,14 +377,6 @@ export const fr: TranslationResources = {
       copyTurn: "Copier le tour",
       copyMessage: "Copier le message",
       regenerate: "Régénérer à partir d'ici",
-      agentMemos: {
-        toggle: "Mémos de l'agent",
-        add: "Ajouter un mémo",
-        placeholder: "Nouveau mémo",
-        empty: "Aucun mémo pour l'instant",
-        useMemo: "Ajouter le mémo au composer",
-        delete: "Supprimer le mémo",
-      },
       forkMenu: "Dupliquer le message",
       forkInNewTab: "Dupliquer dans un nouvel onglet",
       forkInNewWorkspace: "Dupliquer dans un nouvel espace de travail",

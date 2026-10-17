@@ -351,6 +351,16 @@ export const es: TranslationResources = {
       archive: "Archivo",
     },
   },
+  agentMemos: {
+    toggle: "Notas del agente",
+    add: "Añadir nota",
+    placeholder: "Nueva nota",
+    empty: "Aún no hay notas",
+    useMemo: "Añadir nota al composer",
+    delete: "Eliminar nota",
+    markDone: "Marcar como hecho",
+    markNotDone: "Marcar como pendiente",
+  },
   message: {
     diagram: {
       diagram: "Diagrama",
@@ -366,14 +376,6 @@ export const es: TranslationResources = {
       copyTurn: "Copiar turno",
       copyMessage: "Copiar mensaje",
       regenerate: "Regenerar desde aquí",
-      agentMemos: {
-        toggle: "Notas del agente",
-        add: "Añadir nota",
-        placeholder: "Nueva nota",
-        empty: "Aún no hay notas",
-        useMemo: "Añadir nota al composer",
-        delete: "Eliminar nota",
-      },
       forkMenu: "Bifurcar mensaje",
       forkInNewTab: "Bifurcar en una pestaña nueva",
       forkInNewWorkspace: "Bifurcar en un espacio de trabajo nuevo",

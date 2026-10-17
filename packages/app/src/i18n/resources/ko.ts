@@ -344,6 +344,16 @@ export const ko: TranslationResources = {
       archive: "보관",
     },
   },
+  agentMemos: {
+    toggle: "에이전트 메모",
+    add: "메모 추가",
+    placeholder: "새 메모",
+    empty: "아직 메모가 없습니다",
+    useMemo: "메모를 입력창에 추가",
+    delete: "메모 삭제",
+    markDone: "완료로 표시",
+    markNotDone: "미완료로 표시",
+  },
   message: {
     diagram: {
       diagram: "다이어그램",
@@ -359,14 +369,6 @@ export const ko: TranslationResources = {
       copyTurn: "턴 복사",
       copyMessage: "메시지 복사",
       regenerate: "여기서 다시 생성",
-      agentMemos: {
-        toggle: "에이전트 메모",
-        add: "메모 추가",
-        placeholder: "새 메모",
-        empty: "아직 메모가 없습니다",
-        useMemo: "메모를 입력창에 추가",
-        delete: "메모 삭제",
-      },
       forkMenu: "여기에서 채팅 분기",
       forkInNewTab: "새 탭으로 분기",
       forkInNewWorkspace: "새 워크스페이스로 분기",

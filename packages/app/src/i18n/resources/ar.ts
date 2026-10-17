@@ -343,6 +343,16 @@ export const ar: TranslationResources = {
       archive: "أرشيف",
     },
   },
+  agentMemos: {
+    toggle: "مذكرات الوكيل",
+    add: "إضافة مذكرة",
+    placeholder: "مذكرة جديدة",
+    empty: "لا توجد مذكرات بعد",
+    useMemo: "إلحاق المذكرة بحقل الإدخال",
+    delete: "حذف المذكرة",
+    markDone: "تحديد كمنجز",
+    markNotDone: "تحديد كغير منجز",
+  },
   message: {
     diagram: {
       diagram: "مخطط",
@@ -358,14 +368,6 @@ export const ar: TranslationResources = {
       copyTurn: "نسخ بدوره",
       copyMessage: "انسخ الرسالة",
       regenerate: "إعادة التوليد من هنا",
-      agentMemos: {
-        toggle: "مذكرات الوكيل",
-        add: "إضافة مذكرة",
-        placeholder: "مذكرة جديدة",
-        empty: "لا توجد مذكرات بعد",
-        useMemo: "إلحاق المذكرة بحقل الإدخال",
-        delete: "حذف المذكرة",
-      },
       forkMenu: "تفريع الرسالة",
       forkInNewTab: "تفريع في تبويب جديد",
       forkInNewWorkspace: "تفريع في مساحة عمل جديدة",

@@ -17,6 +17,7 @@ export function useAgentMemos(input: {
   memos: readonly AgentMemo[];
   addMemo: (text: string) => Promise<void>;
   updateMemo: (memoId: string, text: string) => Promise<void>;
+  setMemoCompleted: (memoId: string, completed: boolean) => Promise<void>;
   deleteMemo: (memoId: string) => Promise<void>;
 } {
   const serverId = input.serverId ?? "";
@@ -61,6 +62,17 @@ export function useAgentMemos(input: {
     [agentId, serverId],
   );
 
+  const setMemoCompleted = useCallback(
+    async (memoId: string, completed: boolean) => {
+      if (!agentId) throw new Error("Memo: agent unavailable");
+      const client = getHostRuntimeStore().getClient(serverId);
+      if (!client) throw new Error("Memo: daemon client unavailable");
+      const payload = await client.setAgentMemoCompleted(agentId, memoId, completed);
+      useSessionStore.getState().setAgentMemos(serverId, agentId, payload.memos);
+    },
+    [agentId, serverId],
+  );
+
   const deleteMemo = useCallback(
     async (memoId: string) => {
       if (!agentId) throw new Error("Memo: agent unavailable");
@@ -72,7 +84,7 @@ export function useAgentMemos(input: {
     [agentId, serverId],
   );
 
-  return { memos, addMemo, updateMemo, deleteMemo };
+  return { memos, addMemo, updateMemo, setMemoCompleted, deleteMemo };
 }
 
 const EMPTY_MEMOS: readonly AgentMemo[] = [];
