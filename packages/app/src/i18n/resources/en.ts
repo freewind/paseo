@@ -301,6 +301,10 @@ export const en = {
     archived: {
       callout: "This agent is archived",
       unarchive: "Unarchive",
+      restoring: "Restoring…",
+      resultUnknown:
+        "Restoring is still running on the host. This screen updates when it finishes.",
+      hostOutdated: "Update the host to restore agents from this app.",
     },
   },
   sessions: {

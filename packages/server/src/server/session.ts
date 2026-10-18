@@ -2051,6 +2051,9 @@ export class Session {
     const storedRecord = await this.agentStorage.get(payload.id);
     payload.title = storedRecord?.title ?? null;
     payload.archivedAt = storedRecord?.archivedAt ?? null;
+    // Live and stored-only snapshots project the same runtime restore state.
+    const restoreState = this.agentManager.getRestoreState(payload.id);
+    if (restoreState) payload.restoreState = restoreState;
     return payload;
   }
 

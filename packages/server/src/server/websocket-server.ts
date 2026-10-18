@@ -1841,6 +1841,8 @@ export class VoiceAssistantWebSocketServer {
         pushTokenRevocation: true,
         // COMPAT(plugins): added in v0.3.0, remove gate after 2027-08-07.
         plugins: true,
+        // COMPAT(agentRestoreState): added in v0.11.0; remove gate after 2027-10-19.
+        agentRestoreState: true,
         pluginManagement: true,
         pluginGitManagement: true,
         pluginSourceInstallation: true,

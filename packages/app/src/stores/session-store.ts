@@ -2,7 +2,7 @@ import equal from "fast-deep-equal";
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
-import type { AgentMemo } from "@getpaseo/protocol/messages";
+import type { AgentMemo, AgentRestoreStatePayload } from "@getpaseo/protocol/messages";
 import type { ViewedTimelineOwner } from "@/timeline/viewed-timeline-sync";
 import type { AgentDirectoryEntry } from "@/types/agent-directory";
 import {
@@ -98,6 +98,8 @@ export interface Agent {
   attentionReason?: "finished" | "error" | "permission" | null;
   attentionTimestamp?: Date | null;
   archivedAt?: Date | null;
+  /** Runtime-only restore progress reported by the host; null when the host has no signal. */
+  restoreState?: AgentRestoreStatePayload | null;
   parentAgentId: string | null;
   labels: Record<string, string>;
   projectPlacement?: ProjectPlacementPayload | null;

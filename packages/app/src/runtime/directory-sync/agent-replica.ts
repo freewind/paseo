@@ -99,13 +99,23 @@ export class AgentDirectoryReplica {
 
   applyDelta(delta: AgentDirectoryDelta): void {
     const before = this.members.has(delta.kind === "remove" ? delta.agentId : delta.agent.id);
+    const previousRestorePhase =
+      delta.kind === "remove"
+        ? undefined
+        : this.storeProjection.get(delta.agent.id)?.restoreState?.phase;
     const result = this.storeProjection.applyDelta(delta);
     if (delta.kind === "remove") {
       this.members.delete(delta.agentId);
       this.advance(delta.agentId);
     } else {
       this.members.add(delta.agent.id);
-      if (!before) this.advance(delta.agent.id);
+      if (!before) {
+        this.advance(delta.agent.id);
+      } else if (previousRestorePhase !== result.agent?.restoreState?.phase) {
+        // A restore phase change invalidates reads started before it: otherwise a snapshot
+        // captured earlier can land afterwards and put the old state back on screen.
+        this.advance(delta.agent.id);
+      }
     }
     if (result.stoppedRunning) this.onStoppedRunning(result.agentId);
     this.persist(
