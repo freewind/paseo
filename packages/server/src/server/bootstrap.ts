@@ -991,6 +991,8 @@ export async function createPaseoDaemon(
     clients: initialAgentManagerState.clients,
     providerDefinitions: initialAgentManagerState.providerDefinitions,
     registry: agentStorage,
+    // Read-only catalogue access: a restore must not launch a provider to validate a model.
+    peekProviderCatalog: (input) => providerSnapshotManager.peekCachedCatalog(input),
     appendSystemPrompt: config.appendSystemPrompt,
     onWorkspaceStateMayHaveChanged: ({ cwd }) => {
       workspaceGitService.onWorkspaceStateMayHaveChanged(cwd);

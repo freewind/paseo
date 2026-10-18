@@ -243,6 +243,7 @@ export const fr: TranslationResources = {
     },
     model: {
       unknown: "Modèle inconnu",
+      select: "Choisir un modèle",
     },
     features: {
       title: "Fonctionnalités",

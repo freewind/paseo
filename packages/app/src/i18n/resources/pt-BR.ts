@@ -238,6 +238,7 @@ export const ptBR: TranslationResources = {
     },
     model: {
       unknown: "Modelo desconhecido",
+      select: "Escolher um modelo",
     },
     features: {
       title: "Recursos",

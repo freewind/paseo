@@ -236,6 +236,7 @@ export const en = {
     },
     model: {
       unknown: "Unknown model",
+      select: "Select a model",
     },
     features: {
       title: "Features",

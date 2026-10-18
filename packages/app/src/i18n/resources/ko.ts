@@ -237,6 +237,7 @@ export const ko: TranslationResources = {
     },
     model: {
       unknown: "알 수 없는 모델",
+      select: "모델 선택",
     },
     features: {
       title: "기능",

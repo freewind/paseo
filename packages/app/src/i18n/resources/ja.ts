@@ -239,6 +239,7 @@ export const ja: TranslationResources = {
     },
     model: {
       unknown: "不明なモデル",
+      select: "モデルを選択",
     },
     features: {
       title: "機能",

@@ -239,6 +239,7 @@ export const ru: TranslationResources = {
     },
     model: {
       unknown: "Неизвестная модель",
+      select: "Выберите модель",
     },
     features: {
       title: "Функции",

@@ -237,6 +237,7 @@ export const ar: TranslationResources = {
     },
     model: {
       unknown: "نموذج غير معروف",
+      select: "اختر نموذجًا",
     },
     features: {
       title: "سمات",

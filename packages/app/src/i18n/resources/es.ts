@@ -242,6 +242,7 @@ export const es: TranslationResources = {
     },
     model: {
       unknown: "Modelo desconocido",
+      select: "Elige un modelo",
     },
     features: {
       title: "Características",

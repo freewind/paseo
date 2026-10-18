@@ -159,6 +159,8 @@ export function resolveAgentModelSelection(input: {
   configuredModelId: string | null | undefined;
   runtimeThinkingOptionId: string | null | undefined;
   explicitThinkingOptionId: string | null | undefined;
+  /** The recorded model is gone; nothing may stand in for the user's choice. */
+  modelSelectionRequired?: boolean;
 }) {
   const {
     models,
@@ -166,6 +168,7 @@ export function resolveAgentModelSelection(input: {
     configuredModelId,
     runtimeThinkingOptionId,
     explicitThinkingOptionId,
+    modelSelectionRequired,
   } = input;
   const normalizedRuntimeModelId = normalizeModelId(runtimeModelId);
   const normalizedConfiguredModelId = normalizeModelId(configuredModelId);
@@ -177,14 +180,20 @@ export function resolveAgentModelSelection(input: {
     normalizedRuntimeModelId,
   );
   const fallbackModel = getFallbackModel(models);
-  const selectedModel = pickSelectedModel(models, preferredModelId, fallbackModel);
+  // A model that must be chosen is shown as unchosen: never the runtime default, never the
+  // first catalogue entry, because either would look like a selection the user made.
+  const selectedModel = modelSelectionRequired
+    ? null
+    : pickSelectedModel(models, preferredModelId, fallbackModel);
 
-  const { activeModelId, displayModel } = resolveModelDisplay(
-    selectedModel,
-    preferredModelId,
-    fallbackModel,
-    i18n.t("agentControls.model.unknown"),
-  );
+  const { activeModelId, displayModel } = modelSelectionRequired
+    ? { activeModelId: null, displayModel: i18n.t("agentControls.model.select") }
+    : resolveModelDisplay(
+        selectedModel,
+        preferredModelId,
+        fallbackModel,
+        i18n.t("agentControls.model.unknown"),
+      );
 
   const thinkingOptions = selectedModel?.thinkingOptions ?? null;
   const resolvedThinkingId = resolveThinkingId(

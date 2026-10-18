@@ -888,6 +888,8 @@ export const AgentSnapshotPayloadSchema = z.object({
   internal: z.boolean().optional(),
   // COMPAT(agentRestoreState): added in v0.11.0; absent on older daemons.
   restoreState: AgentRestoreStatePayloadSchema.optional(),
+  // COMPAT(modelSelectionRequired): added in v0.11.0; absent means "not required".
+  modelSelectionRequired: z.boolean().optional(),
 });
 
 export type AgentSnapshotPayload = z.infer<typeof AgentSnapshotPayloadSchema>;
