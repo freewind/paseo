@@ -1250,7 +1250,6 @@ export const zhCN: TranslationResources = {
     },
     project: {
       actions: {
-        collapse: "🌿 折叠",
         menu: "Project 操作",
         openSettings: "打开 project 设置",
         openNewWindow: "在新窗口中打开",
@@ -1291,8 +1290,6 @@ export const zhCN: TranslationResources = {
         pending: "等待中: {{count}}",
       },
       actions: {
-        collapsedCount: "🌿 {{count}} 个被折叠",
-        collapsedRestore: "🌿 将 {{name}} 恢复到侧边栏",
         menu: "Workspace 操作",
         newWorkspace: "新建 workspace",
         showMore: "显示更多",
