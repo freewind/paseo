@@ -4245,8 +4245,11 @@ test("resumeAgentFromPersistence keeps metadata config, applies overrides, and p
       args: ["/tmp/mcp-bridge.mjs", "--socket", "/tmp/paseo.sock"],
     },
   });
+  // Restoring keeps the model the record carries. This handle has none, so the resume must
+  // not invent the catalogue default (that lookup would start a provider on the restore path).
+  expect(resumed.config.model).toBeUndefined();
+  expect(client.lastResumeOverrides).not.toHaveProperty("model");
   expect(client.lastResumeOverrides).toMatchObject({
-    model: "gpt-5.4",
     systemPrompt: "new prompt",
     mcpServers: {
       paseo: {
