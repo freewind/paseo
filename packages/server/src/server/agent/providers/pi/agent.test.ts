@@ -15,7 +15,7 @@ import path from "node:path";
 import pino from "pino";
 import { setImmediate as waitForImmediate } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
-import { describe, expect, onTestFinished, test } from "vitest";
+import { describe, expect, onTestFinished, test, vi } from "vitest";
 
 import type { AgentSession, AgentSessionConfig, AgentStreamEvent } from "../../agent-sdk-types.js";
 import {
@@ -24,7 +24,7 @@ import {
   PiRpcAgentSession,
   transformPiModels,
 } from "./agent.js";
-import { FakePi } from "./test-utils/fake-pi.js";
+import { FakePi, FakePiSession } from "./test-utils/fake-pi.js";
 import { createPiExtensionHost } from "./extensions/index.js";
 import { PiExtensionHost } from "./extensions/host.js";
 import type { PiModel, PiThinkingLevel } from "./rpc-types.js";
@@ -1559,7 +1559,24 @@ describe("PiRpcAgentSession", () => {
     expect(session.describePersistence()?.metadata?.model).toBe("kimi-coding/kimi-k3");
   });
 
-  test("resumes a session on the requested model when it differs from the session's", async () => {
+  // Restoring a chat keeps the model the session recorded. The requested model is not a
+  // switch order, so no model listing and no setModel may happen on the resume path.
+  const SESSION_MODEL_ID = "kimi-coding/kimi-k3";
+
+  function watchResumeModelCalls(): {
+    getAvailableModels: ReturnType<typeof vi.spyOn>;
+    setModel: ReturnType<typeof vi.spyOn>;
+  } {
+    const getAvailableModels = vi.spyOn(FakePiSession.prototype, "getAvailableModels");
+    const setModel = vi.spyOn(FakePiSession.prototype, "setModel");
+    onTestFinished(() => {
+      getAvailableModels.mockRestore();
+      setModel.mockRestore();
+    });
+    return { getAvailableModels, setModel };
+  }
+
+  test("keeps the session's model on resume and never switches it", async () => {
     const pi = new FakePi();
     const requestedModel = { ...RESTRICTED_THINKING_MODEL, provider: "openrouter", id: "a" };
     pi.queueSessionSetup((session) => {
@@ -1567,6 +1584,7 @@ describe("PiRpcAgentSession", () => {
       session.models = [RESTRICTED_THINKING_MODEL, requestedModel];
       session.setModelResult = requestedModel;
     });
+    const calls = watchResumeModelCalls();
 
     const session = await createClient(pi).resumeSession({
       provider: "pi",
@@ -1576,12 +1594,14 @@ describe("PiRpcAgentSession", () => {
     });
     onTestFinished(() => session.close());
 
-    expect(pi.latestSession().setModelRequests).toEqual([{ provider: "openrouter", modelId: "a" }]);
-    await expect(session.getRuntimeInfo()).resolves.toMatchObject({ model: "openrouter/a" });
-    expect(session.describePersistence()?.metadata?.model).toBe("openrouter/a");
+    await expect(session.getRuntimeInfo()).resolves.toMatchObject({ model: SESSION_MODEL_ID });
+    expect(pi.latestSession().setModelRequests).toEqual([]);
+    expect(calls.getAvailableModels).not.toHaveBeenCalled();
+    expect(calls.setModel).not.toHaveBeenCalled();
+    expect(session.describePersistence()?.metadata?.model).toBe(SESSION_MODEL_ID);
   });
 
-  test("resumes on a requested model written as provider:id", async () => {
+  test("keeps the session's model when the request names one as provider:id", async () => {
     const pi = new FakePi();
     const requestedModel = { ...RESTRICTED_THINKING_MODEL, provider: "openrouter", id: "a" };
     pi.queueSessionSetup((session) => {
@@ -1589,6 +1609,7 @@ describe("PiRpcAgentSession", () => {
       session.models = [RESTRICTED_THINKING_MODEL, requestedModel];
       session.setModelResult = requestedModel;
     });
+    const calls = watchResumeModelCalls();
 
     const session = await createClient(pi).resumeSession({
       provider: "pi",
@@ -1598,25 +1619,35 @@ describe("PiRpcAgentSession", () => {
     });
     onTestFinished(() => session.close());
 
-    await expect(session.getRuntimeInfo()).resolves.toMatchObject({ model: "openrouter/a" });
+    await expect(session.getRuntimeInfo()).resolves.toMatchObject({ model: SESSION_MODEL_ID });
+    expect(pi.latestSession().setModelRequests).toEqual([]);
+    expect(calls.getAvailableModels).not.toHaveBeenCalled();
+    expect(calls.setModel).not.toHaveBeenCalled();
   });
 
-  test("fails the resume when switching to an available model fails", async () => {
+  test("does not fail the resume when a switchable model exists", async () => {
     const pi = new FakePi();
     const requestedModel = { ...RESTRICTED_THINKING_MODEL, provider: "openrouter", id: "a" };
     pi.queueSessionSetup((session) => {
       session.state = { ...session.state, model: RESTRICTED_THINKING_MODEL };
       session.models = [RESTRICTED_THINKING_MODEL, requestedModel];
+      // No setModelResult on purpose: a switch would now fail the resume. Resume never
+      // switches, so the missing script must not matter.
     });
+    const calls = watchResumeModelCalls();
 
-    await expect(
-      createClient(pi).resumeSession({
-        provider: "pi",
-        sessionId: "pi-session-1",
-        nativeHandle: "/tmp/native-pi-session",
-        metadata: { cwd: "/workspace/project", model: "openrouter/a" },
-      }),
-    ).rejects.toThrow("FakePi setModel requires setModelResult to be scripted");
+    const session = await createClient(pi).resumeSession({
+      provider: "pi",
+      sessionId: "pi-session-1",
+      nativeHandle: "/tmp/native-pi-session",
+      metadata: { cwd: "/workspace/project", model: "openrouter/a" },
+    });
+    onTestFinished(() => session.close());
+
+    await expect(session.getRuntimeInfo()).resolves.toMatchObject({ model: SESSION_MODEL_ID });
+    expect(pi.latestSession().setModelRequests).toEqual([]);
+    expect(calls.getAvailableModels).not.toHaveBeenCalled();
+    expect(calls.setModel).not.toHaveBeenCalled();
   });
 
   test("adopts Pi's clamped thinking level when resuming a session", async () => {
