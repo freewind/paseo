@@ -1387,7 +1387,6 @@ export const fr: TranslationResources = {
     },
     project: {
       actions: {
-        collapse: "🌿 Collapse",
         menu: "Actions du projet",
         openSettings: "Ouvrir les paramètres du projet",
         openNewWindow: "Ouvrir dans une nouvelle fenêtre",

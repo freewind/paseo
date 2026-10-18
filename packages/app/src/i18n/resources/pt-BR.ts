@@ -1367,7 +1367,6 @@ export const ptBR: TranslationResources = {
     },
     project: {
       actions: {
-        collapse: "🌿 Collapse",
         menu: "Ações do projeto",
         openSettings: "Abrir configurações do projeto",
         openNewWindow: "Abrir em nova janela",
@@ -1409,8 +1408,6 @@ export const ptBR: TranslationResources = {
         pending: "Pendentes: {{count}}",
       },
       actions: {
-        collapsedCount: "🌿 {{count}} collapsed",
-        collapsedRestore: "🌿 Restore {{name}} to the sidebar",
         menu: "Ações do workspace",
         newWorkspace: "Novo workspace",
         showMore: "Mostrar mais",
