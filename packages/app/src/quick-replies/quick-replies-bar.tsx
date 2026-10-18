@@ -1,6 +1,6 @@
 import { Pressable, Text, View } from "react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
-import { Settings2 } from "lucide-react-native";
+import { MessageSquareText, Settings2 } from "lucide-react-native";
 import type { QuickReply } from "@getpaseo/protocol/messages";
 import { useTranslation } from "react-i18next";
 import { useCallback, useMemo } from "react";
@@ -9,6 +9,7 @@ import { ICON_SIZE, type Theme } from "@/styles/theme";
 
 const mutedIconMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
 const ThemedSettings2 = withUnistyles(Settings2, mutedIconMapping);
+const ThemedMessageSquareText = withUnistyles(MessageSquareText, mutedIconMapping);
 
 interface QuickRepliesBarProps {
   replies: QuickReply[];
@@ -58,9 +59,12 @@ export function QuickRepliesBar({
     <View style={styles.bar} testID="quick-replies-bar">
       {showTitle ? (
         <View style={styles.header}>
-          <Text style={styles.title} numberOfLines={1}>
-            {t("composer.quickReplies.title")}
-          </Text>
+          <View style={styles.titleGroup}>
+            <ThemedMessageSquareText size={ICON_SIZE.md} uniProps={mutedIconMapping} />
+            <Text style={styles.title} numberOfLines={1}>
+              {t("composer.quickReplies.title")}
+            </Text>
+          </View>
           {editButton}
         </View>
       ) : null}
@@ -115,6 +119,12 @@ const styles = StyleSheet.create((theme: Theme) => ({
     flexShrink: 1,
     color: theme.colors.foregroundMuted,
     fontSize: theme.fontSize.base,
+  },
+  titleGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexShrink: 1,
+    gap: theme.spacing[2],
   },
   chips: {
     flexDirection: "row",

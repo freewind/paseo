@@ -184,9 +184,7 @@ export const AgentTracks = memo(function AgentTracks({
             accessibilityLabel={t("composer.quickReplies.title")}
             onPress={onOpenQuickReplies}
             testID="composer-quick-replies-button"
-          >
-            {t("composer.quickReplies.title")}
-          </Button>
+          />
         ) : null}
       </ComposerTrackTools>
     </ComposerTrackBar>
