@@ -230,9 +230,10 @@ function QuickReplyDragHandle({
 }
 
 /**
- * The add row, mounted only while adding. Enter and the check button both commit; blurring an
- * empty field dismisses the row. Blur with text present leaves it mounted so the check press
- * still lands.
+ * The add row, mounted only while adding. A single-line input so Enter submits on both web and
+ * native (multiline inputs treat Enter as a newline); the check button commits too. Blurring an
+ * empty field dismisses the row, while blur with text present leaves it mounted so the check
+ * press still lands.
  */
 function NewReplyRow({
   onCommit,
@@ -256,9 +257,7 @@ function NewReplyRow({
         onChangeText={setText}
         placeholder={t("composer.quickReplies.placeholder")}
         style={styles.input}
-        multiline
         autoFocus
-        blurOnSubmit
         onSubmitEditing={handleSubmit}
         onBlur={handleBlur}
         testID="quick-replies-editor-new"
