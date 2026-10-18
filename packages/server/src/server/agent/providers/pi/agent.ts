@@ -238,6 +238,21 @@ function isPiMissingClearQueueRpc(error: unknown): boolean {
   return toDiagnosticErrorMessage(error) === "Unknown command: clear_queue";
 }
 
+// COMPAT(piGetEntries): added in v0.11.0 for pi binaries without get_entries;
+// remove once the supported pi floor ships it and this fallback can go.
+// The fallback is only for a binary that says it has no such command. A closed or
+// disconnected runtime, a timeout or any other failure has to surface instead: treating
+// it as "no entries" reports a successful read of an empty history.
+function isPiMissingGetEntriesRpc(error: unknown): boolean {
+  const message = toDiagnosticErrorMessage(error);
+  if (!message.toLowerCase().includes("get_entries")) {
+    return false;
+  }
+  return /\bunknown\b|\bnot implement(ed)?\b|\bunsupported\b|\bnot supported\b|\bunrecognized\b/i.test(
+    message,
+  );
+}
+
 interface PiRpcAgentSessionOptions {
   runtimeSession: PiRuntimeSession;
   config: AgentSessionConfig;
@@ -1497,7 +1512,17 @@ export class PiRpcAgentSession implements AgentSession {
     await this.requestEntryCapture("history");
     // The replay shows the full active branch, so pre-compaction history stays visible in a
     // resumed or forked copy; the model's own context still follows Pi's compaction state.
-    const branch = await this.requestBranchEntries().catch(() => null);
+    let branch: PiSessionEntry[] | null = null;
+    try {
+      branch = await this.requestBranchEntries();
+    } catch (error) {
+      // Only the explicit unknown-command answer means this binary lacks the RPC. A closed
+      // runtime or a failed request must surface: falling back would report a successful
+      // read and the caller would replace the timeline with an empty replay.
+      if (!isPiMissingGetEntriesRpc(error)) {
+        throw error;
+      }
+    }
     if (branch) {
       const replay = buildBranchReplay(branch);
       yield* streamPiHistory(
@@ -1511,8 +1536,6 @@ export class PiRpcAgentSession implements AgentSession {
       );
       return;
     }
-    // COMPAT(piGetEntries): added in v0.11.0 for pi binaries without get_entries;
-    // remove once the supported pi floor ships it and this fallback can go.
     yield* streamPiHistory(
       this.provider,
       await this.runtimeSession.getMessages(),
