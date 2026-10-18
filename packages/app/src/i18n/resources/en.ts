@@ -1293,6 +1293,7 @@ export const en = {
         all: "All hosts",
       },
       projectFilter: {
+        nonEmpty: "Non-empty projects",
         label: "Project",
         all: "All projects",
       },

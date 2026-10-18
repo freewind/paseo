@@ -1286,6 +1286,7 @@ export const ko: TranslationResources = {
         all: "모든 호스트",
       },
       projectFilter: {
+        nonEmpty: "비어 있지 않은 프로젝트",
         label: "프로젝트",
         all: "모든 프로젝트",
       },

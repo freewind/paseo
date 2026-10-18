@@ -1320,6 +1320,7 @@ export const es: TranslationResources = {
         all: "Todos los hosts",
       },
       projectFilter: {
+        nonEmpty: "Proyectos no vacíos",
         label: "Proyecto",
         all: "Todos los proyectos",
       },

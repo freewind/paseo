@@ -1305,6 +1305,7 @@ export const ptBR: TranslationResources = {
         all: "Todos os hosts",
       },
       projectFilter: {
+        nonEmpty: "Projetos não vazios",
         label: "Projeto",
         all: "Todos os projetos",
       },

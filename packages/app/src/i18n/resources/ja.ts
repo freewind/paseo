@@ -1292,6 +1292,7 @@ export const ja: TranslationResources = {
         all: "すべてのホスト",
       },
       projectFilter: {
+        nonEmpty: "空でないプロジェクト",
         label: "プロジェクト",
         all: "すべてのプロジェクト",
       },

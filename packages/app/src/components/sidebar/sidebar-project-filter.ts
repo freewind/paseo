@@ -37,4 +37,26 @@ export function filterWorkspacesByProjects(input: {
   return workspaces.filter((workspace) => included.has(workspace.projectViewKey));
 }
 
+/**
+ * The projects still worth showing in the live-only mode.
+ *
+ * A project qualifies when one of its workspaces is live. Deriving this on every render instead
+ * of storing a snapshot is what makes a project come back as soon as a chat starts in it, with
+ * no re-selection.
+ */
+export function collectLiveProjectKeys(input: {
+  projects: readonly { viewKey: string; workspaces: readonly { workspaceKey: string }[] }[];
+  liveWorkspaceKeys: ReadonlySet<string>;
+}): Set<string> {
+  const keys = new Set<string>();
+  for (const project of input.projects) {
+    if (
+      project.workspaces.some((workspace) => input.liveWorkspaceKeys.has(workspace.workspaceKey))
+    ) {
+      keys.add(project.viewKey);
+    }
+  }
+  return keys;
+}
+
 const EMPTY_PROJECT_FILTERS: readonly string[] = [];

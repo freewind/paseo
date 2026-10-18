@@ -1296,6 +1296,7 @@ export const ru: TranslationResources = {
         all: "Все хосты",
       },
       projectFilter: {
+        nonEmpty: "Непустые проекты",
         label: "Проект",
         all: "Все проекты",
       },

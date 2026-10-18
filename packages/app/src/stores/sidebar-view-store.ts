@@ -63,6 +63,12 @@ interface SidebarViewStoreState {
    * `resolveActiveProjectFilters`.
    */
   projectFilters: string[];
+  /**
+   * Show only projects that still hold a live conversation: one of their workspaces has an
+   * agent that is neither archived nor closed. Mutually exclusive with `projectFilters` so the
+   * list has exactly one reason for hiding a project.
+   */
+  nonEmptyProjectsOnly: boolean;
   labelFilter: SidebarLabelFilter;
   toggleBackground: () => void;
   projectScrollOffset: number;
@@ -78,6 +84,7 @@ interface SidebarViewStoreState {
   clearHostFilters: () => void;
   toggleProjectFilter: (viewKey: string) => void;
   clearProjectFilters: () => void;
+  setNonEmptyProjectsOnly: (enabled: boolean) => void;
   toggleLabelFilter: (name: string) => void;
   clearLabelFilter: () => void;
   reconcileLabelFilter: (labels: readonly string[]) => void;
@@ -90,6 +97,7 @@ interface SidebarViewPersistedState {
   showBackground: boolean;
   hostFilters: string[];
   projectFilters: string[];
+  nonEmptyProjectsOnly: boolean;
   labelFilter: SidebarLabelFilter;
   projectScrollOffset?: number;
   statusScrollOffset?: number;
@@ -106,6 +114,7 @@ const SidebarViewPersistedStateSchema = z.strictObject({
   hostFilters: z.array(z.string()).optional(),
   hostFilter: z.string().nullable().optional(),
   projectFilters: z.array(z.string()).optional(),
+  nonEmptyProjectsOnly: z.boolean().optional(),
   groupModeByServerId: z.record(z.string(), PersistedSidebarGroupModeSchema).optional(),
   labelFilter: SidebarLabelFilterSchema.optional(),
   projectScrollOffset: z.number().finite().nonnegative().optional(),
@@ -147,6 +156,7 @@ export function migrateSidebarViewState(persistedState: unknown): SidebarViewPer
       workspaceSort: "created",
       hostFilters: [],
       projectFilters: [],
+      nonEmptyProjectsOnly: false,
       labelFilter: emptyLabelFilter(),
       projectScrollOffset: 0,
       statusScrollOffset: 0,
@@ -162,6 +172,7 @@ export function migrateSidebarViewState(persistedState: unknown): SidebarViewPer
       workspaceSort: "created",
       hostFilters: [],
       projectFilters: [],
+      nonEmptyProjectsOnly: false,
       labelFilter: emptyLabelFilter(),
       projectScrollOffset: 0,
       statusScrollOffset: 0,
@@ -174,6 +185,7 @@ export function migrateSidebarViewState(persistedState: unknown): SidebarViewPer
     workspaceSort: state.workspaceSort ?? "created",
     hostFilters: readHostFilters(state),
     projectFilters: state.projectFilters ?? [],
+    nonEmptyProjectsOnly: state.nonEmptyProjectsOnly ?? false,
     labelFilter: state.labelFilter
       ? normalizeSidebarLabelFilter(state.labelFilter)
       : emptyLabelFilter(),
@@ -215,6 +227,7 @@ export const useSidebarViewStore = create<SidebarViewStoreState>()(
       workspaceSort: "created",
       hostFilters: [],
       projectFilters: [],
+      nonEmptyProjectsOnly: false,
       labelFilter: emptyLabelFilter(),
       toggleBackground: () => set((state) => ({ showBackground: !state.showBackground })),
       projectScrollOffset: 0,
@@ -230,9 +243,20 @@ export const useSidebarViewStore = create<SidebarViewStoreState>()(
       toggleHostFilter: (serverId) =>
         set((state) => ({ hostFilters: toggleFilterEntry(state.hostFilters, serverId) })),
       clearHostFilters: () => set({ hostFilters: [] }),
+      // Picking a project, or going back to every project, cancels the live-only mode: two
+      // allowlists over the same list would leave the sidebar unable to explain what it hides.
       toggleProjectFilter: (viewKey) =>
-        set((state) => ({ projectFilters: toggleFilterEntry(state.projectFilters, viewKey) })),
-      clearProjectFilters: () => set({ projectFilters: [] }),
+        set((state) => ({
+          projectFilters: toggleFilterEntry(state.projectFilters, viewKey),
+          nonEmptyProjectsOnly: false,
+        })),
+      clearProjectFilters: () => set({ projectFilters: [], nonEmptyProjectsOnly: false }),
+      setNonEmptyProjectsOnly: (enabled) =>
+        set(
+          enabled
+            ? { projectFilters: [], nonEmptyProjectsOnly: true }
+            : { nonEmptyProjectsOnly: false },
+        ),
       toggleLabelFilter: (name) =>
         set((state) => {
           const key = workspaceLabelKey(name);
@@ -277,6 +301,7 @@ export const useSidebarViewStore = create<SidebarViewStoreState>()(
         workspaceSort: state.workspaceSort,
         hostFilters: state.hostFilters,
         projectFilters: state.projectFilters,
+        nonEmptyProjectsOnly: state.nonEmptyProjectsOnly,
         labelFilter: state.labelFilter,
         projectScrollOffset: state.projectScrollOffset,
         statusScrollOffset: state.statusScrollOffset,

@@ -1271,6 +1271,7 @@ export const zhCN: TranslationResources = {
         all: "所有主机",
       },
       projectFilter: {
+        nonEmpty: "非空项目",
         label: "项目",
         all: "所有项目",
       },

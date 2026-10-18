@@ -1277,6 +1277,7 @@ export const ar: TranslationResources = {
         all: "كل المضيفين",
       },
       projectFilter: {
+        nonEmpty: "مشاريع نشطة",
         label: "المشروع",
         all: "كل المشاريع",
       },

@@ -1324,6 +1324,7 @@ export const fr: TranslationResources = {
         all: "Tous les hôtes",
       },
       projectFilter: {
+        nonEmpty: "Projets non vides",
         label: "Projet",
         all: "Tous les projets",
       },
