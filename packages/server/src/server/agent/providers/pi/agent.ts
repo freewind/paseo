@@ -83,6 +83,7 @@ import type {
   PiAgentMessage,
   PiImageContent,
   PiModel,
+  PiSessionEntriesResponse,
   PiSessionEntry,
   PiRpcSlashCommand,
   PiRuntimeEvent,
@@ -966,6 +967,53 @@ interface PiBranchReplay {
  * RPC surfaces; unknown roles (system checkpoints) are not timeline rows. User rows keep
  * their native entry ids so fork/rewind targets survive the replay.
  */
+/**
+ * The branch the session currently ends on: the leaf's ancestor chain, root-first.
+ *
+ * `get_entries` returns the whole append tree, which still holds pre-compaction history and
+ * branches the user abandoned (a rewritten answer leaves its predecessor in the tree). Only
+ * the chain from `leafId` back through `parentId` is the conversation on screen.
+ *
+ * A null leaf is a valid empty branch. A missing node, a duplicate id or a cycle means the
+ * response cannot be trusted, so this throws instead of guessing the last entry or falling
+ * back to the whole tree: the caller keeps the timeline it already had.
+ */
+export function selectBranchEntries(input: {
+  entries: readonly PiSessionEntry[] | undefined;
+  leafId: string | null;
+}): PiSessionEntry[] {
+  if (input.leafId === null) {
+    if (input.entries?.some((entry) => entry.message)) {
+      throw new Error("Pi returned session entries without an active leaf");
+    }
+    return [];
+  }
+  const byId = new Map<string, PiSessionEntry>();
+  for (const entry of input.entries ?? []) {
+    if (!entry.id) continue;
+    if (byId.has(entry.id)) {
+      throw new Error(`Pi session entries contain duplicate id '${entry.id}'`);
+    }
+    byId.set(entry.id, entry);
+  }
+  const chain: PiSessionEntry[] = [];
+  const visited = new Set<string>();
+  let currentId: string | null = input.leafId;
+  while (currentId !== null) {
+    if (visited.has(currentId)) {
+      throw new Error(`Pi session entry chain contains a cycle at '${currentId}'`);
+    }
+    visited.add(currentId);
+    const entry = byId.get(currentId);
+    if (!entry) {
+      throw new Error(`Pi session entry '${currentId}' is missing from get_entries`);
+    }
+    chain.push(entry);
+    currentId = entry.parentId ?? null;
+  }
+  return chain.toReversed();
+}
+
 function buildBranchReplay(entries: readonly PiSessionEntry[]): PiBranchReplay {
   const messages: PiAgentMessage[] = [];
   const userEntries: PiCapturedUserMessageEntry[] = [];
@@ -1551,14 +1599,14 @@ export class PiRpcAgentSession implements AgentSession {
   }
 
   /**
-   * Raw session entries on the active branch, root-first. Null when the binary predates
-   * the get_entries RPC.
+   * Session entries on the branch the session currently ends on, root-first. The response
+   * carries the whole append tree, so the leaf's ancestor chain is selected here.
    */
   private async requestBranchEntries(): Promise<PiSessionEntry[]> {
-    const data = (await this.runtimeSession.request({ type: "get_entries" })) as {
-      entries?: PiSessionEntry[];
-    };
-    return data.entries ?? [];
+    const data = (await this.runtimeSession.request({
+      type: "get_entries",
+    })) as PiSessionEntriesResponse;
+    return selectBranchEntries({ entries: data.entries, leafId: data.leafId ?? null });
   }
 
   async getRuntimeInfo(): Promise<AgentRuntimeInfo> {

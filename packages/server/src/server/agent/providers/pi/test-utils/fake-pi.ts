@@ -10,6 +10,7 @@ import type {
   PiPromptAck,
   PiRpcSlashCommand,
   PiRuntimeEvent,
+  PiSessionEntriesResponse,
   PiSessionEntry,
   PiSessionState,
   PiSessionStats,
@@ -274,8 +275,16 @@ export class FakePiSession implements PiRuntimeSession {
     return this.messages;
   }
 
-  async getEntries(): Promise<PiSessionEntry[]> {
-    return this.messages.map((message) => ({ type: "message", message }));
+  async getEntries(): Promise<PiSessionEntriesResponse> {
+    // The real RPC answers with an append tree plus the active leaf; a flat chain with the
+    // last entry as leaf is the smallest honest shape for the fake.
+    const entries: PiSessionEntry[] = this.messages.map((message, index) => ({
+      type: "message",
+      id: `entry-${index + 1}`,
+      parentId: index === 0 ? null : `entry-${index}`,
+      message,
+    }));
+    return { entries, leafId: entries.at(-1)?.id ?? null };
   }
 
   async getAvailableModels(_timeoutMs?: number | null): Promise<PiModel[]> {
