@@ -347,6 +347,7 @@ function useAgentPanelDescriptor(
       const agent =
         session?.agents?.get(target.agentId) ?? session?.agentDetails?.get(target.agentId) ?? null;
       return {
+        hasAgent: agent !== null,
         provider: agent?.provider ?? "codex",
         title: agent?.title ?? null,
         status: agent?.status ?? null,
@@ -358,7 +359,11 @@ function useAgentPanelDescriptor(
     }),
   );
   const provider = descriptorState.provider;
-  const label = resolveWorkspaceAgentTabLabel(descriptorState.title);
+  // An agent that exists but carries no title (a fresh clone, or a daemon that never named it)
+  // falls back to its id. Waiting for a title that will never arrive left the tab loading forever.
+  const label =
+    resolveWorkspaceAgentTabLabel(descriptorState.title) ??
+    (descriptorState.hasAgent ? target.agentId : null);
   const icon = useProviderIcon(provider, context.serverId);
 
   return {
