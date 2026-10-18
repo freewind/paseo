@@ -56,6 +56,15 @@ export class InMemoryAgentTimelineStore {
     this.requireState(agentId).historyLoaded = true;
   }
 
+  /**
+   * The rows still belong to the previous runtime, so they stay on screen but no longer
+   * count as loaded: a new provider session has to replay its own history.
+   */
+  markHistoryStale(agentId: string): void {
+    const state = this.states.get(agentId);
+    if (state) state.historyLoaded = false;
+  }
+
   initialize(agentId: string, options?: SeedAgentTimelineOptions): void {
     const timestamp = options?.timestamp ?? new Date().toISOString();
     const rows = options?.rows?.length
