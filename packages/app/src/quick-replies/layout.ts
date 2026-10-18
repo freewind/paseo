@@ -1,11 +1,11 @@
 import { DEFAULT_CONTENT_MAX_WIDTH } from "@/styles/theme";
 
 /**
- * Narrowest right-hand gutter that still fits one quick reply chip beside the composer.
+ * Narrowest right-hand gutter that still fits one quick reply chip at its enlarged size.
  * Under this width the composer cannot show the bar without squeezing the centered input
  * column, so the pane's track row carries a single "常用回复" entry instead.
  */
-export const QUICK_REPLIES_GUTTER_MIN_WIDTH = 96;
+export const QUICK_REPLIES_GUTTER_MIN_WIDTH = 180;
 
 /**
  * Composer horizontal chrome the gutter competes with: the input area's horizontal padding

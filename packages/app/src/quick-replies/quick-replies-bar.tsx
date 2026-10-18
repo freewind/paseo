@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 import { useCallback, useMemo } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ICON_SIZE, type Theme } from "@/styles/theme";
-import { truncateQuickReplyLabel } from "./truncate";
 
 const mutedIconMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
 const ThemedSettings2 = withUnistyles(Settings2, mutedIconMapping);
@@ -21,9 +20,9 @@ interface QuickRepliesBarProps {
 
 /**
  * Quick replies as pressable chips: the desktop composer's right gutter, and the body of the
- * compact sheet. Chips run left to right and wrap; each shows the first five characters, the full
- * text on hover and to assistive tech, and sends immediately. The manage button is always there,
- * so an empty list still has a way to add the first reply.
+ * compact sheet. Chips run left to right and wrap; each shows the reply's full text on one line,
+ * ellipsized at the tail when it cannot fit the row, and sends immediately. The manage button is
+ * always there, so an empty list still has a way to add the first reply.
  */
 export function QuickRepliesBar({
   replies,
@@ -33,7 +32,7 @@ export function QuickRepliesBar({
 }: QuickRepliesBarProps) {
   const { t } = useTranslation();
   const editIcon = useMemo(
-    () => <ThemedSettings2 size={ICON_SIZE.sm} uniProps={mutedIconMapping} />,
+    () => <ThemedSettings2 size={ICON_SIZE.lg} uniProps={mutedIconMapping} />,
     [],
   );
   const editButton = (
@@ -84,24 +83,17 @@ function QuickReplyChip({
 }) {
   const handlePress = useCallback(() => onSelect(reply.text), [onSelect, reply.text]);
   return (
-    <Tooltip delayDuration={250} enabledOnDesktop enabledOnMobile={false}>
-      <TooltipTrigger asChild>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={reply.text}
-          testID={`quick-reply-${reply.id}`}
-          onPress={handlePress}
-          style={styles.chip}
-        >
-          <Text style={styles.chipText} numberOfLines={1}>
-            {truncateQuickReplyLabel(reply.text)}
-          </Text>
-        </Pressable>
-      </TooltipTrigger>
-      <TooltipContent side="top" align="end" offset={8}>
-        <Text style={styles.tooltipText}>{reply.text}</Text>
-      </TooltipContent>
-    </Tooltip>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={reply.text}
+      testID={`quick-reply-${reply.id}`}
+      onPress={handlePress}
+      style={styles.chip}
+    >
+      <Text style={styles.chipText} numberOfLines={1} ellipsizeMode="tail">
+        {reply.text}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -122,7 +114,7 @@ const styles = StyleSheet.create((theme: Theme) => ({
   title: {
     flexShrink: 1,
     color: theme.colors.foregroundMuted,
-    fontSize: theme.fontSize.sm,
+    fontSize: theme.fontSize.base,
   },
   chips: {
     flexDirection: "row",
@@ -130,30 +122,32 @@ const styles = StyleSheet.create((theme: Theme) => ({
     alignItems: "center",
     alignContent: "flex-start",
     justifyContent: "flex-start",
-    gap: theme.spacing[1],
+    gap: theme.spacing[2],
     minWidth: 0,
   },
   chip: {
     flexShrink: 1,
     minWidth: 0,
+    /** The label grows with its text but never past the row, so the tail ellipsis can kick in. */
+    maxWidth: "100%",
     borderRadius: theme.borderRadius.full,
     borderWidth: theme.borderWidth[1],
     borderColor: theme.colors.border,
-    paddingHorizontal: theme.spacing[2],
-    paddingVertical: theme.spacing[1],
+    paddingHorizontal: theme.spacing[3],
+    paddingVertical: theme.spacing[2],
     backgroundColor: theme.colors.surface1,
   },
   chipText: {
     color: theme.colors.foregroundMuted,
-    fontSize: theme.fontSize.sm,
+    fontSize: theme.fontSize.lg,
   },
   editChip: {
     flexShrink: 0,
     borderRadius: theme.borderRadius.full,
     borderWidth: theme.borderWidth[1],
     borderColor: theme.colors.border,
-    paddingHorizontal: theme.spacing[2],
-    paddingVertical: theme.spacing[1],
+    paddingHorizontal: theme.spacing[3],
+    paddingVertical: theme.spacing[2],
     backgroundColor: theme.colors.surface1,
   },
   tooltipText: {
