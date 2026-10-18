@@ -26,6 +26,7 @@ import {
 import type { WorkspaceTabDescriptor } from "@/screens/workspace/workspace-tabs-types";
 import type { SidebarWorkspaceEntry } from "@/hooks/sidebar-workspaces-view-model";
 import {
+  agentTabLabel,
   buildSidebarWorkspaceAgentRows,
   type SidebarWorkspaceAgentRow,
 } from "@/components/sidebar/sidebar-workspace-agent-rows";
@@ -50,12 +51,6 @@ interface SidebarWorkspaceAgentRowItemProps {
   /** The "Title lines" setting: when on, a long agent title wraps instead of ending in an ellipsis. */
   multilineTitle: boolean;
   onPress: () => void;
-}
-
-function agentTabLabel(title: string | null | undefined, fallback: string): string {
-  const normalized = typeof title === "string" ? title.trim() : "";
-  // The daemon seeds an untitled agent as "New agent", which is a placeholder rather than a name.
-  return !normalized || normalized.toLowerCase() === "new agent" ? fallback : normalized;
 }
 
 /**

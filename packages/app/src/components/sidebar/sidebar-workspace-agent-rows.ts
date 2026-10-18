@@ -13,6 +13,16 @@ export interface SidebarWorkspaceAgentRow {
 }
 
 /**
+ * The label an agent row shows, and the one the name search matches against: an untitled agent
+ * falls back to its id, so searching for what is on screen always finds the row.
+ */
+export function agentTabLabel(title: string | null | undefined, fallback: string): string {
+  const normalized = typeof title === "string" ? title.trim() : "";
+  // The daemon seeds an untitled agent as "New agent", which is a placeholder rather than a name.
+  return !normalized || normalized.toLowerCase() === "new agent" ? fallback : normalized;
+}
+
+/**
  * The agent tabs a workspace currently holds, in tab order.
  *
  * This is the layout's own ordering — `collectAllTabs` walks the split tree left to right, top to

@@ -18,9 +18,8 @@ export interface HighlightedTextProps {
  * in the list — the subsequence and typo tiers can match on characters the eye
  * would never find unaided.
  *
- * The mark is a surface tint rather than the accent: it appears many times on a
- * screen, so it has to stay quiet and survive every theme, and the one accent
- * per surface is spoken for.
+ * The mark is a yellow band with near-black text, in every theme: the point is to
+ * find the hit at a glance, so it stays brighter than the row it sits in.
  */
 export function HighlightedText({
   text,
@@ -59,7 +58,7 @@ export function HighlightedText({
 
 const styles = StyleSheet.create((theme) => ({
   mark: {
-    backgroundColor: theme.colors.surface3,
-    color: theme.colors.foreground,
+    backgroundColor: theme.colors.palette.yellow[400],
+    color: theme.colors.palette.zinc[900],
   },
 }));

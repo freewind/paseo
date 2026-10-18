@@ -26,6 +26,7 @@ import type { SidebarShortcutModel } from "@/utils/sidebar-shortcuts";
 import { buildSidebarProjection } from "./sidebar-projection";
 import type { SidebarProjectIconTarget } from "@/utils/sidebar-project-row-model";
 import { filterWorkspacesByLabels, type SidebarWorkspaceGroup } from "./sidebar-labels";
+import { agentTabLabel } from "./sidebar-workspace-agent-rows";
 import { filterWorkspacesByProjects, resolveActiveProjectFilters } from "./sidebar-project-filter";
 import {
   hasAuthoritativeWorkspaceLabelCatalog,
@@ -168,8 +169,8 @@ export function SidebarModelProvider({
       const agents = entry.agents;
       if (!agents) continue;
       for (const [agentId, agent] of agents) {
-        if (agent.archivedAt || agent.parentAgentId) continue;
-        titles.set(agentId, agent.title ?? agentId);
+        if (agent.archivedAt) continue;
+        titles.set(agentId, agentTabLabel(agent.title, agentId));
       }
     }
     return titles;
