@@ -34,6 +34,9 @@ export interface SidebarDisplayPreferences {
   projectFilters: readonly string[];
   toggleProjectFilter: (viewKey: string) => void;
   clearProjectFilters: () => void;
+  /** Only projects holding a live conversation. Mutually exclusive with `projectFilters`. */
+  nonEmptyProjectsOnly: boolean;
+  setNonEmptyProjectsOnly: (enabled: boolean) => void;
   labelFilter: SidebarLabelFilter;
   toggleLabelFilter: (name: string) => void;
   clearLabelFilter: () => void;
@@ -56,6 +59,8 @@ export function useSidebarDisplayPreferences(): SidebarDisplayPreferences {
   const projectFilters = useSidebarViewStore((state) => state.projectFilters);
   const toggleProjectFilter = useSidebarViewStore((state) => state.toggleProjectFilter);
   const clearProjectFilters = useSidebarViewStore((state) => state.clearProjectFilters);
+  const nonEmptyProjectsOnly = useSidebarViewStore((state) => state.nonEmptyProjectsOnly);
+  const setNonEmptyProjectsOnly = useSidebarViewStore((state) => state.setNonEmptyProjectsOnly);
   const labelFilter = useSidebarViewStore((state) => state.labelFilter);
   const toggleLabelFilter = useSidebarViewStore((state) => state.toggleLabelFilter);
   const clearLabelFilter = useSidebarViewStore((state) => state.clearLabelFilter);
@@ -120,6 +125,8 @@ export function useSidebarDisplayPreferences(): SidebarDisplayPreferences {
       projectFilters,
       toggleProjectFilter,
       clearProjectFilters,
+      nonEmptyProjectsOnly,
+      setNonEmptyProjectsOnly,
       labelFilter,
       toggleLabelFilter,
       clearLabelFilter,
@@ -141,6 +148,8 @@ export function useSidebarDisplayPreferences(): SidebarDisplayPreferences {
       projectFilters,
       toggleProjectFilter,
       clearProjectFilters,
+      nonEmptyProjectsOnly,
+      setNonEmptyProjectsOnly,
       labelFilter,
       toggleLabelFilter,
       clearLabelFilter,

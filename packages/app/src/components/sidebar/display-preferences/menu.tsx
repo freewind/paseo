@@ -340,7 +340,7 @@ export function SidebarDisplayPreferencesMenu(): ReactElement {
               {showHostFilter ? null : <MenuSeparator />}
               <MenuSubTrigger
                 id="projectFilter"
-                indicator={resolvedProjectFilters.length > 0}
+                indicator={resolvedProjectFilters.length > 0 || preferences.nonEmptyProjectsOnly}
                 testID="sidebar-display-project-filter"
               >
                 {t("sidebar.display.projectFilter.label")}
@@ -622,16 +622,29 @@ function ProjectFilterPage({
   const iconTargets = useMemo(() => resolveSidebarProjectIconTargets(projects), [projects]);
   // Shares TanStack's cache with the sidebar's own call, so this subscribes rather than refetches.
   const iconByProjectViewKey = useProjectIcons({ projects: iconTargets });
+  // Rows stay open, so the row toggles its own mode instead of only ever turning it on.
+  const toggleNonEmptyProjectsOnly = useCallback(
+    () => preferences.setNonEmptyProjectsOnly(!preferences.nonEmptyProjectsOnly),
+    [preferences],
+  );
 
   return (
     <>
       <MenuItem
-        selected={resolvedProjectFilters.length === 0}
+        selected={resolvedProjectFilters.length === 0 && !preferences.nonEmptyProjectsOnly}
         closeOnSelect={false}
         onSelect={preferences.clearProjectFilters}
         testID="sidebar-project-filter-all"
       >
         {t("sidebar.display.projectFilter.all")}
+      </MenuItem>
+      <MenuItem
+        selected={preferences.nonEmptyProjectsOnly}
+        closeOnSelect={false}
+        onSelect={toggleNonEmptyProjectsOnly}
+        testID="sidebar-project-filter-non-empty"
+      >
+        {t("sidebar.display.projectFilter.nonEmpty")}
       </MenuItem>
       {projects.map((project) => (
         <ProjectFilterItem

@@ -26,7 +26,11 @@ import { buildSidebarProjection } from "./sidebar-projection";
 import type { SidebarProjectIconTarget } from "@/utils/sidebar-project-row-model";
 import { filterWorkspacesByLabels, type SidebarWorkspaceGroup } from "./sidebar-labels";
 import { agentTabLabel } from "./sidebar-workspace-agent-rows";
-import { filterWorkspacesByProjects, resolveActiveProjectFilters } from "./sidebar-project-filter";
+import {
+  collectLiveProjectKeys,
+  filterWorkspacesByProjects,
+  resolveActiveProjectFilters,
+} from "./sidebar-project-filter";
 import {
   hasAuthoritativeWorkspaceLabelCatalog,
   useWorkspaceLabelProjection,
@@ -43,6 +47,8 @@ interface SidebarModel extends SidebarWorkspacesListResult {
   allProjects: SidebarProjectEntry[];
   /** The project filter as it is actually being applied — see `resolveActiveProjectFilters`. */
   resolvedProjectFilters: readonly string[];
+  /** Live-only mode: only projects holding a non-archived, non-closed agent. */
+  nonEmptyProjectsOnly: boolean;
   hasProjectsBeforeFilter: boolean;
   groupMode: SidebarGroupMode;
   /** Per-row highlight data while the name search is active; empty when it is off. */
@@ -71,6 +77,7 @@ export function SidebarModelProvider({
   const groupMode = useSidebarViewStore((state) => state.groupMode);
   const labelFilter = useSidebarViewStore((state) => state.labelFilter);
   const projectFilters = useSidebarViewStore((state) => state.projectFilters);
+  const nonEmptyProjectsOnly = useSidebarViewStore((state) => state.nonEmptyProjectsOnly);
   const nameSearch = useSidebarViewStore((state) => state.nameSearch);
   const setNameSearch = useSidebarViewStore((state) => state.setNameSearch);
   const reconcileLabelFilter = useSidebarViewStore((state) => state.reconcileLabelFilter);
@@ -106,6 +113,9 @@ export function SidebarModelProvider({
   );
   const hasActiveProjectFilter = resolvedProjectFilters.length > 0;
   const hasNameSearch = hasActiveSidebarNameSearch(nameSearch);
+  // The live-only mode asks about agents, so it is the only project filter that needs the agent
+  // maps; it subscribes to them only while the mode is on.
+  const needsAgentMaps = hasNameSearch || nonEmptyProjectsOnly;
   // The project filter is deliberately absent from this gate. It reads `projectViewKey`, which
   // lives on the project and the placement, so it can narrow the project list without hydrating
   // anything; the label filter reads `labels`, which only exists on an entry. Hydration opens a
@@ -137,13 +147,27 @@ export function SidebarModelProvider({
   // a selector that builds fresh objects re-renders on every store tick and spins forever.
   const agentMapsByServerId = useSessionStore(
     useShallow((state) =>
-      hasNameSearch
+      needsAgentMaps
         ? list.workspacePlacements.map(
             (placement) => state.sessions[placement.serverId]?.agents ?? null,
           )
         : EMPTY_AGENT_MAPS,
     ),
   );
+  const liveWorkspaceKeys = useMemo(() => {
+    const keys = new Set<string>();
+    if (!nonEmptyProjectsOnly) return keys;
+    for (const [index, agents] of agentMapsByServerId.entries()) {
+      const serverId = list.workspacePlacements[index]?.serverId;
+      if (!serverId || !agents) continue;
+      for (const agent of agents.values()) {
+        if (agent.archivedAt || agent.status === "closed" || !agent.workspaceId) continue;
+        // workspaceKey is `serverId:workspaceId`, the identity the placements already carry.
+        keys.add(`${serverId}:${agent.workspaceId}`);
+      }
+    }
+    return keys;
+  }, [agentMapsByServerId, list.workspacePlacements, nonEmptyProjectsOnly]);
   const agentsByWorkspaceId = useMemo(() => {
     if (!hasNameSearch) return EMPTY_AGENTS_BY_WORKSPACE_ID;
     return list.workspacePlacements.map((placement, index) => ({
@@ -210,6 +234,15 @@ export function SidebarModelProvider({
       const included = new Set(resolvedProjectFilters);
       projects = projects.filter((project) => included.has(project.viewKey));
     }
+    if (nonEmptyProjectsOnly) {
+      // Derived every render: a project reappears the moment a chat starts in it. The first
+      // load is exempt because an empty agent map there means "not fetched yet", and filtering
+      // on it would blank the sidebar instead of narrowing it.
+      const live = collectLiveProjectKeys({ projects, liveWorkspaceKeys });
+      projects = list.isInitialLoad
+        ? projects
+        : projects.filter((project) => live.has(project.viewKey));
+    }
     if (hasActiveLabelFilter) {
       projects = projects.flatMap((project) => {
         const workspaces = project.workspaces.filter((workspace) =>
@@ -223,6 +256,9 @@ export function SidebarModelProvider({
     hasActiveLabelFilter,
     hasActiveProjectFilter,
     resolvedProjectFilters,
+    nonEmptyProjectsOnly,
+    liveWorkspaceKeys,
+    list.isInitialLoad,
     nameFilteredProjects,
     visibleWorkspaceKeys,
   ]);
@@ -258,6 +294,7 @@ export function SidebarModelProvider({
       projects: filteredProjects,
       allProjects: list.projects,
       resolvedProjectFilters,
+      nonEmptyProjectsOnly,
       hasProjectsBeforeFilter: list.projects.length > 0,
       workspaceEntriesByKey: nameFilteredWorkspaceEntries,
       groupMode,
@@ -277,6 +314,7 @@ export function SidebarModelProvider({
     }),
     [
       resolvedProjectFilters,
+      nonEmptyProjectsOnly,
       collapsedProjectKeys,
       groupMode,
       list,
