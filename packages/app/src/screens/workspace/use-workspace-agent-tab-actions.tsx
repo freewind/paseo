@@ -16,7 +16,10 @@ import { confirmDialog } from "@/utils/confirm-dialog";
 import { getOrCreateClientId } from "@/utils/client-id";
 import { buildProviderCommand } from "@/utils/provider-command-templates";
 import { buildWorkspaceTabPersistenceKey } from "@/workspace-tabs/model";
-import type { SidebarWorkspaceAgentRow } from "@/components/sidebar/sidebar-workspace-agent-rows";
+import {
+  agentTabLabel,
+  type SidebarWorkspaceAgentRow,
+} from "@/components/sidebar/sidebar-workspace-agent-rows";
 import type { WorkspaceTabDescriptor } from "@/screens/workspace/workspace-tabs-types";
 import {
   buildBulkCloseConfirmationMessage,
@@ -39,6 +42,40 @@ import { canMarkAgentUnread } from "@/workspace/agent-unread-policy";
 const NO_TERMINALS_QUERY_KEY: readonly unknown[] = ["workspace-agent-tab-rename"];
 
 type BulkCloseTitleKey = "closeTabsLeftTitle" | "closeTabsRightTitle" | "closeOtherTabsTitle";
+
+/** Local 24-hour clock as `HH:mm`: the suffix needs a fixed shape, not a locale format. */
+function formatClockTime(): string {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+}
+
+/**
+ * Names a clone after its source plus the time it was made.
+ *
+ * A clone arrives with no title, so its tab would read as the agent id — or, before the descriptor
+ * falls back, as a loading placeholder. Copies of one conversation also need to stay tellable
+ * apart. An untitled source keeps its untitled clone: the descriptor's fallback is the better
+ * answer there. Display only, so a failed rename is swallowed.
+ */
+export async function nameClonedAgent(input: {
+  client: { updateAgent: (agentId: string, updates: { name?: string }) => Promise<void> } | null;
+  serverId: string;
+  sourceAgentId: string;
+  newAgentId: string;
+}): Promise<void> {
+  const client = input.client;
+  if (!client) return;
+  const session = useSessionStore.getState().sessions[input.serverId];
+  const source =
+    session?.agents?.get(input.sourceAgentId) ??
+    session?.agentDetails?.get(input.sourceAgentId) ??
+    null;
+  const base = agentTabLabel(source?.title, "");
+  if (!base) return;
+  await client
+    .updateAgent(input.newAgentId, { name: `${base} · ${formatClockTime()}` })
+    .catch(() => undefined);
+}
 
 export interface HideWorkspaceAgentTabActions {
   onHideTab: (tabId: string) => Promise<void>;
@@ -400,6 +437,14 @@ export function useWorkspaceAgentTabActions({
           toast.error(t("workspace.tabs.toasts.cloneFailed"));
           return;
         }
+        // Fire and forget: the title is decoration, so a slow or failing rename must not hold up
+        // the navigation into the new tab.
+        void nameClonedAgent({
+          client,
+          serverId,
+          sourceAgentId: agentId,
+          newAgentId: result.newAgentId,
+        });
         navigateToWorkspace({
           serverId,
           workspaceId: result.newWorkspaceId ?? workspaceId,

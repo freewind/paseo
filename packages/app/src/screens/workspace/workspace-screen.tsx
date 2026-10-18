@@ -134,6 +134,7 @@ import {
 } from "@/screens/workspace/use-workspace-tab-rename";
 import { MobileTabTrailingAccessory } from "@/screens/workspace/workspace-tab-trailing-accessory";
 import {
+  nameClonedAgent,
   useCopyAgentConversationMarkdown,
   useHideWorkspaceAgentTab,
 } from "@/screens/workspace/use-workspace-agent-tab-actions";
@@ -3030,6 +3031,14 @@ function WorkspaceScreenContent({
           toast.error(t("workspace.tabs.toasts.cloneFailed"));
           return;
         }
+        // Same naming as the tab actions' clone entry: the title must not depend on which surface
+        // the copy was started from.
+        void nameClonedAgent({
+          client,
+          serverId: normalizedServerId,
+          sourceAgentId: agentId,
+          newAgentId: result.newAgentId,
+        });
         navigateToWorkspace({
           serverId: normalizedServerId,
           workspaceId: result.newWorkspaceId ?? normalizedWorkspaceId,
