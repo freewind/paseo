@@ -1,42 +1,52 @@
 import { memo, useCallback, useMemo, useState } from "react";
 import { Image, Pressable, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import { StyleSheet } from "react-native-unistyles";
+import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { CheckCircle2, Circle, ClipboardList, Plus, Trash2 } from "lucide-react-native";
-import { withUnistyles } from "react-native-unistyles";
 import type { AgentMemo, ImageAttachment } from "@getpaseo/protocol/messages";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AttachmentLightbox, type ImageLightboxSource } from "@/components/attachment-lightbox";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import { encodeAttachmentsForSend } from "@/attachments/service";
 import type { AttachmentMetadata } from "@/attachments/types";
-import type { Theme } from "@/styles/theme";
+import { confirmDialog } from "@/utils/confirm-dialog";
+import { ICON_SIZE, type Theme } from "@/styles/theme";
 import { AgentMemoComposer } from "./agent-memo-composer";
 import { useAgentMemos } from "./use-agent-memos";
 import { useHostFeature } from "@/runtime/host-features";
 
-const ThemedClipboardList = withUnistyles(ClipboardList);
-const ThemedTrash2 = withUnistyles(Trash2);
 const mutedIconMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
-const ThemedCircle = withUnistyles(Circle, mutedIconMapping);
 const completedIconMapping = (theme: Theme) => ({ color: theme.colors.accent });
+const ThemedClipboardList = withUnistyles(ClipboardList, mutedIconMapping);
+const ThemedAddPlus = withUnistyles(Plus, mutedIconMapping);
+const ThemedTrash2 = withUnistyles(Trash2, mutedIconMapping);
+const ThemedCircle = withUnistyles(Circle, mutedIconMapping);
 const ThemedCheckCircle2 = withUnistyles(CheckCircle2, completedIconMapping);
 
 /**
- * The agent's memos, in the gutter beside the transcript.
+ * The agent's memos as a standing todo list: the composer's left gutter on a wide layout, and a
+ * row above the composer on a compact one.
  *
- * A memo is one line collapsed; hovering (web) or long-pressing opens its full text.
- * The list behaves like a todo list: pressing the text appends it to the composer on a
- * new line and leaves the memo in place, the checkbox marks it done, and only the trash
- * button removes it. Completion is stored on the daemon with the memo, so every client
- * sees the same state.
+ * Open memos come first and completed ones sink to the bottom, struck through and dimmed, each
+ * group keeping the daemon's creation order. Pressing the text appends it to the composer and
+ * leaves the memo in place; the context menu sends it, the checkbox toggles completion, and the
+ * trash button asks before deleting. Completion lives on the daemon with the memo, so every
+ * client sees the same state.
  */
 export const AgentMemosRail = memo(function AgentMemosRail({
   serverId,
   agentId,
+  compact = false,
   onAppendToComposer,
 }: {
   serverId: string;
   agentId: string;
+  /** Compact hosts show the icon alone: the list sits above the composer, not beside it. */
+  compact?: boolean;
   /** Appends text to the composer without sending; returns the previous text for undo. */
   onAppendToComposer: (text: string) => void;
 }) {
@@ -45,11 +55,11 @@ export const AgentMemosRail = memo(function AgentMemosRail({
   const supportsCompletion = useHostFeature(serverId, "agentMemoCompletion");
   const supportsImages = useHostFeature(serverId, "agentMemoImages");
   const { memos, addMemo, setMemoCompleted, deleteMemo } = useAgentMemos({ serverId, agentId });
-  const [isExpanded, setIsExpanded] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [lightboxSource, setLightboxSource] = useState<ImageLightboxSource | null>(null);
 
-  const handleToggle = useCallback(() => setIsExpanded((open) => !open), []);
+  const orderedMemos = useMemo(() => orderMemos(memos), [memos]);
+
   const handleStartAdding = useCallback(() => setIsAdding(true), []);
   const handleCancelAdd = useCallback(() => setIsAdding(false), []);
   const handleCloseLightbox = useCallback(() => setLightboxSource(null), []);
@@ -65,10 +75,6 @@ export const AgentMemosRail = memo(function AgentMemosRail({
     },
     [addMemo],
   );
-  const handleMemoDelete = useCallback(
-    (memoId: string) => void deleteMemo(memoId).catch(() => undefined),
-    [deleteMemo],
-  );
   const handleMemoCompletedChange = useCallback(
     (memoId: string, completed: boolean) =>
       void setMemoCompleted(memoId, completed).catch(() => undefined),
@@ -83,79 +89,109 @@ export const AgentMemosRail = memo(function AgentMemosRail({
     [onAppendToComposer],
   );
 
+  // Deleting is the one action that cannot be undone from the list, so it asks first.
+  const handleRequestDelete = useCallback(
+    async (entry: AgentMemo) => {
+      const confirmed = await confirmDialog({
+        title: t("agentMemos.delete"),
+        message: entry.text,
+        confirmLabel: t("agentMemos.delete"),
+        cancelLabel: t("common.actions.cancel"),
+        destructive: true,
+      });
+      if (!confirmed) return;
+      await deleteMemo(entry.id).catch(() => undefined);
+    },
+    [deleteMemo, t],
+  );
+
   if (!supported) {
     return null;
   }
 
   return (
-    <View style={styles.container} testID="agent-memos-rail">
-      <Pressable
-        style={styles.toggle}
-        onPress={handleToggle}
-        accessibilityRole="button"
-        accessibilityLabel={t("agentMemos.toggle")}
-        testID="agent-memos-toggle"
-      >
-        <ThemedClipboardList size={14} />
-        {memos.length > 0 ? <Text style={styles.count}>{memos.length}</Text> : null}
-      </Pressable>
-      {isExpanded ? (
-        <View style={styles.list}>
-          {memos.length === 0 ? (
-            <Text style={styles.empty}>{t("agentMemos.empty")}</Text>
-          ) : (
-            memos.map((entry) => (
-              <AgentMemoRow
-                key={entry.id}
-                entry={entry}
-                supportsCompletion={supportsCompletion}
-                onUse={handleMemoPress}
-                onCompletedChange={handleMemoCompletedChange}
-                onDelete={handleMemoDelete}
-                onOpenImage={handleOpenMemoImage}
-              />
-            ))
-          )}
-          {isAdding ? (
-            <AgentMemoComposer
-              onSubmit={handleAddMemo}
-              onCancel={handleCancelAdd}
-              canAttachImages={supportsImages}
+    <View
+      style={[styles.container, compact ? styles.containerCompact : styles.containerGutter]}
+      testID="agent-memos-rail"
+    >
+      <View style={styles.header}>
+        <ThemedClipboardList size={ICON_SIZE.md} uniProps={mutedIconMapping} />
+        {compact ? null : (
+          <Text style={styles.title} numberOfLines={1}>
+            {t("agentMemos.toggle")}
+          </Text>
+        )}
+      </View>
+      <View style={styles.list}>
+        {orderedMemos.length === 0 ? (
+          <Text style={styles.empty}>{t("agentMemos.empty")}</Text>
+        ) : (
+          orderedMemos.map((entry) => (
+            <AgentMemoRow
+              key={entry.id}
+              entry={entry}
+              supportsCompletion={supportsCompletion}
+              onUse={handleMemoPress}
+              onCompletedChange={handleMemoCompletedChange}
+              onRequestDelete={handleRequestDelete}
+              onOpenImage={handleOpenMemoImage}
             />
-          ) : (
-            <Pressable
-              style={styles.addRow}
-              onPress={handleStartAdding}
-              accessibilityRole="button"
-              accessibilityLabel={t("agentMemos.add")}
-              testID="agent-memo-add"
-            >
-              <ThemedAddPlus size={13} />
-              <Text style={styles.addText}>{t("agentMemos.add")}</Text>
-            </Pressable>
-          )}
-        </View>
-      ) : null}
+          ))
+        )}
+        {isAdding ? (
+          <AgentMemoComposer
+            onSubmit={handleAddMemo}
+            onCancel={handleCancelAdd}
+            canAttachImages={supportsImages}
+          />
+        ) : (
+          <Pressable
+            style={styles.addRow}
+            onPress={handleStartAdding}
+            accessibilityRole="button"
+            accessibilityLabel={t("agentMemos.add")}
+            testID="agent-memo-add"
+          >
+            <ThemedAddPlus size={ICON_SIZE.sm} uniProps={mutedIconMapping} />
+            <Text style={styles.addText}>{t("agentMemos.add")}</Text>
+          </Pressable>
+        )}
+      </View>
       <AttachmentLightbox source={lightboxSource} onClose={handleCloseLightbox} />
     </View>
   );
 });
 
-const ThemedAddPlus = withUnistyles(Plus);
+/**
+ * Open memos first, completed ones last. Both groups keep the daemon's order, so ticking a memo
+ * moves it down without reshuffling the rest.
+ */
+function orderMemos(memos: readonly AgentMemo[]): AgentMemo[] {
+  const open: AgentMemo[] = [];
+  const completed: AgentMemo[] = [];
+  for (const entry of memos) {
+    if (entry.completed === true) {
+      completed.push(entry);
+    } else {
+      open.push(entry);
+    }
+  }
+  return [...open, ...completed];
+}
 
 function AgentMemoRow({
   entry,
   supportsCompletion,
   onUse,
   onCompletedChange,
-  onDelete,
+  onRequestDelete,
   onOpenImage,
 }: {
   entry: AgentMemo;
   supportsCompletion: boolean;
   onUse: (text: string) => void;
   onCompletedChange: (memoId: string, completed: boolean) => void;
-  onDelete: (memoId: string) => void;
+  onRequestDelete: (entry: AgentMemo) => void;
   onOpenImage: (image: ImageAttachment) => void;
 }) {
   const { t } = useTranslation();
@@ -165,7 +201,7 @@ function AgentMemoRow({
     () => onCompletedChange(entry.id, !isCompleted),
     [entry.id, isCompleted, onCompletedChange],
   );
-  const handleDelete = useCallback(() => onDelete(entry.id), [entry.id, onDelete]);
+  const handleDelete = useCallback(() => onRequestDelete(entry), [entry, onRequestDelete]);
   const accessibilityState = useMemo(() => ({ checked: isCompleted }), [isCompleted]);
   const memoImageEntries = useMemo(
     () =>
@@ -191,27 +227,25 @@ function AgentMemoRow({
         </Pressable>
       ) : null}
       <View style={styles.rowBody}>
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <Pressable
-              style={styles.memoButton}
-              onPress={handleUse}
-              accessibilityRole="button"
-              accessibilityLabel={t("agentMemos.useMemo")}
-              testID={`agent-memo-item-${entry.id}`}
+        <ContextMenu>
+          <ContextMenuTrigger
+            style={styles.memoButton}
+            onPress={handleUse}
+            accessibilityRole="button"
+            accessibilityLabel={t("agentMemos.useMemo")}
+            testID={`agent-memo-item-${entry.id}`}
+          >
+            <Text
+              numberOfLines={2}
+              style={isCompleted ? styles.memoTextCompleted : styles.memoText}
             >
-              <Text
-                numberOfLines={1}
-                style={isCompleted ? styles.memoTextCompleted : styles.memoText}
-              >
-                {entry.text}
-              </Text>
-            </Pressable>
-          </TooltipTrigger>
-          <TooltipContent side="left" align="center" offset={8}>
-            <Text style={styles.tooltipText}>{entry.text}</Text>
-          </TooltipContent>
-        </Tooltip>
+              {entry.text}
+            </Text>
+          </ContextMenuTrigger>
+          <ContextMenuContent align="start" width={200} testID={`agent-memo-menu-${entry.id}`}>
+            <ContextMenuItem onSelect={handleUse}>{t("composer.input.send")}</ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
         {entry.images && entry.images.length > 0 ? (
           <View style={styles.memoImageRow}>
             {memoImageEntries.map(({ key, image }) => (
@@ -228,7 +262,7 @@ function AgentMemoRow({
         style={styles.deleteButton}
         hitSlop={6}
       >
-        <ThemedTrash2 size={13} />
+        <ThemedTrash2 size={ICON_SIZE.sm} uniProps={mutedIconMapping} />
       </Pressable>
     </View>
   );
@@ -261,36 +295,34 @@ function MemoImageThumb({
   );
 }
 
-const styles = StyleSheet.create((theme) => ({
+const styles = StyleSheet.create((theme: Theme) => ({
   container: {
-    position: "absolute",
-    left: theme.spacing[1],
-    top: "10%",
-    zIndex: 3,
-    alignItems: "flex-start",
-    gap: theme.spacing[1],
+    gap: theme.spacing[2],
+    minWidth: 0,
   },
-  toggle: {
-    width: 28,
-    height: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: theme.borderRadius.md,
+  /** Beside the composer: the gutter stretches, the rows read top to bottom. */
+  containerGutter: {
+    alignItems: "stretch",
+    justifyContent: "flex-end",
+  },
+  /** Above the composer: the list owns the full width of the input column. */
+  containerCompact: {
+    alignItems: "stretch",
+  },
+  header: {
     flexDirection: "row",
-    gap: 2,
+    alignItems: "center",
+    gap: theme.spacing[2],
+    minWidth: 0,
   },
-  count: {
+  title: {
+    flexShrink: 1,
     color: theme.colors.foregroundMuted,
-    fontSize: theme.fontSize.sm,
+    fontSize: theme.fontSize.base,
   },
   list: {
-    maxWidth: 260,
-    backgroundColor: theme.colors.surface1,
-    borderWidth: theme.borderWidth[1],
-    borderColor: theme.colors.border,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing[2],
     gap: theme.spacing[1],
+    minWidth: 0,
   },
   row: {
     flexDirection: "row",
@@ -339,11 +371,6 @@ const styles = StyleSheet.create((theme) => ({
   empty: {
     color: theme.colors.foregroundMuted,
     fontSize: theme.fontSize.sm,
-  },
-  tooltipText: {
-    color: theme.colors.popoverForeground,
-    fontSize: theme.fontSize.sm,
-    maxWidth: 320,
   },
   addRow: {
     flexDirection: "row",

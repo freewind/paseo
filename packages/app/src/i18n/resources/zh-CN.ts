@@ -347,7 +347,7 @@ export const zhCN: TranslationResources = {
     },
   },
   agentMemos: {
-    toggle: "Agent 备忘",
+    toggle: "备忘录",
     add: "添加备忘",
     placeholder: "新备忘",
     empty: "还没有备忘",
