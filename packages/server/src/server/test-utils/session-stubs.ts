@@ -37,6 +37,10 @@ export function asAgentManager(stub: {
   return createStub<SessionOptions["agentManager"]>({
     listProviderSubagentActivity: () => [],
     getRetiredInternalAgent: () => null,
+    // The unified recovery hands back whatever runtime the stub publishes. A test that cares
+    // about the restore itself stubs this explicitly.
+    recoverAgentWithHistory: async (agentId: string) =>
+      (stub.getAgent as ((id: string) => unknown) | undefined)?.(agentId) ?? null,
     ...stub,
   });
 }

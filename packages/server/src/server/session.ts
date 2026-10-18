@@ -60,7 +60,6 @@ import {
   buildConfigOverrides,
   isStoredAgentProviderAvailable,
   resolveStoredAgentUpdatedAt,
-  toAgentPersistenceHandle,
 } from "./persistence-hooks.js";
 import { ensureAgentLoaded, ensureUnarchivedAgentLoaded } from "./agent/agent-loading.js";
 import {
@@ -4734,37 +4733,16 @@ export class Session {
 
     try {
       await this.restoreOwningWorkspaceForLegacyAgentRefresh(agentId);
-      await unarchiveAgentState(this.agentStorage, this.agentManager, agentId);
-      let snapshot: ManagedAgent;
-      const existing = this.agentManager.getAgent(agentId);
-      if (existing) {
-        await this.interruptAgentIfRunning(agentId);
-        snapshot = await this.agentManager.reloadAgentSession(agentId, undefined, {
-          rehydrateFromDisk: true,
-        });
-      } else {
-        const record = await this.agentStorage.get(agentId);
-        if (!record) {
-          throw new Error(`Agent not found: ${agentId}`);
-        }
-        const registeredProviderIds = this.providerSnapshotManager.listRegisteredProviderIds();
-        if (!isStoredAgentProviderAvailable(record, registeredProviderIds)) {
-          throw new Error(`Agent ${agentId} references unavailable provider '${record.provider}'`);
-        }
-        if (!toAgentPersistenceHandle(registeredProviderIds, record.persistence)) {
-          throw new Error(`Agent ${agentId} cannot be refreshed because it lacks persistence`);
-        }
-        // Share the loader's per-agent in-flight operation with timeline fetches.
-        // Unarchiving publishes the record before provider resume finishes, so
-        // the agent pane can otherwise race this request and resume it twice.
-        snapshot = await ensureAgentLoaded(agentId, {
-          agentManager: this.agentManager,
-          agentStorage: this.agentStorage,
-          broadcastTimeline: true,
-          logger: this.sessionLogger,
-        });
-      }
-      await this.agentManager.hydrateTimelineFromProvider(agentId, { broadcast: true });
+      // One lifecycle step: prepare the runtime, read its history, then publish the
+      // unarchived record. A concurrent close or timeline fetch cannot interleave, and a
+      // failed read leaves the agent archived and retryable instead of blank.
+      const snapshot = await this.agentManager.recoverAgentWithHistory(agentId, {
+        resumeWhenMissing: true,
+        rehydrateFromDisk: true,
+        unarchive: true,
+        resumePurpose: "interactive",
+        broadcastTimeline: true,
+      });
       await this.agentUpdates.forwardLiveAgent(snapshot);
       const timelineSize = this.agentManager.getTimeline(agentId).length;
       if (requestId) {

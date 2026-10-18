@@ -93,7 +93,12 @@ import {
   type ProviderSubagentStoreEvent,
 } from "./provider-subagents/store.js";
 import { withTimeout } from "../../utils/promise-timeout.js";
-import { extractAttention } from "../persistence-hooks.js";
+import {
+  buildConfigOverrides,
+  extractAttention,
+  extractTimestamps,
+  toAgentPersistenceHandle,
+} from "../persistence-hooks.js";
 
 const RELOAD_SESSION_CLOSE_TIMEOUT_MS = 3_000;
 const INTERRUPT_SESSION_TIMEOUT_MS = 2_000;
@@ -1446,10 +1451,11 @@ export class AgentManager {
     // settled before the config is prepared, because a history load reads an archived
     // agent whose working directory may be gone.
     const record = this.registry ? await this.registry.get(resolvedAgentId) : null;
-    const currentResumeOptions = record
-      ? { purpose: record.archivedAt ? ("history" as const) : ("interactive" as const) }
-      : resumeOptions;
-    const purpose = currentResumeOptions?.purpose ?? "interactive";
+    // An explicit purpose wins over the record's archived state: a caller preparing the
+    // runtime for an unarchive serves the interactive case while the record still says
+    // archived, because the archive fact is only cleared once the read succeeds.
+    const purpose = resumeOptions?.purpose ?? (record?.archivedAt ? "history" : "interactive");
+    const currentResumeOptions = { ...resumeOptions, purpose };
 
     const { storedConfig, launchConfig, paseoToolPolicy } = await this.prepareSessionConfig(
       mergedConfig,
@@ -1484,6 +1490,9 @@ export class AgentManager {
       currentResumeOptions,
     );
     await this.requireExternalMcpSupport(session, storedConfig);
+    // Rows on screen belong to the session that was just released. They stay visible, but
+    // history is not loaded again until this new session replays its own.
+    this.timelineStore.markHistoryStale(resolvedAgentId);
     return this.registerSession(session, storedConfig, resolvedAgentId, {
       ...options,
       persistence: handle,
@@ -1720,8 +1729,10 @@ export class AgentManager {
         : await client.createSession(providerLaunchConfig, launchContext);
       await this.requireExternalMcpSupport(session, storedConfig);
       this.assertAcceptingAgentRegistrations();
-
       if (rehydrateFromDisk) {
+        // The replacement session has to replay its own history; the rows still on screen
+        // came from the runtime that was just released.
+        this.timelineStore.markHistoryStale(agentId);
         // Children belong to the session that was just closed; the replacement session has
         // none until its own replay reports them.
         for (const event of this.providerSubagents.deleteParent(agentId)) {
@@ -1766,6 +1777,134 @@ export class AgentManager {
           await this.closeUnregisteredSession(session);
         }
       }
+    }
+  }
+
+  /**
+   * Brings a stored agent and its history back as one lifecycle step. Preparing the runtime,
+   * reading provider history and committing the unarchived record share the per-agent queue,
+   * so a concurrent close, archive or second refresh cannot land between them.
+   */
+  async recoverAgentWithHistory(
+    agentId: string,
+    options?: {
+      /** Reload the live runtime from its on-disk session instead of reusing it. */
+      rehydrateFromDisk?: boolean;
+      /** Resume from the stored record when no runtime is live. */
+      resumeWhenMissing?: boolean;
+      /** Commit `archivedAt: null` only after the history read succeeds. */
+      unarchive?: boolean;
+      unarchiveUpdates?: { workspaceId?: string; labels?: AgentLabelPatch };
+      /** Purpose for the provider launch; derived from the record when omitted. */
+      resumePurpose?: AgentResumeSessionOptions["purpose"];
+      broadcastTimeline?: boolean | (() => boolean);
+      overrides?: Partial<AgentSessionConfig>;
+    },
+  ): Promise<ManagedAgent> {
+    return this.trackAgentRegistrationOperation(
+      this.runLifecycleMutation(agentId, () =>
+        this.recoverAgentWithHistoryUnlocked(agentId, options),
+      ),
+    );
+  }
+
+  private async recoverAgentWithHistoryUnlocked(
+    agentId: string,
+    options?: {
+      rehydrateFromDisk?: boolean;
+      resumeWhenMissing?: boolean;
+      unarchive?: boolean;
+      unarchiveUpdates?: { workspaceId?: string; labels?: AgentLabelPatch };
+      resumePurpose?: AgentResumeSessionOptions["purpose"];
+      broadcastTimeline?: boolean | (() => boolean);
+      overrides?: Partial<AgentSessionConfig>;
+    },
+  ): Promise<ManagedAgent> {
+    this.assertAcceptingAgentRegistrations();
+    const registry = this.requireRegistry();
+    const record = await registry.get(agentId);
+    if (!record) {
+      throw new Error(`Agent not found: ${agentId}`);
+    }
+
+    // The record keeps its archive fact until the read finishes. A failed restore therefore
+    // leaves the agent archived and retryable instead of publishing a half-restored chat.
+    const unarchivePending = options?.unarchive === true && record.archivedAt != null;
+    if (unarchivePending) {
+      await this.prepareRuntimeForRestore(agentId, record);
+    }
+
+    let snapshot = this.getAgent(agentId);
+    if (!snapshot) {
+      snapshot = await this.resumeAgentFromStoredRecord(agentId, record, options);
+    } else if (options?.rehydrateFromDisk === true) {
+      snapshot = await this.reloadAgentSessionInternal(agentId, options.overrides, {
+        rehydrateFromDisk: true,
+      });
+    }
+
+    await this.hydrateTimelineFromProviderUnlocked(agentId, {
+      broadcast: options?.broadcastTimeline ?? false,
+    });
+
+    if (unarchivePending) {
+      await this.commitUnarchive(agentId, record, options?.unarchiveUpdates);
+    }
+
+    return this.getAgent(agentId) ?? snapshot;
+  }
+
+  /** Releases the archived runtime and the native archive flag before a restore resumes it. */
+  private async prepareRuntimeForRestore(
+    agentId: string,
+    record: StoredAgentRecord,
+  ): Promise<void> {
+    // The provider allows one writer, so the archived runtime goes first.
+    if (this.agents.has(agentId)) await this.closeAgentRuntime(agentId);
+    await this.syncNativeArchiveState(record.provider, record.persistence, "restore");
+  }
+
+  private async resumeAgentFromStoredRecord(
+    agentId: string,
+    record: StoredAgentRecord,
+    options?: {
+      resumeWhenMissing?: boolean;
+      resumePurpose?: AgentResumeSessionOptions["purpose"];
+      overrides?: Partial<AgentSessionConfig>;
+    },
+  ): Promise<ManagedAgent> {
+    if (options?.resumeWhenMissing !== true) {
+      throw new Error(`Agent ${agentId} is not running`);
+    }
+    const handle = toAgentPersistenceHandle(this.getRegisteredProviderIds(), record.persistence);
+    if (!handle) {
+      throw new Error(`Agent ${agentId} cannot be refreshed because it lacks persistence`);
+    }
+    return await this.resumeAgentFromPersistenceInternal(
+      handle,
+      options.overrides ?? buildConfigOverrides(record),
+      agentId,
+      { ...extractTimestamps(record), attention: extractAttention(record) },
+      options.resumePurpose ? { purpose: options.resumePurpose } : undefined,
+    );
+  }
+
+  private async commitUnarchive(
+    agentId: string,
+    record: StoredAgentRecord,
+    updates?: { workspaceId?: string; labels?: AgentLabelPatch },
+  ): Promise<void> {
+    const registry = this.requireRegistry();
+    const latest = (await registry.get(agentId)) ?? record;
+    await registry.upsert({
+      ...latest,
+      ...(updates?.workspaceId ? { workspaceId: updates.workspaceId } : {}),
+      ...(updates?.labels ? { labels: applyLabelPatch(latest.labels, updates.labels) } : {}),
+      archivedAt: null,
+      updatedAt: new Date().toISOString(),
+    });
+    if (this.getAgent(agentId)) {
+      this.notifyAgentState(agentId);
     }
   }
 
@@ -3356,8 +3495,19 @@ export class AgentManager {
 
   /**
    * Hydrates the runtime timeline from provider history. No-ops if already hydrated.
+   * Runs in the per-agent lifecycle lane: a read in flight must not lose its runtime to a
+   * concurrent close or unarchive, and those must not start while the read is running.
    */
   async hydrateTimelineFromProvider(
+    agentId: string,
+    options?: HydrateTimelineOptions,
+  ): Promise<void> {
+    await this.runLifecycleMutation(agentId, () =>
+      this.hydrateTimelineFromProviderUnlocked(agentId, options),
+    );
+  }
+
+  private async hydrateTimelineFromProviderUnlocked(
     agentId: string,
     options?: HydrateTimelineOptions,
   ): Promise<void> {

@@ -237,6 +237,7 @@ type ScheduleAgentManager = Pick<
     | "createAgent"
     | "getRegisteredProviderIds"
     | "hydrateTimelineFromProvider"
+    | "recoverAgentWithHistory"
     | "resumeAgentFromPersistence"
     | "runAgent"
     | "waitForAgentEvent"
