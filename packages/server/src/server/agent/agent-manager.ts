@@ -522,6 +522,15 @@ interface RestoreOperation {
   phase: AgentRestoreState["phase"];
   error?: string;
   promise?: Promise<ManagedAgent>;
+  /**
+   * Intent merged from a caller that arrived while this restore was already running. It is
+   * applied after the read succeeds and before the operation settles, so a merged unarchive
+   * commits once instead of being swallowed by the shared promise.
+   */
+  pendingUnarchive?: { updates?: { workspaceId?: string; labels?: AgentLabelPatch } };
+  pendingRehydrateFromDisk?: boolean;
+  /** The merge window closes once intents have been applied. */
+  intentsConsumed?: boolean;
 }
 
 export interface AgentMetricsSnapshot {
@@ -1817,6 +1826,8 @@ export class AgentManager {
   ): Promise<ManagedAgent> {
     const running = this.restoreOperations.get(agentId);
     if (running?.phase === "running" && running.promise) {
+      // A settled operation is not a merge target; this branch only sees a running one.
+      this.mergeRestoreIntent(running, options);
       return running.promise;
     }
 
@@ -1824,7 +1835,7 @@ export class AgentManager {
     this.restoreOperations.set(agentId, operation);
     const promise = this.trackAgentRegistrationOperation(
       this.runLifecycleMutation(agentId, () =>
-        this.recoverAgentWithHistoryUnlocked(agentId, options),
+        this.recoverAgentWithHistoryUnlocked(agentId, operation, options),
       ),
     ).then(
       (agent) => {
@@ -1882,6 +1893,7 @@ export class AgentManager {
 
   private async recoverAgentWithHistoryUnlocked(
     agentId: string,
+    operation: RestoreOperation,
     options?: {
       rehydrateFromDisk?: boolean;
       resumeWhenMissing?: boolean;
@@ -1928,6 +1940,7 @@ export class AgentManager {
       if (unarchivePending) {
         await this.commitUnarchive(agentId, record, options?.unarchiveUpdates);
       }
+      await this.consumeMergedRestoreIntent(agentId, record, operation, unarchivePending);
     } catch (error) {
       // A runtime this call registered must not outlive a failed read: the client would show
       // an interactive composer over a chat that never loaded, while the record still says
@@ -1979,6 +1992,49 @@ export class AgentManager {
       { ...extractTimestamps(record), attention: extractAttention(record) },
       options.resumePurpose ? { purpose: options.resumePurpose } : undefined,
     );
+  }
+
+  /**
+   * Records what a caller asked for while this restore was already running. A merged unarchive
+   * must not be lost: the shared promise alone would report success without unarchiving.
+   */
+  private mergeRestoreIntent(
+    operation: RestoreOperation,
+    options?: {
+      rehydrateFromDisk?: boolean;
+      unarchive?: boolean;
+      unarchiveUpdates?: { workspaceId?: string; labels?: AgentLabelPatch };
+    },
+  ): void {
+    if (operation.intentsConsumed) return;
+    if (options?.unarchive === true && operation.pendingUnarchive === undefined) {
+      operation.pendingUnarchive = { updates: options.unarchiveUpdates };
+    }
+    if (options?.rehydrateFromDisk === true) {
+      operation.pendingRehydrateFromDisk = true;
+    }
+  }
+
+  /**
+   * Applies merged intent once, after the read succeeded and before the operation settles.
+   * A merged disk rehydrate is already satisfied by the read this operation just finished,
+   * which is newer than the request: re-resuming would only repeat it.
+   */
+  private async consumeMergedRestoreIntent(
+    agentId: string,
+    record: StoredAgentRecord,
+    operation: RestoreOperation,
+    unarchiveCommitted: boolean,
+  ): Promise<void> {
+    if (operation.intentsConsumed) return;
+    operation.intentsConsumed = true;
+    const pending = operation.pendingUnarchive;
+    operation.pendingUnarchive = undefined;
+    operation.pendingRehydrateFromDisk = false;
+    if (!pending || unarchiveCommitted) return;
+    const latest = (await this.requireRegistry().get(agentId)) ?? record;
+    if (latest.archivedAt == null) return;
+    await this.commitUnarchive(agentId, latest, pending.updates);
   }
 
   private async commitUnarchive(
