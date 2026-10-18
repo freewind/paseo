@@ -3418,6 +3418,20 @@ function useBadgeShimmerMeasurements() {
   };
 }
 
+/**
+ * Unmapped tool calls show their raw arguments JSON as the badge summary. The separator marks
+ * where the tool name ends and that JSON begins, so the two do not read as one sentence.
+ */
+const RAW_INPUT_SUMMARY_SEPARATOR = "🔹";
+
+/**
+ * Collapses the indentation runs inside the raw arguments JSON. JSON strings that contain
+ * deliberate multi-space runs lose them too; the detail panel keeps the original text.
+ */
+function formatRawInputSummary(summary: string): string {
+  return `${RAW_INPUT_SUMMARY_SEPARATOR} ${summary.replace(/ {2,}/g, " ")}`;
+}
+
 interface ToolCallProps {
   toolName: string;
   args?: unknown;
@@ -3488,6 +3502,15 @@ export const ToolCall = memo(function ToolCall({
       }),
     [toolName, status, error, effectiveDetail, metadata, cwd],
   );
+  // Only the badge summary is rewritten; the detail panel and the tool-call sheet keep
+  // `presentation.summary` untouched.
+  const badgeSecondaryLabel = useMemo(() => {
+    const summary = presentation.summary;
+    if (!summary || !presentation.isRawInputSummary) {
+      return summary;
+    }
+    return formatRawInputSummary(summary);
+  }, [presentation.summary, presentation.isRawInputSummary]);
   const handleOpenFile = useMemo(() => {
     const openFilePath = presentation.openFilePath;
     if (!openFilePath || !onOpenFilePath) {
@@ -3599,7 +3622,7 @@ export const ToolCall = memo(function ToolCall({
     <ExpandableBadge
       testID="tool-call-badge"
       label={presentation.displayName}
-      secondaryLabel={presentation.summary}
+      secondaryLabel={badgeSecondaryLabel}
       secondaryLabelMaxLines={3}
       icon={presentation.icon}
       isExpanded={shouldRenderInline && isExpanded}
