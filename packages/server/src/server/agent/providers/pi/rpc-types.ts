@@ -95,6 +95,15 @@ export interface PiSessionEntry {
   message?: { role?: unknown; responseId?: unknown } & Record<string, unknown>;
 }
 
+/**
+ * `get_entries` returns the whole append tree: it keeps pre-compaction history and branches
+ * the user abandoned. `leafId` names the entry the session currently ends on.
+ */
+export interface PiSessionEntriesResponse {
+  entries?: PiSessionEntry[];
+  leafId?: string | null;
+}
+
 export interface PiSessionState {
   model?: PiModel | null;
   thinkingLevel: PiThinkingLevel;
