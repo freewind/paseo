@@ -308,6 +308,9 @@ export const ptBR: TranslationResources = {
     archived: {
       callout: "Este agente está arquivado",
       unarchive: "Desarquivar",
+      restoring: "Restaurando…",
+      resultUnknown: "O host ainda está restaurando. Esta tela será atualizada ao terminar.",
+      hostOutdated: "Atualize o host para restaurar agentes por este app.",
     },
   },
   sessions: {

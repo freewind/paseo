@@ -498,6 +498,20 @@ export type ManagedAgent =
   | ManagedAgentError
   | ManagedAgentClosed;
 
+/** Runtime-only state of the agent's most recent restore. Never persisted. */
+export interface AgentRestoreState {
+  phase: "running" | "succeeded" | "failed";
+  operationId: string;
+  error?: string;
+}
+
+interface RestoreOperation {
+  operationId: string;
+  phase: AgentRestoreState["phase"];
+  error?: string;
+  promise?: Promise<ManagedAgent>;
+}
+
 export interface AgentMetricsSnapshot {
   total: number;
   subscriptionCount: number;
@@ -773,6 +787,7 @@ export class AgentManager {
   private readonly inFlightAgentCloses = new Map<string, Promise<void>>();
   private readonly reloadedSessionCloses = new WeakMap<AgentSession, Promise<void>>();
   private readonly lifecycleMutationTails = new Map<string, Promise<void>>();
+  private readonly restoreOperations = new Map<string, RestoreOperation>();
   private readonly agentStreamCoalescer: AgentStreamCoalescer;
   private readonly pendingAssistantMessages = new Map<
     string,
@@ -1784,6 +1799,10 @@ export class AgentManager {
    * Brings a stored agent and its history back as one lifecycle step. Preparing the runtime,
    * reading provider history and committing the unarchived record share the per-agent queue,
    * so a concurrent close, archive or second refresh cannot land between them.
+   *
+   * Repeated calls while one restore is running share that operation instead of queueing a
+   * second one. The settled phase stays readable through {@link getRestoreState} until the
+   * next restore replaces it.
    */
   async recoverAgentWithHistory(
     agentId: string,
@@ -1801,11 +1820,69 @@ export class AgentManager {
       overrides?: Partial<AgentSessionConfig>;
     },
   ): Promise<ManagedAgent> {
-    return this.trackAgentRegistrationOperation(
+    const running = this.restoreOperations.get(agentId);
+    if (running?.phase === "running" && running.promise) {
+      return running.promise;
+    }
+
+    const operation: RestoreOperation = { operationId: randomUUID(), phase: "running" };
+    this.restoreOperations.set(agentId, operation);
+    const promise = this.trackAgentRegistrationOperation(
       this.runLifecycleMutation(agentId, () =>
         this.recoverAgentWithHistoryUnlocked(agentId, options),
       ),
+    ).then(
+      (agent) => {
+        operation.phase = "succeeded";
+        this.publishRestoreState(agentId);
+        return agent;
+      },
+      (error: unknown) => {
+        operation.phase = "failed";
+        operation.error = error instanceof Error ? error.message : String(error);
+        this.publishRestoreState(agentId);
+        throw error;
+      },
     );
+    operation.promise = promise;
+    return promise;
+  }
+
+  /**
+   * State of the agent's most recent restore, for snapshot projection. Runtime-only: it is
+   * never written to the agent record.
+   */
+  getRestoreState(agentId: string): AgentRestoreState | null {
+    const operation = this.restoreOperations.get(agentId);
+    if (!operation) return null;
+    return {
+      phase: operation.phase,
+      operationId: operation.operationId,
+      ...(operation.error ? { error: operation.error } : {}),
+    };
+  }
+
+  /**
+   * Pushes the settled phase to whoever is watching. A caller whose local wait already timed
+   * out learns the outcome from this snapshot instead of firing another restore.
+   */
+  private publishRestoreState(agentId: string): void {
+    const agent = this.agents.get(agentId);
+    if (agent) {
+      this.emitState(agent);
+      return;
+    }
+    void this.publishStoredRestoreState(agentId);
+  }
+
+  private async publishStoredRestoreState(agentId: string): Promise<void> {
+    try {
+      const record = await this.registry?.get(agentId);
+      if (!record || this.agents.has(agentId)) return;
+      this.dispatchStoredAgentState(record);
+    } catch (error) {
+      this.logger.warn({ err: error, agentId }, "Failed to publish restore state");
+    }
   }
 
   private async recoverAgentWithHistoryUnlocked(
@@ -4283,6 +4360,7 @@ export class AgentManager {
 
   private discardRetainedAgentState(agentId: string): void {
     this.timelineStore.delete(agentId);
+    this.restoreOperations.delete(agentId);
     this.paseoToolPolicies.delete(agentId);
     for (const event of this.providerSubagents.deleteParent(agentId)) {
       this.dispatch({ type: "provider_subagent", event });

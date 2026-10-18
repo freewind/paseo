@@ -304,6 +304,9 @@ export const ar: TranslationResources = {
     archived: {
       callout: "تمت أرشفة هذا الوكيل",
       unarchive: "إلغاء الأرشفة",
+      restoring: "جارٍ الاستعادة…",
+      resultUnknown: "لا يزال المضيف يستعيد. ستُحدَّث هذه الشاشة عند الانتهاء.",
+      hostOutdated: "حدّث المضيف لاستعادة الوكلاء من هذا التطبيق.",
     },
   },
   sessions: {

@@ -312,6 +312,9 @@ export const es: TranslationResources = {
     archived: {
       callout: "Este agente está archivado.",
       unarchive: "Desarchivar",
+      restoring: "Restaurando…",
+      resultUnknown: "El host sigue restaurando. Esta pantalla se actualizará al terminar.",
+      hostOutdated: "Actualiza el host para restaurar agentes desde esta app.",
     },
   },
   sessions: {

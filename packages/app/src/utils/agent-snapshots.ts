@@ -85,6 +85,7 @@ export function projectAgentSnapshot(agent: Agent): AgentSnapshotPayload {
     attentionReason: agent.attentionReason ?? null,
     attentionTimestamp: agent.attentionTimestamp?.toISOString() ?? null,
     archivedAt: agent.archivedAt?.toISOString() ?? null,
+    ...(agent.restoreState ? { restoreState: agent.restoreState } : {}),
   };
 }
 
@@ -133,6 +134,8 @@ export function normalizeAgentSnapshot(snapshot: AgentSnapshotPayload, serverId:
     attentionReason: snapshot.attentionReason ?? null,
     attentionTimestamp,
     archivedAt,
+    // COMPAT(agentRestoreState): absent on older daemons; the UI treats null as "no signal".
+    restoreState: snapshot.restoreState ?? null,
     parentAgentId,
     labels: snapshot.labels,
   };

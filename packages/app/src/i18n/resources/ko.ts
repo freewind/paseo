@@ -305,6 +305,9 @@ export const ko: TranslationResources = {
     archived: {
       callout: "이 에이전트는 보관되었습니다",
       unarchive: "보관 해제",
+      restoring: "복원 중…",
+      resultUnknown: "호스트에서 복원이 계속 진행 중입니다. 완료되면 자동으로 갱신됩니다.",
+      hostOutdated: "이 앱에서 복원하려면 호스트를 업데이트하세요.",
     },
   },
   sessions: {

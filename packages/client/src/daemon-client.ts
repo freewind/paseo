@@ -1350,6 +1350,7 @@ export class DaemonClient {
   private eventListeners: Set<DaemonEventHandler> = new Set();
   private waiters: Set<Waiter<unknown>> = new Set();
   private checkoutStatusInFlight: Map<string, Promise<CheckoutStatusPayload>> = new Map();
+  private refreshAgentInFlight: Map<string, Promise<AgentRefreshedStatusPayload>> = new Map();
   private connectionListeners: Set<(status: ConnectionState) => void> = new Set();
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private connectTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -3553,7 +3554,29 @@ export class DaemonClient {
     return status.agent;
   }
 
+  /**
+   * Repeated refreshes for one agent share a single wait. A local timeout only means this
+   * client stopped waiting: the restore keeps running on the host, and a later call must not
+   * stack a second one on top of it.
+   */
   async refreshAgent(agentId: string, requestId?: string): Promise<AgentRefreshedStatusPayload> {
+    const existing = this.refreshAgentInFlight.get(agentId);
+    if (existing) {
+      return existing;
+    }
+    const promise = this.sendRefreshAgent(agentId, requestId).finally(() => {
+      if (this.refreshAgentInFlight.get(agentId) === promise) {
+        this.refreshAgentInFlight.delete(agentId);
+      }
+    });
+    this.refreshAgentInFlight.set(agentId, promise);
+    return promise;
+  }
+
+  private sendRefreshAgent(
+    agentId: string,
+    requestId?: string,
+  ): Promise<AgentRefreshedStatusPayload> {
     const resolvedRequestId = this.createRequestId(requestId);
     const message = SessionInboundMessageSchema.parse({
       type: "refresh_agent_request",

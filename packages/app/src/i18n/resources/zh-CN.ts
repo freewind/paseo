@@ -304,6 +304,9 @@ export const zhCN: TranslationResources = {
     archived: {
       callout: "此 Agent 已归档",
       unarchive: "取消归档",
+      restoring: "正在恢复…",
+      resultUnknown: "主机仍在恢复，完成后这里会自动更新。",
+      hostOutdated: "请更新主机后再恢复此对话。",
     },
   },
   sessions: {

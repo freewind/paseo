@@ -309,6 +309,9 @@ export const ja: TranslationResources = {
     archived: {
       callout: "このエージェントはアーカイブされています",
       unarchive: "アーカイブ解除",
+      restoring: "復元中…",
+      resultUnknown: "ホスト側で復元が続いています。完了すると自動で更新されます。",
+      hostOutdated: "このアプリから復元するにはホストを更新してください。",
     },
   },
   sessions: {

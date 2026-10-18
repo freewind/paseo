@@ -308,6 +308,9 @@ export const ru: TranslationResources = {
     archived: {
       callout: "Этот агент находится в архиве",
       unarchive: "Разархивировать",
+      restoring: "Восстановление…",
+      resultUnknown: "Хост всё ещё восстанавливает. Экран обновится по завершении.",
+      hostOutdated: "Обновите хост, чтобы восстанавливать агентов из этого приложения.",
     },
   },
   sessions: {

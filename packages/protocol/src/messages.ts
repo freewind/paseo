@@ -849,6 +849,12 @@ const AgentActiveTurnPayloadSchema = z.object({
   startedAt: z.string().nullable(),
 });
 
+const AgentRestoreStatePayloadSchema = z.object({
+  phase: z.enum(["running", "succeeded", "failed"]),
+  operationId: z.string().optional(),
+  error: z.string().optional(),
+});
+
 export const AgentSnapshotPayloadSchema = z.object({
   id: z.string(),
   provider: AgentProviderSchema,
@@ -880,9 +886,12 @@ export const AgentSnapshotPayloadSchema = z.object({
   providerUnavailable: z.boolean().optional(),
   // Private helper marker, retained for exact-ID snapshots and older wire messages.
   internal: z.boolean().optional(),
+  // COMPAT(agentRestoreState): added in v0.11.0; absent on older daemons.
+  restoreState: AgentRestoreStatePayloadSchema.optional(),
 });
 
 export type AgentSnapshotPayload = z.infer<typeof AgentSnapshotPayloadSchema>;
+export type AgentRestoreStatePayload = z.infer<typeof AgentRestoreStatePayloadSchema>;
 
 export const AgentListItemPayloadSchema = z.object({
   id: z.string(),
@@ -3877,6 +3886,8 @@ export const ServerInfoStatusPayloadSchema = z
         pushTokenRevocation: z.boolean().optional(),
         // COMPAT(plugins): added in v0.3.0, remove gate after 2027-08-07.
         plugins: z.boolean().optional(),
+        // COMPAT(agentRestoreState): added in v0.11.0; remove gate after 2027-10-19.
+        agentRestoreState: z.boolean().optional(),
         // COMPAT(pluginManagement): added in v0.4.0, remove gate after 2027-08-14.
         pluginManagement: z.boolean().optional(),
         // COMPAT(pluginLogs): added in v0.4.0, remove gate after 2027-08-16.
