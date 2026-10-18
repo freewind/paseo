@@ -1863,8 +1863,11 @@ export class AgentManager {
     },
   ): Promise<ManagedAgent> {
     const running = this.restoreOperations.get(agentId);
-    if (running?.phase === "running" && running.promise) {
-      // A settled operation is not a merge target; this branch only sees a running one.
+    // The merge window closes once the in-flight operation has applied its intents, which
+    // happens slightly before it settles. Merging after that would drop the intent: the caller
+    // would get this operation's success while its own unarchive never ran. Past that point the
+    // call starts a new operation, queued behind the one still finishing.
+    if (running?.phase === "running" && running.promise && running.intentsConsumed !== true) {
       this.mergeRestoreIntent(running, options);
       return running.promise;
     }
@@ -1878,13 +1881,13 @@ export class AgentManager {
     ).then(
       (agent) => {
         operation.phase = "succeeded";
-        this.publishRestoreState(agentId);
+        this.publishRestoreState(agentId, operation);
         return agent;
       },
       (error: unknown) => {
         operation.phase = "failed";
         operation.error = error instanceof Error ? error.message : String(error);
-        this.publishRestoreState(agentId);
+        this.publishRestoreState(agentId, operation);
         throw error;
       },
     );
@@ -1910,7 +1913,10 @@ export class AgentManager {
    * Pushes the settled phase to whoever is watching. A caller whose local wait already timed
    * out learns the outcome from this snapshot instead of firing another restore.
    */
-  private publishRestoreState(agentId: string): void {
+  private publishRestoreState(agentId: string, operation: RestoreOperation): void {
+    // A newer operation may already own this agent; its own settle publishes instead, so an
+    // older one cannot report a phase that no longer belongs to the map entry.
+    if (this.restoreOperations.get(agentId) !== operation) return;
     const agent = this.agents.get(agentId);
     if (agent) {
       this.emitState(agent);
@@ -1952,7 +1958,13 @@ export class AgentManager {
     // The record keeps its archive fact until the read finishes. A failed restore therefore
     // leaves the agent archived and retryable instead of publishing a half-restored chat.
     const unarchivePending = options?.unarchive === true && record.archivedAt != null;
-    if (unarchivePending) {
+    // A restore that finished its runtime work while this operation was queued can leave a
+    // live, already-loaded runtime behind an archived record (its intent window had closed).
+    // Reusing it makes this operation the commit it still owes instead of a second resume.
+    const liveBefore = this.getAgent(agentId);
+    const reuseLoadedRuntime =
+      unarchivePending && liveBefore !== null && liveBefore.historyPrimed === true;
+    if (unarchivePending && !reuseLoadedRuntime) {
       await this.prepareRuntimeForRestore(agentId, record);
     }
 
@@ -1963,7 +1975,7 @@ export class AgentManager {
     if (!snapshot) {
       snapshot = await this.resumeAgentFromStoredRecord(agentId, record, options);
       runtimeCreated = true;
-    } else if (options?.rehydrateFromDisk === true) {
+    } else if (options?.rehydrateFromDisk === true && !reuseLoadedRuntime) {
       snapshot = await this.reloadAgentSessionInternal(agentId, options.overrides, {
         rehydrateFromDisk: true,
       });
