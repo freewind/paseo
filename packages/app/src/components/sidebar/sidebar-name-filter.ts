@@ -28,8 +28,9 @@ export interface AgentNameMatch {
  * Only rows that match, or that must stay visible so a match does not float
  * free, are present. An agent match keeps its workspace row; a workspace match
  * keeps its project header. A project match keeps that project's every
- * workspace — "parent matched, children hidden" is how a project hit reads —
- * and that project's workspaces carry the project-name highlight.
+ * workspace — "parent matched, children hidden" is how a project hit reads — and
+ * only the project row carries the highlight: its ranges index the project name,
+ * so handing them to a workspace title would mark the wrong characters.
  */
 export interface SidebarNameFilterResult {
   projects: readonly FilteredProjectResult[];
@@ -85,7 +86,6 @@ export function filterSidebarByName(input: {
       const workspaceMatch = matchWorkspace({
         query,
         workspace,
-        projectRanges,
         projectMatched,
         agentTitles: input.agentTitles,
         agents,
@@ -128,16 +128,15 @@ function markWorkspaceAgentsVisible(
 function matchWorkspace(input: {
   query: string;
   workspace: WorkspaceNameFilterRow;
-  projectRanges: MatchRange[] | null;
   projectMatched: boolean;
   agentTitles: ReadonlyMap<string, string>;
   agents: Map<string, AgentNameMatch>;
 }): WorkspaceNameMatch | null {
   const { workspace } = input;
   if (input.projectMatched) {
-    // The project carries the hit; keep the workspace so the project
-    // header is not empty, and highlight the project name.
-    return { workspace, matchedField: "projectName", ranges: input.projectRanges ?? EMPTY_RANGES };
+    // The project carries the hit; keep the workspace so the project header is not empty. The
+    // ranges index the project name, so the workspace row gets none of its own.
+    return { workspace, matchedField: "projectName", ranges: EMPTY_RANGES };
   }
 
   const titleRanges = substringRanges(input.query, workspace.workspaceTitle);
