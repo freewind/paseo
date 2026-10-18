@@ -1835,20 +1835,40 @@ export class AgentManager {
     }
 
     let snapshot = this.getAgent(agentId);
+    // True when this call registered the runtime that is live now. Only then does a failure
+    // below own a runtime it has to close.
+    let runtimeCreated = false;
     if (!snapshot) {
       snapshot = await this.resumeAgentFromStoredRecord(agentId, record, options);
+      runtimeCreated = true;
     } else if (options?.rehydrateFromDisk === true) {
       snapshot = await this.reloadAgentSessionInternal(agentId, options.overrides, {
         rehydrateFromDisk: true,
       });
+      runtimeCreated = true;
     }
 
-    await this.hydrateTimelineFromProviderUnlocked(agentId, {
-      broadcast: options?.broadcastTimeline ?? false,
-    });
+    try {
+      await this.hydrateTimelineFromProviderUnlocked(agentId, {
+        broadcast: options?.broadcastTimeline ?? false,
+      });
 
-    if (unarchivePending) {
-      await this.commitUnarchive(agentId, record, options?.unarchiveUpdates);
+      if (unarchivePending) {
+        await this.commitUnarchive(agentId, record, options?.unarchiveUpdates);
+      }
+    } catch (error) {
+      // A runtime this call registered must not outlive a failed read: the client would show
+      // an interactive composer over a chat that never loaded, while the record still says
+      // archived. "Record archived, no live runtime" is the only failure state to leave behind.
+      if (runtimeCreated) {
+        await this.closeAgentRuntime(agentId).catch((closeError: unknown) => {
+          this.logger.warn(
+            { err: closeError, agentId },
+            "Failed to close runtime after a failed history restore",
+          );
+        });
+      }
+      throw error;
     }
 
     return this.getAgent(agentId) ?? snapshot;
