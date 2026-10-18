@@ -36,6 +36,7 @@ import {
 import { getActiveMessageSubmissions } from "@/composer/submission/model";
 import { RewindComposerRestoreProvider } from "@/components/rewind/composer-restore";
 import { AgentMemosRail } from "@/agent-memos/agent-memos-rail";
+import { useHostFeature } from "@/runtime/host-features";
 import {
   regenerateUserMessage,
   type RegenerateUserMessageInput,
@@ -1722,6 +1723,9 @@ function ActiveAgentComposer({
     ],
   );
 
+  // The rail hides itself when the host has no memo support; gating here as well keeps the
+  // composer from reserving a gutter for a rail that would render nothing.
+  const memosSupported = useHostFeature(serverId, "agentMemos");
   const handleMemoAppendToComposer = useCallback(
     (memoText: string) => {
       const current = agentInputDraft.textSource.getSnapshot();
@@ -1732,13 +1736,23 @@ function ActiveAgentComposer({
     [agentInputDraft],
   );
 
+  // Built here rather than inline in JSX: the composer places it in whichever slot the layout
+  // has room for, and a stable element keeps that placement from re-rendering the rail.
+  const memosRail = useMemo(
+    () =>
+      memosSupported ? (
+        <AgentMemosRail
+          serverId={serverId}
+          agentId={agentId}
+          compact={isCompactComposerLayout}
+          onAppendToComposer={handleMemoAppendToComposer}
+        />
+      ) : null,
+    [agentId, handleMemoAppendToComposer, isCompactComposerLayout, memosSupported, serverId],
+  );
+
   return (
     <View style={animatedStaticStyles.inputAreaWrapper} onLayout={onInputAreaLayout}>
-      <AgentMemosRail
-        serverId={serverId}
-        agentId={agentId}
-        onAppendToComposer={handleMemoAppendToComposer}
-      />
       <Composer
         agentId={agentId}
         serverId={serverId}
@@ -1763,6 +1777,7 @@ function ActiveAgentComposer({
         onMessageSent={onMessageSent}
         onClientSlashCommand={handleClientSlashCommand}
         isCompactLayout={isCompactComposerLayout}
+        memosRail={memosRail}
         quickRepliesGutterVisible={quickRepliesGutterVisible}
         quickRepliesSheetVisible={quickRepliesSheetVisible}
         onQuickRepliesSheetVisibleChange={onQuickRepliesSheetVisibleChange}

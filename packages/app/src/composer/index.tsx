@@ -1017,6 +1017,11 @@ interface ComposerProps {
    * so the gutter and the pane's track entry can never both appear.
    */
   quickRepliesGutterVisible?: boolean;
+  /**
+   * The agent's memo list, placed by the composer: the left gutter on a wide layout, a row above
+   * the input on a compact one. Omit it and the composer renders no memo mount point at all.
+   */
+  memosRail?: ReactNode;
   /** Compact entry state, owned by the pane that renders the entry. */
   quickRepliesSheetVisible?: boolean;
   onQuickRepliesSheetVisibleChange?: (visible: boolean) => void;
@@ -1319,6 +1324,7 @@ function ComposerContentImpl({
   inputWrapperStyle,
   isCompactLayout: isCompactLayoutOverride,
   quickRepliesGutterVisible,
+  memosRail,
   quickRepliesSheetVisible = false,
   onQuickRepliesSheetVisibleChange,
   inputMode = "chat",
@@ -2484,6 +2490,33 @@ function ComposerContentImpl({
     quickReplies.isSupported &&
     !isCompactLayout &&
     (quickRepliesGutterVisible ?? !isInputAreaTooNarrowForQuickReplies);
+  // Memos sit on the opposite side of the same row, so the two gutters stay symmetric. A compact
+  // layout has no side gutters at all: the list moves above the input instead.
+  const showsMemosGutter = memosRail != null && !isCompactLayout;
+  const showsGutterRow = showsQuickRepliesGutter || showsMemosGutter;
+  const memosAbove =
+    memosRail != null && isCompactLayout ? (
+      <View style={styles.memosAbove}>{memosRail}</View>
+    ) : null;
+  const leftGutter = showsMemosGutter ? (
+    <View style={styles.memosGutter}>{memosRail}</View>
+  ) : (
+    <View style={styles.inputAreaSpacer} />
+  );
+  const quickRepliesGutter = (
+    <View style={styles.quickRepliesGutter}>
+      <QuickRepliesBar
+        replies={quickReplies.replies}
+        onSelect={handleQuickReplySelect}
+        onEdit={openQuickRepliesEditor}
+      />
+    </View>
+  );
+  const rightGutter = showsQuickRepliesGutter ? (
+    quickRepliesGutter
+  ) : (
+    <View style={styles.inputAreaSpacer} />
+  );
 
   const messageInputNode = (
     <View ref={messageInputContainerRef} style={styles.messageInputContainer}>
@@ -2605,15 +2638,16 @@ function ComposerContentImpl({
       />
       <View style={animatedStaticStyles.container}>
         <AttachmentLightbox source={lightboxSource} onClose={handleLightboxClose} />
+        {memosAbove}
         {/* Input area */}
         <View
-          style={[inputAreaContainerStyle, showsQuickRepliesGutter && styles.inputAreaRow]}
+          style={[inputAreaContainerStyle, showsGutterRow && styles.inputAreaRow]}
           onLayout={onInputAreaLayout}
         >
-          {showsQuickRepliesGutter ? <View style={styles.inputAreaSpacer} /> : null}
+          {showsGutterRow ? leftGutter : null}
           <View
             style={
-              showsQuickRepliesGutter
+              showsGutterRow
                 ? [styles.inputAreaContent, styles.inputAreaContentBesideQuickReplies]
                 : styles.inputAreaContent
             }
@@ -2623,15 +2657,7 @@ function ComposerContentImpl({
 
             {messageInputNode}
           </View>
-          {showsQuickRepliesGutter ? (
-            <View style={styles.quickRepliesGutter}>
-              <QuickRepliesBar
-                replies={quickReplies.replies}
-                onSelect={handleQuickReplySelect}
-                onEdit={openQuickRepliesEditor}
-              />
-            </View>
-          ) : null}
+          {showsGutterRow ? rightGutter : null}
         </View>
       </View>
     </>
@@ -2700,6 +2726,25 @@ const styles = StyleSheet.create((theme: Theme) => ({
     minWidth: 0,
     alignItems: "stretch",
     justifyContent: "flex-end",
+  },
+  // The left gutter mirrors the quick replies one so the input column stays centered whichever
+  // of the two is showing.
+  memosGutter: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    alignItems: "stretch",
+    justifyContent: "flex-end",
+  },
+  // Compact hosts have no side gutters: the memo list sits above the input, inside the same
+  // centered column.
+  memosAbove: {
+    width: "100%",
+    maxWidth: theme.contentMaxWidth,
+    marginHorizontal: "auto",
+    paddingHorizontal: theme.spacing[4],
+    paddingBottom: theme.spacing[2],
   },
   messageInputContainer: {
     flexShrink: 1,

@@ -344,7 +344,7 @@ export const en = {
     },
   },
   agentMemos: {
-    toggle: "Agent memos",
+    toggle: "Memos",
     add: "Add memo",
     placeholder: "New memo",
     empty: "No memos yet",
