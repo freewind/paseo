@@ -1574,10 +1574,9 @@ export class AgentManager {
 
   // Hot-reload an active agent session with config overrides. By default the
   // in-memory timeline is preserved (used for voice-mode toggles and similar
-  // config swaps). When `rehydrateFromDisk` is set, the timeline is wiped so a
-  // new epoch is minted and provider history is re-streamed — this is what the
-  // user-facing "Reload agent" action wants when the on-disk session was
-  // mutated outside Paseo.
+  // config swaps). When `rehydrateFromDisk` is set, `historyPrimed` is cleared so the
+  // next hydrate re-streams the provider history into a fresh epoch; the current rows
+  // stay visible until that replay completes.
   reloadAgentSession(
     agentId: string,
     overrides?: Partial<AgentSessionConfig>,
@@ -1723,15 +1722,16 @@ export class AgentManager {
       this.assertAcceptingAgentRegistrations();
 
       if (rehydrateFromDisk) {
-        // Wipe the in-memory timeline so registerSession mints a new epoch and
-        // hydrateTimelineFromProvider re-streams the freshly read provider history.
-        this.timelineStore.delete(agentId);
+        // Children belong to the session that was just closed; the replacement session has
+        // none until its own replay reports them.
         for (const event of this.providerSubagents.deleteParent(agentId)) {
           this.dispatch({ type: "provider_subagent", event });
         }
       }
 
-      // Preserve existing labels and timeline during reload.
+      // Preserve existing labels and timeline during reload. A disk rehydrate only clears
+      // `historyPrimed`: the rows stay until the provider replay finishes, so a failed or
+      // aborted read leaves the chat as it was instead of blanking it.
       handedToRegistration = true;
       return this.registerSession(session, storedConfig, agentId, {
         labels: existing.labels,
@@ -3974,7 +3974,9 @@ export class AgentManager {
       | undefined;
   }): Promise<{ durableTimelineHasRows: boolean }> {
     const { agentId, now, options } = params;
-    const timelineAlreadyPrimed = this.timelineStore.has(agentId);
+    // Container existence is not completeness: a failed read leaves an empty container
+    // behind, and skipping history because of it keeps the chat blank forever.
+    const timelineAlreadyLoaded = this.timelineStore.isHistoryLoaded(agentId);
     const explicitTimelineSeed = buildExplicitTimelineSeedForRegister(now, options);
     const shouldSeedFromDurable =
       !explicitTimelineSeed && !this.timelineStore.has(agentId) && this.durableTimelineStore;
@@ -3982,11 +3984,15 @@ export class AgentManager {
       ? await this.loadCommittedTimelineSeed(agentId, now)
       : null;
     const durableTimelineHasRows =
-      timelineAlreadyPrimed ||
+      timelineAlreadyLoaded ||
       (durableTimelineSeed != null && (durableTimelineSeed.nextSeq ?? 1) > 1);
     const timelineSeed = explicitTimelineSeed ?? durableTimelineSeed;
     if (timelineSeed || !this.timelineStore.has(agentId)) {
-      this.timelineStore.initialize(agentId, timelineSeed ?? { timestamp: now.toISOString() });
+      this.timelineStore.initialize(agentId, {
+        ...(timelineSeed ?? { timestamp: now.toISOString() }),
+        // Rows that survived to the durable store came from a read that completed.
+        historyLoaded: durableTimelineHasRows,
+      });
     }
     if (options?.timelineRows?.length) {
       this.enqueueDurableTimelineBulkInsert(agentId, options.timelineRows);
@@ -4385,6 +4391,21 @@ export class AgentManager {
     await this.primeTimelineFromLegacyProviderHistory(agent, broadcast);
   }
 
+  /**
+   * Drops the visible rows once a complete replay is in hand. Rows that exist are replaced
+   * under a new epoch so clients drop what they cached; an empty container keeps its epoch.
+   */
+  private resetTimelineForReplay(agentId: string): void {
+    const hasRows =
+      this.timelineStore.has(agentId) && this.timelineStore.getRows(agentId).length > 0;
+    if (hasRows) {
+      this.timelineStore.delete(agentId);
+    }
+    if (!this.timelineStore.has(agentId)) {
+      this.timelineStore.initialize(agentId, { timestamp: new Date().toISOString() });
+    }
+  }
+
   private async forceHydrateTimelineFromLegacyProviderHistory(
     agent: ActiveManagedAgent,
     broadcast: boolean,
@@ -4408,6 +4429,7 @@ export class AgentManager {
     this.timelineStore.delete(agent.id);
     this.timelineStore.initialize(agent.id, { timestamp: new Date().toISOString() });
     agent.historyPrimed = true;
+    this.timelineStore.markHistoryLoaded(agent.id);
 
     for (const event of this.providerSubagents.deleteParent(agent.id)) {
       if (broadcast) {
@@ -4474,6 +4496,9 @@ export class AgentManager {
     // The replay is the timeline, so drop the rows a previous hydration committed.
     // Keeping them would leave getTimelineRows reading one copy per hydration.
     await this.deleteCommittedTimeline(agent.id);
+    // Replace the visible rows only after the read finished. Clearing them before the read
+    // is what turned a failed or aborted replay into an empty chat.
+    this.resetTimelineForReplay(agent.id);
 
     const timelineEvents: Array<{
       event: Extract<AgentStreamEvent, { type: "timeline" }>;
@@ -4506,6 +4531,7 @@ export class AgentManager {
       }
     }
     agent.historyPrimed = true;
+    this.timelineStore.markHistoryLoaded(agent.id);
 
     if (typeof broadcast !== "function" || !broadcast()) {
       return;

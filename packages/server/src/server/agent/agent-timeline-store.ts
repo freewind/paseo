@@ -17,6 +17,11 @@ export interface SeedAgentTimelineOptions {
   epoch?: string;
   nextSeq?: number;
   timestamp?: string;
+  /**
+   * Set only by callers that already hold the complete provider history. A seeded
+   * container is not evidence of that on its own.
+   */
+  historyLoaded?: boolean;
 }
 
 interface AgentTimelineState {
@@ -24,6 +29,7 @@ interface AgentTimelineState {
   projection: TimelineProjection;
   minSeq: number;
   nextSeq: number;
+  historyLoaded: boolean;
 }
 const DEFAULT_TIMELINE_FETCH_LIMIT = 200;
 function cloneRow<T extends AgentTimelineRow>(row: T): T {
@@ -35,6 +41,19 @@ export class InMemoryAgentTimelineStore {
 
   has(agentId: string): boolean {
     return this.states.has(agentId);
+  }
+
+  /**
+   * Whether a completed history read produced this agent's rows. `has` answers a
+   * different question: a failed read leaves an empty container behind, and treating
+   * that container as loaded is what made the next attempt skip history forever.
+   */
+  isHistoryLoaded(agentId: string): boolean {
+    return this.states.get(agentId)?.historyLoaded ?? false;
+  }
+
+  markHistoryLoaded(agentId: string): void {
+    this.requireState(agentId).historyLoaded = true;
   }
 
   initialize(agentId: string, options?: SeedAgentTimelineOptions): void {
@@ -50,6 +69,7 @@ export class InMemoryAgentTimelineStore {
       projection,
       minSeq: projection.getRows()[0]?.seqStart ?? 0,
       nextSeq,
+      historyLoaded: options?.historyLoaded ?? false,
     });
   }
 
