@@ -86,6 +86,7 @@ export function projectAgentSnapshot(agent: Agent): AgentSnapshotPayload {
     attentionTimestamp: agent.attentionTimestamp?.toISOString() ?? null,
     archivedAt: agent.archivedAt?.toISOString() ?? null,
     ...(agent.restoreState ? { restoreState: agent.restoreState } : {}),
+    ...(agent.modelSelectionRequired ? { modelSelectionRequired: true } : {}),
   };
 }
 
@@ -135,6 +136,8 @@ export function normalizeAgentSnapshot(snapshot: AgentSnapshotPayload, serverId:
     archivedAt,
     // COMPAT(agentRestoreState): absent on older daemons; the UI treats null as "no signal".
     restoreState: snapshot.restoreState ?? null,
+    // COMPAT(modelSelectionRequired): absent means the model is not pending a choice.
+    modelSelectionRequired: snapshot.modelSelectionRequired === true,
     parentAgentId,
     labels: snapshot.labels,
   };

@@ -100,6 +100,8 @@ export interface Agent {
   archivedAt?: Date | null;
   /** Runtime-only restore progress reported by the host; null when the host has no signal. */
   restoreState?: AgentRestoreStatePayload | null;
+  /** The recorded model is gone and the user has not picked a replacement yet. */
+  modelSelectionRequired?: boolean;
   parentAgentId: string | null;
   labels: Record<string, string>;
   projectPlacement?: ProjectPlacementPayload | null;

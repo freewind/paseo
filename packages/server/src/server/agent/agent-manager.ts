@@ -199,6 +199,10 @@ function formatProviderList(providers: readonly string[]): string {
   return providers.length > 0 ? providers.join(", ") : "none";
 }
 
+function readModelSelectionRequired(options?: { modelSelectionRequired?: boolean }): boolean {
+  return options?.modelSelectionRequired === true;
+}
+
 function buildStoredAgentConfig(record: StoredAgentRecord): AgentSessionConfig {
   const config: AgentSessionConfig = {
     provider: record.provider,
@@ -337,6 +341,14 @@ export interface AgentManagerOptions {
   onAgentAttention?: AgentAttentionCallback;
   onWorkspaceStateMayHaveChanged?: (params: { cwd: string }) => void;
   durableTimelineStore?: AgentTimelineStore;
+  /**
+   * Catalogue already in memory for a provider and cwd. Must not warm a target, resolve a
+   * cache key or start a provider: recovery reads it only to confirm a missing model.
+   */
+  peekProviderCatalog?: (input: {
+    provider: AgentProvider;
+    cwd: string;
+  }) => { models: AgentModelDefinition[] } | null;
   terminalManager?: TerminalManager | null;
   mcpBaseUrl?: string;
   mcpAuthToken?: string;
@@ -436,6 +448,11 @@ interface ManagedAgentBase {
   pendingReplacement: boolean;
   persistence: AgentPersistenceHandle | null;
   historyPrimed: boolean;
+  /**
+   * The cached model list confirms the configured model is gone and the user has not picked
+   * a replacement. Sending stays blocked until they do; history stays readable.
+   */
+  modelSelectionRequired: boolean;
   lastUserMessageAt: Date | null;
   activeTurnId: string | null;
   activeTurnStartedAt: Date | null;
@@ -759,6 +776,10 @@ export class AgentManager {
   private readonly idFactory: () => string;
   private readonly registry?: AgentStorage;
   private readonly durableTimelineStore?: AgentTimelineStore;
+  private readonly peekProviderCatalog?: (input: {
+    provider: AgentProvider;
+    cwd: string;
+  }) => { models: AgentModelDefinition[] } | null;
   private readonly previousStatuses = new Map<string, AgentLifecycleStatus>();
   private readonly backgroundTasks = new Set<Promise<void>>();
   private readonly agentRegistrationTasks = new Set<Promise<void>>();
@@ -797,6 +818,7 @@ export class AgentManager {
     this.idFactory = options?.idFactory ?? (() => randomUUID());
     this.registry = options?.registry;
     this.durableTimelineStore = options?.durableTimelineStore;
+    this.peekProviderCatalog = options.peekProviderCatalog;
     this.onAgentAttention = options?.onAgentAttention;
     this.onWorkspaceStateMayHaveChanged = options?.onWorkspaceStateMayHaveChanged;
     this.mcpBaseUrl = options?.mcpBaseUrl ?? null;
@@ -1434,11 +1456,14 @@ export class AgentManager {
     const purpose = resumeOptions?.purpose ?? (record?.archivedAt ? "history" : "interactive");
     const currentResumeOptions = { ...resumeOptions, purpose };
 
+    // Restoring content must not start an extra provider process to validate the old model:
+    // skip the catalogue lookups entirely and keep whatever the session recorded.
     const { storedConfig, launchConfig, paseoToolPolicy } = await this.prepareSessionConfig(
       mergedConfig,
       resolvedAgentId,
-      { purpose, ensureModelSelectable: purpose !== "history" },
+      { purpose, ensureModelSelectable: false, skipModelResolution: true },
     );
+    const modelSelectionRequired = this.resolveModelSelectionRequired(storedConfig);
     const client = this.requireClient(handle.provider);
     const available = await client.isAvailable();
     if (!available) {
@@ -1473,6 +1498,7 @@ export class AgentManager {
     return this.registerSession(session, storedConfig, resolvedAgentId, {
       ...options,
       persistence: handle,
+      modelSelectionRequired,
       restoring: true,
     });
   }
@@ -1668,7 +1694,13 @@ export class AgentManager {
     const { storedConfig, launchConfig, paseoToolPolicy } = await this.prepareSessionConfig(
       refreshConfig,
       agentId,
-      { ensureModelSelectable: true },
+      // A disk rehydrate is a restore: it keeps the recorded model instead of asking the
+      // provider for a catalogue the user never asked for.
+      { ensureModelSelectable: !rehydrateFromDisk, skipModelResolution: rehydrateFromDisk },
+    );
+    const modelSelectionRequired = this.resolveReloadModelSelection(
+      storedConfig,
+      rehydrateFromDisk,
     );
     const hadPreviousPaseoToolPolicy = this.paseoToolPolicies.has(agentId);
     const previousPaseoToolPolicy = this.paseoToolPolicies.get(agentId);
@@ -1729,6 +1761,7 @@ export class AgentManager {
         updatedAt: existing.updatedAt,
         lastUserMessageAt: existing.lastUserMessageAt,
         historyPrimed: rehydrateFromDisk ? false : preservedHistoryPrimed,
+        modelSelectionRequired,
         lastUsage: preservedLastUsage,
         lastError: preservedLastError,
         attention: preservedAttention,
@@ -2235,6 +2268,7 @@ export class AgentManager {
         capabilities: STORED_AGENT_CAPABILITIES,
         config: buildStoredAgentConfig(record),
         runtimeInfo: undefined,
+        modelSelectionRequired: record.modelSelectionRequired === true,
         lifecycle: "closed",
         createdAt: new Date(record.createdAt),
         updatedAt,
@@ -2290,6 +2324,7 @@ export class AgentManager {
     await this.drainSessionEvents(agentId);
 
     agent.config.model = normalizedModelId ?? undefined;
+    agent.modelSelectionRequired = false;
     if (agent.runtimeInfo) {
       agent.runtimeInfo = { ...agent.runtimeInfo, model: normalizedModelId };
     }
@@ -2835,6 +2870,11 @@ export class AgentManager {
       },
       "agent.manager.stream.request",
     );
+    if (existingAgent.modelSelectionRequired) {
+      throw new Error(
+        `Agent ${agentId} needs a model selection before it can run. Pick a model first.`,
+      );
+    }
     if (existingAgent.activeForegroundTurnId || this.runs.hasRun(agentId)) {
       this.logger.trace(
         {
@@ -3953,6 +3993,7 @@ export class AgentManager {
       timelineNextSeq?: number;
       persistence?: AgentPersistenceHandle;
       historyPrimed?: boolean;
+      modelSelectionRequired?: boolean;
       lastUsage?: AgentUsage;
       lastError?: string;
       attention?: AttentionState;
@@ -4142,6 +4183,7 @@ export class AgentManager {
           lastUserMessageAt?: Date | null;
           labels?: Record<string, string>;
           historyPrimed?: boolean;
+          modelSelectionRequired?: boolean;
           lastUsage?: AgentUsage;
           lastError?: string;
           attention?: AttentionState;
@@ -4182,6 +4224,7 @@ export class AgentManager {
         config.cwd,
       ),
       historyPrimed: options?.historyPrimed ?? durableTimelineHasRows,
+      modelSelectionRequired: readModelSelectionRequired(options),
       lastUserMessageAt: options?.lastUserMessageAt ?? null,
       lastUsage: options?.lastUsage,
       lastError: options?.lastError,
@@ -5794,6 +5837,26 @@ export class AgentManager {
     }
   }
 
+  /** A disk rehydrate keeps the recorded model; any other reload leaves the flag alone. */
+  private resolveReloadModelSelection(
+    config: AgentSessionConfig,
+    rehydrateFromDisk: boolean,
+  ): boolean {
+    return rehydrateFromDisk ? this.resolveModelSelectionRequired(config) : false;
+  }
+
+  /**
+   * True only when an already-cached catalogue proves the configured model is gone. An
+   * unknown catalogue is not a missing model, and recovery never fetches one to find out.
+   */
+  private resolveModelSelectionRequired(config: AgentSessionConfig): boolean {
+    if (!config.model || !this.peekProviderCatalog) return false;
+    const cached = this.peekProviderCatalog({ provider: config.provider, cwd: config.cwd });
+    if (!cached) return false;
+    const selectable = filterSelectableAgentModels(cached.models);
+    return !modelIsSelectable(config.model, selectable);
+  }
+
   private async resolveDefaultModelId(config: AgentSessionConfig): Promise<string | undefined> {
     const client = this.clients.get(config.provider);
     if (!client) {
@@ -5819,12 +5882,15 @@ export class AgentManager {
       env?: Record<string, string>;
       purpose?: AgentResumePurpose;
       ensureModelSelectable?: boolean;
+      /** Keep the configured model untouched: no catalogue fetch, no default fallback. */
+      skipModelResolution?: boolean;
     } = {},
   ): Promise<PreparedSessionConfig> {
     const storedConfig = await this.normalizeConfig(stripInternalPaseoMcpServer(config), {
       env: options.env,
       purpose: options.purpose,
       ensureModelSelectable: options.ensureModelSelectable,
+      resolveDefaultModel: options.skipModelResolution !== true,
     });
     const paseoToolPolicy = this.paseoToolsEnabled
       ? this.resolvePaseoToolPolicy(storedConfig.provider)

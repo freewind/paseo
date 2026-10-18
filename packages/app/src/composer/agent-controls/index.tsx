@@ -388,6 +388,12 @@ function pickDesktopModel({
   }
 }
 
+function readModelSelectionRequired(
+  agent: { modelSelectionRequired?: boolean } | null | undefined,
+): boolean {
+  return agent?.modelSelectionRequired === true;
+}
+
 type AgentControlsSlice = {
   provider: string;
   cwd: string | null;
@@ -396,6 +402,7 @@ type AgentControlsSlice = {
   features: AgentFeature[] | undefined;
   runtimeThinkingOptionId: string | null;
   thinkingOptionId: string | null | undefined;
+  modelSelectionRequired: boolean;
   lastUsage: unknown;
 } | null;
 
@@ -416,6 +423,7 @@ function selectAgentControlsSlice(
     features: currentAgent.features,
     runtimeThinkingOptionId: currentAgent.runtimeInfo?.thinkingOptionId ?? null,
     thinkingOptionId: currentAgent.thinkingOptionId,
+    modelSelectionRequired: currentAgent.modelSelectionRequired === true,
     lastUsage: currentAgent.lastUsage,
   };
 }
@@ -1598,6 +1606,7 @@ export const AgentControls = memo(function AgentControls({
     configuredModelId: agent?.model,
     runtimeThinkingOptionId: agent?.runtimeThinkingOptionId,
     explicitThinkingOptionId: agent?.thinkingOptionId,
+    modelSelectionRequired: readModelSelectionRequired(agent),
   });
 
   const modelOptions = useMemo<AgentControlOption[]>(() => {

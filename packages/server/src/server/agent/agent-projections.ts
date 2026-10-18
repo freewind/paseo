@@ -91,6 +91,7 @@ export function toStoredAgentRecord(
     features: normalizeFeatures(agent.features),
     persistence,
     lastError: agent.lastError ?? undefined,
+    ...(agent.modelSelectionRequired ? { modelSelectionRequired: true } : {}),
     requiresAttention: agent.attention.requiresAttention,
     attentionReason: agent.attention.requiresAttention ? agent.attention.attentionReason : null,
     attentionTimestamp: agent.attention.requiresAttention
@@ -117,7 +118,8 @@ export function toAgentPayload(
     provider: agent.provider,
     cwd: agent.cwd,
     ...(agent.workspaceId ? { workspaceId: agent.workspaceId } : {}),
-    model: agent.config.model ?? null,
+    // A required-but-unchosen model is reported as absent, not as the runtime's default.
+    model: agent.modelSelectionRequired ? null : (agent.config.model ?? null),
     thinkingOptionId,
     effectiveThinkingOptionId,
     ...(runtimeInfo ? { runtimeInfo } : {}),
@@ -248,6 +250,7 @@ export function buildStoredAgentPayload(
     attentionTimestamp: record.attentionTimestamp ?? null,
     archivedAt: record.archivedAt ?? null,
     labels: normalizeLabels(record.labels),
+    ...(record.modelSelectionRequired ? { modelSelectionRequired: true } : {}),
     ...(providerAvailable ? {} : { providerUnavailable: true }),
   };
 }
@@ -258,7 +261,7 @@ export function toAgentListItemPayload(agent: AgentSnapshotPayload): AgentListIt
     shortId: agent.id.slice(0, 7),
     title: agent.title,
     provider: agent.provider,
-    model: agent.runtimeInfo?.model ?? agent.model,
+    model: agent.modelSelectionRequired ? agent.model : (agent.runtimeInfo?.model ?? agent.model),
     thinkingOptionId: agent.thinkingOptionId,
     effectiveThinkingOptionId: agent.effectiveThinkingOptionId,
     status: agent.status,

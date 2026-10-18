@@ -234,6 +234,7 @@ export const zhCN: TranslationResources = {
     },
     model: {
       unknown: "未知 Model",
+      select: "选择模型",
     },
     features: {
       title: "功能",
