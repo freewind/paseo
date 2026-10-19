@@ -3,6 +3,7 @@ import { createStore, type StoreApi } from "zustand/vanilla";
 import { useStore } from "zustand";
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { ScrollView } from "@/components/ui/scroll-view";
 import {
   View,
   Pressable,
@@ -1384,6 +1385,17 @@ function ComposerContentImpl({
   );
   const { onLayout: onInputAreaLayout, isBelow: isInputAreaTooNarrowForQuickReplies } =
     useContainerWidthBelow(QUICK_REPLIES_GUTTER_BREAKPOINT, { initialIsBelow: true });
+  // Both gutters share a row with the centered input column, so their height is capped by the
+  // input's own measured height: a taller gutter stretches the row and leaves an empty band above
+  // the input. The cap is the live measurement, so it follows the input as the draft grows.
+  const [inputHeight, setInputHeight] = useState<number | null>(null);
+  const handleInputHeightChange = useCallback(
+    (height: number) => {
+      setInputHeight(height);
+      onComposerHeightChange?.(height);
+    },
+    [onComposerHeightChange],
+  );
   const isDesktopWebBreakpoint = resolveIsDesktopWebBreakpoint(isCompactFormFactor);
   const isDesktopLayout = resolveIsDesktopWebBreakpoint(isCompactLayout);
   const messagePlaceholder = resolveMessagePlaceholder(inputMode, isDesktopLayout, t, placeholder);
@@ -2483,6 +2495,11 @@ function ComposerContentImpl({
     ? t("composer.github.searching")
     : t("composer.github.noResults");
 
+  const gutterHeightCap = useMemo(
+    () => (inputHeight != null ? { maxHeight: inputHeight } : undefined),
+    [inputHeight],
+  );
+
   // The gutter is a sibling of the centered input column, so it only earns its place once the
   // container has room for both. A host that owns the compact entry passes the decision in, which
   // keeps the gutter and that entry mutually exclusive by construction.
@@ -2490,26 +2507,34 @@ function ComposerContentImpl({
     quickReplies.isSupported &&
     !isCompactLayout &&
     (quickRepliesGutterVisible ?? !isInputAreaTooNarrowForQuickReplies);
-  // Memos sit on the opposite side of the same row, so the two gutters stay symmetric. A compact
-  // layout has no side gutters at all: the list moves above the input instead.
-  const showsMemosGutter = memosRail != null && !isCompactLayout;
+  // Memos sit on the opposite side of the same row, so the two gutters stay symmetric: neither
+  // earns a gutter the row cannot give width to. A gutter that cannot be shown puts the list
+  // above the input instead of squeezing it to zero width, where it would still contribute height.
+  const showsMemosGutter =
+    memosRail != null && !isCompactLayout && !isInputAreaTooNarrowForQuickReplies;
   const showsGutterRow = showsQuickRepliesGutter || showsMemosGutter;
   const memosAbove =
-    memosRail != null && isCompactLayout ? (
+    memosRail != null && !showsMemosGutter ? (
       <View style={styles.memosAbove}>{memosRail}</View>
     ) : null;
   const leftGutter = showsMemosGutter ? (
-    <View style={styles.memosGutter}>{memosRail}</View>
+    <View style={[styles.memosGutter, gutterHeightCap]}>
+      <ScrollView style={styles.gutterScroll} showsVerticalScrollIndicator>
+        {memosRail}
+      </ScrollView>
+    </View>
   ) : (
     <View style={styles.inputAreaSpacer} />
   );
   const quickRepliesGutter = (
-    <View style={styles.quickRepliesGutter}>
-      <QuickRepliesBar
-        replies={quickReplies.replies}
-        onSelect={handleQuickReplySelect}
-        onEdit={openQuickRepliesEditor}
-      />
+    <View style={[styles.quickRepliesGutter, gutterHeightCap]}>
+      <ScrollView style={styles.gutterScroll} showsVerticalScrollIndicator>
+        <QuickRepliesBar
+          replies={quickReplies.replies}
+          onSelect={handleQuickReplySelect}
+          onEdit={openQuickRepliesEditor}
+        />
+      </ScrollView>
     </View>
   );
   const rightGutter = showsQuickRepliesGutter ? (
@@ -2576,7 +2601,7 @@ function ComposerContentImpl({
         onKeyPress={handleCommandKeyPress}
         onSelectionChange={handleSelectionChange}
         onFocusChange={handleFocusChange}
-        onHeightChange={onComposerHeightChange}
+        onHeightChange={handleInputHeightChange}
         inputWrapperStyle={inputWrapperStyle}
         attachmentSlot={attachmentTray}
         inputMode={inputMode}
@@ -2726,6 +2751,15 @@ const styles = StyleSheet.create((theme: Theme) => ({
     minWidth: 0,
     alignItems: "stretch",
     justifyContent: "flex-end",
+  },
+  // Grows with its rows up to the cap the gutter sets, then scrolls. `flexBasis: "auto"` cancels
+  // the flex-basis the web scroll wrapper applies, so a short list stays short instead of
+  // stretching to the cap.
+  gutterScroll: {
+    flexGrow: 0,
+    flexShrink: 1,
+    flexBasis: "auto",
+    minHeight: 0,
   },
   // The left gutter mirrors the quick replies one so the input column stays centered whichever
   // of the two is showing.
