@@ -52,7 +52,7 @@ describe("filterSidebarByName", () => {
     expect(result.workspaces.has("w2")).toBe(false);
   });
 
-  test("matching agent keeps its workspace and the agent row carries the ranges", () => {
+  test("matching agent keeps its workspace and only the matched agent row", () => {
     const result = filterSidebarByName({
       query: "lint",
       projects: [
@@ -70,7 +70,7 @@ describe("filterSidebarByName", () => {
     expect(workspaceMatch?.matchedField).toBe("agent");
     expect(workspaceMatch?.matchedAgentId).toBe("a1");
     expect(result.agents.get("a1")?.ranges).toEqual([{ start: 4, length: 4 }]);
-    expect(result.agents.has("a2")).toBe(true);
+    expect(result.agents.has("a2")).toBe(false);
   });
 
   test("project match keeps every workspace under it and highlights the project name", () => {
@@ -88,6 +88,51 @@ describe("filterSidebarByName", () => {
     expect(result.workspaces.has("w2")).toBe(true);
     expect(result.workspaces.get("w1")?.matchedField).toBe("projectName");
     expect(result.workspaces.has("w3")).toBe(false);
+  });
+
+  test("project match keeps every workspace and every agent under it", () => {
+    const result = filterSidebarByName({
+      query: "alp",
+      projects: [
+        project("p1", "Alpha", [
+          workspace("w1", { agentIds: ["a1", "a2"] }),
+          workspace("w2", { agentIds: ["a3"] }),
+        ]),
+      ],
+      agentTitles: new Map([
+        ["a1", "First"],
+        ["a2", "Second"],
+        ["a3", "Third"],
+      ]),
+    });
+    expect(result.workspaces.has("w1")).toBe(true);
+    expect(result.workspaces.has("w2")).toBe(true);
+    expect(result.agents.get("a1")?.ranges).toEqual([]);
+    expect(result.agents.get("a2")?.ranges).toEqual([]);
+    expect(result.agents.get("a3")?.ranges).toEqual([]);
+  });
+
+  test("workspace match keeps its agents and hides sibling workspaces", () => {
+    const result = filterSidebarByName({
+      query: "auth",
+      projects: [
+        project("p1", "Alpha", [
+          workspace("w1", { workspaceTitle: "Add auth flow", agentIds: ["a1", "a2"] }),
+          workspace("w2", { workspaceTitle: "Docs", agentIds: ["a3"] }),
+        ]),
+      ],
+      agentTitles: new Map([
+        ["a1", "First"],
+        ["a2", "Second"],
+        ["a3", "Third"],
+      ]),
+    });
+    expect(result.workspaces.has("w1")).toBe(true);
+    expect(result.workspaces.has("w2")).toBe(false);
+    expect(result.agents.has("a1")).toBe(true);
+    expect(result.agents.has("a2")).toBe(true);
+    expect(result.agents.has("a3")).toBe(false);
+    expect(result.agents.get("a1")?.ranges).toEqual([]);
   });
 
   test("matching nothing yields empty projects for the caller's empty state", () => {
