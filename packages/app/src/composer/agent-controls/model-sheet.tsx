@@ -5,6 +5,7 @@ import { StyleSheet } from "react-native-unistyles";
 import type { AgentProvider } from "@getpaseo/protocol/agent-types";
 import type { AgentProfilePicker, AgentProfileSeed } from "@/agent-profiles";
 import { AdaptiveModalSheet } from "@/components/adaptive-modal-sheet";
+import { useResetWhenPanelInactive } from "@/components/retained-panel";
 import { ComboboxTrigger } from "@/components/ui/combobox-trigger";
 import { useProviderIcon } from "@/components/provider-icons";
 import { ModelBrowser, useModelBrowser } from "@/components/model-browser";
@@ -105,6 +106,13 @@ export function CompactModelSheet({
   });
   const [isOpen, setIsOpen] = useState(false);
   const [isModelBrowserOpen, setIsModelBrowserOpen] = useState(false);
+  // A hidden retained panel keeps this sheet mounted, and both sheets render outside it.
+  // Reset in the inactive commit, before the web chat suspends, so the picker does not
+  // reappear over this agent later or keep its backdrop over the destination.
+  useResetWhenPanelInactive(() => {
+    setIsOpen(false);
+    setIsModelBrowserOpen(false);
+  });
   const availableProviders = useMemo(() => {
     if (canSwitchProvider) return providers;
     const fixedProvider =

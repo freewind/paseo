@@ -27,6 +27,7 @@ import { isWeb } from "@/constants/platform";
 import { useKeyboardVisibility } from "@/hooks/use-keyboard-visibility";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AdaptiveTextInput } from "@/components/adaptive-text-input";
+import { RetainedPanelGate } from "@/components/retained-panel";
 export { AdaptiveTextInput, type AdaptiveTextInputProps } from "@/components/adaptive-text-input";
 
 // Horizontal indent token shared by the sheet header (title, back arrow,
@@ -641,25 +642,31 @@ export function AdaptiveModalSheet({
     );
 
     return (
-      <IsolatedBottomSheetModal
-        ref={sheetRef}
-        contextBridge={contextBridge}
-        snapPoints={resolvedSnapPoints}
-        index={0}
-        enableDynamicSizing={false}
-        onChange={handleSheetChange}
-        onDismiss={handleDismiss}
-        backdropOpacity={0.45}
-        enablePanDownToClose
-        backgroundComponent={SheetBackground}
-        handleComponent={SheetHandle}
-        keyboardBehavior="extend"
-        keyboardBlurBehavior="restore"
-        accessible={false}
-        presentation={presentation}
-      >
-        <SheetVisibleFrame footer={footerView}>{sheetContent}</SheetVisibleFrame>
-      </IsolatedBottomSheetModal>
+      <RetainedPanelGate>
+        <IsolatedBottomSheetModal
+          ref={sheetRef}
+          contextBridge={contextBridge}
+          snapPoints={resolvedSnapPoints}
+          index={0}
+          enableDynamicSizing={false}
+          onChange={handleSheetChange}
+          onDismiss={handleDismiss}
+          backdropOpacity={0.45}
+          enablePanDownToClose
+          backgroundComponent={SheetBackground}
+          handleIndicatorStyle={handleIndicatorStyle}
+          keyboardBehavior="extend"
+          keyboardBlurBehavior="restore"
+          accessible={false}
+          presentation={presentation}
+        >
+          {sizeContentToCurrentSnapPoint ? (
+            <BottomSheetVisibleContent>{sheetContent}</BottomSheetVisibleContent>
+          ) : (
+            sheetContent
+          )}
+        </IsolatedBottomSheetModal>
+      </RetainedPanelGate>
     );
   }
 
@@ -686,6 +693,11 @@ export function AdaptiveModalSheet({
     </OverlayLayerProvider>
   );
 
+  // A retained panel keeps this sheet mounted while hidden, and every presentation of it
+  // renders outside the panel: a portal into the overlay root on web, the app-wide sheet
+  // stack on native. The gate removes the surface itself in the inactive commit. On web
+  // the chat suspends one commit later, and a dismissal queued from an effect would be
+  // suspended with it, leaving the backdrop over the destination.
   const desktopContent = (
     <View style={desktopOverlayStyle} testID={testID}>
       <Pressable
@@ -708,32 +720,34 @@ export function AdaptiveModalSheet({
   // On web, use portal to overlay root for consistent stacking with toasts
   if (isWeb && typeof document !== "undefined") {
     if (!shouldRenderWeb) return null;
-    return createPortal(desktopContent, getOverlayRoot());
+    return createPortal(<RetainedPanelGate>{desktopContent}</RetainedPanelGate>, getOverlayRoot());
   }
 
   return (
     // Both native presentations share Gorhom's app-wide stack. Independent RN Modals
     // present from their React ancestor's controller, so a root-owned sibling dialog
     // cannot present while that controller already has a dialog open on iOS.
-    <IsolatedBottomSheetModal
-      ref={sheetRef}
-      contextBridge={contextBridge}
-      snapPoints={NATIVE_DIALOG_SNAP_POINTS}
-      index={0}
-      enableDynamicSizing={false}
-      onChange={handleSheetChange}
-      onDismiss={handleDismiss}
-      handleComponent={null}
-      backgroundStyle={styles.nativeDialogBackground}
-      enablePanDownToClose={false}
-      enableHandlePanningGesture={false}
-      enableContentPanningGesture={false}
-      keyboardBehavior="extend"
-      keyboardBlurBehavior="restore"
-      accessible={false}
-      presentation={presentation}
-    >
-      <View style={styles.nativeDialogSurface}>{desktopContent}</View>
-    </IsolatedBottomSheetModal>
+    <RetainedPanelGate>
+      <IsolatedBottomSheetModal
+        ref={sheetRef}
+        contextBridge={contextBridge}
+        snapPoints={NATIVE_DIALOG_SNAP_POINTS}
+        index={0}
+        enableDynamicSizing={false}
+        onChange={handleSheetChange}
+        onDismiss={handleDismiss}
+        handleComponent={null}
+        backgroundStyle={styles.nativeDialogBackground}
+        enablePanDownToClose={false}
+        enableHandlePanningGesture={false}
+        enableContentPanningGesture={false}
+        keyboardBehavior="extend"
+        keyboardBlurBehavior="restore"
+        accessible={false}
+        presentation={presentation}
+      >
+        <View style={styles.nativeDialogSurface}>{desktopContent}</View>
+      </IsolatedBottomSheetModal>
+    </RetainedPanelGate>
   );
 }
