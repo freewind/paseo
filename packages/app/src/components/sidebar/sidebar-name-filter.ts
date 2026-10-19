@@ -83,26 +83,27 @@ export function filterSidebarByName(input: {
     let keepProject = projectMatched;
 
     for (const workspace of project.workspaces) {
-      // A project hit keeps its whole subtree: every workspace, and every agent
-      // under those workspaces, without a second highlight.
+      // Every visible row highlights its own text: a project hit keeps the whole
+      // subtree visible, and a row inside it still marks the query it contains.
+      const workspaceRanges = substringRanges(query, workspace.workspaceTitle);
+      const workspaceMatched = workspaceRanges !== null;
       if (projectMatched) {
         workspaces.set(workspace.workspaceKey, {
           workspace,
-          matchedField: "projectName",
-          ranges: EMPTY_RANGES,
+          matchedField: workspaceMatched ? "workspaceTitle" : "projectName",
+          ranges: workspaceMatched ? workspaceRanges : EMPTY_RANGES,
         });
-        markWorkspaceAgentsVisible(workspace, input.agentTitles, agents);
+        markWorkspaceAgentsVisible(query, workspace, input.agentTitles, agents);
         continue;
       }
 
-      const titleRanges = substringRanges(query, workspace.workspaceTitle);
-      if (titleRanges !== null) {
+      if (workspaceMatched) {
         workspaces.set(workspace.workspaceKey, {
           workspace,
           matchedField: "workspaceTitle",
-          ranges: titleRanges,
+          ranges: workspaceRanges,
         });
-        markWorkspaceAgentsVisible(workspace, input.agentTitles, agents);
+        markWorkspaceAgentsVisible(query, workspace, input.agentTitles, agents);
         keepProject = true;
         continue;
       }
@@ -140,18 +141,20 @@ export function filterSidebarByName(input: {
 }
 
 /**
- * A workspace or project hit owns its subtree, so every agent the sidebar lists
- * under it stays visible. Only the query hit highlights; these rows carry none.
+ * A workspace or project hit keeps its whole subtree visible. Every agent row
+ * still highlights its own title, so a child that contains the query is marked
+ * instead of appearing as plain context.
  */
 function markWorkspaceAgentsVisible(
+  query: string,
   workspace: WorkspaceNameFilterRow,
   agentTitles: ReadonlyMap<string, string>,
   agents: Map<string, AgentNameMatch>,
 ): void {
   for (const agentId of workspace.agentIds) {
-    if (!agents.has(agentId) && agentTitles.has(agentId)) {
-      agents.set(agentId, { ranges: EMPTY_RANGES });
-    }
+    const title = agentTitles.get(agentId);
+    if (title === undefined) continue;
+    agents.set(agentId, { ranges: substringRanges(query, title) ?? EMPTY_RANGES });
   }
 }
 

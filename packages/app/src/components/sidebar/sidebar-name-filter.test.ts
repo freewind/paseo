@@ -135,6 +135,43 @@ describe("filterSidebarByName", () => {
     expect(result.agents.get("a1")?.ranges).toEqual([]);
   });
 
+  test("a project hit still highlights child rows that contain the query", () => {
+    const result = filterSidebarByName({
+      query: "seo",
+      projects: [
+        project("p1", "paseo", [
+          workspace("w1", { workspaceTitle: "paseo (4)", agentIds: ["a1", "a2"] }),
+        ]),
+      ],
+      agentTitles: new Map([
+        ["a1", "seo audit"],
+        ["a2", "Other"],
+      ]),
+    });
+    expect(result.projects[0].matchedRanges).toEqual([{ start: 2, length: 3 }]);
+    expect(result.workspaces.get("w1")?.ranges).toEqual([{ start: 2, length: 3 }]);
+    expect(result.agents.get("a1")?.ranges).toEqual([{ start: 0, length: 3 }]);
+    expect(result.agents.get("a2")?.ranges).toEqual([]);
+  });
+
+  test("a workspace hit still highlights its agents that contain the query", () => {
+    const result = filterSidebarByName({
+      query: "auth",
+      projects: [
+        project("p1", "Alpha", [
+          workspace("w1", { workspaceTitle: "Add auth flow", agentIds: ["a1", "a2"] }),
+        ]),
+      ],
+      agentTitles: new Map([
+        ["a1", "Auth audit"],
+        ["a2", "Docs"],
+      ]),
+    });
+    expect(result.workspaces.get("w1")?.ranges).toEqual([{ start: 4, length: 4 }]);
+    expect(result.agents.get("a1")?.ranges).toEqual([{ start: 0, length: 4 }]);
+    expect(result.agents.get("a2")?.ranges).toEqual([]);
+  });
+
   test("matching nothing yields empty projects for the caller's empty state", () => {
     const result = filterSidebarByName({
       query: "zzz",
