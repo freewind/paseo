@@ -39,7 +39,7 @@ class PaseoAudioFocusModule : Module() {
     Events(AUDIO_INTERRUPTED_EVENT)
 
     Function("startFocus") {
-      val manager = audioManager ?: return@Function
+      val manager = audioManager ?: return@Function null
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         val focusRequest =
           AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)

@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState, type ReactElement } from "react";
-import { resolve as resolvePath } from "node:path";
 import { useHosts } from "@/runtime/host-runtime";
+import { normalizeWorkspacePath } from "@/utils/workspace-identity";
 import { useTranslation } from "react-i18next";
 import { useWorkspaceStructure } from "@/stores/session-store-hooks";
 import { useSessionStore } from "@/stores/session-store";
@@ -146,10 +146,7 @@ export function useAgentTransferWorkspace(
 }
 
 function areEquivalentPaths(left: string, right: string): boolean {
-  if (!left || !right) return false;
-  try {
-    return resolvePath(left) === resolvePath(right);
-  } catch {
-    return left === right;
-  }
+  const normalizedLeft = normalizeWorkspacePath(left);
+  const normalizedRight = normalizeWorkspacePath(right);
+  return normalizedLeft !== null && normalizedLeft === normalizedRight;
 }
