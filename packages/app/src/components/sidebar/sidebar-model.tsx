@@ -9,6 +9,7 @@ import { useSidebarWorkspaceEntries } from "@/hooks/use-sidebar-workspace-entrie
 import { usePinnedSidebarKeys, type PinnedSidebarGroups } from "@/hooks/use-sidebar-pins";
 import { useSidebarCollapsedSectionsStore } from "@/stores/sidebar-collapsed-sections-store";
 import { useSessionStore } from "@/stores/session-store";
+import { useAppSettings } from "@/hooks/use-settings";
 import { useWorkspaceLayoutStore } from "@/stores/workspace-layout-store";
 import { useShallow } from "zustand/shallow";
 import {
@@ -27,6 +28,7 @@ import { buildSidebarProjection } from "./sidebar-projection";
 import type { SidebarProjectIconTarget } from "@/utils/sidebar-project-row-model";
 import { filterWorkspacesByLabels, type SidebarWorkspaceGroup } from "./sidebar-labels";
 import { agentTabLabel, buildSidebarWorkspaceAgentRows } from "./sidebar-workspace-agent-rows";
+import { resolveSidebarWorkspacePrimaryLabel } from "./sidebar-workspace-title";
 import {
   collectLiveProjectKeys,
   filterWorkspacesByProjects,
@@ -76,6 +78,9 @@ export function SidebarModelProvider({
   active?: boolean;
   children: ReactNode;
 }) {
+  const {
+    settings: { workspaceTitleSource },
+  } = useAppSettings();
   const nameSearch = useSidebarViewStore((state) => state.nameSearch);
   const hasNameSearch = hasActiveSidebarNameSearch(nameSearch);
   const list = useSidebarWorkspacesList({
@@ -208,18 +213,35 @@ export function SidebarModelProvider({
             projects: list.projects.map((project) => ({
               viewKey: project.viewKey,
               projectName: project.projectName,
-              workspaces: project.workspaces.map((workspace) => ({
-                workspaceKey: workspace.workspaceKey,
-                projectName: project.projectName,
-                workspaceTitle: workspace.name,
-                agentIds:
-                  visibleAgentIdsByWorkspaceKey.get(workspace.workspaceKey) ?? EMPTY_AGENT_IDS,
-              })),
+              workspaces: project.workspaces.map((workspace) => {
+                const entry = workspaceEntriesByKey.get(workspace.workspaceKey);
+                return {
+                  workspaceKey: workspace.workspaceKey,
+                  projectName: project.projectName,
+                  // Match the string the row renders, not the placement's workspace id.
+                  workspaceTitle: entry
+                    ? resolveSidebarWorkspacePrimaryLabel({
+                        workspace: entry,
+                        workspaceTitleSource,
+                      })
+                    : "",
+                  agentIds:
+                    visibleAgentIdsByWorkspaceKey.get(workspace.workspaceKey) ?? EMPTY_AGENT_IDS,
+                };
+              }),
             })),
             agentTitles: agentTitlesMap,
           })
         : null,
-    [hasNameSearch, nameSearch, list.projects, agentTitlesMap, visibleAgentIdsByWorkspaceKey],
+    [
+      hasNameSearch,
+      nameSearch,
+      list.projects,
+      agentTitlesMap,
+      visibleAgentIdsByWorkspaceKey,
+      workspaceEntriesByKey,
+      workspaceTitleSource,
+    ],
   );
   const nameFilteredProjects = useMemo(
     () =>
