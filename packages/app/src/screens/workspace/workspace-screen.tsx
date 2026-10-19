@@ -136,7 +136,6 @@ import { MobileTabTrailingAccessory } from "@/screens/workspace/workspace-tab-tr
 import {
   nameClonedAgent,
   useCopyAgentConversationMarkdown,
-  useHideWorkspaceAgentTab,
 } from "@/screens/workspace/use-workspace-agent-tab-actions";
 import {
   WorkspaceDesktopTabsRow,
@@ -470,7 +469,6 @@ interface MobileWorkspaceTabSwitcherProps {
   onCloseTabsAbove: (tabId: string) => Promise<void> | void;
   onCloseTabsBelow: (tabId: string) => Promise<void> | void;
   onCloseOtherTabs: (tabId: string) => Promise<void> | void;
-  onHideTab: (tabId: string) => Promise<void>;
 }
 
 function MobileActiveTabTrigger({
@@ -581,7 +579,6 @@ function MobileWorkspaceTabOption({
   onCloseTabsAbove,
   onCloseTabsBelow,
   onCloseOtherTabs,
-  onHideTab,
 }: {
   tab: WorkspaceTabDescriptor;
   tabIndex: number;
@@ -604,7 +601,6 @@ function MobileWorkspaceTabOption({
   onCloseTabsAbove: (tabId: string) => Promise<void> | void;
   onCloseTabsBelow: (tabId: string) => Promise<void> | void;
   onCloseOtherTabs: (tabId: string) => Promise<void> | void;
-  onHideTab: (tabId: string) => Promise<void>;
 }) {
   const { t } = useTranslation();
   const agentId = tab.target.kind === "agent" ? tab.target.agentId : "";
@@ -656,7 +652,6 @@ function MobileWorkspaceTabOption({
     onCloseTabsBefore: onCloseTabsAbove,
     onCloseTabsAfter: onCloseTabsBelow,
     onCloseOtherTabs,
-    onHideTab,
     onMarkAsUnread: unreadState.markUnread,
     canMarkAsUnread: unreadState.canMarkUnread,
     labels: tabMenuLabels,
@@ -734,7 +729,6 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
   onCloseTabsAbove,
   onCloseTabsBelow,
   onCloseOtherTabs,
-  onHideTab,
 }: MobileWorkspaceTabSwitcherProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -803,7 +797,6 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
           onCloseTabsAbove={onCloseTabsAbove}
           onCloseTabsBelow={onCloseTabsBelow}
           onCloseOtherTabs={onCloseOtherTabs}
-          onHideTab={onHideTab}
         />
       );
     },
@@ -826,7 +819,6 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
       onCloseTabsAbove,
       onCloseTabsBelow,
       onCloseOtherTabs,
-      onHideTab,
     ],
   );
 
@@ -2854,18 +2846,6 @@ function WorkspaceScreenContent({
     ],
   );
 
-  const { onHideTab: hideAgentTab } = useHideWorkspaceAgentTab({
-    serverId: normalizedServerId,
-    workspaceId: normalizedWorkspaceId,
-  });
-  const handleHideTab = useCallback(
-    async (tabId: string) => {
-      await hideAgentTab(tabId);
-      setHoveredCloseTabKey((current) => (current === tabId ? null : current));
-    },
-    [hideAgentTab],
-  );
-
   const handleClosePassiveTab = useCallback(
     function handleClosePassiveTab(input: { tabId: string; target?: WorkspaceTabTarget | null }) {
       setHoveredCloseTabKey((current) => (current === input.tabId ? null : current));
@@ -4415,7 +4395,6 @@ function WorkspaceScreenContent({
           onCloseTabsAbove={handleCloseTabsToLeft}
           onCloseTabsBelow={handleCloseTabsToRight}
           onCloseOtherTabs={handleCloseOtherTabs}
-          onHideTab={handleHideTab}
         />
       ) : null}
 

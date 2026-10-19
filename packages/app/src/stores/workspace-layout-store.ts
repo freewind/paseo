@@ -117,7 +117,6 @@ export interface WorkspaceLayoutStore {
   explorerSidebarWidthByWorkspace: Record<string, number>;
   pinnedAgentIdsByWorkspace: Record<string, Set<string>>;
   hiddenAgentIdsByWorkspace: Record<string, Set<string>>;
-  explicitlyHiddenAgentIdsByWorkspace: Record<string, Set<string>>;
   focusRestorationByWorkspace: Record<string, WorkspaceFocusRestorationState>;
   explorerSidebarPaneIdByWorkspace: Record<string, string | null>;
   sidePaneIdByWorkspace: Record<string, string | null>;
@@ -178,8 +177,6 @@ export interface WorkspaceLayoutStore {
   reorderTabsInPane: (workspaceKey: string, paneId: string, tabIds: string[]) => void;
   unpinAgent: (workspaceKey: string, agentId: string) => void;
   hideAgent: (workspaceKey: string, agentId: string) => void;
-  hideAgentExplicitly: (workspaceKey: string, agentId: string) => void;
-  unhideAgent: (workspaceKey: string, agentId: string) => void;
   purgeWorkspace: (workspaceKey: string) => void;
 }
 
@@ -410,25 +407,6 @@ function addAgentIdToWorkspaceSet(
     ...state,
     [workspaceKey]: nextAgentIds,
   };
-}
-
-function removeInactiveExplicitlyHiddenAgents(input: {
-  state: Record<string, Set<string>>;
-  workspaceKey: string;
-  activeAgentIds: ReadonlySet<string>;
-}): Record<string, Set<string>> {
-  const hiddenAgentIds = input.state[input.workspaceKey];
-  if (!hiddenAgentIds) return input.state;
-  const staleAgentIds = [...hiddenAgentIds].filter((agentId) => !input.activeAgentIds.has(agentId));
-  if (staleAgentIds.length === 0) return input.state;
-  const nextAgentIds = new Set(hiddenAgentIds);
-  for (const agentId of staleAgentIds) nextAgentIds.delete(agentId);
-  if (nextAgentIds.size === 0) {
-    const nextState = { ...input.state };
-    delete nextState[input.workspaceKey];
-    return nextState;
-  }
-  return { ...input.state, [input.workspaceKey]: nextAgentIds };
 }
 
 function removeAgentIdFromWorkspaceSet(
@@ -708,7 +686,6 @@ export function createWorkspaceLayoutStore(
         explorerSidebarWidthByWorkspace: {},
         pinnedAgentIdsByWorkspace: {},
         hiddenAgentIdsByWorkspace: {},
-        explicitlyHiddenAgentIdsByWorkspace: {},
         focusRestorationByWorkspace: {},
         explorerSidebarPaneIdByWorkspace: {},
         sidePaneIdByWorkspace: {},
@@ -776,14 +753,6 @@ export function createWorkspaceLayoutStore(
                 ? state.hiddenAgentIdsByWorkspace
                 : removeAgentIdFromWorkspaceSet(
                     state.hiddenAgentIdsByWorkspace,
-                    normalizedWorkspaceKey,
-                    normalizedTarget.agentId,
-                  ),
-            explicitlyHiddenAgentIdsByWorkspace:
-              normalizedTarget.kind !== "agent"
-                ? state.explicitlyHiddenAgentIdsByWorkspace
-                : removeAgentIdFromWorkspaceSet(
-                    state.explicitlyHiddenAgentIdsByWorkspace,
                     normalizedWorkspaceKey,
                     normalizedTarget.agentId,
                   ),
@@ -1087,14 +1056,6 @@ export function createWorkspaceLayoutStore(
                     normalizedWorkspaceKey,
                     normalizedTarget.agentId,
                   ),
-            explicitlyHiddenAgentIdsByWorkspace:
-              normalizedTarget.kind !== "agent"
-                ? state.explicitlyHiddenAgentIdsByWorkspace
-                : removeAgentIdFromWorkspaceSet(
-                    state.explicitlyHiddenAgentIdsByWorkspace,
-                    normalizedWorkspaceKey,
-                    normalizedTarget.agentId,
-                  ),
             layoutByWorkspace: {
               ...state.layoutByWorkspace,
               [normalizedWorkspaceKey]: result.layout,
@@ -1152,11 +1113,6 @@ export function createWorkspaceLayoutStore(
               normalizedWorkspaceKey,
               normalizedAgentId,
             ),
-            explicitlyHiddenAgentIdsByWorkspace: removeAgentIdFromWorkspaceSet(
-              state.explicitlyHiddenAgentIdsByWorkspace,
-              normalizedWorkspaceKey,
-              normalizedAgentId,
-            ),
             layoutByWorkspace: {
               ...state.layoutByWorkspace,
               [normalizedWorkspaceKey]: result.layout,
@@ -1196,14 +1152,6 @@ export function createWorkspaceLayoutStore(
               explorerSidebarPaneId,
               currentLayout.focusedPaneId,
             );
-            const activeAgentIds = new Set(snapshot.activeAgentIds);
-            const nextExplicitlyHiddenAgentIdsByWorkspace = snapshot.agentsHydrated
-              ? removeInactiveExplicitlyHiddenAgents({
-                  state: state.explicitlyHiddenAgentIdsByWorkspace,
-                  workspaceKey: normalizedWorkspaceKey,
-                  activeAgentIds,
-                })
-              : state.explicitlyHiddenAgentIdsByWorkspace;
             let pinnedAgentIdsByWorkspace = state.pinnedAgentIdsByWorkspace;
             for (const agentId of state.pinnedAgentIdsByWorkspace[normalizedWorkspaceKey] ?? []) {
               if (!nextState.pinnedAgentIds?.has(agentId)) {
@@ -1217,15 +1165,13 @@ export function createWorkspaceLayoutStore(
             if (
               state.layoutByWorkspace[normalizedWorkspaceKey] &&
               nextLayout === rawLayout &&
-              pinnedAgentIdsByWorkspace === state.pinnedAgentIdsByWorkspace &&
-              nextExplicitlyHiddenAgentIdsByWorkspace === state.explicitlyHiddenAgentIdsByWorkspace
+              pinnedAgentIdsByWorkspace === state.pinnedAgentIdsByWorkspace
             ) {
               return state;
             }
 
             return {
               pinnedAgentIdsByWorkspace,
-              explicitlyHiddenAgentIdsByWorkspace: nextExplicitlyHiddenAgentIdsByWorkspace,
               layoutByWorkspace: {
                 ...state.layoutByWorkspace,
                 [normalizedWorkspaceKey]: nextLayout,
@@ -1691,62 +1637,6 @@ export function createWorkspaceLayoutStore(
             };
           });
         },
-        hideAgentExplicitly: (workspaceKey, agentId) => {
-          const normalizedWorkspaceKey = trimNonEmpty(workspaceKey);
-          const normalizedAgentId = trimNonEmpty(agentId);
-          if (!normalizedWorkspaceKey || !normalizedAgentId) return;
-
-          set((state) => {
-            const hiddenAgentIdsByWorkspace = addAgentIdToWorkspaceSet(
-              state.hiddenAgentIdsByWorkspace,
-              normalizedWorkspaceKey,
-              normalizedAgentId,
-            );
-            const explicitlyHiddenAgentIdsByWorkspace = addAgentIdToWorkspaceSet(
-              state.explicitlyHiddenAgentIdsByWorkspace,
-              normalizedWorkspaceKey,
-              normalizedAgentId,
-            );
-            if (
-              hiddenAgentIdsByWorkspace === state.hiddenAgentIdsByWorkspace &&
-              explicitlyHiddenAgentIdsByWorkspace === state.explicitlyHiddenAgentIdsByWorkspace
-            ) {
-              return state;
-            }
-            return { hiddenAgentIdsByWorkspace, explicitlyHiddenAgentIdsByWorkspace };
-          });
-        },
-        unhideAgent: (workspaceKey, agentId) => {
-          const normalizedWorkspaceKey = trimNonEmpty(workspaceKey);
-          const normalizedAgentId = trimNonEmpty(agentId);
-          if (!normalizedWorkspaceKey || !normalizedAgentId) {
-            return;
-          }
-
-          set((state) => {
-            const nextHiddenAgentIdsByWorkspace = removeAgentIdFromWorkspaceSet(
-              state.hiddenAgentIdsByWorkspace,
-              normalizedWorkspaceKey,
-              normalizedAgentId,
-            );
-            const nextExplicitlyHiddenAgentIdsByWorkspace = removeAgentIdFromWorkspaceSet(
-              state.explicitlyHiddenAgentIdsByWorkspace,
-              normalizedWorkspaceKey,
-              normalizedAgentId,
-            );
-            if (
-              nextHiddenAgentIdsByWorkspace === state.hiddenAgentIdsByWorkspace &&
-              nextExplicitlyHiddenAgentIdsByWorkspace === state.explicitlyHiddenAgentIdsByWorkspace
-            ) {
-              return state;
-            }
-
-            return {
-              hiddenAgentIdsByWorkspace: nextHiddenAgentIdsByWorkspace,
-              explicitlyHiddenAgentIdsByWorkspace: nextExplicitlyHiddenAgentIdsByWorkspace,
-            };
-          });
-        },
         purgeWorkspace: (workspaceKey) => {
           const normalizedWorkspaceKey = trimNonEmpty(workspaceKey);
           if (!normalizedWorkspaceKey) {
@@ -1760,7 +1650,6 @@ export function createWorkspaceLayoutStore(
               normalizedWorkspaceKey in state.explorerSidebarWidthByWorkspace ||
               normalizedWorkspaceKey in state.pinnedAgentIdsByWorkspace ||
               normalizedWorkspaceKey in state.hiddenAgentIdsByWorkspace ||
-              normalizedWorkspaceKey in state.explicitlyHiddenAgentIdsByWorkspace ||
               normalizedWorkspaceKey in state.focusRestorationByWorkspace ||
               normalizedWorkspaceKey in state.explorerSidebarPaneIdByWorkspace ||
               normalizedWorkspaceKey in state.sidePaneIdByWorkspace ||
@@ -1784,10 +1673,6 @@ export function createWorkspaceLayoutStore(
               state.pinnedAgentIdsByWorkspace;
             const { [normalizedWorkspaceKey]: _hidden, ...hiddenAgentIdsByWorkspace } =
               state.hiddenAgentIdsByWorkspace;
-            const {
-              [normalizedWorkspaceKey]: _explicitlyHidden,
-              ...explicitlyHiddenAgentIdsByWorkspace
-            } = state.explicitlyHiddenAgentIdsByWorkspace;
             const { [normalizedWorkspaceKey]: _restoration, ...focusRestorationByWorkspace } =
               state.focusRestorationByWorkspace;
             const {
@@ -1803,7 +1688,6 @@ export function createWorkspaceLayoutStore(
               explorerSidebarWidthByWorkspace,
               pinnedAgentIdsByWorkspace,
               hiddenAgentIdsByWorkspace,
-              explicitlyHiddenAgentIdsByWorkspace,
               focusRestorationByWorkspace,
               explorerSidebarPaneIdByWorkspace,
               sidePaneIdByWorkspace,

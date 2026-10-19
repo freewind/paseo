@@ -25,14 +25,6 @@ import { ContextMenuItem } from "@/components/ui/context-menu";
 import { Shortcut } from "@/components/ui/shortcut";
 import { OpenInFileManagerMenuItem } from "@/workspace/open-in-file-manager/menu-item";
 import { WORKSPACE_LABEL_PAGE_ID, type WorkspaceLabelTarget } from "@/workspace-labels/picker";
-import { navigateToWorkspace } from "@/stores/navigation-active-workspace-store";
-import { useSessionStore } from "@/stores/session-store";
-import {
-  useWorkspaceLayoutStore,
-  useWorkspaceLayoutStoreHydrated,
-} from "@/stores/workspace-layout-store";
-import { selectRestorableHiddenAgentIds } from "@/workspace-tabs/agent-visibility";
-import { restoreHiddenWorkspaceAgents } from "@/workspace-tabs/restore-hidden-agents";
 
 const muted = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
 const IconNew = withUnistyles(SquarePen);
@@ -182,72 +174,6 @@ function WorkspaceMenuEntryItems({
   );
 }
 
-/**
- * State items: read state, pinning, labels, setup, folder, archive. `WorkspaceMenuEntryItems`
- * renders first so both surfaces keep one stable order.
- */
-function RestoreHiddenAgentsMenuItem({
-  surface,
-  testID,
-  workspaceKey,
-  workspaceTarget,
-}: {
-  surface: WorkspaceMenuSurface;
-  testID: string;
-  workspaceKey: string;
-  workspaceTarget: WorkspaceLabelTarget;
-}) {
-  const { t } = useTranslation();
-  const closeMenu = useDropdownMenuClose();
-  const hasHydratedLayout = useWorkspaceLayoutStoreHydrated();
-  const { serverId, workspaceId } = workspaceTarget;
-  const session = useSessionStore((state) => state.sessions[serverId]);
-  const explicitlyHiddenAgentIds = useWorkspaceLayoutStore(
-    (state) => state.explicitlyHiddenAgentIdsByWorkspace[workspaceKey],
-  );
-  const restorableAgentIds = selectRestorableHiddenAgentIds({
-    hasHydratedAgents: session?.hasHydratedAgents === true,
-    sessionAgents: session?.agents,
-    workspaceId,
-    explicitlyHiddenAgentIds,
-  });
-  const isDisabled =
-    !hasHydratedLayout || session?.hasHydratedAgents !== true || restorableAgentIds.length === 0;
-  const handleRestore = useCallback(() => {
-    if (isDisabled) return;
-    closeMenu();
-    restoreHiddenWorkspaceAgents({
-      serverId,
-      workspaceId,
-      readSnapshot: () => {
-        const currentSession = useSessionStore.getState().sessions[serverId];
-        const state = useWorkspaceLayoutStore.getState();
-        return {
-          hasHydratedAgents: currentSession?.hasHydratedAgents === true,
-          hasHydratedLayout: useWorkspaceLayoutStore.persist.hasHydrated(),
-          sessionAgents: currentSession?.agents,
-          explicitlyHiddenAgentIds: state.explicitlyHiddenAgentIdsByWorkspace[workspaceKey],
-        };
-      },
-      navigateToWorkspace: (input) => navigateToWorkspace(input),
-      openTab: (input) => useWorkspaceLayoutStore.getState().openTab(input),
-      focusedPaneId: () =>
-        useWorkspaceLayoutStore.getState().layoutByWorkspace[workspaceKey]?.focusedPaneId ?? null,
-    });
-  }, [closeMenu, isDisabled, serverId, workspaceId, workspaceKey]);
-
-  return (
-    <WorkspaceMenuItem
-      surface={surface}
-      testID={testID}
-      disabled={isDisabled}
-      onSelect={handleRestore}
-    >
-      {t("workspace.header.actions.showHiddenAgents", { count: restorableAgentIds.length })}
-    </WorkspaceMenuItem>
-  );
-}
-
 function WorkspaceMenuStateItems(props: WorkspaceMenuActionItemsProps) {
   const {
     surface,
@@ -306,14 +232,6 @@ function WorkspaceMenuStateItems(props: WorkspaceMenuActionItemsProps) {
         >
           {t("sidebar.workspace.actions.markAsUnread")}
         </WorkspaceMenuItem>
-      ) : null}
-      {workspaceTarget ? (
-        <RestoreHiddenAgentsMenuItem
-          surface={surface}
-          testID={`${testIDPrefix}-restore-hidden-agents-${workspaceKey}`}
-          workspaceKey={workspaceKey}
-          workspaceTarget={workspaceTarget}
-        />
       ) : null}
       {onTogglePin ? (
         <WorkspaceMenuItem

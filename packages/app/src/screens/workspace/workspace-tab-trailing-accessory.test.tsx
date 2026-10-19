@@ -153,7 +153,6 @@ function renderAccessory(
     onCloseTabsBefore: vi.fn(),
     onCloseTabsAfter: vi.fn(),
     onCloseOtherTabs: vi.fn(),
-    onHideTab: vi.fn(),
   });
 
   const container = document.createElement("div");

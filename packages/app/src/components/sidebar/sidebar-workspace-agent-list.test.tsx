@@ -134,10 +134,6 @@ import {
   APP_SETTINGS_QUERY_KEY,
   loadAppSettingsFromStorage,
 } from "@/hooks/use-settings/storage";
-import {
-  buildWorkspaceTabSnapshot,
-  deriveWorkspaceAgentVisibility,
-} from "@/workspace-tabs/agent-visibility";
 import { useSessionStore, type Agent } from "@/stores/session-store";
 import type { MessageSubmissionRecord } from "@/composer/submission/model";
 import { TURN_LIVENESS_IDLE } from "@/timeline/turn-liveness";
@@ -207,7 +203,6 @@ describe("SidebarWorkspaceAgentList", () => {
     useWorkspaceLayoutStore.setState({
       layoutByWorkspace: {},
       hiddenAgentIdsByWorkspace: {},
-      explicitlyHiddenAgentIdsByWorkspace: {},
     });
     container = document.createElement("div");
     document.body.appendChild(container);
@@ -530,179 +525,5 @@ describe("SidebarWorkspaceAgentList", () => {
       agentId: "agent-a",
       workspaceId: "workspace-a",
     });
-  });
-
-  it("does not close the mobile agent list when a menu action is used", async () => {
-    openAgentTabs(["agent-a"]);
-    seedAgents([agent("agent-a", null)]);
-    render();
-
-    const menuTrigger = container!.querySelector<HTMLElement>(
-      '[data-testid^="sidebar-workspace-agent-menu-"][data-testid$="-trigger"]',
-    );
-    expect(menuTrigger).not.toBeNull();
-    act(() => {
-      menuTrigger!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-    expect(usePanelStore.getState().mobilePanel).toEqual({ target: "agent-list", revision: 0 });
-    expect(navigateToAgentMock).not.toHaveBeenCalled();
-
-    await hideFirstAgent();
-
-    expect(usePanelStore.getState().mobilePanel).toEqual({ target: "agent-list", revision: 0 });
-    expect(navigationPanelTargets).toEqual([]);
-    expect(navigateToAgentMock).not.toHaveBeenCalled();
-  });
-
-  function hideButton(): HTMLElement {
-    const button = container!.querySelector<HTMLElement>('[data-testid$="-hide-agent"]');
-    if (!button) throw new Error("Hide agent entry missing");
-    return button;
-  }
-
-  async function hideFirstAgent(): Promise<void> {
-    const button = hideButton();
-    await act(async () => {
-      button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-  }
-
-  function reconcile(workspaceId: string, workspaceKey: string): void {
-    act(() => {
-      useWorkspaceLayoutStore.getState().reconcileTabs(
-        workspaceKey,
-        buildWorkspaceTabSnapshot({
-          agentVisibility: deriveWorkspaceAgentVisibility({
-            sessionAgents: useSessionStore.getState().sessions["server-1"]?.agents,
-            workspaceId,
-          }),
-          agentsHydrated: true,
-          terminalsHydrated: true,
-          knownTerminalIds: [],
-          standaloneTerminalIds: [],
-          hasActivePendingTerminalCreate: false,
-          hasActivePendingDraftCreate: false,
-        }),
-      );
-    });
-  }
-
-  it("hides a running agent tab without archiving or closing the agent", async () => {
-    openAgentTabs(["agent-a"]);
-    seedAgents([
-      agent("agent-a", "Running agent", { status: "running", workspaceId: "workspace-a" }),
-    ]);
-    render();
-
-    await hideFirstAgent();
-
-    expect(agentRows()).toHaveLength(0);
-    expect(archiveAgentMock).not.toHaveBeenCalled();
-    // A root agent is only unlisted, not stopped: no lifecycle RPC is sent at all.
-    expect(updateAgentMock).not.toHaveBeenCalled();
-    expect(useSessionStore.getState().sessions["server-1"]?.agents.get("agent-a")?.status).toBe(
-      "running",
-    );
-    expect(
-      Array.from(
-        useWorkspaceLayoutStore.getState().explicitlyHiddenAgentIdsByWorkspace[WORKSPACE_KEY] ?? [],
-      ),
-    ).toEqual(["agent-a"]);
-
-    // Reconciliation must not put the tab back while the agent is still active.
-    reconcile("workspace-a", WORKSPACE_KEY);
-    expect(agentRows()).toHaveLength(0);
-  });
-
-  it("hides a subagent tab, releasing this client's open-tab label and reopening from the parent's track", async () => {
-    openAgentTabs(["agent-a"]);
-    seedAgents(
-      [
-        agent("agent-a", null, {
-          parentAgentId: "parent-1",
-          status: "running",
-          workspaceId: "workspace-a",
-        }),
-      ],
-      { withClient: true },
-    );
-    render();
-
-    await hideFirstAgent();
-
-    expect(agentRows()).toHaveLength(0);
-    expect(updateAgentMock).toHaveBeenCalledWith("agent-a", {
-      labels: { "paseo.open-agent-tab.client-1": "false" },
-    });
-    expect(archiveAgentMock).not.toHaveBeenCalled();
-    expect(
-      Array.from(
-        useWorkspaceLayoutStore.getState().explicitlyHiddenAgentIdsByWorkspace[WORKSPACE_KEY] ?? [],
-      ),
-    ).toEqual(["agent-a"]);
-
-    // The child stays unarchived and still parented, so the parent's track can bring it back.
-    const stored = useSessionStore.getState().sessions["server-1"]?.agents.get("agent-a");
-    expect(stored?.parentAgentId).toBe("parent-1");
-    expect(stored?.archivedAt ?? null).toBeNull();
-
-    act(() => {
-      useWorkspaceLayoutStore.getState().openTab({
-        workspaceKey: WORKSPACE_KEY,
-        target: { kind: "agent", agentId: "agent-a" },
-        intent: "reveal",
-      });
-    });
-    reconcile("workspace-a", WORKSPACE_KEY);
-    render();
-
-    expect(agentRows().map((row) => row.textContent)).toEqual(["agent-a"]);
-  });
-
-  it("keeps a subagent tab when the open-tab label cannot be released", async () => {
-    updateAgentMock.mockImplementation(() => Promise.reject(new Error("daemon unreachable")));
-    openAgentTabs(["agent-a"]);
-    seedAgents(
-      [agent("agent-a", null, { parentAgentId: "parent-1", workspaceId: "workspace-a" })],
-      { withClient: true },
-    );
-    render();
-
-    await hideFirstAgent();
-
-    expect(agentRows()).toHaveLength(1);
-    expect(archiveAgentMock).not.toHaveBeenCalled();
-  });
-
-  it("does not hide the same agent in another workspace", async () => {
-    const otherKey = "server-1:workspace-b";
-    openAgentTabs(["agent-a"]);
-    act(() => {
-      useWorkspaceLayoutStore.getState().openTab({
-        workspaceKey: otherKey,
-        target: { kind: "agent", agentId: "agent-a" },
-        intent: "reveal",
-      });
-    });
-    seedAgents([agent("agent-a", null, { workspaceId: "workspace-a" })]);
-    render();
-
-    await hideFirstAgent();
-
-    expect(agentRows()).toHaveLength(0);
-    expect(
-      useWorkspaceLayoutStore
-        .getState()
-        .getWorkspaceTabs(otherKey)
-        .some((tab) => tab.target.kind === "agent" && tab.target.agentId === "agent-a"),
-    ).toBe(true);
-    expect(
-      Array.from(useWorkspaceLayoutStore.getState().hiddenAgentIdsByWorkspace[otherKey] ?? []),
-    ).toEqual([]);
-    expect(
-      Array.from(
-        useWorkspaceLayoutStore.getState().explicitlyHiddenAgentIdsByWorkspace[otherKey] ?? [],
-      ),
-    ).toEqual([]);
   });
 });
