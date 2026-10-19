@@ -2534,10 +2534,6 @@ export const ko: TranslationResources = {
           label: "🌿 제목 줄 수",
           hint: "🌿 긴 워크스페이스 제목과 도구 호출 요약을 여러 줄로 줄바꿈",
         },
-        toolArgsMultiline: {
-          label: "🌿 도구 인자",
-          hint: "🌿 도구 호출 인자를 한 줄에 자르지 않고 여러 줄로 표시합니다",
-        },
       },
       sidebar: {
         header: {

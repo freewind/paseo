@@ -121,31 +121,9 @@ function buildCanonicalDetailDisplay(input: ToolCallDisplayInput): DetailDisplay
         displayName: "Plan",
       };
     case "unknown":
-      return { summary: formatUnknownInputSummary(input.detail.input) };
+      return {};
     default:
       throw new Error("unreachable");
-  }
-}
-
-/**
- * The full raw input JSON for a tool without a canonical detail. `JSON.stringify` on
- * purpose: the whole arguments object must be visible, so there is no truncation, no
- * key cap, and no ellipsis — the renderer wraps, it never cuts.
- */
-function formatUnknownInputSummary(rawInput: unknown): string | undefined {
-  if (rawInput == null) return undefined;
-  if (typeof rawInput === "string") {
-    const trimmed = rawInput.trim();
-    return trimmed.length > 0 ? trimmed : undefined;
-  }
-  if (typeof rawInput === "number" || typeof rawInput === "boolean") {
-    return String(rawInput);
-  }
-  try {
-    return JSON.stringify(rawInput);
-  } catch {
-    // Cyclic or otherwise unserializable input still shows something.
-    return String(rawInput);
   }
 }
 

@@ -185,15 +185,6 @@ function useDisableOuterSpacing(disableOuterSpacing: boolean | undefined) {
   return disableOuterSpacing ?? contextValue;
 }
 
-/**
- * One setting governs wrapping in the badge: long workspace titles, and unadapted tool
- * arguments' full JSON. Kept behind a hook so the badge body stays under the complexity cap.
- */
-function useBadgeAllowsMultilineText(): boolean {
-  const { settings } = useAppSettings();
-  return settings.workspaceTitleMultiline || settings.toolArgsMultiline;
-}
-
 const WEB_TOOLCALL_SHIMMER_KEYFRAME_ID = "paseo-toolcall-shimmer-keyframes";
 const WEB_TOOLCALL_SHIMMER_ANIMATION_NAME = "paseo-toolcall-shimmer";
 const ThemedMicVocal = withUnistyles(MicVocal);
@@ -2338,7 +2329,7 @@ export const ExpandableBadge = memo(function ExpandableBadge({
   testID,
 }: ExpandableBadgeProps) {
   const resolvedDisableOuterSpacing = useDisableOuterSpacing(disableOuterSpacing);
-  const allowMultilineText = useBadgeAllowsMultilineText();
+  const { settings } = useAppSettings();
   const [isHovered, setIsHovered] = useState(false);
   const [isOpenFileHovered, setIsOpenFileHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
@@ -2553,7 +2544,7 @@ export const ExpandableBadge = memo(function ExpandableBadge({
             onOpenFilePress={handleOpenFilePress}
             onOpenFileHoverIn={handleOpenFileHoverIn}
             onOpenFileHoverOut={handleOpenFileHoverOut}
-            multiline={allowMultilineText}
+            multiline={settings.workspaceTitleMultiline}
           />
           {isExpanded && trailingAction ? (
             <View style={expandableBadgeStylesheet.trailingAction}>{trailingAction}</View>
@@ -2640,20 +2631,6 @@ function useBadgeShimmerMeasurements() {
   };
 }
 
-/**
- * Unmapped tool calls show their raw arguments JSON as the badge summary. The separator marks
- * where the tool name ends and that JSON begins, so the two do not read as one sentence.
- */
-const RAW_INPUT_SUMMARY_SEPARATOR = "🔹";
-
-/**
- * Collapses the indentation runs inside the raw arguments JSON. JSON strings that contain
- * deliberate multi-space runs lose them too; the detail panel keeps the original text.
- */
-function formatRawInputSummary(summary: string): string {
-  return `${RAW_INPUT_SUMMARY_SEPARATOR} ${summary.replace(/ {2,}/g, " ")}`;
-}
-
 interface ToolCallProps {
   agentMessage?: AgentMessage;
   serverId?: string;
@@ -2731,15 +2708,6 @@ export const ToolCall = memo(function ToolCall({
       }),
     [toolName, status, error, effectiveDetail, metadata, cwd, agentMessage, targetAgentTitle],
   );
-  // Only the badge summary is rewritten; the detail panel and the tool-call sheet keep
-  // `presentation.summary` untouched.
-  const badgeSecondaryLabel = useMemo(() => {
-    const summary = presentation.summary;
-    if (!summary || !presentation.isRawInputSummary) {
-      return summary;
-    }
-    return formatRawInputSummary(summary);
-  }, [presentation.summary, presentation.isRawInputSummary]);
   const handleOpenFile = useMemo(() => {
     const openFilePath = presentation.openFilePath;
     if (!openFilePath || !onOpenFilePath) {
@@ -2851,7 +2819,7 @@ export const ToolCall = memo(function ToolCall({
     <ExpandableBadge
       testID="tool-call-badge"
       label={presentation.displayName}
-      secondaryLabel={badgeSecondaryLabel}
+      secondaryLabel={presentation.summary}
       secondaryLabelMaxLines={3}
       icon={presentation.icon}
       isExpanded={shouldRenderInline && isExpanded}

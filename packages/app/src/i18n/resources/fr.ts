@@ -2595,10 +2595,6 @@ export const fr: TranslationResources = {
           label: "🌿 Lignes du titre",
           hint: "🌿 Permettre aux titres longs d'espaces de travail et aux résumés d'appels d'outils de passer sur plusieurs lignes",
         },
-        toolArgsMultiline: {
-          label: "🌿 Arguments d'outils",
-          hint: "🌿 Afficher les arguments d'appel d'outils en entier, sur plusieurs lignes",
-        },
       },
       sidebar: {
         header: {

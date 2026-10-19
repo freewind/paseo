@@ -2653,10 +2653,6 @@ export const en = {
           label: "🌿 Title lines",
           hint: "🌿 Allow long workspace titles and tool call summaries to wrap onto multiple lines",
         },
-        toolArgsMultiline: {
-          label: "🌿 Tool arguments",
-          hint: "🌿 Show full tool call arguments wrapping onto multiple lines instead of one",
-        },
       },
       sidebar: {
         header: {

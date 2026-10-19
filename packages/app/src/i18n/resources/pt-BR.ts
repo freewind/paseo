@@ -2558,10 +2558,6 @@ export const ptBR: TranslationResources = {
           label: "🌿 Linhas do título",
           hint: "🌿 Permitir que títulos longos de workspace e resumos de chamadas de ferramenta ocupem várias linhas",
         },
-        toolArgsMultiline: {
-          label: "🌿 Argumentos de ferramentas",
-          hint: "🌿 Mostrar os argumentos de chamadas de ferramentas completos, em várias linhas",
-        },
       },
       sidebar: {
         header: {

@@ -2543,10 +2543,6 @@ export const ja: TranslationResources = {
           label: "🌿 タイトルの行数",
           hint: "🌿 長いワークスペースのタイトルやツール呼び出しの概要を複数行に折り返す",
         },
-        toolArgsMultiline: {
-          label: "🌿 ツール引数",
-          hint: "🌿 ツール呼び出しの引数を1行に収めず折り返して全文表示します",
-        },
       },
       sidebar: {
         header: {

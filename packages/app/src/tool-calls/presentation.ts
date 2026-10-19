@@ -30,11 +30,6 @@ export interface ToolCallPresentation {
   detail: ToolCallDetail | undefined;
   displayName: string;
   summary?: string;
-  /**
-   * True when `summary` is the raw arguments JSON of an unmapped tool call. The badge uses it
-   * to add a separator and to collapse the indentation runs inside that JSON.
-   */
-  isRawInputSummary: boolean;
   errorText?: string;
   icon: ToolCallPresentationIcon;
   isLoadingDetails: boolean;
@@ -108,7 +103,6 @@ export function buildToolCallPresentation(
     detail,
     displayName: displayModel.displayName,
     summary,
-    isRawInputSummary: detailForDisplay.type === "unknown" && Boolean(summary),
     errorText: displayModel.errorText,
     icon: input.resolveIcon(input.toolName, detail, input.agentMessage),
     isLoadingDetails,

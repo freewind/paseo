@@ -539,12 +539,6 @@ export function AppearanceSection() {
     },
     [updateSettings],
   );
-  const handleToolArgsMultilineChange = useCallback(
-    (toolArgsMultiline: boolean) => {
-      void updateSettings({ toolArgsMultiline });
-    },
-    [updateSettings],
-  );
   const commitUiFontFamily = useCallback(
     (value: string) => {
       const sanitized = sanitizeFontFamily(value);
@@ -657,12 +651,6 @@ export function AppearanceSection() {
             hint={t("settings.appearance.workspaceRows.titleLines.hint")}
             value={settings.workspaceTitleMultiline}
             onValueChange={handleWorkspaceTitleMultilineChange}
-          />
-          <SettingsSwitch
-            label={t("settings.appearance.workspaceRows.toolArgsMultiline.label")}
-            hint={t("settings.appearance.workspaceRows.toolArgsMultiline.hint")}
-            value={settings.toolArgsMultiline}
-            onValueChange={handleToolArgsMultilineChange}
           />
         </View>
       </SettingsSection>
