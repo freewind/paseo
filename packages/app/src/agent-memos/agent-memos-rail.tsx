@@ -11,6 +11,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { encodeAttachmentsForSend } from "@/attachments/service";
 import type { AttachmentMetadata } from "@/attachments/types";
 import { confirmDialog } from "@/utils/confirm-dialog";
@@ -26,16 +27,19 @@ const ThemedAddPlus = withUnistyles(Plus, mutedIconMapping);
 const ThemedTrash2 = withUnistyles(Trash2, mutedIconMapping);
 const ThemedCircle = withUnistyles(Circle, mutedIconMapping);
 const ThemedCheckCircle2 = withUnistyles(CheckCircle2, completedIconMapping);
+/** Small enough to sit inline, so a memo with images still occupies a single row. */
+const MEMO_IMAGE_SIZE = 24;
 
 /**
  * The agent's memos as a standing todo list: the composer's left gutter on a wide layout, and a
  * row above the composer on a compact one.
  *
  * Open memos come first and completed ones sink to the bottom, struck through and dimmed, each
- * group keeping the daemon's creation order. Pressing the text appends it to the composer and
- * leaves the memo in place; the context menu sends it, the checkbox toggles completion, and the
- * trash button asks before deleting. Completion lives on the daemon with the memo, so every
- * client sees the same state.
+ * group keeping the daemon's creation order. Every memo is one line, ellipsized at the tail, with
+ * the full text in a hover tooltip. Pressing the text appends it to the composer and leaves the
+ * memo in place; the context menu sends it, the checkbox toggles completion, and the trash button
+ * asks before deleting. The header carries the add button, matching the quick replies bar on the
+ * opposite gutter. Completion lives on the daemon with the memo, so every client sees it.
  */
 export const AgentMemosRail = memo(function AgentMemosRail({
   serverId,
@@ -45,7 +49,7 @@ export const AgentMemosRail = memo(function AgentMemosRail({
 }: {
   serverId: string;
   agentId: string;
-  /** Compact hosts show the icon alone: the list sits above the composer, not beside it. */
+  /** Compact hosts put the list above the composer instead of beside it; the header is the same. */
   compact?: boolean;
   /** Appends text to the composer without sending; returns the previous text for undo. */
   onAppendToComposer: (text: string) => void;
@@ -115,12 +119,28 @@ export const AgentMemosRail = memo(function AgentMemosRail({
       testID="agent-memos-rail"
     >
       <View style={styles.header}>
-        <ThemedClipboardList size={ICON_SIZE.md} uniProps={mutedIconMapping} />
-        {compact ? null : (
+        <View style={styles.titleGroup}>
+          <ThemedClipboardList size={ICON_SIZE.md} uniProps={mutedIconMapping} />
           <Text style={styles.title} numberOfLines={1}>
             {t("agentMemos.toggle")}
           </Text>
-        )}
+        </View>
+        <Tooltip delayDuration={250} enabledOnDesktop enabledOnMobile={false}>
+          <TooltipTrigger asChild>
+            <Pressable
+              style={styles.addButton}
+              onPress={handleStartAdding}
+              accessibilityRole="button"
+              accessibilityLabel={t("agentMemos.add")}
+              testID="agent-memo-add"
+            >
+              <ThemedAddPlus size={ICON_SIZE.lg} uniProps={mutedIconMapping} />
+            </Pressable>
+          </TooltipTrigger>
+          <TooltipContent side="top" align="end" offset={8}>
+            <Text style={styles.tooltipText}>{t("agentMemos.add")}</Text>
+          </TooltipContent>
+        </Tooltip>
       </View>
       <View style={styles.list}>
         {orderedMemos.length === 0 ? (
@@ -144,18 +164,7 @@ export const AgentMemosRail = memo(function AgentMemosRail({
             onCancel={handleCancelAdd}
             canAttachImages={supportsImages}
           />
-        ) : (
-          <Pressable
-            style={styles.addRow}
-            onPress={handleStartAdding}
-            accessibilityRole="button"
-            accessibilityLabel={t("agentMemos.add")}
-            testID="agent-memo-add"
-          >
-            <ThemedAddPlus size={ICON_SIZE.sm} uniProps={mutedIconMapping} />
-            <Text style={styles.addText}>{t("agentMemos.add")}</Text>
-          </Pressable>
-        )}
+        ) : null}
       </View>
       <AttachmentLightbox source={lightboxSource} onClose={handleCloseLightbox} />
     </View>
@@ -228,32 +237,40 @@ function AgentMemoRow({
       ) : null}
       <View style={styles.rowBody}>
         <ContextMenu>
-          <ContextMenuTrigger
-            style={styles.memoButton}
-            onPress={handleUse}
-            accessibilityRole="button"
-            accessibilityLabel={t("agentMemos.useMemo")}
-            testID={`agent-memo-item-${entry.id}`}
-          >
-            <Text
-              numberOfLines={2}
-              style={isCompleted ? styles.memoTextCompleted : styles.memoText}
-            >
-              {entry.text}
-            </Text>
-          </ContextMenuTrigger>
+          <Tooltip delayDuration={300} enabledOnDesktop enabledOnMobile={false}>
+            <TooltipTrigger asChild>
+              <ContextMenuTrigger
+                style={styles.memoButton}
+                onPress={handleUse}
+                accessibilityRole="button"
+                accessibilityLabel={t("agentMemos.useMemo")}
+                testID={`agent-memo-item-${entry.id}`}
+              >
+                <Text
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                  style={isCompleted ? styles.memoTextCompleted : styles.memoText}
+                >
+                  {entry.text}
+                </Text>
+              </ContextMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="start" offset={6} maxWidth={420}>
+              <Text style={styles.tooltipText}>{entry.text}</Text>
+            </TooltipContent>
+          </Tooltip>
           <ContextMenuContent align="start" width={200} testID={`agent-memo-menu-${entry.id}`}>
             <ContextMenuItem onSelect={handleUse}>{t("composer.input.send")}</ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
-        {entry.images && entry.images.length > 0 ? (
-          <View style={styles.memoImageRow}>
-            {memoImageEntries.map(({ key, image }) => (
-              <MemoImageThumb key={key} image={image} onOpen={onOpenImage} />
-            ))}
-          </View>
-        ) : null}
       </View>
+      {entry.images && entry.images.length > 0 ? (
+        <View style={styles.memoImageRow}>
+          {memoImageEntries.map(({ key, image }) => (
+            <MemoImageThumb key={key} image={image} onOpen={onOpenImage} />
+          ))}
+        </View>
+      ) : null}
       <Pressable
         onPress={handleDelete}
         accessibilityRole="button"
@@ -312,8 +329,15 @@ const styles = StyleSheet.create((theme: Theme) => ({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing[2],
+    justifyContent: "space-between",
+    gap: theme.spacing[1],
     minWidth: 0,
+  },
+  titleGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexShrink: 1,
+    gap: theme.spacing[2],
   },
   title: {
     flexShrink: 1,
@@ -332,17 +356,16 @@ const styles = StyleSheet.create((theme: Theme) => ({
   rowBody: {
     flex: 1,
     minWidth: 0,
-    gap: theme.spacing[1],
   },
   memoImageRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    alignItems: "center",
+    flexShrink: 0,
     gap: theme.spacing[1],
-    paddingHorizontal: theme.spacing[2],
   },
   memoImage: {
-    width: 40,
-    height: 40,
+    width: MEMO_IMAGE_SIZE,
+    height: MEMO_IMAGE_SIZE,
     borderRadius: theme.borderRadius.sm,
     backgroundColor: theme.colors.surface2,
   },
@@ -372,14 +395,17 @@ const styles = StyleSheet.create((theme: Theme) => ({
     color: theme.colors.foregroundMuted,
     fontSize: theme.fontSize.sm,
   },
-  addRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.spacing[1],
-    paddingVertical: theme.spacing[1],
+  addButton: {
+    flexShrink: 0,
+    borderRadius: theme.borderRadius.full,
+    borderWidth: theme.borderWidth[1],
+    borderColor: theme.colors.border,
+    paddingHorizontal: theme.spacing[3],
+    paddingVertical: theme.spacing[2],
+    backgroundColor: theme.colors.surface1,
   },
-  addText: {
-    color: theme.colors.foregroundMuted,
+  tooltipText: {
+    color: theme.colors.foreground,
     fontSize: theme.fontSize.sm,
   },
 }));
