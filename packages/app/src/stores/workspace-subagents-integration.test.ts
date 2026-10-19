@@ -136,7 +136,6 @@ afterEach(() => {
     splitSizesByWorkspace: {},
     pinnedAgentIdsByWorkspace: {},
     hiddenAgentIdsByWorkspace: {},
-    explicitlyHiddenAgentIdsByWorkspace: {},
   });
 });
 
@@ -276,7 +275,7 @@ describe("workspace subagents integration", () => {
     const child = makeAgent({ id: "child-agent", parentAgentId: parent.id });
     initializeAgents([parent, child]);
     const store = useWorkspaceLayoutStore.getState();
-    store.hideAgentExplicitly(workspaceKey, child.id);
+    store.hideAgent(workspaceKey, child.id);
     const tabId = store.openTab({
       workspaceKey,
       target: { kind: "agent", agentId: child.id },

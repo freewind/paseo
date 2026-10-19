@@ -723,7 +723,6 @@ export const es: TranslationResources = {
         reloadAgent: "Recargar agente",
         reloadAgentTooltip:
           "Vuelva a cargar el agente para actualizar habilidades, MCP o estado de inicio de sesión.",
-        hideAgent: "Ocultar este agente",
         markAsUnread: "Marcar como no leído",
         close: "Cerrar",
         renameTerminal: "Cambiar nombre de terminal",
@@ -780,7 +779,6 @@ export const es: TranslationResources = {
         reloadedAgent: "Agente recargado",
         failedToReloadAgent: "No se pudo recargar el agente",
         failedToCloseAgent: "No se pudo cerrar el agente",
-        failedToHideAgent: "No se pudo ocultar el agente",
       },
       confirmations: {
         unsavedTitle: "Cambios sin guardar",

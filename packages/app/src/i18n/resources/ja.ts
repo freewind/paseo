@@ -718,7 +718,6 @@ export const ja: TranslationResources = {
         reloadAgent: "エージェントを再読み込み",
         reloadAgentTooltip:
           "スキル、MCP、ログイン状態を更新するためにエージェントを再読み込みします。",
-        hideAgent: "このエージェントを隠す",
         markAsUnread: "未読にする",
         close: "閉じる",
         renameTerminal: "ターミナルの名前を変更",
@@ -775,7 +774,6 @@ export const ja: TranslationResources = {
         reloadedAgent: "エージェントを再読み込みしました",
         failedToReloadAgent: "エージェントの再読み込みに失敗しました",
         failedToCloseAgent: "エージェントを閉じられませんでした",
-        failedToHideAgent: "エージェントを非表示にできませんでした",
       },
       confirmations: {
         unsavedTitle: "未保存の変更",

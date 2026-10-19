@@ -713,7 +713,6 @@ export const ko: TranslationResources = {
         reloadAgent: "에이전트 다시 로드",
         reloadAgentTooltip:
           "스킬, MCP 또는 로그인 상태를 업데이트하려면 에이전트를 다시 로드하세요.",
-        hideAgent: "이 에이전트 숨기기",
         markAsUnread: "읽지 않음으로 표시",
         close: "닫기",
         renameTerminal: "터미널 이름 변경",
@@ -770,7 +769,6 @@ export const ko: TranslationResources = {
         reloadedAgent: "에이전트를 다시 로드했습니다",
         failedToReloadAgent: "에이전트를 다시 로드하지 못했습니다",
         failedToCloseAgent: "에이전트를 닫지 못했습니다",
-        failedToHideAgent: "에이전트를 숨기지 못했습니다",
       },
       confirmations: {
         close: "닫기",

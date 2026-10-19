@@ -711,7 +711,6 @@ export const zhCN: TranslationResources = {
         moveToWorkspace: "移动到工作区",
         reloadAgent: "重新加载 Agent",
         reloadAgentTooltip: "重新加载 Agent 以更新 skills、MCPs 或登录状态。",
-        hideAgent: "隐藏该 Agent",
         markAsUnread: "设置成未读",
         close: "关闭",
         renameTerminal: "重命名 Terminal",
@@ -768,7 +767,6 @@ export const zhCN: TranslationResources = {
         reloadedAgent: "已重新加载 Agent",
         failedToReloadAgent: "重新加载 Agent 失败",
         failedToCloseAgent: "关闭 Agent 失败",
-        failedToHideAgent: "隐藏 Agent 失败",
       },
       confirmations: {
         unsavedTitle: "未保存的更改",

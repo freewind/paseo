@@ -85,7 +85,6 @@ import { formatCompactTimeAgoAsProse } from "@/utils/time";
 import { buildWorkspaceKeyboardHandlerId } from "@/keyboard/handler-id";
 import type { KeyboardActionDefinition } from "@/keyboard/keyboard-action-dispatcher";
 import { WorkspaceNewTabMenuContent } from "@/screens/workspace/workspace-new-tab-menu";
-import { useHideWorkspaceAgentTab } from "@/screens/workspace/use-workspace-agent-tab-actions";
 import { useAgentReadState } from "@/hooks/use-agent-read-state";
 import {
   paneContentToolbarTrailingPadding,
@@ -1072,11 +1071,6 @@ function ResolvedWorkspaceDesktopTabsRow({
   onExitFocusMode,
 }: ResolvedWorkspaceDesktopTabsRowProps) {
   const { t } = useTranslation();
-  const isCompact = useIsCompactFormFactor();
-  const { onHideTab } = useHideWorkspaceAgentTab({
-    serverId: normalizedServerId,
-    workspaceId: normalizedWorkspaceId,
-  });
   const newTabKeys = useShortcutKeys("workspace-tab-new");
   const [tabsContainerWidth, setTabsContainerWidth] = useState<number>(0);
   const tabsScrollRef = useRef<ScrollView>(null);
@@ -1350,7 +1344,6 @@ function ResolvedWorkspaceDesktopTabsRow({
           setHoveredCloseTabKey={setHoveredCloseTabKey}
           onNavigateTab={onNavigateTab}
           onCloseTab={onCloseTab}
-          onHideTab={onHideTab}
           labels={tabMenuLabels}
           dragHandleProps={dragHandleProps}
           showDropIndicatorBefore={showDropIndicatorBefore}
@@ -1378,7 +1371,6 @@ function ResolvedWorkspaceDesktopTabsRow({
       onCopyFilePath,
       onCopyResumeCommand,
       onNavigateTab,
-      onHideTab,
       onReloadAgent,
       onRenameTab,
       rail,
@@ -1519,7 +1511,6 @@ function ResolvedDesktopTabChip({
   setHoveredCloseTabKey,
   onNavigateTab,
   onCloseTab,
-  onHideTab,
   labels,
   dragHandleProps,
   showDropIndicatorBefore,
@@ -1552,7 +1543,6 @@ function ResolvedDesktopTabChip({
   setHoveredCloseTabKey: Dispatch<SetStateAction<string | null>>;
   onNavigateTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => Promise<void> | void;
-  onHideTab: (tabId: string) => Promise<void>;
   labels: WorkspaceTabMenuLabels;
   dragHandleProps: DraggableListDragHandleProps | undefined;
   showDropIndicatorBefore: boolean;
@@ -1586,7 +1576,6 @@ function ResolvedDesktopTabChip({
         onCloseTabsToLeft,
         onCloseTabsToRight,
         onCloseOtherTabs,
-        onHideTab,
         onMarkAsUnread: unreadState.markUnread,
         canMarkAsUnread: () => unreadState.canMarkUnread,
         labels,
@@ -1606,7 +1595,6 @@ function ResolvedDesktopTabChip({
       onCopyTerminalId,
       onCopyFilePath,
       onCopyResumeCommand,
-      onHideTab,
       labels,
       onReloadAgent,
       unreadState.canMarkUnread,

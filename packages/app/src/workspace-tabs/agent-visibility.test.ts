@@ -5,7 +5,6 @@ import {
   buildWorkspaceTabSnapshot,
   createWorkspaceAgentVisibilitySelector,
   deriveWorkspaceAgentVisibility,
-  selectRestorableHiddenAgentIds,
   shouldPruneWorkspaceAgentTab,
   workspaceAgentVisibilityEqual,
 } from "@/workspace-tabs/agent-visibility";
@@ -64,62 +63,6 @@ function makeAgent(input: {
 const WORKSPACE_ID = "ws-1";
 
 describe("workspace agent visibility", () => {
-  it("selects active explicitly hidden agents in stable order for the exact workspace", () => {
-    const agents = new Map<string, Agent>([
-      ["root", makeAgent({ id: "root", cwd: "/repo", workspaceId: WORKSPACE_ID })],
-      [
-        "child",
-        makeAgent({
-          id: "child",
-          cwd: "/repo",
-          workspaceId: WORKSPACE_ID,
-          parentAgentId: "root",
-        }),
-      ],
-      [
-        "archived",
-        makeAgent({
-          id: "archived",
-          cwd: "/repo",
-          workspaceId: WORKSPACE_ID,
-          archivedAt: new Date(),
-        }),
-      ],
-      ["other", makeAgent({ id: "other", cwd: "/repo", workspaceId: "ws-other" })],
-    ]);
-    const hidden = new Set(["child", "archived", "other", "root"]);
-
-    expect(
-      selectRestorableHiddenAgentIds({
-        hasHydratedAgents: true,
-        sessionAgents: agents,
-        workspaceId: WORKSPACE_ID,
-        explicitlyHiddenAgentIds: hidden,
-      }),
-    ).toEqual(["child", "root"]);
-  });
-
-  it("does not select hidden agents before hydration or without a session snapshot", () => {
-    const hidden = new Set(["root"]);
-    expect(
-      selectRestorableHiddenAgentIds({
-        hasHydratedAgents: false,
-        sessionAgents: new Map([
-          ["root", makeAgent({ id: "root", cwd: "/repo", workspaceId: WORKSPACE_ID })],
-        ]),
-        workspaceId: WORKSPACE_ID,
-        explicitlyHiddenAgentIds: hidden,
-      }),
-    ).toEqual([]);
-    expect(
-      selectRestorableHiddenAgentIds({
-        hasHydratedAgents: true,
-        sessionAgents: undefined,
-        workspaceId: WORKSPACE_ID,
-        explicitlyHiddenAgentIds: hidden,
-      }),
-    ).toEqual([]);
-  });
   it("keeps subagents active while excluding them from auto-open", () => {
     const parent = makeAgent({
       id: "parent-agent",
