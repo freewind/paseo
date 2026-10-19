@@ -45,6 +45,7 @@ import {
   type AgentModeControlValue,
 } from "@/composer/agent-controls/mode-control";
 import { AdaptiveModalSheet, type SheetHeader } from "@/components/adaptive-modal-sheet";
+import { useResetWhenPanelInactive } from "@/components/retained-panel";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type {
   AgentFeature,
@@ -518,6 +519,13 @@ function ControlledAgentControls({
   const { fontScale } = useWindowDimensions();
   const [activeSheet, setActiveSheet] = useState<ActiveSheet>(null);
   const [openSelector, setOpenSelector] = useState<AgentControlSelector | null>(null);
+  // A hidden retained panel keeps these controls mounted, and both the anchored comboboxes
+  // and the sheets they open render outside the panel. Reset in the inactive commit so no
+  // surface survives the tab switch; on web the chat suspends one commit later.
+  useResetWhenPanelInactive(() => {
+    setOpenSelector(null);
+    setActiveSheet(null);
+  });
   const initialDensity: ComposerControlDensity = isCompact ? "tight" : "full";
   const [density, setDensity] = useState<ComposerControlDensity>(initialDensity);
   const densityRef = useRef<ComposerControlDensity>(initialDensity);

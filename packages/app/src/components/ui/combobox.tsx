@@ -58,6 +58,7 @@ import {
   SheetHeaderView,
   type SheetHeader,
 } from "@/components/adaptive-modal-sheet";
+import { useResetWhenPanelInactive } from "@/components/retained-panel";
 import { FloatingSurface } from "@/components/ui/floating";
 import { useDismissKeyboardOnOpen } from "@/components/ui/keyboard-dismiss";
 import {
@@ -1319,6 +1320,11 @@ export function Combobox({
 
   const [internalOpen, setInternalOpen] = useState(false);
   const { isControlled, isOpen } = resolveControlledOpen(open, internalOpen);
+  // A retained panel keeps this component mounted while hidden, and both presentations
+  // escape the panel: the desktop popover renders into the overlay root and the compact
+  // sheet into the app-wide sheet stack. Close before the web chat suspends, or the
+  // backdrop outlives the panel and blocks whatever the user switched to.
+  useResetWhenPanelInactive(() => setInternalOpen(false));
 
   const setOpen = useCallback(
     (nextOpen: boolean) => applySetOpen(isControlled, setInternalOpen, onOpenChange, nextOpen),

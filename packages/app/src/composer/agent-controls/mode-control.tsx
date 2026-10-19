@@ -5,6 +5,7 @@ import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import { useShallow } from "zustand/shallow";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import { type SheetHeader } from "@/components/adaptive-modal-sheet";
+import { useResetWhenPanelInactive } from "@/components/retained-panel";
 import { Combobox, ComboboxItem, type ComboboxOption } from "@/components/ui/combobox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Shortcut } from "@/components/ui/shortcut";
@@ -95,6 +96,14 @@ export function AgentModeControl({
   const openRef = useRef(false);
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  // A hidden retained panel keeps this control mounted and its popover renders outside the
+  // panel. Reset in the inactive commit so the mode list does not stay over the agent the
+  // user switched to, and does not reopen when they come back.
+  useResetWhenPanelInactive(() => {
+    openRef.current = false;
+    setOpen(false);
+    setSearchQuery("");
+  });
 
   const selectedMode = useMemo(() => {
     if (modeOptions.length === 0) return null;

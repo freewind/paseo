@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import type { AgentProvider } from "@getpaseo/protocol/agent-types";
 import type { AgentProfilePicker, AgentProfileSeed } from "@/agent-profiles";
+import { useResetWhenPanelInactive } from "@/components/retained-panel";
 import { ComboboxTrigger } from "@/components/ui/combobox-trigger";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Combobox, type ComboboxOption, type ComboboxProps } from "@/components/ui/combobox";
@@ -93,6 +94,10 @@ export function CombinedModelSelector({
   const modelBrowserScrolling = resolveModelBrowserScrolling({ isNative, isCompact });
   const anchorRef = useRef<View>(null);
   const [isOpen, setIsOpen] = useState(false);
+  // A hidden retained panel keeps this selector mounted and its picker renders outside the
+  // panel. Close in the inactive commit, before the web chat suspends, so returning to this
+  // agent does not reopen a picker the user left behind.
+  useResetWhenPanelInactive(() => setIsOpen(false));
   const [isContentReady, setIsContentReady] = useState(isWeb);
   const browser = useModelBrowser({
     providers,

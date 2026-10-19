@@ -1,10 +1,42 @@
-import React, { createContext, memo, type ReactNode, useContext } from "react";
+import React, { createContext, memo, type ReactNode, useContext, useRef } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
 const RetainedPanelActiveContext = createContext(true);
 
 export function useRetainedPanelActive(): boolean {
   return useContext(RetainedPanelActiveContext);
+}
+
+/**
+ * Clears overlay state a retained panel owns when that panel goes inactive.
+ *
+ * The reset runs during render, not from an effect, because it has to land in the
+ * inactive commit itself. On web the chat suspends one commit later, and an update
+ * queued from an effect would be suspended with it: the surface would keep painting
+ * its backdrop over whatever the user navigated to, and would reopen on return.
+ *
+ * Only pass setters of the component calling this hook. Updating another component
+ * during render is not allowed.
+ */
+export function useResetWhenPanelInactive(reset: () => void): void {
+  const active = useRetainedPanelActive();
+  const wasActiveRef = useRef(active);
+  if (active) {
+    wasActiveRef.current = true;
+    return;
+  }
+  if (wasActiveRef.current) {
+    wasActiveRef.current = false;
+    reset();
+  }
+}
+
+/**
+ * Renders its children only while the surrounding retained panel is active. Use it
+ * around a surface that renders outside the panel (portal, app-wide sheet stack).
+ */
+export function RetainedPanelGate({ children }: { children?: ReactNode }): ReactNode {
+  return useRetainedPanelActive() ? children : null;
 }
 
 interface RetainedPanelProps {
