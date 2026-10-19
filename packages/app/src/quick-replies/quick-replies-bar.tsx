@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, View, type PressableStateCallbackType } from "react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { MessageSquareText, Settings2 } from "lucide-react-native";
 import type { QuickReply } from "@getpaseo/protocol/messages";
@@ -10,6 +10,9 @@ import { ICON_SIZE, type Theme } from "@/styles/theme";
 const mutedIconMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
 const ThemedSettings2 = withUnistyles(Settings2, mutedIconMapping);
 const ThemedMessageSquareText = withUnistyles(MessageSquareText, mutedIconMapping);
+
+/** Pressable reports `hovered` on web only, so the shared state type widens it as optional. */
+type ChipPressableState = PressableStateCallbackType & { hovered?: boolean };
 
 interface QuickRepliesBarProps {
   replies: QuickReply[];
@@ -36,6 +39,14 @@ export function QuickRepliesBar({
     () => <ThemedSettings2 size={ICON_SIZE.lg} uniProps={mutedIconMapping} />,
     [],
   );
+  const editChipStyle = useCallback(
+    ({ pressed, hovered = false }: ChipPressableState) => [
+      styles.editChip,
+      Boolean(hovered) && styles.editChipHovered,
+      pressed && styles.editChipPressed,
+    ],
+    [],
+  );
   const editButton = (
     <Tooltip delayDuration={250} enabledOnDesktop enabledOnMobile={false}>
       <TooltipTrigger asChild>
@@ -44,7 +55,7 @@ export function QuickRepliesBar({
           accessibilityLabel={t("composer.quickReplies.edit")}
           testID="quick-replies-edit"
           onPress={onEdit}
-          style={styles.editChip}
+          style={editChipStyle}
         >
           {editIcon}
         </Pressable>
@@ -86,13 +97,21 @@ function QuickReplyChip({
   onSelect: (text: string) => void;
 }) {
   const handlePress = useCallback(() => onSelect(reply.text), [onSelect, reply.text]);
+  const chipStyle = useCallback(
+    ({ pressed, hovered = false }: ChipPressableState) => [
+      styles.chip,
+      Boolean(hovered) && styles.chipHovered,
+      pressed && styles.chipPressed,
+    ],
+    [],
+  );
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={reply.text}
       testID={`quick-reply-${reply.id}`}
       onPress={handlePress}
-      style={styles.chip}
+      style={chipStyle}
     >
       <Text style={styles.chipText} numberOfLines={1} ellipsizeMode="tail">
         {reply.text}
@@ -143,9 +162,15 @@ const styles = StyleSheet.create((theme: Theme) => ({
     borderRadius: theme.borderRadius.full,
     borderWidth: theme.borderWidth[1],
     borderColor: theme.colors.border,
-    paddingHorizontal: theme.spacing[3],
-    paddingVertical: theme.spacing[2],
+    paddingHorizontal: theme.spacing[2],
+    paddingVertical: theme.spacing[1],
     backgroundColor: theme.colors.surface1,
+  },
+  chipHovered: {
+    backgroundColor: theme.colors.surface2,
+  },
+  chipPressed: {
+    backgroundColor: theme.colors.surface0,
   },
   chipText: {
     color: theme.colors.foregroundMuted,
@@ -156,9 +181,15 @@ const styles = StyleSheet.create((theme: Theme) => ({
     borderRadius: theme.borderRadius.full,
     borderWidth: theme.borderWidth[1],
     borderColor: theme.colors.border,
-    paddingHorizontal: theme.spacing[3],
-    paddingVertical: theme.spacing[2],
+    paddingHorizontal: theme.spacing[2],
+    paddingVertical: theme.spacing[1],
     backgroundColor: theme.colors.surface1,
+  },
+  editChipHovered: {
+    backgroundColor: theme.colors.surface2,
+  },
+  editChipPressed: {
+    backgroundColor: theme.colors.surface0,
   },
   tooltipText: {
     color: theme.colors.foreground,
