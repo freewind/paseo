@@ -37,6 +37,7 @@ import { getSidebarRowBackdrop } from "@/components/sidebar/sidebar-row-backdrop
 import { type GestureType } from "react-native-gesture-handler";
 import { WorkspaceRenameModal } from "@/components/workspace-rename-modal";
 import { SidebarWorkspaceAgentList } from "@/components/sidebar/sidebar-workspace-agent-list";
+import { useSidebarModel } from "@/components/sidebar/sidebar-model";
 import { useWorkspaceClipboardActions } from "@/hooks/use-workspace-clipboard-actions";
 import { ExternalLink, Settings, MoreVertical, Plus, Trash2 } from "lucide-react-native";
 import { NestableScrollContainer } from "react-native-draggable-flatlist";
@@ -1607,10 +1608,12 @@ function ProjectBlock({
   supportsPinningByServerId,
   onToggleWorkspacePin,
   nameSearchMatches,
+  nameSearchActive,
 }: {
   project: SidebarProjectEntry;
   workspaceEntriesByKey: ReadonlyMap<string, SidebarWorkspaceEntry>;
   collapsed: boolean;
+  nameSearchActive: boolean;
   displayName: string;
   iconDataUri: string | null;
   selectionEnabled: boolean;
@@ -1635,27 +1638,42 @@ function ProjectBlock({
   /** Name-search highlight data; used for the project name and its workspace rows. */
   nameSearchMatches: SidebarNameFilterResult;
 }) {
+  // The search renders a result tree, not the browsing tree: a project that
+  // matched opens, a project kept only for a matching descendant shows just the
+  // matching branches, and a project with no matching workspace shows no rows.
+  const effectiveCollapsed = nameSearchActive ? false : collapsed;
+  const projectWorkspaces = useMemo(
+    () =>
+      nameSearchActive
+        ? project.workspaces.filter((workspace) =>
+            nameSearchMatches.workspaces.has(workspace.workspaceKey),
+          )
+        : project.workspaces,
+    [nameSearchActive, nameSearchMatches.workspaces, project.workspaces],
+  );
   const {
-    visibleItems: visibleWorkspaces,
+    visibleItems: limitedWorkspaces,
     expanded: workspacesExpanded,
-    canToggle: canToggleWorkspaces,
+    canToggle: limitedCanToggleWorkspaces,
     toggleExpanded: toggleWorkspacesExpanded,
-  } = useLimitedSidebarGroup(project.workspaces);
+  } = useLimitedSidebarGroup(projectWorkspaces);
+  const visibleWorkspaces = nameSearchActive ? projectWorkspaces : limitedWorkspaces;
+  const canToggleWorkspaces = nameSearchActive ? false : limitedCanToggleWorkspaces;
   const rowModel = useMemo(
     () =>
       buildSidebarProjectRowModel({
         project,
-        collapsed,
+        collapsed: effectiveCollapsed,
         supportsMultiplicityByServerId,
       }),
-    [collapsed, project, supportsMultiplicityByServerId],
+    [effectiveCollapsed, project, supportsMultiplicityByServerId],
   );
 
   // Collapsed rows hide their workspace rows, so the project row carries the most urgent
   // status among them; expanded rows leave the signal to the child rows themselves.
   const aggregateStatusBucket = useSidebarProjectStatusBucket({
     workspaces: project.workspaces,
-    enabled: collapsed,
+    enabled: effectiveCollapsed,
   });
 
   const active = isProjectSelectedByRoute({
@@ -1790,12 +1808,13 @@ function ProjectBlock({
   }, [isRemovingProject, displayName, t, toast, project.hosts]);
 
   const handleToggleCollapsed = useCallback(() => {
+    if (nameSearchActive) return;
     onToggleCollapsed(project.viewKey);
-  }, [onToggleCollapsed, project.viewKey]);
+  }, [nameSearchActive, onToggleCollapsed, project.viewKey]);
 
   let projectChildren = null;
-  if (!collapsed) {
-    if (project.workspaces.length > 0) {
+  if (!effectiveCollapsed) {
+    if (projectWorkspaces.length > 0) {
       projectChildren = (
         <>
           <DraggableList
@@ -1821,7 +1840,7 @@ function ProjectBlock({
           ) : null}
         </>
       );
-    } else if (rowModel.trailingAction.kind === "new_workspace") {
+    } else if (!nameSearchActive && rowModel.trailingAction.kind === "new_workspace") {
       projectChildren = (
         <NewWorkspaceGhostRow
           project={project}
@@ -1845,8 +1864,8 @@ function ProjectBlock({
         iconDataUri={iconDataUri}
         statusBucket={aggregateStatusBucket}
         selected={false}
-        chevron={rowModel.chevron}
-        onPress={handleToggleCollapsed}
+        chevron={nameSearchActive && projectWorkspaces.length === 0 ? null : rowModel.chevron}
+        onPress={nameSearchActive ? noop : handleToggleCollapsed}
         worktreeTarget={
           rowModel.trailingAction.kind === "new_workspace" ? rowModel.trailingAction.target : null
         }
@@ -1879,6 +1898,7 @@ function areProjectBlockPropsEqual(previous: ProjectBlockProps, next: ProjectBlo
     previous.project === next.project &&
     previous.workspaceEntriesByKey === next.workspaceEntriesByKey &&
     previous.collapsed === next.collapsed &&
+    previous.nameSearchActive === next.nameSearchActive &&
     previous.displayName === next.displayName &&
     previous.iconDataUri === next.iconDataUri &&
     previous.selectionEnabled === next.selectionEnabled &&
@@ -1955,6 +1975,7 @@ export function SidebarWorkspaceList({
   dragGestureHostActive,
 }: SidebarWorkspaceListProps) {
   const pathname = usePathname();
+  const { hasNameSearch } = useSidebarModel();
   const hosts = useHosts();
   const rowItems = useSidebarRowItems();
   // Host badge visibility is a lattice, not three competing switches: this gate is the global
@@ -2003,10 +2024,9 @@ export function SidebarWorkspaceList({
   // A name search that matches nothing swaps the list's body, like the label filter. The
   // search field stays mounted (it lives in the header), so the user can always revise the
   // query; the empty card offers the one-click way out.
-  const hasNameSearch =
-    nameSearchMatches.projects.length > 0 ||
-    nameSearchMatches.workspaces.size > 0 ||
-    nameSearchMatches.agents.size > 0;
+  // The query is active even when nothing matched, so the empty card keys off
+  // the query instead of the hit counts; otherwise a miss would render an
+  // ordinary empty sidebar with no way to interpret it.
   const sidebarNameSearchEmpty =
     hasNameSearch &&
     projects.length === 0 &&
@@ -2231,13 +2251,28 @@ function ProjectModeList({
   );
   const selectionEnabled = isWorkspaceRoute;
   const activeWorkspaceSelection = useActiveWorkspaceSelection();
+  const { hasNameSearch } = useSidebarModel();
   const { pinnedChats, unpinnedProjects } = pinnedGroups;
+  // A pinned row obeys the same search rule as the project list. The pin only
+  // moves it to the top; it never keeps an unmatched row on screen.
+  const searchPinnedChats = useMemo(
+    () =>
+      hasNameSearch
+        ? pinnedChats.filter((workspace) =>
+            nameSearchMatches.workspaces.has(workspace.workspaceKey),
+          )
+        : pinnedChats,
+    [hasNameSearch, nameSearchMatches.workspaces, pinnedChats],
+  );
   const {
-    visibleItems: visiblePinnedChats,
+    visibleItems: limitedPinnedChats,
     expanded: pinnedChatsExpanded,
-    canToggle: canTogglePinnedChats,
+    canToggle: limitedCanTogglePinnedChats,
     toggleExpanded: togglePinnedChatsExpanded,
-  } = useLimitedSidebarGroup(pinnedChats);
+  } = useLimitedSidebarGroup(searchPinnedChats);
+  const visiblePinnedChats = hasNameSearch ? searchPinnedChats : limitedPinnedChats;
+  const canTogglePinnedChats = hasNameSearch ? false : limitedCanTogglePinnedChats;
+  const effectivePinnedCollapsed = hasNameSearch ? false : pinnedCollapsed;
   const nativeScrollGestureProps = useMemo(
     () =>
       parentGestureRef
@@ -2386,6 +2421,7 @@ function ProjectModeList({
           project={item}
           workspaceEntriesByKey={workspaceEntriesByKey}
           collapsed={collapsedProjectKeys.has(item.viewKey)}
+          nameSearchActive={hasNameSearch}
           displayName={item.projectName}
           iconDataUri={projectIconByProjectViewKey.get(item.viewKey) ?? null}
           selectionEnabled={selectionEnabled}
@@ -2431,6 +2467,7 @@ function ProjectModeList({
       workspaceEntriesByKey,
       creatingWorkspaceIds,
       nameSearchMatches,
+      hasNameSearch,
     ],
   );
 
@@ -2519,10 +2556,13 @@ function ProjectModeList({
 
   const content = (
     <>
-      {pinnedChats.length > 0 ? (
+      {searchPinnedChats.length > 0 ? (
         <View style={styles.pinnedSection} testID="sidebar-pinned-section">
-          <PinnedSectionHeader collapsed={pinnedCollapsed} onToggle={togglePinnedCollapsed} />
-          {pinnedCollapsed ? null : (
+          <PinnedSectionHeader
+            collapsed={effectivePinnedCollapsed}
+            onToggle={togglePinnedCollapsed}
+          />
+          {effectivePinnedCollapsed ? null : (
             <>
               <DraggableList
                 testID="sidebar-pinned-list"

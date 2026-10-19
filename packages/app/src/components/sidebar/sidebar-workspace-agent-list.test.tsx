@@ -118,6 +118,7 @@ vi.mock("@/components/sidebar/sidebar-model", async (importOriginal) => {
     ...actual,
     useSidebarModel: () => ({
       nameSearchMatches: { projects: [], workspaces: new Map(), agents: new Map() },
+      hasNameSearch: false,
     }),
   };
 });

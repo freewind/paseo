@@ -73,12 +73,12 @@ export const SidebarWorkspaceAgentList = memo(function SidebarWorkspaceAgentList
   const statusBuckets = useSidebarWorkspaceAgentStatusBuckets(serverId);
   // The name search narrows these rows to the agents it kept and hands each row its highlight.
   // Outside a search the maps are empty and every row stays with no highlight.
-  const nameSearchMatches = useSidebarModel().nameSearchMatches;
+  const { nameSearchMatches, hasNameSearch } = useSidebarModel();
   const agentMatches = nameSearchMatches.agents;
   const rows = useMemo(() => {
-    if (agentMatches.size === 0) return layoutRows;
+    if (!hasNameSearch) return layoutRows;
     return layoutRows.filter((row) => agentMatches.has(row.agentId));
-  }, [layoutRows, agentMatches]);
+  }, [layoutRows, agentMatches, hasNameSearch]);
   // The same "Title lines" setting that lets a workspace title wrap governs the agent rows nested
   // under it, so a long agent title stops ending in a lone ellipsis under the ⋯ menu.
   const {

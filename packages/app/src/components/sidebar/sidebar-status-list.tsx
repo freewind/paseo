@@ -27,6 +27,9 @@ import type { StatusBucket } from "@/hooks/sidebar-status-view-model";
 import type { SidebarWorkspaceGroup } from "@/components/sidebar/sidebar-labels";
 import { SidebarFilterEmptyState } from "@/components/sidebar/empty-states";
 import { SidebarNameSearchEmptyState } from "@/components/sidebar/sidebar-name-search-empty-state";
+import { useSidebarModel } from "@/components/sidebar/sidebar-model";
+
+const EMPTY_SECTION_KEYS: ReadonlySet<string> = new Set();
 import type { HostBadgeModel } from "@/hosts/appearance";
 import { isWeb as platformIsWeb, isNative as platformIsNative } from "@/constants/platform";
 import { useIsCompactFormFactor } from "@/constants/layout";
@@ -153,6 +156,7 @@ export function SidebarStatusWorkspaceList({
   parentGestureRef,
   dragGestureHostActive,
 }: StatusWorkspaceListProps) {
+  const { hasNameSearch } = useSidebarModel();
   const scrollRef = useRef<ComponentRef<typeof NestableScrollContainer>>(null);
   const statusScrollOffset = useSidebarViewStore((state) => state.statusScrollOffset);
   const setStatusScrollOffset = useSidebarViewStore((state) => state.setStatusScrollOffset);
@@ -176,12 +180,21 @@ export function SidebarStatusWorkspaceList({
   const togglePinnedCollapsed = useSidebarCollapsedSectionsStore(
     (state) => state.togglePinnedCollapsed,
   );
+  // Searching is result mode: a matching row must be visible, so the pinned
+  // section and every status group open for the duration of the query. The
+  // stored collapse state is read again as soon as the query is cleared.
+  const effectivePinnedCollapsed = hasNameSearch ? false : pinnedCollapsed;
+  const effectiveCollapsedWorkspaceGroupKeys = hasNameSearch
+    ? EMPTY_SECTION_KEYS
+    : collapsedWorkspaceGroupKeys;
   const {
-    visibleItems: visiblePinnedWorkspaces,
+    visibleItems: limitedPinnedWorkspaces,
     expanded: pinnedWorkspacesExpanded,
-    canToggle: canTogglePinnedWorkspaces,
+    canToggle: limitedCanTogglePinnedWorkspaces,
     toggleExpanded: togglePinnedWorkspacesExpanded,
   } = useLimitedSidebarGroup(pinnedWorkspaces);
+  const visiblePinnedWorkspaces = hasNameSearch ? pinnedWorkspaces : limitedPinnedWorkspaces;
+  const canTogglePinnedWorkspaces = hasNameSearch ? false : limitedCanTogglePinnedWorkspaces;
 
   const statusShortcutIndex = showShortcutBadges
     ? shortcutIndexByWorkspaceKey
@@ -227,7 +240,7 @@ export function SidebarStatusWorkspaceList({
     return (
       <StatusGroupList
         groups={groups}
-        collapsedWorkspaceGroupKeys={collapsedWorkspaceGroupKeys}
+        collapsedWorkspaceGroupKeys={effectiveCollapsedWorkspaceGroupKeys}
         projectIconByProjectViewKey={projectIconByProjectViewKey}
         shortcutIndex={statusShortcutIndex}
         showShortcutBadges={showShortcutBadges}
@@ -242,8 +255,11 @@ export function SidebarStatusWorkspaceList({
     <>
       {pinnedWorkspaces.length > 0 ? (
         <View style={styles.pinnedSection} testID="sidebar-pinned-section">
-          <PinnedSectionHeader collapsed={pinnedCollapsed} onToggle={togglePinnedCollapsed} />
-          {pinnedCollapsed ? null : (
+          <PinnedSectionHeader
+            collapsed={effectivePinnedCollapsed}
+            onToggle={togglePinnedCollapsed}
+          />
+          {effectivePinnedCollapsed ? null : (
             <>
               <DraggableList
                 testID="sidebar-pinned-list"

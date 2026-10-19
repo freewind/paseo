@@ -9,6 +9,7 @@ import { useSidebarWorkspaceEntries } from "@/hooks/use-sidebar-workspace-entrie
 import { usePinnedSidebarKeys, type PinnedSidebarGroups } from "@/hooks/use-sidebar-pins";
 import { useSidebarCollapsedSectionsStore } from "@/stores/sidebar-collapsed-sections-store";
 import { useSessionStore } from "@/stores/session-store";
+import { useWorkspaceLayoutStore } from "@/stores/workspace-layout-store";
 import { useShallow } from "zustand/shallow";
 import {
   hasActiveSidebarLabelFilter,
@@ -25,7 +26,7 @@ import type { SidebarShortcutModel } from "@/utils/sidebar-shortcuts";
 import { buildSidebarProjection } from "./sidebar-projection";
 import type { SidebarProjectIconTarget } from "@/utils/sidebar-project-row-model";
 import { filterWorkspacesByLabels, type SidebarWorkspaceGroup } from "./sidebar-labels";
-import { agentTabLabel } from "./sidebar-workspace-agent-rows";
+import { agentTabLabel, buildSidebarWorkspaceAgentRows } from "./sidebar-workspace-agent-rows";
 import {
   collectLiveProjectKeys,
   filterWorkspacesByProjects,
@@ -53,6 +54,8 @@ interface SidebarModel extends SidebarWorkspacesListResult {
   groupMode: SidebarGroupMode;
   /** Per-row highlight data while the name search is active; empty when it is off. */
   nameSearchMatches: SidebarNameFilterResult;
+  /** Whether the name search is active; result-mode rendering keys off this, not the hit counts. */
+  hasNameSearch: boolean;
   /** The raw query; empty means the name search is off. */
   nameSearch: string;
   setNameSearch: (value: string) => void;
@@ -73,12 +76,16 @@ export function SidebarModelProvider({
   active?: boolean;
   children: ReactNode;
 }) {
-  const list = useSidebarWorkspacesList({ enabled: active });
+  const nameSearch = useSidebarViewStore((state) => state.nameSearch);
+  const hasNameSearch = hasActiveSidebarNameSearch(nameSearch);
+  const list = useSidebarWorkspacesList({
+    enabled: active,
+    hostFilters: hasNameSearch ? EMPTY_HOST_FILTERS : undefined,
+  });
   const groupMode = useSidebarViewStore((state) => state.groupMode);
   const labelFilter = useSidebarViewStore((state) => state.labelFilter);
   const projectFilters = useSidebarViewStore((state) => state.projectFilters);
   const nonEmptyProjectsOnly = useSidebarViewStore((state) => state.nonEmptyProjectsOnly);
-  const nameSearch = useSidebarViewStore((state) => state.nameSearch);
   const setNameSearch = useSidebarViewStore((state) => state.setNameSearch);
   const reconcileLabelFilter = useSidebarViewStore((state) => state.reconcileLabelFilter);
   const { hosts: labelHosts } = useWorkspaceLabelProjection();
@@ -112,7 +119,6 @@ export function SidebarModelProvider({
     [projectFilters, list.projects],
   );
   const hasActiveProjectFilter = resolvedProjectFilters.length > 0;
-  const hasNameSearch = hasActiveSidebarNameSearch(nameSearch);
   // The live-only mode asks about agents, so it is the only project filter that needs the agent
   // maps; it subscribes to them only while the mode is on.
   const needsAgentMaps = hasNameSearch || nonEmptyProjectsOnly;
@@ -127,6 +133,21 @@ export function SidebarModelProvider({
     list.workspacePlacements,
     active !== false || needsWorkspaceEntries,
   );
+  // The search matches only what the sidebar lists, so its agent ids come from
+  // the tab layout rather than the session store. An agent whose tab is hidden
+  // or closed has no row to show, and matching it would keep an ancestor with
+  // no visible hit.
+  const layoutByWorkspace = useWorkspaceLayoutStore((state) => state.layoutByWorkspace);
+  const visibleAgentIdsByWorkspaceKey = useMemo(() => {
+    const byWorkspaceKey = new Map<string, string[]>();
+    for (const [workspaceKey, layout] of Object.entries(layoutByWorkspace)) {
+      byWorkspaceKey.set(
+        workspaceKey,
+        buildSidebarWorkspaceAgentRows(layout).map((row) => row.agentId),
+      );
+    }
+    return byWorkspaceKey;
+  }, [layoutByWorkspace]);
   const filteredWorkspaceEntriesByKey = useMemo(() => {
     const byProject = filterWorkspacesByProjects({
       workspaces: [...workspaceEntriesByKey.values()],
@@ -168,17 +189,9 @@ export function SidebarModelProvider({
     }
     return keys;
   }, [agentMapsByServerId, list.workspacePlacements, nonEmptyProjectsOnly]);
-  const agentsByWorkspaceId = useMemo(() => {
-    if (!hasNameSearch) return EMPTY_AGENTS_BY_WORKSPACE_ID;
-    return list.workspacePlacements.map((placement, index) => ({
-      workspaceKey: placement.workspaceKey,
-      agents: agentMapsByServerId[index] ?? null,
-    }));
-  }, [agentMapsByServerId, hasNameSearch, list.workspacePlacements]);
   const agentTitlesMap = useMemo(() => {
     const titles = new Map<string, string>();
-    for (const entry of agentsByWorkspaceId) {
-      const agents = entry.agents;
+    for (const agents of agentMapsByServerId) {
       if (!agents) continue;
       for (const [agentId, agent] of agents) {
         if (agent.archivedAt) continue;
@@ -186,7 +199,7 @@ export function SidebarModelProvider({
       }
     }
     return titles;
-  }, [agentsByWorkspaceId]);
+  }, [agentMapsByServerId]);
   const nameFilter = useMemo(
     () =>
       hasNameSearch
@@ -199,13 +212,14 @@ export function SidebarModelProvider({
                 workspaceKey: workspace.workspaceKey,
                 projectName: project.projectName,
                 workspaceTitle: workspace.name,
-                agentIds: workspaceAgentIds(workspace.workspaceKey, agentsByWorkspaceId),
+                agentIds:
+                  visibleAgentIdsByWorkspaceKey.get(workspace.workspaceKey) ?? EMPTY_AGENT_IDS,
               })),
             })),
             agentTitles: agentTitlesMap,
           })
         : null,
-    [hasNameSearch, nameSearch, list.projects, agentTitlesMap, agentsByWorkspaceId],
+    [hasNameSearch, nameSearch, list.projects, agentTitlesMap, visibleAgentIdsByWorkspaceKey],
   );
   const nameFilteredProjects = useMemo(
     () =>
@@ -216,25 +230,28 @@ export function SidebarModelProvider({
         : list.projects,
     [nameFilter, list.projects],
   );
+  const baseWorkspaceEntriesByKey = hasNameSearch
+    ? workspaceEntriesByKey
+    : filteredWorkspaceEntriesByKey;
   const nameFilteredWorkspaceEntries = useMemo(() => {
-    if (!nameFilter) return filteredWorkspaceEntriesByKey;
+    if (!nameFilter) return baseWorkspaceEntriesByKey;
     const next = new Map<string, SidebarWorkspaceEntry>();
-    for (const [key, entry] of filteredWorkspaceEntriesByKey) {
+    for (const [key, entry] of baseWorkspaceEntriesByKey) {
       if (nameFilter.workspaces.has(key)) next.set(key, entry);
     }
     return next;
-  }, [nameFilter, filteredWorkspaceEntriesByKey]);
+  }, [nameFilter, baseWorkspaceEntriesByKey]);
   // The two filters prune differently on purpose. The project filter is a membership test on the
   // project itself, so a project you filtered TO survives even with no workspaces — it still owns
   // a header row you can create your first workspace under. The label filter can only ask about
   // workspaces, so a project it empties has nothing left to show.
   const filteredProjects = useMemo(() => {
     let projects = nameFilteredProjects;
-    if (hasActiveProjectFilter) {
+    if (!hasNameSearch && hasActiveProjectFilter) {
       const included = new Set(resolvedProjectFilters);
       projects = projects.filter((project) => included.has(project.viewKey));
     }
-    if (nonEmptyProjectsOnly) {
+    if (!hasNameSearch && nonEmptyProjectsOnly) {
       // Derived every render: a project reappears the moment a chat starts in it. The first
       // load is exempt because an empty agent map there means "not fetched yet", and filtering
       // on it would blank the sidebar instead of narrowing it.
@@ -243,7 +260,7 @@ export function SidebarModelProvider({
         ? projects
         : projects.filter((project) => live.has(project.viewKey));
     }
-    if (hasActiveLabelFilter) {
+    if (!hasNameSearch && hasActiveLabelFilter) {
       projects = projects.flatMap((project) => {
         const workspaces = project.workspaces.filter((workspace) =>
           visibleWorkspaceKeys.has(workspace.workspaceKey),
@@ -255,6 +272,7 @@ export function SidebarModelProvider({
   }, [
     hasActiveLabelFilter,
     hasActiveProjectFilter,
+    hasNameSearch,
     resolvedProjectFilters,
     nonEmptyProjectsOnly,
     liveWorkspaceKeys,
@@ -298,6 +316,7 @@ export function SidebarModelProvider({
       hasProjectsBeforeFilter: list.projects.length > 0,
       workspaceEntriesByKey: nameFilteredWorkspaceEntries,
       groupMode,
+      hasNameSearch,
       nameSearch,
       setNameSearch,
       nameSearchMatches: {
@@ -324,6 +343,7 @@ export function SidebarModelProvider({
       nameFilteredWorkspaceEntries,
       nameSearch,
       setNameSearch,
+      hasNameSearch,
       nameFilter,
     ],
   );
@@ -341,19 +361,5 @@ const EMPTY_PROJECT_MATCHES: SidebarNameFilterResult["projects"] = [];
 const EMPTY_WORKSPACE_MATCHES: SidebarNameFilterResult["workspaces"] = new Map();
 const EMPTY_AGENT_MATCHES: SidebarNameFilterResult["agents"] = new Map();
 const EMPTY_AGENT_MAPS: readonly never[] = [];
-const EMPTY_AGENTS_BY_WORKSPACE_ID: readonly never[] = [];
-
-/** Root-agent ids for one workspace, from the agents the name filter already subscribed to. */
-function workspaceAgentIds(
-  workspaceKey: string,
-  agentsByWorkspaceId: readonly {
-    workspaceKey: string;
-    agents: ReadonlyMap<string, unknown> | null;
-  }[],
-): string[] {
-  for (const entry of agentsByWorkspaceId) {
-    if (entry.workspaceKey !== workspaceKey) continue;
-    return Array.from(entry.agents?.keys() ?? []);
-  }
-  return [];
-}
+const EMPTY_AGENT_IDS: readonly string[] = [];
+const EMPTY_HOST_FILTERS: readonly string[] = [];
