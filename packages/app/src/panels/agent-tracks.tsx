@@ -1,7 +1,7 @@
 import { useCallback, memo, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { List, MessageSquareText } from "lucide-react-native";
+import { List, ClipboardList, MessageSquareText } from "lucide-react-native";
 import { WorkspaceDiffStatPill } from "@/composer/diff-stat-pill";
 import { useWorkspaceHasDiffStat } from "@/composer/workspace-diff-stat";
 import { AgentTaskList } from "@/composer/task-list";
@@ -45,6 +45,8 @@ export const AgentTracks = memo(function AgentTracks({
   onOpenChatOutline,
   hasQuickRepliesEntry,
   onOpenQuickReplies,
+  hasMemosEntry,
+  onOpenAgentMemos,
 }: {
   serverId: string;
   workspaceId: string;
@@ -60,6 +62,9 @@ export const AgentTracks = memo(function AgentTracks({
   /** True when the composer cannot show its desktop gutter, so this row carries the entry. */
   hasQuickRepliesEntry: boolean;
   onOpenQuickReplies: () => void;
+  /** True when the composer cannot show its memo gutter, so this row carries the entry. */
+  hasMemosEntry: boolean;
+  onOpenAgentMemos: () => void;
 }): ReactElement | null {
   const { t } = useTranslation();
   const { tabId, openTab } = usePaneContext();
@@ -134,6 +139,7 @@ export const AgentTracks = memo(function AgentTracks({
       archiveFinishedStatus,
       hasPluginComposerPills,
       hasQuickRepliesEntry,
+      hasMemosEntry,
     })
   ) {
     return null;
@@ -186,6 +192,16 @@ export const AgentTracks = memo(function AgentTracks({
             testID="composer-quick-replies-button"
           />
         ) : null}
+        {hasMemosEntry ? (
+          <Button
+            variant="ghost"
+            size="xs"
+            leftIcon={ClipboardList}
+            accessibilityLabel={t("agentMemos.toggle")}
+            onPress={onOpenAgentMemos}
+            testID="composer-agent-memos-button"
+          />
+        ) : null}
       </ComposerTrackTools>
     </ComposerTrackBar>
   );
@@ -197,18 +213,21 @@ export function hasAgentTracks({
   archiveFinishedStatus,
   hasPluginComposerPills = false,
   hasQuickRepliesEntry = false,
+  hasMemosEntry = false,
 }: {
   subagentRows: readonly SubagentRow[];
   tasks: readonly TodoEntry[] | undefined;
   archiveFinishedStatus: ArchiveFinishedStatus;
   hasPluginComposerPills?: boolean;
   hasQuickRepliesEntry?: boolean;
+  hasMemosEntry?: boolean;
 }): boolean {
   return (
     subagentRows.length > 0 ||
     Boolean(tasks?.length) ||
     archiveFinishedStatus.kind !== "idle" ||
     hasPluginComposerPills ||
-    hasQuickRepliesEntry
+    hasQuickRepliesEntry ||
+    hasMemosEntry
   );
 }

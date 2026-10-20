@@ -151,7 +151,7 @@ const styles = StyleSheet.create((theme: Theme) => ({
     alignItems: "center",
     alignContent: "flex-start",
     justifyContent: "flex-start",
-    gap: theme.spacing[2],
+    gap: theme.spacing[0.5],
     minWidth: 0,
   },
   chip: {
@@ -162,8 +162,8 @@ const styles = StyleSheet.create((theme: Theme) => ({
     borderRadius: theme.borderRadius.full,
     borderWidth: theme.borderWidth[1],
     borderColor: theme.colors.border,
-    paddingHorizontal: theme.spacing[2],
-    paddingVertical: theme.spacing[1],
+    paddingHorizontal: theme.spacing[0.5],
+    paddingVertical: theme.spacing[0.5],
     backgroundColor: theme.colors.surface1,
   },
   chipHovered: {
@@ -181,8 +181,8 @@ const styles = StyleSheet.create((theme: Theme) => ({
     borderRadius: theme.borderRadius.full,
     borderWidth: theme.borderWidth[1],
     borderColor: theme.colors.border,
-    paddingHorizontal: theme.spacing[2],
-    paddingVertical: theme.spacing[1],
+    paddingHorizontal: theme.spacing[0.5],
+    paddingVertical: theme.spacing[0.5],
     backgroundColor: theme.colors.surface1,
   },
   editChipHovered: {

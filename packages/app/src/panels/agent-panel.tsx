@@ -36,6 +36,7 @@ import {
 import { getActiveMessageSubmissions } from "@/composer/submission/model";
 import { RewindComposerRestoreProvider } from "@/components/rewind/composer-restore";
 import { AgentMemosRail } from "@/agent-memos/agent-memos-rail";
+import { AgentMemosSheet } from "@/agent-memos/agent-memos-sheet";
 import { useHostFeature } from "@/runtime/host-features";
 import {
   regenerateUserMessage,
@@ -1191,6 +1192,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
 }) {
   const { t } = useTranslation();
   const [isQuickRepliesSheetOpen, setIsQuickRepliesSheetOpen] = useState(false);
+  const [isMemosSheetOpen, setIsMemosSheetOpen] = useState(false);
+  const isCompactFormFactor = useIsCompactFormFactor();
   const quickRepliesAvailable = useIsQuickRepliesSupported(serverId);
   // One pane-width reading decides both surfaces: the composer's gutter when there is room for
   // it beside the centered input column, and this row's entry when there is not.
@@ -1202,6 +1205,13 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   const showsQuickRepliesGutter = quickRepliesAvailable && !isQuickRepliesGutterNarrow;
   const openQuickRepliesSheet = useCallback(() => {
     setIsQuickRepliesSheetOpen(true);
+  }, []);
+  // Memos leave the composer entirely on a compact layout: the row carries an icon button and the
+  // list moves into a sheet, so the input keeps its vertical space.
+  const memosSupported = useHostFeature(serverId, "agentMemos");
+  const hasMemosEntry = memosSupported && isCompactFormFactor;
+  const openMemosSheet = useCallback(() => {
+    setIsMemosSheetOpen(true);
   }, []);
   const openChatOutline = useCallback(
     () => streamViewRef.current?.openChatOutline(),
@@ -1224,6 +1234,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     archiveFinishedStatus: archiveFinishedSubagents.status,
     hasPluginComposerPills,
     hasQuickRepliesEntry,
+    hasMemosEntry,
   });
   const rawAgentInputDraft = useAgentInputDraft({
     draftKey: buildDraftStoreKey({
@@ -1301,6 +1312,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
         quickRepliesGutterVisible={showsQuickRepliesGutter}
         quickRepliesSheetVisible={isQuickRepliesSheetOpen}
         onQuickRepliesSheetVisibleChange={setIsQuickRepliesSheetOpen}
+        memosSheetVisible={isMemosSheetOpen}
+        onMemosSheetVisibleChange={setIsMemosSheetOpen}
       />
     </RenderProfile>
   );
@@ -1340,6 +1353,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
           onOpenChatOutline={openChatOutline}
           hasQuickRepliesEntry={hasQuickRepliesEntry}
           onOpenQuickReplies={openQuickRepliesSheet}
+          hasMemosEntry={hasMemosEntry}
+          onOpenAgentMemos={openMemosSheet}
         />
       ) : null}
     </View>
@@ -1579,6 +1594,8 @@ const AgentComposerSection = memo(function AgentComposerSection({
   quickRepliesGutterVisible,
   quickRepliesSheetVisible,
   onQuickRepliesSheetVisibleChange,
+  memosSheetVisible,
+  onMemosSheetVisibleChange,
 }: {
   agentId?: string;
   serverId: string;
@@ -1595,6 +1612,8 @@ const AgentComposerSection = memo(function AgentComposerSection({
   quickRepliesGutterVisible: boolean;
   quickRepliesSheetVisible: boolean;
   onQuickRepliesSheetVisibleChange: (visible: boolean) => void;
+  memosSheetVisible: boolean;
+  onMemosSheetVisibleChange: (visible: boolean) => void;
 }) {
   if (!agentId) {
     return null;
@@ -1621,6 +1640,8 @@ const AgentComposerSection = memo(function AgentComposerSection({
       quickRepliesGutterVisible={quickRepliesGutterVisible}
       quickRepliesSheetVisible={quickRepliesSheetVisible}
       onQuickRepliesSheetVisibleChange={onQuickRepliesSheetVisibleChange}
+      memosSheetVisible={memosSheetVisible}
+      onMemosSheetVisibleChange={onMemosSheetVisibleChange}
     />
   );
 });
@@ -1639,6 +1660,8 @@ function ActiveAgentComposer({
   quickRepliesGutterVisible,
   quickRepliesSheetVisible,
   onQuickRepliesSheetVisibleChange,
+  memosSheetVisible,
+  onMemosSheetVisibleChange,
 }: {
   agentId: string;
   serverId: string;
@@ -1653,6 +1676,8 @@ function ActiveAgentComposer({
   quickRepliesGutterVisible: boolean;
   quickRepliesSheetVisible: boolean;
   onQuickRepliesSheetVisibleChange: (visible: boolean) => void;
+  memosSheetVisible: boolean;
+  onMemosSheetVisibleChange: (visible: boolean) => void;
 }) {
   const isCompactFormFactor = useIsCompactFormFactor();
   const { onLayout: onInputAreaLayout, isBelow: isCompactComposerLayout } = useContainerWidthBelow(
@@ -1740,12 +1765,18 @@ function ActiveAgentComposer({
     },
     [agentInputDraft],
   );
+  const closeMemosSheet = useCallback(
+    () => onMemosSheetVisibleChange(false),
+    [onMemosSheetVisibleChange],
+  );
 
   // Built here rather than inline in JSX: the composer places it in whichever slot the layout
-  // has room for, and a stable element keeps that placement from re-rendering the rail.
+  // has room for, and a stable element keeps that placement from re-rendering the rail. A compact
+  // layout has no slot for it at all: the tracks row opens the sheet instead, so the input keeps
+  // its height.
   const memosRail = useMemo(
     () =>
-      memosSupported ? (
+      memosSupported && !isCompactFormFactor ? (
         <AgentMemosRail
           serverId={serverId}
           agentId={agentId}
@@ -1753,7 +1784,14 @@ function ActiveAgentComposer({
           onAppendToComposer={handleMemoAppendToComposer}
         />
       ) : null,
-    [agentId, handleMemoAppendToComposer, isCompactComposerLayout, memosSupported, serverId],
+    [
+      agentId,
+      handleMemoAppendToComposer,
+      isCompactComposerLayout,
+      isCompactFormFactor,
+      memosSupported,
+      serverId,
+    ],
   );
 
   return (
@@ -1787,6 +1825,15 @@ function ActiveAgentComposer({
         quickRepliesSheetVisible={quickRepliesSheetVisible}
         onQuickRepliesSheetVisibleChange={onQuickRepliesSheetVisibleChange}
       />
+      {memosSupported ? (
+        <AgentMemosSheet
+          visible={memosSheetVisible}
+          serverId={serverId}
+          agentId={agentId}
+          onAppendToComposer={handleMemoAppendToComposer}
+          onClose={closeMemosSheet}
+        />
+      ) : null}
     </View>
   );
 }
