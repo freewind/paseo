@@ -24,6 +24,10 @@ const mutedIconMapping = (theme: Theme) => ({ color: theme.colors.foregroundMute
 const ThemedImagePlus = withUnistyles(ImagePlus, mutedIconMapping);
 const ThemedCheck = withUnistyles(Check, mutedIconMapping);
 const ThemedX = withUnistyles(X, mutedIconMapping);
+/** `placeholderTextColor` is a prop, not a style, so it goes through the theme the same way icons do. */
+const MemoTextInput = withUnistyles(EditingTextInput, (theme) => ({
+  placeholderTextColor: theme.colors.foregroundMuted,
+}));
 
 /** The same persisters the composer uses, so memo images live in the one attachment store. */
 const memoImagePersister = {
@@ -179,7 +183,7 @@ export function AgentMemoComposer({
   return (
     <View style={styles.container}>
       <View style={styles.inputRow}>
-        <EditingTextInput
+        <MemoTextInput
           ref={inputRef}
           initialValue=""
           onChangeText={setText}
@@ -282,7 +286,22 @@ const styles = StyleSheet.create((theme: Theme) => ({
   },
   input: {
     flex: 1,
-    minWidth: 160,
+    // The row is width-bound by the sheet, so the input has to give way: a minimum width here
+    // pushes the row past the sheet's content inset and the box's own edge gets clipped.
+    minWidth: 0,
+    color: theme.colors.foreground,
+    fontSize: theme.fontSize.base,
+    backgroundColor: theme.colors.surface1,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: theme.borderWidth[1],
+    borderColor: theme.colors.border,
+    paddingHorizontal: theme.spacing[2],
+    paddingVertical: theme.spacing[1],
+    // Without this the browser paints its own focus ring and form-control colors, which follow
+    // the platform appearance instead of the app theme.
+    ...(isWeb
+      ? ({ outlineStyle: "none", outlineWidth: 0, outlineColor: "transparent" } as object)
+      : {}),
   },
   iconButton: {
     padding: theme.spacing[1],
