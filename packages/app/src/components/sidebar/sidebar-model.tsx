@@ -180,6 +180,9 @@ export function SidebarModelProvider({
         : EMPTY_AGENT_MAPS,
     ),
   );
+  // A project counts as non-empty when one of its workspaces holds a root agent, the same rule
+  // the workspace row uses for its `(N)` count. Closed agents stay in: the sidebar still renders
+  // their tabs, so hiding the project around them would hide rows the filter claims to keep.
   const liveWorkspaceKeys = useMemo(() => {
     const keys = new Set<string>();
     if (!nonEmptyProjectsOnly) return keys;
@@ -187,7 +190,7 @@ export function SidebarModelProvider({
       const serverId = list.workspacePlacements[index]?.serverId;
       if (!serverId || !agents) continue;
       for (const agent of agents.values()) {
-        if (agent.archivedAt || agent.status === "closed" || !agent.workspaceId) continue;
+        if (agent.archivedAt || agent.parentAgentId || !agent.workspaceId) continue;
         // workspaceKey is `serverId:workspaceId`, the identity the placements already carry.
         keys.add(`${serverId}:${agent.workspaceId}`);
       }
