@@ -178,18 +178,15 @@ const styles = StyleSheet.create((theme: Theme) => ({
   },
   editChip: {
     flexShrink: 0,
-    borderRadius: theme.borderRadius.full,
-    borderWidth: theme.borderWidth[1],
-    borderColor: theme.colors.border,
     paddingHorizontal: theme.spacing[0.5],
     paddingVertical: theme.spacing[0.5],
-    backgroundColor: theme.colors.surface1,
+    backgroundColor: "transparent",
   },
   editChipHovered: {
-    backgroundColor: theme.colors.surface2,
+    opacity: 0.8,
   },
   editChipPressed: {
-    backgroundColor: theme.colors.surface0,
+    opacity: 0.6,
   },
   tooltipText: {
     color: theme.colors.foreground,
