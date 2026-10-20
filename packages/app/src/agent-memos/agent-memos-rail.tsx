@@ -31,8 +31,8 @@ const ThemedCheckCircle2 = withUnistyles(CheckCircle2, completedIconMapping);
 const MEMO_IMAGE_SIZE = 24;
 
 /**
- * The agent's memos as a standing todo list: the composer's left gutter on a wide layout, and a
- * row above the composer on a compact one.
+ * The agent's memos as a standing todo list: the composer's left gutter on a wide layout, and the
+ * body of the compact sheet.
  *
  * Open memos come first and completed ones sink to the bottom, struck through and dimmed, each
  * group keeping the daemon's creation order. Every memo is one line, ellipsized at the tail, with
@@ -49,7 +49,7 @@ export const AgentMemosRail = memo(function AgentMemosRail({
 }: {
   serverId: string;
   agentId: string;
-  /** Compact hosts put the list above the composer instead of beside it; the header is the same. */
+  /** Compact hosts put the list in a sheet instead of beside the composer; the header is the same. */
   compact?: boolean;
   /** Appends text to the composer without sending; returns the previous text for undo. */
   onAppendToComposer: (text: string) => void;
@@ -143,21 +143,17 @@ export const AgentMemosRail = memo(function AgentMemosRail({
         </Tooltip>
       </View>
       <View style={styles.list}>
-        {orderedMemos.length === 0 ? (
-          <Text style={styles.empty}>{t("agentMemos.empty")}</Text>
-        ) : (
-          orderedMemos.map((entry) => (
-            <AgentMemoRow
-              key={entry.id}
-              entry={entry}
-              supportsCompletion={supportsCompletion}
-              onUse={handleMemoPress}
-              onCompletedChange={handleMemoCompletedChange}
-              onRequestDelete={handleRequestDelete}
-              onOpenImage={handleOpenMemoImage}
-            />
-          ))
-        )}
+        {orderedMemos.map((entry) => (
+          <AgentMemoRow
+            key={entry.id}
+            entry={entry}
+            supportsCompletion={supportsCompletion}
+            onUse={handleMemoPress}
+            onCompletedChange={handleMemoCompletedChange}
+            onRequestDelete={handleRequestDelete}
+            onOpenImage={handleOpenMemoImage}
+          />
+        ))}
         {isAdding ? (
           <AgentMemoComposer
             onSubmit={handleAddMemo}
@@ -390,10 +386,6 @@ const styles = StyleSheet.create((theme: Theme) => ({
   },
   deleteButton: {
     padding: theme.spacing[1],
-  },
-  empty: {
-    color: theme.colors.foregroundMuted,
-    fontSize: theme.fontSize.sm,
   },
   addButton: {
     flexShrink: 0,
