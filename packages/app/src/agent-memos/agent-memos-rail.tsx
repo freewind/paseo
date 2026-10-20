@@ -32,7 +32,8 @@ const MEMO_IMAGE_SIZE = 24;
 
 /**
  * The agent's memos as a standing todo list: the composer's left gutter on a wide layout, and the
- * body of the compact sheet.
+ * body of the compact sheet. The rail owns its header everywhere except inside that sheet, whose
+ * header already carries the same title.
  *
  * Open memos come first and completed ones sink to the bottom, struck through and dimmed, each
  * group keeping the daemon's creation order. Every memo is one line, ellipsized at the tail, with
@@ -45,12 +46,15 @@ export const AgentMemosRail = memo(function AgentMemosRail({
   serverId,
   agentId,
   compact = false,
+  showTitle = true,
   onAppendToComposer,
 }: {
   serverId: string;
   agentId: string;
   /** Compact hosts put the list in a sheet instead of beside the composer; the header is the same. */
   compact?: boolean;
+  /** The sheet carries the title in its header, so the rail drops its own and keeps the add button. */
+  showTitle?: boolean;
   /** Appends text to the composer without sending; returns the previous text for undo. */
   onAppendToComposer: (text: string) => void;
 }) {
@@ -118,13 +122,15 @@ export const AgentMemosRail = memo(function AgentMemosRail({
       style={[styles.container, compact ? styles.containerCompact : styles.containerGutter]}
       testID="agent-memos-rail"
     >
-      <View style={styles.header}>
-        <View style={styles.titleGroup}>
-          <ThemedClipboardList size={ICON_SIZE.md} uniProps={mutedIconMapping} />
-          <Text style={styles.title} numberOfLines={1}>
-            {t("agentMemos.toggle")}
-          </Text>
-        </View>
+      <View style={[styles.header, showTitle ? null : styles.headerTrailing]}>
+        {showTitle ? (
+          <View style={styles.titleGroup}>
+            <ThemedClipboardList size={ICON_SIZE.md} uniProps={mutedIconMapping} />
+            <Text style={styles.title} numberOfLines={1}>
+              {t("agentMemos.toggle")}
+            </Text>
+          </View>
+        ) : null}
         <Tooltip delayDuration={250} enabledOnDesktop enabledOnMobile={false}>
           <TooltipTrigger asChild>
             <Pressable
@@ -328,6 +334,10 @@ const styles = StyleSheet.create((theme: Theme) => ({
     justifyContent: "space-between",
     gap: theme.spacing[1],
     minWidth: 0,
+  },
+  /** Without the title the add button is the header's only child, so it keeps the trailing edge. */
+  headerTrailing: {
+    justifyContent: "flex-end",
   },
   titleGroup: {
     flexDirection: "row",

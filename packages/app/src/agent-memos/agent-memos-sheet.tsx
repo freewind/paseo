@@ -14,7 +14,7 @@ interface AgentMemosSheetProps {
 /**
  * The compact entry's destination. It reuses the gutter rail rather than a second list: pressing a
  * memo appends it to the composer and closes the sheet, so the text lands where the user is about
- * to type, and the add button stays reachable from the sheet's own header.
+ * to type. The sheet header owns the title, so the rail hides its own and keeps only the add button.
  */
 export function AgentMemosSheet({
   visible,
@@ -44,6 +44,7 @@ export function AgentMemosSheet({
         serverId={serverId}
         agentId={agentId}
         compact
+        showTitle={false}
         onAppendToComposer={handleAppendToComposer}
       />
     </AdaptiveModalSheet>
