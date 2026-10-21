@@ -727,6 +727,8 @@ export const ptBR: TranslationResources = {
         closeOthers: "Fechar outras abas",
         moveToMain: "Mover para o painel principal",
         moveToWorkspace: "Mover para o espaço de trabalho",
+        openInEditor: "Abrir no editor",
+        revealFile: "Mostrar no gerenciador de arquivos",
         reloadAgent: "Recarregar agente",
         reloadAgentTooltip: "Recarregue o agente para atualizar skills, MCPs ou status de login.",
         markAsUnread: "Marcar como não lido",
@@ -2317,6 +2319,8 @@ export const ptBR: TranslationResources = {
     layout: en.settings.layout,
     editor: {
       title: "Editor",
+      preferredEditor: "Editor preferido",
+      preferredEditorHint: 'Editor usado por "Abrir no editor"',
       vimKeybindings: "Atalhos do Vim",
       vimHint: "Aplica-se a arquivos-fonte na web e no desktop.",
     },

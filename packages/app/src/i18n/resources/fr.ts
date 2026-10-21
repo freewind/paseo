@@ -744,6 +744,8 @@ export const fr: TranslationResources = {
         moveToMain: "Déplacer vers le panneau principal",
         reloadAgent: "Recharger l’agent",
         moveToWorkspace: "Déplacer vers l'espace de travail",
+        openInEditor: "Ouvrir dans l’éditeur",
+        revealFile: "Afficher dans le gestionnaire de fichiers",
         reloadAgent: "Recharger l'agent",
         reloadAgentTooltip:
           "Rechargez l’agent pour mettre à jour les skills, les MCP ou l’état de connexion.",
@@ -2352,6 +2354,8 @@ export const fr: TranslationResources = {
     layout: en.settings.layout,
     editor: {
       title: "Éditeur",
+      preferredEditor: "Éditeur préféré",
+      preferredEditorHint: "Éditeur utilisé par « Ouvrir dans l’éditeur »",
       vimKeybindings: "Raccourcis Vim",
       vimHint: "S’applique aux fichiers source dans l’app web et l’app de bureau.",
     },

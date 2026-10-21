@@ -152,6 +152,11 @@ import {
 import { MobileTabTrailingAccessory } from "@/screens/workspace/workspace-tab-trailing-accessory";
 import { type WorkspaceTabMenuEntry } from "@/screens/workspace/workspace-tab-menu";
 import { WorkspaceHeaderContextMenu } from "@/screens/workspace/workspace-header-context-menu";
+import { i18n } from "@/i18n/i18next";
+import { useIsLocalDaemon } from "@/hooks/use-is-local-daemon";
+import { openDesktopTarget, useDesktopOpenTargets } from "@/workspace/desktop-open-targets";
+import { useOpenFileInEditor } from "@/workspace/open-in-editor/file";
+import { resolveWorkspaceFilePaths } from "@/workspace/file-open";
 import {
   nameClonedAgent,
   useCopyAgentConversationMarkdown,
@@ -481,6 +486,8 @@ interface MobileWorkspaceTabSwitcherProps {
   onMoveAgentToWorkspace?: (agentId: string) => void;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
+  onOpenFileInEditorCb?: (path: string) => void;
+  onRevealFileCb?: (path: string) => void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
   onRenameTab: (tab: WorkspaceTabDescriptor) => void;
   onCloseTab: (tabId: string) => Promise<void> | void;
@@ -592,6 +599,8 @@ function MobileWorkspaceTabOption({
   onMoveAgentToWorkspace,
   onCopyTerminalId,
   onCopyFilePath,
+  onOpenFileInEditorCb,
+  onRevealFileCb,
   onReloadAgent,
   onRenameTab,
   onCloseTab,
@@ -615,6 +624,8 @@ function MobileWorkspaceTabOption({
   onMoveAgentToWorkspace?: (agentId: string) => void;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
+  onOpenFileInEditorCb?: (path: string) => void;
+  onRevealFileCb?: (path: string) => void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
   onRenameTab: (tab: WorkspaceTabDescriptor) => void;
   onCloseTab: (tabId: string) => Promise<void> | void;
@@ -633,6 +644,8 @@ function MobileWorkspaceTabOption({
     () => ({
       copyResumeCommand: t("workspace.tabs.menu.copyResumeCommand"),
       moveToWorkspace: t("workspace.tabs.menu.moveToWorkspace"),
+      openInEditor: t("workspace.tabs.menu.openInEditor"),
+      revealIn: t("workspace.tabs.menu.revealFile"),
       copyAgentId: t("workspace.tabs.menu.copyAgentId"),
       copyConversationMarkdown: t("workspace.tabs.menu.copyConversationMarkdown"),
       copyAgentAsNew: t("workspace.tabs.menu.copyAgentAsNewConversation"),
@@ -667,6 +680,8 @@ function MobileWorkspaceTabOption({
     onMoveAgentToWorkspace,
     onCopyTerminalId,
     onCopyFilePath,
+    onOpenFileInEditor: onOpenFileInEditorCb,
+    onRevealFile: onRevealFileCb,
     onReloadAgent,
     onRenameTab,
     onCloseTab,
@@ -745,6 +760,8 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
   onMoveAgentToWorkspace,
   onCopyTerminalId,
   onCopyFilePath,
+  onOpenFileInEditorCb,
+  onRevealFileCb,
   onReloadAgent,
   onRenameTab,
   onCloseTab,
@@ -814,6 +831,8 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
           onMoveAgentToWorkspace={onMoveAgentToWorkspace}
           onCopyTerminalId={onCopyTerminalId}
           onCopyFilePath={onCopyFilePath}
+          onOpenFileInEditorCb={onOpenFileInEditorCb}
+          onRevealFileCb={onRevealFileCb}
           onReloadAgent={onReloadAgent}
           onRenameTab={onRenameTab}
           onCloseTab={onCloseTab}
@@ -837,6 +856,8 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
       onMoveAgentToWorkspace,
       onCopyTerminalId,
       onCopyFilePath,
+      onOpenFileInEditorCb,
+      onRevealFileCb,
       onReloadAgent,
       onRenameTab,
       onCloseTab,
@@ -1778,6 +1799,58 @@ function useWorkspaceHeaderMenuEntries(input: {
   ]);
 }
 
+/**
+ * Open/reveal actions for a file tab's context menu. Null-safe when the workspace directory
+ * is unknown, the daemon is remote, or no file-manager/editor target exists — the menu
+ * receives a callback that no-ops, so callers can pass it unconditionally.
+ */
+function useFileTabOpenActions(input: { serverId: string; workspaceDirectory: string | null }): {
+  openInEditor?: (filePath: string) => void;
+  reveal?: (filePath: string) => void;
+} {
+  const { serverId, workspaceDirectory } = input;
+  const toast = useToast();
+  const isLocalExecution = useIsLocalDaemon(serverId);
+  const { targets } = useDesktopOpenTargets({ isLocalExecution });
+  const openFileInEditor = useOpenFileInEditor({
+    serverId,
+    workspaceDirectory: workspaceDirectory ?? "",
+  });
+  const fileManagerTarget = useMemo(
+    () => targets.find((target) => target.kind === "file-manager") ?? null,
+    [targets],
+  );
+
+  const openInEditor = useMemo(() => {
+    if (!workspaceDirectory || !openFileInEditor) return undefined;
+    return (filePath: string) => openFileInEditor.open(filePath);
+  }, [openFileInEditor, workspaceDirectory]);
+
+  const reveal = useMemo(() => {
+    if (!fileManagerTarget || !workspaceDirectory) return undefined;
+    return (filePath: string) => {
+      const resolved = resolveWorkspaceFilePaths({
+        path: filePath,
+        workspaceRoot: workspaceDirectory,
+      });
+      if (!resolved?.absolutePath) return;
+      void openDesktopTarget({
+        editorId: fileManagerTarget.id,
+        workspacePath: workspaceDirectory,
+        filePath: resolved.absolutePath,
+      }).catch((cause: unknown) => {
+        toast.error(
+          cause instanceof Error
+            ? cause.message
+            : i18n.t("workspace.fileExplorer.errors.revealFailed"),
+        );
+      });
+    };
+  }, [fileManagerTarget, toast, workspaceDirectory]);
+
+  return { openInEditor, reveal };
+}
+
 function WorkspaceScreenContent({
   serverId,
   workspaceId,
@@ -1879,6 +1952,11 @@ function WorkspaceScreenContent({
     (state) => state.sessions[normalizedServerId]?.serverInfo?.features?.providersSnapshot === true,
   );
   const workspaceDirectory = workspaceDescriptor?.workspaceDirectory || null;
+  const { openInEditor: handleOpenFileTabInEditor, reveal: handleRevealFileTab } =
+    useFileTabOpenActions({
+      serverId: normalizedServerId,
+      workspaceDirectory,
+    });
   const workspaceTarget = useMemo<WorkspaceLabelTarget | null>(
     () =>
       workspaceDescriptor
@@ -4486,6 +4564,8 @@ function WorkspaceScreenContent({
         onMoveAgentToWorkspace={onMoveAgentToWorkspace}
         onCopyTerminalId={handleCopyTerminalId}
         onCopyFilePath={handleCopyFilePath}
+        onOpenFileInEditor={handleOpenFileTabInEditor}
+        onRevealFile={handleRevealFileTab}
         onReloadAgent={handleReloadAgent}
         onRenameTab={handleRenameTab}
         onCloseTabsToLeft={handleCloseTabsToLeftInPane}
@@ -4539,6 +4619,8 @@ function WorkspaceScreenContent({
     selectTabInPane,
     handleResizePaneSplit,
     handleReorderTabsInPane,
+    handleOpenFileTabInEditor,
+    handleRevealFileTab,
   ]);
   const desktopContent = desktopSplitContent ?? content;
   const rendersDesktopSplitContent = !isMobile && desktopSplitContent !== null;
@@ -4598,6 +4680,8 @@ function WorkspaceScreenContent({
           onMoveAgentToWorkspace={onMoveAgentToWorkspace}
           onCopyTerminalId={handleCopyTerminalId}
           onCopyFilePath={handleCopyFilePath}
+          onOpenFileInEditorCb={handleOpenFileTabInEditor}
+          onRevealFileCb={handleRevealFileTab}
           onReloadAgent={handleReloadAgent}
           onRenameTab={handleRenameTab}
           onCloseTab={handleCloseTabById}
@@ -4626,6 +4710,8 @@ function WorkspaceScreenContent({
             onMoveAgentToWorkspace={onMoveAgentToWorkspace}
             onCopyTerminalId={handleCopyTerminalId}
             onCopyFilePath={handleCopyFilePath}
+            onOpenFileInEditor={handleOpenFileTabInEditor}
+            onRevealFile={handleRevealFileTab}
             onReloadAgent={handleReloadAgent}
             onRenameTab={handleRenameTab}
             onCloseTabsToLeft={handleCloseTabsToLeft}

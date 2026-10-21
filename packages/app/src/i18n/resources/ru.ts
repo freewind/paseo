@@ -729,6 +729,8 @@ export const ru: TranslationResources = {
         closeOthers: "Закрыть другие вкладки",
         moveToMain: "Переместить на основную панель",
         moveToWorkspace: "Переместить в рабочее пространство",
+        openInEditor: "Открыть в редакторе",
+        revealFile: "Показать в файловом менеджере",
         reloadAgent: "Перезагрузить агента",
         reloadAgentTooltip: "Перезагрузите агента, чтобы обновить навыки, MCP или статус входа.",
         markAsUnread: "Отметить как непрочитанное",
@@ -2317,6 +2319,8 @@ export const ru: TranslationResources = {
     layout: en.settings.layout,
     editor: {
       title: "Редактор",
+      preferredEditor: "Предпочтительный редактор",
+      preferredEditorHint: 'Редактор для действия "Открыть в редакторе"',
       vimKeybindings: "Сочетания клавиш Vim",
       vimHint: "Применяется к исходным файлам в веб- и настольной версии.",
     },

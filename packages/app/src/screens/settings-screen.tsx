@@ -186,7 +186,6 @@ const SIDEBAR_SECTION_ITEMS: SidebarSectionItem[] = [
     labelKey: "settings.sections.editor",
     icon: Code2,
     webOnly: true,
-    Content: EditorSection,
   },
   { id: "files", labelKey: "settings.sections.files", icon: Files, Content: FilesSection },
   {
@@ -1395,6 +1394,8 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
               isDesktopApp={isDesktopApp}
             />
           );
+        case "editor":
+          return <EditorSection serverId={activeHostServerId} />;
         default:
           return item.Content ? <item.Content /> : null;
       }

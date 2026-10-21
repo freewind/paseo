@@ -719,6 +719,8 @@ export const ar: TranslationResources = {
         closeOthers: "أغلق علامات التبويب الأخرى",
         moveToMain: "نقل إلى اللوحة الرئيسية",
         moveToWorkspace: "نقل إلى مساحة العمل",
+        openInEditor: "فتح في المحرر",
+        revealFile: "إظهار في مدير الملفات",
         reloadAgent: "إعادة تحميل الوكيل",
         reloadAgentTooltip: "قم بإعادة تحميل الوكيل لتحديث المهارات أو MCPs أو حالة تسجيل الدخول.",
         markAsUnread: "تعيين كغير مقروء",
@@ -2317,6 +2319,8 @@ export const ar: TranslationResources = {
     layout: en.settings.layout,
     editor: {
       title: "المحرر",
+      preferredEditor: "المحرر المفضل",
+      preferredEditorHint: 'المحرر المستخدم في إجراء "فتح في المحرر"',
       vimKeybindings: "اختصارات Vim",
       vimHint: "تنطبق على ملفات المصدر في الويب وسطح المكتب.",
     },

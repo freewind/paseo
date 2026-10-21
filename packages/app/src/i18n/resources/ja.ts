@@ -727,6 +727,8 @@ export const ja: TranslationResources = {
         closeOthers: "他のタブを閉じる",
         moveToMain: "メインパネルへ移動",
         moveToWorkspace: "ワークスペースに移動",
+        openInEditor: "エディターで開く",
+        revealFile: "ファイルマネージャーで表示",
         reloadAgent: "エージェントを再読み込み",
         reloadAgentTooltip:
           "スキル、MCP、ログイン状態を更新するためにエージェントを再読み込みします。",
@@ -2304,6 +2306,8 @@ export const ja: TranslationResources = {
     layout: en.settings.layout,
     editor: {
       title: "エディター",
+      preferredEditor: "優先エディター",
+      preferredEditorHint: "「エディターで開く」で使用されるエディター",
       vimKeybindings: "Vim キーバインド",
       vimHint: "Web とデスクトップのソースファイルに適用されます。",
     },

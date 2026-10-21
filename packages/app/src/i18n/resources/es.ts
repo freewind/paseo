@@ -733,6 +733,8 @@ export const es: TranslationResources = {
         closeOthers: "Cerrar otras pestañas",
         moveToMain: "Mover al panel principal",
         moveToWorkspace: "Mover al espacio de trabajo",
+        openInEditor: "Abrir en el editor",
+        revealFile: "Mostrar en el gestor de archivos",
         reloadAgent: "Recargar agente",
         reloadAgentTooltip:
           "Vuelva a cargar el agente para actualizar habilidades, MCP o estado de inicio de sesión.",
@@ -2337,6 +2339,8 @@ export const es: TranslationResources = {
     layout: en.settings.layout,
     editor: {
       title: "Editor",
+      preferredEditor: "Editor preferido",
+      preferredEditorHint: 'Editor usado por "Abrir en el editor"',
       vimKeybindings: "Atajos de Vim",
       vimHint: "Se aplica a archivos fuente en web y escritorio.",
     },

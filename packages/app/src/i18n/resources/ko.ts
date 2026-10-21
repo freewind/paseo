@@ -722,6 +722,8 @@ export const ko: TranslationResources = {
         closeOthers: "다른 탭 닫기",
         moveToMain: "기본 패널로 이동",
         moveToWorkspace: "워크스페이스로 이동",
+        openInEditor: "편집기에서 열기",
+        revealFile: "파일 관리자에서 보기",
         reloadAgent: "에이전트 다시 로드",
         reloadAgentTooltip:
           "스킬, MCP 또는 로그인 상태를 업데이트하려면 에이전트를 다시 로드하세요.",
@@ -2293,6 +2295,8 @@ export const ko: TranslationResources = {
     layout: en.settings.layout,
     editor: {
       title: "편집기",
+      preferredEditor: "선호 편집기",
+      preferredEditorHint: '"편집기에서 열기" 작업에 사용되는 편집기',
       vimKeybindings: "Vim 키 바인딩",
       vimHint: "웹 및 데스크톱의 소스 파일에 적용됩니다.",
     },
