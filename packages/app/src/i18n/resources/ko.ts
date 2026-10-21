@@ -1136,6 +1136,12 @@ export const ko: TranslationResources = {
           failedAccessible: "검사 실패",
           runningAccessible: "검사 진행 중",
         },
+        search: {
+          placeholder: "설정 검색",
+          results: "결과",
+          noResults: "일치하는 설정이 없습니다",
+          clear: "검색 지우기",
+        },
         sections: {
           checks: "검사",
           pipeline: "파이프라인",

@@ -1168,6 +1168,12 @@ export const es: TranslationResources = {
           failedAccessible: "Comprobaciones fallidas",
           runningAccessible: "Comprobaciones en curso",
         },
+        search: {
+          placeholder: "Buscar en ajustes",
+          results: "Resultados",
+          noResults: "No hay ajustes coincidentes",
+          clear: "Borrar búsqueda",
+        },
         sections: {
           checks: "cheques",
           pipeline: "Pipeline",

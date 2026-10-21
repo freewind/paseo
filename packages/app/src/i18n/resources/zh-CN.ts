@@ -1121,6 +1121,12 @@ export const zhCN: TranslationResources = {
           failedAccessible: "检查失败",
           runningAccessible: "检查运行中",
         },
+        search: {
+          placeholder: "搜索设置",
+          results: "结果",
+          noResults: "没有匹配的设置",
+          clear: "清除搜索",
+        },
         sections: {
           checks: "检查",
           pipeline: "流水线",

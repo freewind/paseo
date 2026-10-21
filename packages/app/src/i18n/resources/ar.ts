@@ -1127,6 +1127,12 @@ export const ar: TranslationResources = {
           failedAccessible: "فشلت الفحوصات",
           runningAccessible: "الفحوصات قيد التشغيل",
         },
+        search: {
+          placeholder: "بحث في الإعدادات",
+          results: "النتائج",
+          noResults: "لا توجد إعدادات مطابقة",
+          clear: "مسح البحث",
+        },
         sections: {
           checks: "الشيكات",
           pipeline: "خط المعالجة",

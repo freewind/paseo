@@ -47,6 +47,8 @@ import {
 import { DropdownTrigger } from "@/components/ui/dropdown-trigger";
 import { ComboboxTrigger } from "@/components/ui/combobox-trigger";
 import { SidebarHeaderRow } from "@/components/sidebar/sidebar-header-row";
+import { SearchField } from "@/components/ui/search-field";
+import { searchSettingsSections } from "@/screens/settings/settings-search-index";
 import { HostPicker as SharedHostPicker } from "@/components/hosts/host-picker";
 import { HostStatusDot } from "@/components/host-status-dot";
 import { SettingsSection } from "@/components/settings/headings/settings-section";
@@ -981,10 +983,39 @@ function SettingsSidebar({
   if (view.kind === "project") selectedHostSection = "projects";
   if (view.kind === "plugin") selectedHostSection = "plugins";
 
+  // Search narrows the app-section list to matching sections; an empty query is the normal
+  // view. Host groups stay untouched — the complaint was app settings volume, not hosts.
+  const [searchQuery, setSearchQuery] = useState("");
+  const isSearching = searchQuery.trim().length > 0;
+  const availableSectionIds = useMemo(() => new Set<string>(items.map((item) => item.id)), [items]);
+  const searchHits = useMemo(
+    () => searchSettingsSections(searchQuery, (section) => availableSectionIds.has(section)),
+    [availableSectionIds, searchQuery],
+  );
+  const visibleItems = useMemo(() => {
+    if (!isSearching) return items;
+    const hitSections = new Set(searchHits.map((hit) => hit.section));
+    return items.filter((item) => hitSections.has(item.id));
+  }, [isSearching, items, searchHits]);
   const sidebarBody = (
     <>
-      <SidebarGroup label={t("settings.groups.app")}>
-        {items.map((item) => (
+      <View style={sidebarStyles.searchRow}>
+        <SearchField
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder={t("settings.search.placeholder")}
+          clearAccessibilityLabel={t("settings.search.clear")}
+          testID="settings-sidebar-search"
+        />
+      </View>
+      <View style={sidebarStyles.list}>
+        <Text style={sidebarStyles.groupLabel}>
+          {isSearching ? t("settings.search.results") : t("settings.groups.app")}
+        </Text>
+        {isSearching && visibleItems.length === 0 ? (
+          <Text style={sidebarStyles.searchEmpty}>{t("settings.search.noResults")}</Text>
+        ) : null}
+        {visibleItems.map((item) => (
           <SidebarSectionButton
             key={item.id}
             itemId={item.id}
@@ -1579,6 +1610,17 @@ const sidebarStyles = StyleSheet.create((theme) => ({
   },
   scrollBody: {
     flex: 1,
+  },
+  searchRow: {
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  searchEmpty: {
+    color: theme.colors.foregroundMuted,
+    fontSize: theme.fontSize.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
   sidebarDragArea: {
     position: "relative",

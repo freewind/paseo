@@ -1142,6 +1142,12 @@ export const ja: TranslationResources = {
           failedAccessible: "チェック失敗",
           runningAccessible: "チェック実行中",
         },
+        search: {
+          placeholder: "設定を検索",
+          results: "結果",
+          noResults: "一致する設定がありません",
+          clear: "検索をクリア",
+        },
         sections: {
           checks: "チェック",
           pipeline: "パイプライン",

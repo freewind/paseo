@@ -1153,6 +1153,12 @@ export const ptBR: TranslationResources = {
           failedAccessible: "Verificações com falha",
           runningAccessible: "Verificações em andamento",
         },
+        search: {
+          placeholder: "Pesquisar nas configurações",
+          results: "Resultados",
+          noResults: "Nenhuma configuração correspondente",
+          clear: "Limpar pesquisa",
+        },
         sections: {
           checks: "Verificações",
           pipeline: "Pipeline",

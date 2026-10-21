@@ -1174,6 +1174,12 @@ export const fr: TranslationResources = {
           failedAccessible: "Vérifications en échec",
           runningAccessible: "Vérifications en cours",
         },
+        search: {
+          placeholder: "Rechercher dans les réglages",
+          results: "Résultats",
+          noResults: "Aucun réglage correspondant",
+          clear: "Effacer la recherche",
+        },
         sections: {
           checks: "Vérifications",
           pipeline: "Pipeline",

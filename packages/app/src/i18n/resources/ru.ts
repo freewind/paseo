@@ -1147,6 +1147,12 @@ export const ru: TranslationResources = {
           failedAccessible: "Проверки не пройдены",
           runningAccessible: "Проверки выполняются",
         },
+        search: {
+          placeholder: "Поиск в настройках",
+          results: "Результаты",
+          noResults: "Подходящих настроек нет",
+          clear: "Очистить поиск",
+        },
         sections: {
           checks: "Проверки",
           pipeline: "Пайплайн",
