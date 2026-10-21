@@ -1083,6 +1083,12 @@ export const en = {
           failedAccessible: "Checks failed",
           runningAccessible: "Checks running",
         },
+        search: {
+          placeholder: "Search settings",
+          results: "Results",
+          noResults: "No matching settings",
+          clear: "Clear search",
+        },
         sections: {
           checks: "Checks",
           pipeline: "Pipeline",
