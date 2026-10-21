@@ -622,6 +622,9 @@ export const zhCN: TranslationResources = {
       empty: {
         noCommands: "此 workspace 没有运行 setup 命令。",
       },
+      compactTitle: "压缩上下文？",
+      compactMessage: "这将让 agent 压缩当前会话的上下文，之后会话继续。",
+      compactConfirm: "压缩上下文",
       accessibility: {
         noCommands: "此 workspace 没有运行 setup 命令",
         log: "Workspace setup 日志",

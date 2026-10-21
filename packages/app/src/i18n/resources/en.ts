@@ -626,6 +626,10 @@ export const en = {
       empty: {
         noCommands: "No setup commands ran for this workspace.",
       },
+      compactTitle: "Compact context?",
+      compactMessage:
+        "This asks the agent to compact its conversation context. The session continues afterwards.",
+      compactConfirm: "Compact context",
       accessibility: {
         noCommands: "No setup commands ran for this workspace",
         log: "Workspace setup log",

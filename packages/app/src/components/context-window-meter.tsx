@@ -6,6 +6,8 @@ import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsCompactFormFactor } from "@/constants/layout";
 import { useHostReportsUsage } from "@/usage";
+import { useCompactContext } from "@/hooks/use-compact-context";
+import { Button } from "@/components/ui/button";
 import { ContextWindowDetails } from "./context-window-details";
 import { ContextWindowSheet } from "./context-window-sheet";
 
@@ -117,6 +119,14 @@ export function ContextWindowMeter({
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const openSheet = useCallback(() => setIsSheetOpen(true), []);
   const closeSheet = useCallback(() => setIsSheetOpen(false), []);
+  const { canCompact, requestCompact } = useCompactContext({ serverId, agentId });
+  const handleDesktopPress = useCallback(() => {
+    void requestCompact();
+  }, [requestCompact]);
+  const handleSheetCompact = useCallback(() => {
+    closeSheet();
+    void requestCompact();
+  }, [closeSheet, requestCompact]);
   const percentage =
     maxTokens !== null && usedTokens !== null ? getUsagePercentage(maxTokens, usedTokens) : null;
   const geometry = getMeterGeometry(showPercentage, glyphSize);
@@ -219,6 +229,11 @@ export function ContextWindowMeter({
             showTitle={false}
             refreshable
           />
+          {canCompact ? (
+            <Button onPress={handleSheetCompact} testID="context-window-compact">
+              {t("contextWindow.compactConfirm")}
+            </Button>
+          ) : null}
         </ContextWindowSheet>
       </>
     );
@@ -232,6 +247,7 @@ export function ContextWindowMeter({
           testID="context-window-meter"
           accessibilityRole="image"
           accessibilityLabel={accessibilityLabel}
+          onPress={canCompact ? handleDesktopPress : undefined}
         >
           {ring}
           {percentageLabel}
