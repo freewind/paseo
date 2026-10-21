@@ -13,6 +13,12 @@ export type ConnectionProbeState =
 export interface SelectBestConnectionInput {
   candidates: ConnectionCandidate[];
   probeByConnectionId: Map<string, ConnectionProbeState>;
+  /**
+   * The user's hand-picked connection. Reachable preferred wins outright; only an absent
+   * or unreachable preferred falls back to lowest-latency selection, so a manual choice
+   * never traps the app on a dead connection.
+   */
+  preferredConnectionId?: string | null;
 }
 
 function getAvailableLatency(input: {
@@ -27,6 +33,15 @@ export function selectBestConnection(input: SelectBestConnectionInput): string |
   const { candidates, probeByConnectionId } = input;
   if (candidates.length === 0) {
     return null;
+  }
+
+  const preferred = input.preferredConnectionId;
+  if (
+    preferred &&
+    candidates.some((candidate) => candidate.connectionId === preferred) &&
+    getAvailableLatency({ connectionId: preferred, probeByConnectionId }) !== null
+  ) {
+    return preferred;
   }
 
   let bestConnectionId: string | null = null;

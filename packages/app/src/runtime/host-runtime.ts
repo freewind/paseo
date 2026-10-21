@@ -1,4 +1,5 @@
 import { useSyncExternalStore, useMemo } from "react";
+import { randomUUID } from "expo-crypto";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import equal from "fast-deep-equal/es6";
 import {
@@ -937,6 +938,7 @@ export class HostRuntimeController {
         const nextConnectionId = selectBestConnection({
           candidates: buildConnectionCandidates(this.host),
           probeByConnectionId,
+          preferredConnectionId: this.host.preferredConnectionId,
         });
         if (nextConnectionId) {
           await this.switchToConnection({
@@ -958,6 +960,7 @@ export class HostRuntimeController {
         const nextConnectionId = selectBestConnection({
           candidates: buildConnectionCandidates(this.host),
           probeByConnectionId,
+          preferredConnectionId: this.host.preferredConnectionId,
         });
         if (nextConnectionId && nextConnectionId !== currentActiveConnectionId) {
           await this.switchToConnection({
@@ -2174,6 +2177,47 @@ export class HostRuntimeStore {
     await this.persistHosts();
   }
 
+  async setPreferredConnection(serverId: string, connectionId: string): Promise<void> {
+    const host = this.hosts.find((candidate) => candidate.serverId === serverId);
+    if (!host) return;
+    if (!host.connections.some((conn) => conn.id === connectionId)) return;
+    if (host.preferredConnectionId === connectionId) return;
+    const now = new Date().toISOString();
+    const next = this.hosts.map((candidate) =>
+      candidate.serverId === serverId
+        ? { ...candidate, preferredConnectionId: connectionId, updatedAt: now }
+        : candidate,
+    );
+    this.setHostsAndSync(next);
+    await this.persistHosts();
+    await this.runProbeCycleNow().catch(() => undefined);
+  }
+
+  async updateConnection(input: { serverId: string; connection: HostConnection }): Promise<void> {
+    const host = this.hosts.find((candidate) => candidate.serverId === input.serverId);
+    if (!host) return;
+    if (!host.connections.some((conn) => conn.id === input.connection.id)) return;
+    await this.upsertHostConnection({
+      serverId: input.serverId,
+      connection: input.connection,
+      existingClient: this.getClient(input.serverId) ?? undefined,
+    });
+    await this.runProbeCycleNow().catch(() => undefined);
+  }
+
+  async duplicateConnection(serverId: string, connectionId: string): Promise<void> {
+    const host = this.hosts.find((candidate) => candidate.serverId === serverId);
+    const source = host?.connections.find((conn) => conn.id === connectionId);
+    if (!host || !source) return;
+    const copy: HostConnection = { ...source, id: `${source.type}:${randomUUID()}` };
+    await this.upsertHostConnection({
+      serverId,
+      connection: copy,
+      existingClient: this.getClient(serverId) ?? undefined,
+    });
+    await this.runProbeCycleNow().catch(() => undefined);
+  }
+
   private async upsertHostConnection(input: {
     serverId: string;
     label?: string;
@@ -2852,6 +2896,9 @@ export interface HostMutations {
   setHostBadgeDisplay: (serverId: string, badgeDisplay: HostBadgeDisplay) => Promise<void>;
   removeHost: (serverId: string) => Promise<void>;
   removeConnection: (serverId: string, connectionId: string) => Promise<void>;
+  setPreferredConnection: (serverId: string, connectionId: string) => Promise<void>;
+  updateConnection: (input: { serverId: string; connection: HostConnection }) => Promise<void>;
+  duplicateConnection: (serverId: string, connectionId: string) => Promise<void>;
 }
 
 export function useHostMutations(): HostMutations {
@@ -2868,6 +2915,11 @@ export function useHostMutations(): HostMutations {
         store.setHostBadgeDisplay(serverId, badgeDisplay),
       removeHost: (serverId) => store.removeHost(serverId),
       removeConnection: (serverId, connectionId) => store.removeConnection(serverId, connectionId),
+      setPreferredConnection: (serverId, connectionId) =>
+        store.setPreferredConnection(serverId, connectionId),
+      updateConnection: (input) => store.updateConnection(input),
+      duplicateConnection: (serverId, connectionId) =>
+        store.duplicateConnection(serverId, connectionId),
     }),
     [store],
   );
