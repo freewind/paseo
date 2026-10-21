@@ -14,6 +14,11 @@ import {
 
 export interface AssistantCommentController {
   requestComment: (blockText: string) => void;
+  /**
+   * Adds the selection (or whole block) to the agent's memos. Absent when the host does not
+   * support memos, and the menu hides the entry accordingly.
+   */
+  requestAddToTodo?: (blockText: string) => void;
 }
 
 const AssistantCommentContext = createContext<AssistantCommentController | null>(null);
@@ -28,10 +33,16 @@ export function useAssistantComment(): AssistantCommentController | null {
 
 interface AssistantCommentProviderProps {
   onCommit: (input: { blockText: string; comment: string; sendNow: boolean }) => void;
+  /** Present when the host supports memos; adds the selection to the memo list. */
+  onAddToTodo?: (blockText: string) => void;
   children: ReactNode;
 }
 
-export function AssistantCommentProvider({ onCommit, children }: AssistantCommentProviderProps) {
+export function AssistantCommentProvider({
+  onCommit,
+  onAddToTodo,
+  children,
+}: AssistantCommentProviderProps) {
   const [request, setRequest] = useState<AssistantCommentRequest | null>(null);
   const nextId = useRef(1);
 
@@ -68,7 +79,10 @@ export function AssistantCommentProvider({ onCommit, children }: AssistantCommen
     [attachComment],
   );
 
-  const controller = useMemo(() => ({ requestComment }), [requestComment]);
+  const controller = useMemo<AssistantCommentController>(
+    () => ({ requestComment, requestAddToTodo: onAddToTodo }),
+    [requestComment, onAddToTodo],
+  );
 
   return (
     <AssistantCommentContext.Provider value={controller}>

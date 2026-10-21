@@ -114,6 +114,8 @@ export const en = {
     menu: {
       item: "Comment",
       itemSelected: "Comment on selection",
+      addToTodo: "Add to To-dos",
+      addToTodoSelected: "Add selection to To-dos",
       title: "Comment",
     },
     sheet: {
@@ -366,6 +368,8 @@ export const en = {
     delete: "Delete memo",
     markDone: "Mark as done",
     markNotDone: "Mark as not done",
+    addedToTodo: "Added to To-dos",
+    failedToAdd: "Failed to add to To-dos",
     attachImage: "Attach image",
   },
   message: {
