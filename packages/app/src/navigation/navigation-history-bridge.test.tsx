@@ -126,19 +126,25 @@ describe("NavigationHistoryBridge", () => {
     expect(entries[1].target).toEqual({ kind: "agent", agentId: "agent-2" });
   });
 
-  it("records a page hop with no workspace context", () => {
+  it("does not record a page hop with no workspace context", () => {
     render();
     observe("/settings", { kind: "agent", agentId: "agent-1" });
 
     const entries = recordedEntries();
-    expect(entries).toHaveLength(2);
-    expect(entries[1]).toEqual({
-      pathname: "/settings",
-      serverId: null,
-      workspaceId: null,
-      target: null,
-      tabId: null,
-    });
+    expect(entries).toHaveLength(1);
+    expect(entries[0].pathname).toBe(WORKSPACE_PATH);
+  });
+
+  it("records agent chats across a page in between", () => {
+    render();
+    observe("/settings", null);
+    observe(WORKSPACE_PATH, { kind: "agent", agentId: "agent-2" }, "agent_agent-2");
+
+    const entries = recordedEntries();
+    expect(entries.map((entry) => entry.target)).toEqual([
+      { kind: "agent", agentId: "agent-1" },
+      { kind: "agent", agentId: "agent-2" },
+    ]);
   });
 
   it("ignores repeated observations without changes", () => {
@@ -199,52 +205,21 @@ describe("NavigationHistoryBridge", () => {
     expect(navigationHistoryStore.getSnapshot().cursor).toBe(0);
   });
 
-  it("replays a back jump to a page entry through router.navigate", () => {
-    render();
-    observe("/settings", null);
-    observe("/sessions", null);
-
-    act(() => {
-      navigationHistoryStore.navigateBack();
-    });
-
-    expect(mocks.routerNavigate).toHaveBeenCalledWith("/settings");
-    expect(mocks.navigateToWorkspace).not.toHaveBeenCalled();
-
-    observe("/settings", null);
-
-    expect(replay()).toBeNull();
-    expect(recordedEntries()).toHaveLength(3);
-  });
-
-  it("preserves focus when replaying a workspace entry without a target", () => {
-    mocks.activeTarget = null;
-    render();
-    observe("/settings", null);
-
-    act(() => {
-      navigationHistoryStore.navigateBack();
-    });
-
-    expect(mocks.navigateToWorkspace).toHaveBeenCalledWith({
-      serverId: "server-1",
-      workspaceId: "workspace-a",
-      preserveFocus: true,
-    });
-  });
-
   it("discards intermediate observations while a replay is in flight", () => {
     render();
-    observe("/settings", null);
+    observe(WORKSPACE_PATH, { kind: "agent", agentId: "agent-2" }, "agent_agent-2");
 
     act(() => {
       navigationHistoryStore.navigateBack();
     });
 
-    // The workspace route changed, but to a different workspace than the target.
+    // The route changed, but to a different workspace than the target.
     observe("/h/server-1/workspace/workspace-b", { kind: "agent", agentId: "agent-9" });
 
-    expect(recordedEntries().map((entry) => entry.pathname)).toEqual([WORKSPACE_PATH, "/settings"]);
+    expect(recordedEntries().map((entry) => entry.target)).toEqual([
+      { kind: "agent", agentId: "agent-1" },
+      { kind: "agent", agentId: "agent-2" },
+    ]);
     expect(replay()).not.toBeNull();
   });
 
@@ -269,11 +244,11 @@ describe("NavigationHistoryBridge", () => {
     });
   });
 
-  it("replays a blank tab entry with its remembered instance", () => {
-    mocks.activeTarget = { kind: "new_tab" };
+  it("replays an agent entry with its remembered instance", () => {
+    mocks.activeTarget = { kind: "agent", agentId: "agent-1" };
     mocks.activeTabId = "tab_1";
     render();
-    observe(WORKSPACE_PATH, { kind: "agent", agentId: "agent-1" });
+    observe(WORKSPACE_PATH, { kind: "agent", agentId: "agent-2" }, "agent_agent-2");
 
     act(() => {
       navigationHistoryStore.navigateBack();
@@ -282,29 +257,29 @@ describe("NavigationHistoryBridge", () => {
     expect(mocks.navigateToWorkspace).toHaveBeenCalledWith({
       serverId: "server-1",
       workspaceId: "workspace-a",
-      target: { kind: "new_tab" },
+      target: { kind: "agent", agentId: "agent-1" },
       tabId: "tab_1",
     });
 
     // The remembered instance is still open: the jump settles on it.
-    observe(WORKSPACE_PATH, { kind: "new_tab" }, "tab_1");
+    observe(WORKSPACE_PATH, { kind: "agent", agentId: "agent-1" }, "tab_1");
 
     expect(replay()).toBeNull();
     expect(recordedEntries()).toHaveLength(2);
   });
 
-  it("settles a blank tab jump that had to create a fresh instance", () => {
-    mocks.activeTarget = { kind: "new_tab" };
+  it("settles a jump that had to open a fresh tab for the agent", () => {
+    mocks.activeTarget = { kind: "agent", agentId: "agent-1" };
     mocks.activeTabId = "tab_1";
     render();
-    observe(WORKSPACE_PATH, { kind: "agent", agentId: "agent-1" });
+    observe(WORKSPACE_PATH, { kind: "agent", agentId: "agent-2" }, "agent_agent-2");
 
     act(() => {
       navigationHistoryStore.navigateBack();
     });
 
-    // The remembered tab was closed, so the jump opened another blank tab.
-    observe(WORKSPACE_PATH, { kind: "new_tab" }, "tab_9");
+    // The remembered tab was closed, so the jump opened another tab for the agent.
+    observe(WORKSPACE_PATH, { kind: "agent", agentId: "agent-1" }, "tab_9");
 
     const snapshot = navigationHistoryStore.getSnapshot();
     expect(snapshot.replay).toBeNull();

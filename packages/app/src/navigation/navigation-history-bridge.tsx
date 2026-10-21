@@ -67,14 +67,16 @@ function applyEntry(entry: NavigationHistoryEntry): void {
 }
 
 /**
- * Records visited positions (page + focused tab) into the navigation history
- * and performs back/forward replay. Mounted once at the root layout.
+ * Records arrivals at agent chats (page + focused tab) into the navigation
+ * history and performs back/forward replay. Mounted once at the root layout.
  *
  * Recording observes rendered state rather than individual navigation calls so
  * every route into an agent — sidebar, tab bar, notification — lands in the
- * same history. While a replay is in flight, observations are held until the
- * target state appears (see the store), which keeps intermediate states of the
- * jump itself out of the history.
+ * same history. Positions that are not a main agent chat are dropped by the
+ * store, so pages and other tab kinds never become a step to walk back to.
+ * While a replay is in flight, observations are held until the target state
+ * appears (see the store), which keeps intermediate states of the jump itself
+ * out of the history.
  */
 export function NavigationHistoryBridge() {
   const pathname = usePathname();

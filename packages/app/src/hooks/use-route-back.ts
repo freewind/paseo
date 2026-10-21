@@ -11,9 +11,9 @@ export interface RouteBack {
 /**
  * 侧栏历史导航的可用状态与跳转动作。
  *
- * 历史来自 navigation-history-store：它同时记录页面路由和 workspace 内的
- * 活动 tab，所以同 workspace 里手动切换 Chat 也算一步历史——纯路由的
- * `canGoBack()` 看不到这些切换。跳转由 NavigationHistoryBridge 回放完成，
+ * 历史来自 navigation-history-store：每一步都是主 agent chat，同一 workspace
+ * 里手动切换 Chat 也算一步——纯路由的 `canGoBack()` 看不到这些切换，而文件、
+ * 终端、设置页等其它页面不入历史。跳转由 NavigationHistoryBridge 回放完成，
  * 这里只移动历史游标。
  */
 export function useRouteBack(): RouteBack {
