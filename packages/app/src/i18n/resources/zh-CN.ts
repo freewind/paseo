@@ -126,6 +126,7 @@ export const zhCN: TranslationResources = {
       quote: "引用",
       placeholder: "写下你的评论",
       attach: "附加",
+      sendNow: "直接发送",
     },
   },
   composer: {

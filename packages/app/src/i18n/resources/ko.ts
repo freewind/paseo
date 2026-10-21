@@ -126,6 +126,7 @@ export const ko: TranslationResources = {
       quote: "인용",
       placeholder: "댓글을 입력하세요",
       attach: "첨부",
+      sendNow: "바로 보내기",
     },
   },
   composer: {

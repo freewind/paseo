@@ -126,6 +126,7 @@ export const ar: TranslationResources = {
       quote: "اقتباس",
       placeholder: "اكتب تعليقك",
       attach: "إرفاق",
+      sendNow: "إرسال الآن",
     },
   },
   composer: {

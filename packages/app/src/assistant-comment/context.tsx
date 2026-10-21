@@ -27,7 +27,7 @@ export function useAssistantComment(): AssistantCommentController | null {
 }
 
 interface AssistantCommentProviderProps {
-  onCommit: (input: { blockText: string; comment: string }) => void;
+  onCommit: (input: { blockText: string; comment: string; sendNow: boolean }) => void;
   children: ReactNode;
 }
 
@@ -49,15 +49,23 @@ export function AssistantCommentProvider({ onCommit, children }: AssistantCommen
   }, []);
 
   const attachComment = useCallback(
-    (comment: string) => {
+    (comment: string, sendNow: boolean) => {
       setRequest((current) => {
         if (current) {
-          onCommit({ blockText: current.blockText, comment });
+          onCommit({ blockText: current.blockText, comment, sendNow });
         }
         return null;
       });
     },
     [onCommit],
+  );
+  const handleAttach = useCallback(
+    (comment: string) => attachComment(comment, false),
+    [attachComment],
+  );
+  const handleSend = useCallback(
+    (comment: string) => attachComment(comment, true),
+    [attachComment],
   );
 
   const controller = useMemo(() => ({ requestComment }), [requestComment]);
@@ -65,7 +73,12 @@ export function AssistantCommentProvider({ onCommit, children }: AssistantCommen
   return (
     <AssistantCommentContext.Provider value={controller}>
       {children}
-      <AssistantCommentSheet request={request} onCancel={cancelComment} onAttach={attachComment} />
+      <AssistantCommentSheet
+        request={request}
+        onCancel={cancelComment}
+        onAttach={handleAttach}
+        onSend={handleSend}
+      />
     </AssistantCommentContext.Provider>
   );
 }

@@ -127,6 +127,7 @@ export const es: TranslationResources = {
       quote: "Cita",
       placeholder: "Escribe tu comentario",
       attach: "Adjuntar",
+      sendNow: "Enviar ahora",
     },
   },
   composer: {

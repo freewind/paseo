@@ -127,6 +127,7 @@ export const ptBR: TranslationResources = {
       quote: "Citação",
       placeholder: "Escreva seu comentário",
       attach: "Anexar",
+      sendNow: "Enviar agora",
     },
   },
   composer: {

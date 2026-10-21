@@ -35,11 +35,40 @@ afterEach(cleanup);
 
 const request: AssistantCommentRequest = { id: 1, blockText: "some claim" };
 
-function renderSheet(onAttach = vi.fn()) {
-  render(<AssistantCommentSheet request={request} onCancel={vi.fn()} onAttach={onAttach} />);
+function renderSheet(onAttach = vi.fn(), onSend = vi.fn()) {
+  render(
+    <AssistantCommentSheet
+      request={request}
+      onCancel={vi.fn()}
+      onAttach={onAttach}
+      onSend={onSend}
+    />,
+  );
   const input = screen.getByTestId("assistant-comment-input");
-  return { input, onAttach };
+  return { input, onAttach, onSend };
 }
+
+describe("AssistantCommentSheet send now", () => {
+  it("sends the comment instead of attaching it", () => {
+    const { input, onAttach, onSend } = renderSheet();
+    fireEvent.change(input, { target: { value: "looks right" } });
+
+    fireEvent.click(screen.getByTestId("assistant-comment-send"));
+
+    expect(onSend).toHaveBeenCalledExactlyOnceWith("looks right");
+    expect(onAttach).not.toHaveBeenCalled();
+  });
+
+  it("attaches the comment when the attach button is pressed", () => {
+    const { input, onAttach, onSend } = renderSheet();
+    fireEvent.change(input, { target: { value: "looks right" } });
+
+    fireEvent.click(screen.getByTestId("assistant-comment-attach"));
+
+    expect(onAttach).toHaveBeenCalledExactlyOnceWith("looks right");
+    expect(onSend).not.toHaveBeenCalled();
+  });
+});
 
 describe("AssistantCommentSheet keyboard submit", () => {
   it("attaches the comment when Enter is pressed with text", () => {

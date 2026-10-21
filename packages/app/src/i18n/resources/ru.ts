@@ -127,6 +127,7 @@ export const ru: TranslationResources = {
       quote: "Цитата",
       placeholder: "Напишите комментарий",
       attach: "Прикрепить",
+      sendNow: "Отправить сейчас",
     },
   },
   composer: {

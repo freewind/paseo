@@ -127,6 +127,7 @@ export const ja: TranslationResources = {
       quote: "引用",
       placeholder: "コメントを入力",
       attach: "添付",
+      sendNow: "今すぐ送信",
     },
   },
   composer: {
