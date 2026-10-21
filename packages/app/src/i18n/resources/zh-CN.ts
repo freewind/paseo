@@ -347,6 +347,13 @@ export const zhCN: TranslationResources = {
       runningAgent: "此 Agent 仍在运行。归档会停止该 Agent。",
       archive: "归档",
     },
+    deleteSheet: {
+      confirmTitle: "删除会话？",
+      confirmMessage: "永久删除“{{agent}}”？它将从硬盘上移除，且无法撤销。",
+      delete: "删除",
+      deleting: "正在删除…",
+      failed: "删除会话失败",
+    },
   },
   agentMemos: {
     toggle: "备忘录",

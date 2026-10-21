@@ -348,6 +348,14 @@ export const en = {
       runningAgent: "This agent is still running. Archiving it will stop the agent.",
       archive: "Archive",
     },
+    deleteSheet: {
+      confirmTitle: "Delete session?",
+      confirmMessage:
+        'Delete "{{agent}}" permanently? It will be removed from disk and cannot be undone.',
+      delete: "Delete",
+      deleting: "Deleting…",
+      failed: "Failed to delete session",
+    },
   },
   agentMemos: {
     toggle: "Memos",

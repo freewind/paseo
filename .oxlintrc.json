@@ -154,6 +154,7 @@
         "packages/app/src/git/use-pr-status-query.ts",
         "packages/app/src/git/use-status-query.ts",
         "packages/app/src/hooks/use-archive-agent.ts",
+        "packages/app/src/hooks/use-delete-agent.ts",
         "packages/app/src/hooks/use-agent-autocomplete.ts",
         "packages/app/src/hooks/use-agent-commands-query.ts",
         "packages/app/src/hooks/use-agent-history.ts",
