@@ -1809,7 +1809,7 @@ const permissionStyles = StyleSheet.create((theme) => ({
     color: theme.colors.foregroundMuted,
   },
   optionsContainer: {
-    gap: theme.spacing[2],
+    gap: theme.spacing[3],
   },
   optionsContainerDesktop: {
     flexDirection: "row",
@@ -1820,7 +1820,7 @@ const permissionStyles = StyleSheet.create((theme) => ({
   },
   optionButton: {
     paddingVertical: theme.spacing[2],
-    paddingHorizontal: theme.spacing[3],
+    paddingHorizontal: theme.spacing[4],
     borderRadius: theme.borderRadius.md,
     alignItems: "center",
     borderWidth: theme.borderWidth[1],
