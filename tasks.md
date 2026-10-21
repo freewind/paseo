@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-21 14:16
+最近一次保存：2026-10-21 23:31
 
 ---
 
@@ -110,3 +110,12 @@ Notes：
 - 最近保存：2026-10-21 14:16
 
 navigation-history-store 回放时，目标 agent tab 已关闭则回退/前进失效。需让回放能重新打开已关闭的 agent chat tab（rebindReplayInstance / NavigationHistoryBridge 一带）。
+
+---
+
+### 返回/前进历史只记 agent chat
+
+- 状态：已完成
+- 最近保存：2026-10-21 23:36
+
+侧栏「返回 / 前进」的历史只允许包含主 agent chat（target.kind === "agent"），忽略其它类型页面：provider_subagent、draft、new_tab、terminal、browser、files、changes_tree、working_diff、commit_diff、pull_request、plugin、setup，以及所有非 workspace 页面路由（/settings 等）。过滤放在 navigation-history-store 的 recordNavigation 入口，与最近访问共用同一条判定。
