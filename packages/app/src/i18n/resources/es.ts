@@ -381,6 +381,7 @@ export const es: TranslationResources = {
     addedToTodo: "Añadido a tareas",
     failedToAdd: "Error al añadir a tareas",
     attachImage: "Adjuntar imagen",
+    pasteFailed: "Error al pegar la imagen",
   },
   message: {
     diagram: {

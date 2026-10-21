@@ -381,6 +381,7 @@ export const fr: TranslationResources = {
     addedToTodo: "Ajouté aux tâches",
     failedToAdd: "Échec de l’ajout aux tâches",
     attachImage: "Joindre une image",
+    pasteFailed: "Échec du collage de l’image",
   },
   message: {
     diagram: {

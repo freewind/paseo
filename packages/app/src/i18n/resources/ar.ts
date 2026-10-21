@@ -372,6 +372,7 @@ export const ar: TranslationResources = {
     addedToTodo: "تمت الإضافة إلى المهام",
     failedToAdd: "فشل الإضافة إلى المهام",
     attachImage: "إرفاق صورة",
+    pasteFailed: "فشل لصق الصورة",
   },
   message: {
     diagram: {

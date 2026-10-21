@@ -10,6 +10,7 @@ import { persistAttachmentFromFileUri } from "@/attachments/service";
 import { retainAttachmentForGarbageCollection } from "@/attachments/gc-retention";
 import { useAttachmentPreviewUrl } from "@/attachments/use-attachment-preview-url";
 import { EditingTextInput, type EditingTextInputHandle } from "@/components/ui/text-input";
+import { useToast } from "@/contexts/toast-context";
 import { pickAndPersistImages } from "@/composer/actions";
 import { normalizeNativePastedImages, type NativePastedFile } from "@/composer/native-pasted-image";
 import { useImageAttachmentPicker } from "@/hooks/use-image-attachment-picker";
@@ -55,6 +56,7 @@ export function AgentMemoComposer({
   canAttachImages: boolean;
 }) {
   const { t } = useTranslation();
+  const toast = useToast();
   const { pickImages } = useImageAttachmentPicker();
   const [text, setText] = useState("");
   const [images, setImages] = useState<AttachmentMetadata[]>([]);
@@ -111,25 +113,47 @@ export function AgentMemoComposer({
       });
   }, [addImages, pickImages]);
 
+  // Paste feedback: images show up the moment they land, as preview placeholders, and swap
+  // for the real thumbnails once persistence finishes. A paste that fails removes its
+  // placeholder instead of vanishing silently.
+  const [pendingImages, setPendingImages] = useState<
+    Array<{ id: string; previewUri: string | null }>
+  >([]);
+  const pasteSequenceRef = useRef(0);
+
+  const resolvePending = useCallback((pendingId: string) => {
+    setPendingImages((current) => current.filter((entry) => entry.id !== pendingId));
+  }, []);
+
+  const notifyPasteFailure = useCallback(() => {
+    // Keep the surface honest: a failed paste is visible, not swallowed.
+    toast.error(t("agentMemos.pasteFailed"));
+  }, [t, toast]);
+
   // Native clipboard paste arrives through the input; web needs the DOM paste event, which the
   // shared EditingTextInput deliberately does not forward.
   const handleNativePaste = useCallback(
     (files: readonly NativePastedFile[]) => {
+      const pendingId = `paste-${++pasteSequenceRef.current}`;
+      const previewUri = files[0]?.uri ?? null;
+      setPendingImages((current) => [...current, { id: pendingId, previewUri }]);
       void (async () => {
         try {
           const picked = normalizeNativePastedImages(files);
-          addImages(
-            await pickAndPersistImages({
-              pickImages: async () => picked,
-              persister: memoImagePersister,
-            }),
-          );
+          const next = await pickAndPersistImages({
+            pickImages: async () => picked,
+            persister: memoImagePersister,
+          });
+          resolvePending(pendingId);
+          addImages(next);
         } catch (error) {
+          resolvePending(pendingId);
           console.error("[AgentMemos] Failed to paste memo image:", error);
+          notifyPasteFailure();
         }
       })();
     },
-    [addImages],
+    [addImages, notifyPasteFailure, resolvePending],
   );
 
   useEffect(() => {
@@ -145,20 +169,45 @@ export function AgentMemoComposer({
       if (!hasText) {
         event.preventDefault();
       }
-      void filesToImageAttachments(files)
-        .then(addImages)
-        .catch((error) => {
+      // Immediate feedback: each pasted file shows its preview while persistence runs, then
+      // the real thumbnails replace the placeholders.
+      const pendingId = `paste-${++pasteSequenceRef.current}`;
+      const previewUrls = files.map((entry) => {
+        try {
+          return URL.createObjectURL(entry.file);
+        } catch {
+          return null;
+        }
+      });
+      const previewUri = previewUrls.find((url) => url !== null) ?? null;
+      setPendingImages((current) => [...current, { id: pendingId, previewUri }]);
+      void (async () => {
+        try {
+          const next = await filesToImageAttachments(files);
+          for (const url of previewUrls) {
+            if (url) URL.revokeObjectURL(url);
+          }
+          resolvePending(pendingId);
+          addImages(next);
+        } catch (error) {
+          for (const url of previewUrls) {
+            if (url) URL.revokeObjectURL(url);
+          }
+          resolvePending(pendingId);
           console.error("[AgentMemos] Failed to paste memo image:", error);
-        });
+          notifyPasteFailure();
+        }
+      })();
     };
     element.addEventListener("paste", handlePaste);
     return () => {
       element.removeEventListener("paste", handlePaste);
     };
-  }, [addImages, canAttachImages]);
+  }, [addImages, canAttachImages, notifyPasteFailure, resolvePending]);
 
   const trimmedText = text.trim();
-  const canSubmit = trimmedText.length > 0 && !isSubmitting;
+  // A paste still persisting would submit without its image, so the check waits for it.
+  const canSubmit = trimmedText.length > 0 && !isSubmitting && pendingImages.length === 0;
 
   const submit = useCallback(() => {
     if (!canSubmit) return;
@@ -229,8 +278,11 @@ export function AgentMemoComposer({
           <ThemedX size={14} />
         </Pressable>
       </View>
-      {images.length > 0 ? (
+      {images.length > 0 || pendingImages.length > 0 ? (
         <View style={styles.imageRow}>
+          {pendingImages.map((entry) => (
+            <PendingPasteImage key={entry.id} uri={entry.previewUri} />
+          ))}
           {images.map((attachment) => (
             <MemoDraftImage
               key={attachment.id}
@@ -240,6 +292,16 @@ export function AgentMemoComposer({
           ))}
         </View>
       ) : null}
+    </View>
+  );
+}
+
+/** A pasted image before persistence lands: pure local preview, no attachment behind it. */
+function PendingPasteImage({ uri }: { uri: string | null }) {
+  const source = useMemo(() => (uri ? { uri } : null), [uri]);
+  return (
+    <View style={styles.thumbnail} testID="agent-memo-pending-image">
+      {source ? <Image source={source} style={styles.thumbnailImage} /> : null}
     </View>
   );
 }

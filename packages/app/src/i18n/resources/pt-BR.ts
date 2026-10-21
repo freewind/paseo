@@ -377,6 +377,7 @@ export const ptBR: TranslationResources = {
     addedToTodo: "Adicionado às tarefas",
     failedToAdd: "Falha ao adicionar às tarefas",
     attachImage: "Anexar imagem",
+    pasteFailed: "Falha ao colar a imagem",
   },
   message: {
     diagram: {

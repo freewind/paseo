@@ -377,6 +377,7 @@ export const ru: TranslationResources = {
     addedToTodo: "Добавлено в задачи",
     failedToAdd: "Не удалось добавить в задачи",
     attachImage: "Прикрепить изображение",
+    pasteFailed: "Не удалось вставить изображение",
   },
   message: {
     diagram: {
