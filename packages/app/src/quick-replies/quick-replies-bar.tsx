@@ -162,7 +162,7 @@ const styles = StyleSheet.create((theme: Theme) => ({
     borderRadius: theme.borderRadius.full,
     borderWidth: theme.borderWidth[1],
     borderColor: theme.colors.border,
-    paddingHorizontal: theme.spacing[0.5],
+    paddingHorizontal: theme.spacing[2],
     paddingVertical: theme.spacing[0.5],
     backgroundColor: theme.colors.surface1,
   },
