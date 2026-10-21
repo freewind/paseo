@@ -109,29 +109,32 @@ The sidebar's top row holds recent visits, Back and Forward side by side
 history, not the route stack. A history entry is a pathname plus the focused
 workspace tab (`stores/navigation-history-store.ts`): switching Chat inside a
 workspace keeps the pathname, so the route stack alone cannot represent it. The
-entry also carries the tab's instance id, because blank tabs share the target
-`{kind: "new_tab"}` and have no deterministic id to be found by.
+entry also carries the tab's instance id, so two tabs sharing one target stay
+apart when the jump has to land on a specific one.
+
+Only main agent chats are recorded. Pages, drafts, blank tabs, files, terminals,
+diffs, pull requests, plugin panels, setup and provider-subagent panels are
+positions the user passes through, not somewhere Back should land, so
+`recordNavigation` drops them on the way in and no snapshot ever holds one.
+`isAgentChatEntry` is the single rule behind that, and the recent visits list
+uses the same one. A file opened from a chat and closed again therefore leaves
+no trace in the history.
 
 `navigation/navigation-history-bridge.tsx` (mounted once in the root layout)
 observes rendered state — current pathname plus the active tab of that
-route's workspace — and records every entry point into an agent into one
+route's workspace — and records every arrival at an agent chat into one
 history. Background workspace layout changes never record, because the
 selector only reads the workspace of the current pathname.
 
-Back/Forward move a cursor in the store; the bridge replays the target entry:
-workspace entries go through `navigateToWorkspace()` (with `preserveFocus` when
-the remembered focus was not an agent, so replay restores the persisted tab
-instead of forcing the attention agent open), page entries through
-`router.navigate()`. Replay passes the remembered tab instance, so a jump lands
-on the tab the user was in even when another tab shares its target; when that
-instance is gone, reveal falls back to the target — and for a blank tab, which
-has no deterministic target id, it opens a fresh blank tab instead of demanding
-one (`revealTargetInLayout`).
+Back/Forward move a cursor in the store; the bridge replays the target entry
+through `navigateToWorkspace()` with the remembered tab instance, so a jump
+lands on the tab the user was in even when another tab shares its target. When
+that instance is gone, reveal falls back to the target (`revealTargetInLayout`).
 
 While a replay is in flight the store holds observations until the target state
 appears (2s timeout, then recording resumes), which keeps intermediate states of
 the jump itself out of the history. Arrival is judged by position (pathname plus
-target), not by instance: a blank tab recreated for the jump still means the jump
+target), not by instance: a tab recreated for the jump still means the jump
 arrived, and the settled entry is rebound to the instance that showed up.
 Ordinary recording stays strict about the instance. A new navigation after Back
 truncates the forward branch, like a browser.
@@ -140,8 +143,7 @@ truncates the forward branch, like a browser.
 sidebar's `sidebar-recent-visits-menu.tsx`. Keeping it apart from that history is
 the point: the history is a path you walk back along, and walking it — or
 opening a new branch — must not lose the other agents you were just in. It holds
-main agent chats only (pages, blank tabs, files, terminals and subagent panels
-are not somewhere the user "was just in"), deduplicated per server, workspace and
+the same positions the history holds, deduplicated per server, workspace and
 agent, most recent first, and updates on real arrivals rather than on
 intermediate replay states. Rows resolve titles and workspace names from the
 session store at render time and fall back to the stored ids, so a host that is

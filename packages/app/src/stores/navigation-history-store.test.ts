@@ -20,6 +20,18 @@ function entry(
   };
 }
 
+/** A main agent chat position: the only kind of position the history records. */
+function agentEntry(
+  pathname: string,
+  agentId: string,
+  tabId = `agent_${agentId}`,
+): NavigationHistoryEntry {
+  return entry(pathname, { kind: "agent", agentId }, tabId);
+}
+
+const workspaceA = "/h/server-1/workspace/workspace-a";
+const workspaceB = "/h/server-1/workspace/workspace-b";
+
 describe("navigation history store", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -32,7 +44,7 @@ describe("navigation history store", () => {
   it("records the first position without back history", () => {
     const store = createNavigationHistoryStore();
 
-    store.recordNavigation(entry("/h/server-1/workspace/workspace-a"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-1"));
 
     const snapshot = store.getSnapshot();
     expect(snapshot.entries).toHaveLength(1);
@@ -44,8 +56,8 @@ describe("navigation history store", () => {
   it("appends a distinct entry and advances the cursor", () => {
     const store = createNavigationHistoryStore();
 
-    store.recordNavigation(entry("/h/server-1/workspace/workspace-a"));
-    store.recordNavigation(entry("/h/server-1/workspace/workspace-b"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-1"));
+    store.recordNavigation(agentEntry(workspaceB, "agent-2"));
 
     const snapshot = store.getSnapshot();
     expect(snapshot.entries).toHaveLength(2);
@@ -82,25 +94,25 @@ describe("navigation history store", () => {
 
   it("goes back and forward across recorded entries", () => {
     const store = createNavigationHistoryStore();
-    store.recordNavigation(entry("/a"));
-    store.recordNavigation(entry("/b"));
-    store.recordNavigation(entry("/c"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-a"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-b"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-c"));
 
     expect(store.navigateBack()).toBe(true);
     expect(store.getSnapshot().cursor).toBe(1);
-    expect(store.getSnapshot().replay?.entry.pathname).toBe("/b");
+    expect(store.getSnapshot().replay?.entry.target).toEqual({ kind: "agent", agentId: "agent-b" });
     expect(store.getCanGoForward()).toBe(true);
 
     expect(store.navigateForward()).toBe(true);
     expect(store.getSnapshot().cursor).toBe(2);
-    expect(store.getSnapshot().replay?.entry.pathname).toBe("/c");
+    expect(store.getSnapshot().replay?.entry.target).toEqual({ kind: "agent", agentId: "agent-c" });
     expect(store.getCanGoForward()).toBe(false);
   });
 
   it("stops at both ends of the history", () => {
     const store = createNavigationHistoryStore();
-    store.recordNavigation(entry("/a"));
-    store.recordNavigation(entry("/b"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-a"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-b"));
 
     expect(store.navigateForward()).toBe(false);
     expect(store.navigateBack()).toBe(true);
@@ -110,29 +122,32 @@ describe("navigation history store", () => {
 
   it("drops the forward branch after recording past a back jump", () => {
     const store = createNavigationHistoryStore();
-    store.recordNavigation(entry("/a"));
-    store.recordNavigation(entry("/b"));
-    store.recordNavigation(entry("/c"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-a"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-b"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-c"));
 
     store.navigateBack();
     store.navigateBack();
-    // Land on /a and let the replay settle before the user navigates again.
-    store.recordNavigation(entry("/a"));
+    // Land on agent-a and let the replay settle before the user navigates again.
+    store.recordNavigation(agentEntry(workspaceA, "agent-a"));
 
-    store.recordNavigation(entry("/d"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-d"));
 
     const snapshot = store.getSnapshot();
-    expect(snapshot.entries.map((item) => item.pathname)).toEqual(["/a", "/d"]);
+    expect(snapshot.entries.map((item) => item.target)).toEqual([
+      { kind: "agent", agentId: "agent-a" },
+      { kind: "agent", agentId: "agent-d" },
+    ]);
     expect(store.getCanGoForward()).toBe(false);
   });
 
   it("accepts the replay target without appending an entry", () => {
     const store = createNavigationHistoryStore();
-    store.recordNavigation(entry("/a"));
-    store.recordNavigation(entry("/b"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-a"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-b"));
 
     store.navigateBack();
-    store.recordNavigation(entry("/a"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-a"));
 
     const snapshot = store.getSnapshot();
     expect(snapshot.entries).toHaveLength(2);
@@ -142,42 +157,48 @@ describe("navigation history store", () => {
 
   it("discards observations that do not match an in-flight replay", () => {
     const store = createNavigationHistoryStore();
-    store.recordNavigation(entry("/a"));
-    store.recordNavigation(entry("/b"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-a"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-b"));
 
     store.navigateBack();
     // Intermediate state observed while the jump is still settling.
-    store.recordNavigation(entry("/partial"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-passing"));
 
     const snapshot = store.getSnapshot();
-    expect(snapshot.entries.map((item) => item.pathname)).toEqual(["/a", "/b"]);
+    expect(snapshot.entries.map((item) => item.target)).toEqual([
+      { kind: "agent", agentId: "agent-a" },
+      { kind: "agent", agentId: "agent-b" },
+    ]);
     expect(snapshot.replay).not.toBeNull();
   });
 
   it("resumes recording after the replay timeout expires", () => {
     const store = createNavigationHistoryStore({ replayTimeoutMs: 500 });
-    store.recordNavigation(entry("/a"));
-    store.recordNavigation(entry("/b"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-a"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-b"));
 
     store.navigateBack();
     vi.advanceTimersByTime(500);
 
     expect(store.getSnapshot().replay).toBeNull();
-    store.recordNavigation(entry("/c"));
-    expect(store.getSnapshot().entries.map((item) => item.pathname)).toEqual(["/a", "/c"]);
+    store.recordNavigation(agentEntry(workspaceA, "agent-c"));
+    expect(store.getSnapshot().entries.map((item) => item.target)).toEqual([
+      { kind: "agent", agentId: "agent-a" },
+      { kind: "agent", agentId: "agent-c" },
+    ]);
   });
 
   it("caps the history length", () => {
     const store = createNavigationHistoryStore();
 
     for (let index = 0; index < 120; index += 1) {
-      store.recordNavigation(entry(`/page-${index}`));
+      store.recordNavigation(agentEntry(workspaceA, `agent-${index}`));
     }
 
     const snapshot = store.getSnapshot();
     expect(snapshot.entries).toHaveLength(100);
     expect(snapshot.cursor).toBe(99);
-    expect(snapshot.entries[0].pathname).toBe("/page-20");
+    expect(snapshot.entries[0].target).toEqual({ kind: "agent", agentId: "agent-20" });
     expect(store.navigateBack()).toBe(true);
   });
 
@@ -202,15 +223,11 @@ describe("navigation history store", () => {
     expect(store.getSnapshot().entries).toHaveLength(1);
   });
 
-  it("keeps two blank tabs apart, because the instance is the position", () => {
+  it("keeps two tabs on the same agent apart, because the instance is the position", () => {
     const store = createNavigationHistoryStore();
 
-    store.recordNavigation(
-      entry("/h/server-1/workspace/workspace-a", { kind: "new_tab" }, "tab_1"),
-    );
-    store.recordNavigation(
-      entry("/h/server-1/workspace/workspace-a", { kind: "new_tab" }, "tab_2"),
-    );
+    store.recordNavigation(agentEntry(workspaceA, "agent-1", "tab_1"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-1", "tab_2"));
 
     const snapshot = store.getSnapshot();
     expect(snapshot.entries).toHaveLength(2);
@@ -218,24 +235,14 @@ describe("navigation history store", () => {
     expect(store.getCanGoBack()).toBe(true);
   });
 
-  it("settles a jump onto a blank tab that had to be created again", () => {
+  it("settles a jump onto an agent tab that had to be opened again", () => {
     const store = createNavigationHistoryStore();
-    store.recordNavigation(
-      entry("/h/server-1/workspace/workspace-a", { kind: "new_tab" }, "tab_1"),
-    );
-    store.recordNavigation(
-      entry(
-        "/h/server-1/workspace/workspace-a",
-        { kind: "agent", agentId: "agent-1" },
-        "agent_agent-1",
-      ),
-    );
+    store.recordNavigation(agentEntry(workspaceA, "agent-1", "tab_1"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-2", "agent_agent-2"));
 
     store.navigateBack();
-    // The recorded instance is gone, so the jump opened a fresh blank tab.
-    store.recordNavigation(
-      entry("/h/server-1/workspace/workspace-a", { kind: "new_tab" }, "tab_9"),
-    );
+    // The recorded instance is gone, so the jump opened another tab for the agent.
+    store.recordNavigation(agentEntry(workspaceA, "agent-1", "tab_9"));
 
     const snapshot = store.getSnapshot();
     expect(snapshot.replay).toBeNull();
@@ -246,21 +253,11 @@ describe("navigation history store", () => {
 
   it("keeps the recorded instance when the jump finds it again", () => {
     const store = createNavigationHistoryStore();
-    store.recordNavigation(
-      entry("/h/server-1/workspace/workspace-a", { kind: "new_tab" }, "tab_1"),
-    );
-    store.recordNavigation(
-      entry(
-        "/h/server-1/workspace/workspace-a",
-        { kind: "agent", agentId: "agent-1" },
-        "agent_agent-1",
-      ),
-    );
+    store.recordNavigation(agentEntry(workspaceA, "agent-1", "tab_1"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-2", "agent_agent-2"));
 
     store.navigateBack();
-    store.recordNavigation(
-      entry("/h/server-1/workspace/workspace-a", { kind: "new_tab" }, "tab_1"),
-    );
+    store.recordNavigation(agentEntry(workspaceA, "agent-1", "tab_1"));
 
     const snapshot = store.getSnapshot();
     expect(snapshot.replay).toBeNull();
@@ -270,7 +267,7 @@ describe("navigation history store", () => {
 
   it("resets to an empty history", () => {
     const store = createNavigationHistoryStore();
-    store.recordNavigation(entry("/a"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-a"));
     store.navigateBack();
 
     store.reset();
@@ -282,31 +279,48 @@ describe("navigation history store", () => {
     expect(store.getCanGoBack()).toBe(false);
   });
 
+  it("records main agent chats and ignores every other position", () => {
+    const store = createNavigationHistoryStore();
+    const listener = vi.fn();
+    store.subscribe(listener);
+
+    store.recordNavigation(entry("/settings"));
+    store.recordNavigation(entry(workspaceA, { kind: "new_tab" }, "tab_1"));
+    store.recordNavigation(entry(workspaceA, { kind: "draft", draftId: "d1" }, "tab_2"));
+    store.recordNavigation(entry(workspaceA, { kind: "file", path: "/repo/a.ts" }));
+    store.recordNavigation(entry(workspaceA, { kind: "terminal", terminalId: "t1" }));
+    store.recordNavigation(
+      entry(workspaceA, {
+        kind: "provider_subagent",
+        parentAgentId: "agent-a",
+        subagentId: "s1",
+      }),
+    );
+
+    expect(store.getSnapshot().entries).toEqual([]);
+    expect(store.getCanGoBack()).toBe(false);
+    expect(store.getCanGoForward()).toBe(false);
+    expect(listener).not.toHaveBeenCalled();
+
+    store.recordNavigation(agentEntry(workspaceA, "agent-a"));
+
+    expect(store.getSnapshot().entries).toHaveLength(1);
+  });
+
   it("notifies subscribers on every snapshot change", () => {
     const store = createNavigationHistoryStore();
     const listener = vi.fn();
     const unsubscribe = store.subscribe(listener);
 
-    store.recordNavigation(entry("/a"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-a"));
     expect(listener).toHaveBeenCalledTimes(1);
 
     unsubscribe();
-    store.recordNavigation(entry("/b"));
+    store.recordNavigation(agentEntry(workspaceA, "agent-b"));
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
   describe("recent agent visits", () => {
-    const workspaceA = "/h/server-1/workspace/workspace-a";
-    const workspaceB = "/h/server-1/workspace/workspace-b";
-
-    function agentEntry(
-      pathname: string,
-      agentId: string,
-      tabId = `agent_${agentId}`,
-    ): NavigationHistoryEntry {
-      return entry(pathname, { kind: "agent", agentId }, tabId);
-    }
-
     function visitIds(store: ReturnType<typeof createNavigationHistoryStore>): string[] {
       return store.getRecentAgentVisits().map((visit) => visit.agentId);
     }
@@ -367,24 +381,6 @@ describe("navigation history store", () => {
 
       expect(visitIds(store)).toEqual(["agent-b", "agent-a"]);
       expect(store.getSnapshot().replay).not.toBeNull();
-    });
-
-    it("collects only main agent chats", () => {
-      const store = createNavigationHistoryStore();
-
-      store.recordNavigation(entry("/settings"));
-      store.recordNavigation(entry(workspaceA, { kind: "new_tab" }, "tab_1"));
-      store.recordNavigation(entry(workspaceA, { kind: "file", path: "/repo/a.ts" }));
-      store.recordNavigation(entry(workspaceA, { kind: "terminal", terminalId: "t1" }));
-      store.recordNavigation(
-        entry(workspaceA, {
-          kind: "provider_subagent",
-          parentAgentId: "agent-a",
-          subagentId: "s1",
-        }),
-      );
-
-      expect(store.getRecentAgentVisits()).toEqual([]);
     });
 
     it("keeps the same agent id in different workspaces apart", () => {

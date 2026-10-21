@@ -22,8 +22,9 @@ interface SidebarBackRowProps {
 /**
  * 侧栏顶部常驻的一行导航：最近访问 + 返回 + 前进。从 Chat 打开的二级页本身没有
  * 退出按钮，把返回/前进固定在这里；没有可跳历史时保留控件并置灰，避免入口忽隐
- * 忽现。历史同时覆盖页面跳转和 workspace 内的 Chat 切换（见 useRouteBack），最近
- * 访问是另一份独立记录（见 SidebarRecentVisitsMenu）。
+ * 忽现。历史只含主 agent chat（见 useRouteBack）：文件、终端、设置页、空白 tab
+ * 都不占一步，在这些页面上按返回直接回到上一个 agent chat。最近访问是另一份独立
+ * 记录（见 SidebarRecentVisitsMenu）。
  */
 export function SidebarBackRow({ onBeforeNavigate }: SidebarBackRowProps) {
   const { t } = useTranslation();

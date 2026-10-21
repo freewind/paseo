@@ -21,14 +21,16 @@ function Probe(): React.ReactElement {
   );
 }
 
-function entry(pathname: string): NavigationHistoryEntry {
-  const isWorkspace = pathname.startsWith("/h/server-1/workspace/");
+const WORKSPACE_PATH = "/h/server-1/workspace/workspace-a";
+
+/** A main agent chat position: the only kind of position the history records. */
+function agentEntry(agentId: string): NavigationHistoryEntry {
   return {
-    pathname,
-    serverId: isWorkspace ? "server-1" : null,
-    workspaceId: isWorkspace ? (pathname.split("/")[4] ?? null) : null,
-    target: null,
-    tabId: null,
+    pathname: WORKSPACE_PATH,
+    serverId: "server-1",
+    workspaceId: "workspace-a",
+    target: { kind: "agent", agentId },
+    tabId: `agent_${agentId}`,
   };
 }
 
@@ -66,9 +68,9 @@ describe("useRouteBack", () => {
     return container?.querySelector('[data-testid="history-state"]')?.textContent ?? "";
   }
 
-  function record(pathname: string): void {
+  function record(agentId: string): void {
     act(() => {
-      navigationHistoryStore.recordNavigation(entry(pathname));
+      navigationHistoryStore.recordNavigation(agentEntry(agentId));
     });
   }
 
@@ -81,7 +83,7 @@ describe("useRouteBack", () => {
   });
 
   it("cannot go back from the first recorded position", () => {
-    record("/a");
+    record("agent-a");
     renderProbe();
 
     expect(routeBack?.canGoBack).toBe(false);
@@ -94,8 +96,8 @@ describe("useRouteBack", () => {
   });
 
   it("moves back and exposes forward once two positions exist", () => {
-    record("/a");
-    record("/b");
+    record("agent-a");
+    record("agent-b");
     renderProbe();
     expect(renderedState()).toBe("true|false");
 
@@ -119,8 +121,8 @@ describe("useRouteBack", () => {
     expect(renderedState()).toBe("false|false");
 
     act(() => {
-      navigationHistoryStore.recordNavigation(entry("/a"));
-      navigationHistoryStore.recordNavigation(entry("/b"));
+      navigationHistoryStore.recordNavigation(agentEntry("agent-a"));
+      navigationHistoryStore.recordNavigation(agentEntry("agent-b"));
     });
 
     expect(renderedState()).toBe("true|false");

@@ -9,9 +9,11 @@ import type { WorkspaceTabTarget } from "@/workspace-tabs/model";
  * One visited position: the app page plus the focused workspace tab. The tab
  * target is what makes a Chat switch visible to history — switching tabs inside
  * a workspace never changes the pathname, so the route stack alone cannot
- * represent it. `tabId` is the focused tab's instance: blank tabs share one
- * target, so their instance is the only thing that tells two of them apart when
- * the jump has to land on a specific one.
+ * represent it. `tabId` is the focused tab's instance, so two tabs sharing one
+ * target stay apart when the jump has to land on a specific one.
+ *
+ * Only main agent chats are positions the history walks: see
+ * `isAgentChatEntry`.
  */
 export interface NavigationHistoryEntry {
   pathname: string;
@@ -150,12 +152,22 @@ function rebindReplayInstance(
 }
 
 /**
- * The agent behind a position, when that position is a main agent chat. Pages,
- * blank tabs, files, terminals and subagent panels are not something the user
- * "was just in".
+ * Whether a position is a main agent chat, which is the only thing Back and
+ * Forward walk between and the only thing the recent visits list holds. Pages,
+ * blank tabs, drafts, files, terminals, diffs and subagent panels are positions
+ * the user passed through, not somewhere they "were just in".
  */
+function isAgentChatEntry(entry: NavigationHistoryEntry): entry is NavigationHistoryEntry & {
+  target: { kind: "agent"; agentId: string };
+  serverId: string;
+  workspaceId: string;
+} {
+  return entry.target?.kind === "agent" && Boolean(entry.serverId) && Boolean(entry.workspaceId);
+}
+
+/** The agent behind a position, when that position is a main agent chat. */
 function readRecentAgentVisit(entry: NavigationHistoryEntry): RecentAgentVisit | null {
-  if (entry.target?.kind !== "agent" || !entry.serverId || !entry.workspaceId) {
+  if (!isAgentChatEntry(entry)) {
     return null;
   }
   return {
@@ -246,6 +258,12 @@ export function createNavigationHistoryStore(
       tabId: trimNonEmpty(rawEntry.tabId),
       target: normalizeWorkspaceTabTarget(rawEntry.target),
     };
+
+    // Everything else the app can show — pages, drafts, blank tabs, files,
+    // terminals, diffs, subagent panels — is not a position to walk back to.
+    if (!isAgentChatEntry(entry)) {
+      return;
+    }
 
     if (snapshot.replay) {
       // Replay is in flight: the only interesting observation is arrival at the
