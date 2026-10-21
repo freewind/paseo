@@ -637,6 +637,10 @@ export const ptBR: TranslationResources = {
       empty: {
         noCommands: "Nenhum comando de configuração foi executado para este workspace.",
       },
+      compactTitle: "Compactar contexto?",
+      compactMessage:
+        "O agente será solicitado a compactar o contexto da conversa atual; a sessão continua depois.",
+      compactConfirm: "Compactar contexto",
       accessibility: {
         noCommands: "Nenhum comando de configuração foi executado para este workspace",
         log: "Log de configuração do workspace",

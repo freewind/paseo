@@ -643,6 +643,10 @@ export const es: TranslationResources = {
       empty: {
         noCommands: "No se ejecutó ningún comando de configuración para este espacio de trabajo.",
       },
+      compactTitle: "¿Compactar contexto?",
+      compactMessage:
+        "Se pedirá al agente que compacte el contexto de la conversación actual; la sesión continúa después.",
+      compactConfirm: "Compactar contexto",
       accessibility: {
         noCommands: "No se ejecutó ningún comando de configuración para este espacio de trabajo",
         log: "Registro de configuración deWorkspace",

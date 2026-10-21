@@ -9,6 +9,8 @@ import { useIsCompactFormFactor } from "@/constants/layout";
 import { isNative } from "@/constants/platform";
 import { useHostReportsUsage } from "@/usage";
 import type { Theme } from "@/styles/theme";
+import { useCompactContext } from "@/hooks/use-compact-context";
+import { Button } from "@/components/ui/button";
 import { ContextWindowDetails } from "./context-window-details";
 import { ContextWindowSheet } from "./context-window-sheet";
 import { formatContextPercentage } from "./context-window-meter.utils";
@@ -161,6 +163,14 @@ export function ContextWindowMeter({
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const openSheet = useCallback(() => setIsSheetOpen(true), []);
   const closeSheet = useCallback(() => setIsSheetOpen(false), []);
+  const { canCompact, requestCompact } = useCompactContext({ serverId, agentId });
+  const handleDesktopPress = useCallback(() => {
+    void requestCompact();
+  }, [requestCompact]);
+  const handleSheetCompact = useCallback(() => {
+    closeSheet();
+    void requestCompact();
+  }, [closeSheet, requestCompact]);
   const percentage =
     maxTokens !== null && usedTokens !== null ? getUsagePercentage(maxTokens, usedTokens) : null;
   const geometry = getMeterGeometry(showPercentage, glyphSize);
@@ -223,6 +233,11 @@ export function ContextWindowMeter({
             showTitle={false}
             refreshable
           />
+          {canCompact ? (
+            <Button onPress={handleSheetCompact} testID="context-window-compact">
+              {t("contextWindow.compactConfirm")}
+            </Button>
+          ) : null}
         </ContextWindowSheet>
       </>
     );
@@ -277,6 +292,7 @@ export function ContextWindowMeter({
           testID="context-window-meter"
           accessibilityRole="image"
           accessibilityLabel={accessibilityLabel}
+          onPress={canCompact ? handleDesktopPress : undefined}
         >
           {ring}
           {percentageLabel}

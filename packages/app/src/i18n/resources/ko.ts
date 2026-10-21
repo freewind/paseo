@@ -632,6 +632,10 @@ export const ko: TranslationResources = {
       empty: {
         noCommands: "이 워크스페이스에서 실행된 설정 명령이 없습니다.",
       },
+      compactTitle: "컨텍스트를 압축할까요?",
+      compactMessage:
+        "에이전트에 현재 대화 컨텍스트 압축을 요청합니다. 이후에도 세션은 계속됩니다.",
+      compactConfirm: "컨텍스트 압축",
       accessibility: {
         noCommands: "이 워크스페이스에서 실행된 설정 명령이 없습니다",
         log: "워크스페이스 설정 로그",

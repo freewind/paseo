@@ -631,6 +631,9 @@ export const ar: TranslationResources = {
       empty: {
         noCommands: "لم يتم تشغيل أي أوامر إعداد لمساحة العمل هذه.",
       },
+      compactTitle: "ضغط السياق؟",
+      compactMessage: "سيُطلب من الوكيل ضغط سياق المحادثة الحالي، وتستمر الجلسة بعد ذلك.",
+      compactConfirm: "ضغط السياق",
       accessibility: {
         noCommands: "لم يتم تشغيل أي أوامر إعداد لمساحة العمل هذه",
         log: "سجل إعداد Workspace",

@@ -637,6 +637,10 @@ export const ja: TranslationResources = {
       empty: {
         noCommands: "このワークスペースでセットアップコマンドは実行されませんでした。",
       },
+      compactTitle: "コンテキストを圧縮しますか？",
+      compactMessage:
+        "エージェントに現在の会話コンテキストの圧縮を依頼します。その後もセッションは続きます。",
+      compactConfirm: "コンテキストを圧縮",
       accessibility: {
         noCommands: "このワークスペースでセットアップコマンドは実行されませんでした",
         log: "ワークスペースセットアップログ",
