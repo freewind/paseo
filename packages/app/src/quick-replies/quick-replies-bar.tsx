@@ -68,6 +68,12 @@ export function QuickRepliesBar({
 
   return (
     <View style={styles.bar} testID="quick-replies-bar">
+      <View style={styles.chips}>
+        {replies.map((reply) => (
+          <QuickReplyChip key={reply.id} reply={reply} onSelect={onSelect} />
+        ))}
+        {showTitle ? null : editButton}
+      </View>
       {showTitle ? (
         <View style={styles.header}>
           <View style={styles.titleGroup}>
@@ -79,12 +85,6 @@ export function QuickRepliesBar({
           {editButton}
         </View>
       ) : null}
-      <View style={styles.chips}>
-        {replies.map((reply) => (
-          <QuickReplyChip key={reply.id} reply={reply} onSelect={onSelect} />
-        ))}
-        {showTitle ? null : editButton}
-      </View>
     </View>
   );
 }
