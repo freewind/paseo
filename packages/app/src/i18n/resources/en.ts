@@ -710,6 +710,8 @@ export const en = {
         closeOthers: "Close other tabs",
         moveToMain: "Move to main panel",
         moveToWorkspace: "Move to workspace",
+        openInEditor: "Open in editor",
+        revealFile: "Reveal in file manager",
         reloadAgent: "Reload agent",
         reloadAgentTooltip: "Reload agent to update skills, MCPs or login status.",
         markAsUnread: "Mark as unread",
@@ -2162,6 +2164,8 @@ export const en = {
     },
     editor: {
       title: "Editor",
+      preferredEditor: "Preferred editor",
+      preferredEditorHint: 'Editor used by "Open in editor" actions',
       vimKeybindings: "Vim keybindings",
       vimHint: "Applies to source files on web and desktop.",
     },

@@ -542,6 +542,8 @@ export interface WorkspaceDesktopTabsRowProps {
   onMoveAgentToWorkspace?: (agentId: string) => void;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
+  onOpenFileInEditor?: (path: string) => void;
+  onRevealFile?: (path: string) => void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
   onRenameTab: (tab: WorkspaceTabDescriptor) => void;
   onCloseTabsToLeft: (tabId: string) => Promise<void> | void;
@@ -1044,6 +1046,8 @@ function ResolvedWorkspaceDesktopTabsRow({
   onMoveAgentToWorkspace,
   onCopyTerminalId,
   onCopyFilePath,
+  onOpenFileInEditor,
+  onRevealFile,
   onReloadAgent,
   onRenameTab,
   onCloseTabsToLeft,
@@ -1122,6 +1126,8 @@ function ResolvedWorkspaceDesktopTabsRow({
     () => ({
       copyResumeCommand: t("workspace.tabs.menu.copyResumeCommand"),
       moveToWorkspace: t("workspace.tabs.menu.moveToWorkspace"),
+      openInEditor: t("workspace.tabs.menu.openInEditor"),
+      revealIn: t("workspace.tabs.menu.revealFile"),
       copyAgentId: t("workspace.tabs.menu.copyAgentId"),
       copyConversationMarkdown: t("workspace.tabs.menu.copyConversationMarkdown"),
       copyAgentAsNew: t("workspace.tabs.menu.copyAgentAsNewConversation"),
@@ -1313,6 +1319,8 @@ function ResolvedWorkspaceDesktopTabsRow({
           canCloneAgent={canCloneAgent}
           onCopyTerminalId={onCopyTerminalId}
           onCopyFilePath={onCopyFilePath}
+          onOpenFileInEditor={onOpenFileInEditor}
+          onRevealFile={onRevealFile}
           onReloadAgent={onReloadAgent}
           onRenameTab={onRenameTab}
           onCloseTabsToLeft={onCloseTabsToLeft}
@@ -1348,6 +1356,8 @@ function ResolvedWorkspaceDesktopTabsRow({
       onMoveAgentToWorkspace,
       onCopyTerminalId,
       onCopyFilePath,
+      onOpenFileInEditor,
+      onRevealFile,
       onCopyResumeCommand,
       onNavigateTab,
       onReloadAgent,
@@ -1476,6 +1486,8 @@ function ResolvedDesktopTabChip({
   onMoveAgentToWorkspace,
   onCopyTerminalId,
   onCopyFilePath,
+  onOpenFileInEditor,
+  onRevealFile,
   onReloadAgent,
   onRenameTab,
   onCloseTabsToLeft,
@@ -1507,6 +1519,8 @@ function ResolvedDesktopTabChip({
   onMoveAgentToWorkspace?: (agentId: string) => void;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
+  onOpenFileInEditor?: (path: string) => void;
+  onRevealFile?: (path: string) => void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
   onRenameTab: (tab: WorkspaceTabDescriptor) => void;
   onCloseTabsToLeft: (tabId: string) => Promise<void> | void;
@@ -1545,6 +1559,8 @@ function ResolvedDesktopTabChip({
         onMoveAgentToWorkspace,
         onCopyTerminalId,
         onCopyFilePath,
+        onOpenFileInEditor,
+        onRevealFile,
         onReloadAgent,
         onRenameTab,
         onCloseTab,
@@ -1569,6 +1585,8 @@ function ResolvedDesktopTabChip({
       onMoveAgentToWorkspace,
       onCopyTerminalId,
       onCopyFilePath,
+      onOpenFileInEditor,
+      onRevealFile,
       onCopyResumeCommand,
       labels,
       onReloadAgent,

@@ -706,6 +706,8 @@ export const zhCN: TranslationResources = {
         closeOthers: "关闭其他标签",
         moveToMain: "移至主面板",
         moveToWorkspace: "移动到工作区",
+        openInEditor: "在编辑器中打开",
+        revealFile: "在文件管理器中显示",
         reloadAgent: "重新加载 Agent",
         reloadAgentTooltip: "重新加载 Agent 以更新 skills、MCPs 或登录状态。",
         markAsUnread: "设置成未读",
@@ -2123,6 +2125,8 @@ export const zhCN: TranslationResources = {
     },
     editor: {
       title: "编辑器",
+      preferredEditor: "首选编辑器",
+      preferredEditorHint: "「在编辑器中打开」使用的编辑器",
       vimKeybindings: "Vim 键位",
       vimHint: "适用于网页和桌面端的源文件。",
     },
