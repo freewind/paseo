@@ -36,6 +36,9 @@ import {
 import { getActiveMessageSubmissions } from "@/composer/submission/model";
 import { RewindComposerRestoreProvider } from "@/components/rewind/composer-restore";
 import { AgentMemosRail } from "@/agent-memos/agent-memos-rail";
+import { useAgentMemos } from "@/agent-memos/use-agent-memos";
+import { appendMemoText, memoImagesToAttachments } from "@/agent-memos/memo-append";
+import type { AgentMemo } from "@getpaseo/protocol/messages";
 import { AgentMemosSheet } from "@/agent-memos/agent-memos-sheet";
 import { useHostFeature } from "@/runtime/host-features";
 import {
@@ -1789,14 +1792,28 @@ function ActiveAgentComposer({
   // The rail hides itself when the host has no memo support; gating here as well keeps the
   // composer from reserving a gutter for a rail that would render nothing.
   const memosSupported = useHostFeature(serverId, "agentMemos");
+  const { setMemoCompleted } = useAgentMemos({ serverId, agentId });
+  const markMemoCompleted = useCallback(
+    (memoId: string) => setMemoCompleted(memoId, true),
+    [setMemoCompleted],
+  );
   const handleMemoAppendToComposer = useCallback(
-    (memoText: string) => {
+    async (entry: AgentMemo) => {
       const current = agentInputDraft.textSource.getSnapshot();
-      const next =
-        current.trim().length > 0 ? `${current.replace(/\s+$/, "")}\n${memoText}` : memoText;
-      agentInputDraft.replaceText(next);
+      agentInputDraft.replaceText(appendMemoText(current, entry.text));
+      const metadata = await memoImagesToAttachments(entry.images).catch(() => []);
+      if (metadata.length > 0) {
+        const imageAttachments = metadata.map((item) => ({
+          kind: "image" as const,
+          metadata: item,
+        }));
+        agentInputDraft.setAttachments((attachments) => [...attachments, ...imageAttachments]);
+      }
+      if (entry.completed !== true) {
+        void markMemoCompleted(entry.id).catch(() => undefined);
+      }
     },
-    [agentInputDraft],
+    [agentInputDraft, markMemoCompleted],
   );
   const closeMemosSheet = useCallback(
     () => onMemosSheetVisibleChange(false),

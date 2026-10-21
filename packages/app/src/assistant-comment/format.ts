@@ -38,10 +38,16 @@ export function buildCommentDraftText(input: CommentDraftInput): string {
   const quoted = formatQuotedBlock(input.blockText);
   const comment = input.comment.trim();
   const appended = [quoted, comment].filter((part) => part.length > 0).join("\n\n");
-  const existing = input.existingText.replace(/[ \t]+$/gm, "").trimEnd();
+  const existing = input.existingText;
   if (appended.length === 0) {
     return existing;
   }
-  const inserted = existing.length === 0 ? appended : existing + "\n\n" + appended;
-  return inserted + APPEND_TRAILING;
+  // The existing draft is never rewritten — trimming it would eat newlines the user kept.
+  // Only the join between the two is normalized: one blank line when the draft does not
+  // already end with a newline, none when it does.
+  if (existing.length === 0) {
+    return appended + APPEND_TRAILING;
+  }
+  const join = existing.endsWith("\n") ? "\n" : "\n\n";
+  return existing + join + appended + APPEND_TRAILING;
 }
