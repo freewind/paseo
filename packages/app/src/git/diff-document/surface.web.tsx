@@ -70,6 +70,9 @@ function emptyStickyHeaderCanvasSlot(): StickyHeaderCanvasSlot {
   };
 }
 
+const EMPTY_WRAP_TOGGLE_BY_PATH: ReadonlyMap<string, { wrapped: boolean; onToggle: () => void }> =
+  new Map();
+
 export function DiffSurface(props: DiffSurfaceProps) {
   const { t } = useTranslation();
   const toast = useToast();
@@ -109,6 +112,17 @@ export function DiffSurface(props: DiffSurfaceProps) {
     ReturnType<typeof buildDiffDocumentModel>["files"]
   >([]);
   const [hasSelection, setHasSelection] = useState(false);
+  const wrapToggleByPath = useMemo(() => {
+    if (!props.fileWrapToggle) return EMPTY_WRAP_TOGGLE_BY_PATH;
+    const map = new Map<string, { wrapped: boolean; onToggle: () => void }>();
+    for (const file of interactionFiles) {
+      map.set(file.path, {
+        wrapped: props.fileWrapToggle.wrappedFor(file.path),
+        onToggle: () => props.fileWrapToggle?.onToggle(file.path),
+      });
+    }
+    return map;
+  }, [interactionFiles, props.fileWrapToggle]);
   const [contextHit, setContextHit] = useState<Extract<DiffHit, { kind: "cell" }> | null>(null);
   const [hoveredAffordance, setHoveredAffordance] = useState<{
     hit: Extract<DiffHit, { kind: "cell" }>;
@@ -832,6 +846,7 @@ export function DiffSurface(props: DiffSurfaceProps) {
                 onToggleFile={props.onToggleFile}
                 onSelectPath={props.onSelectPath}
                 canvasRendered
+                wrapToggle={wrapToggleByPath.get(file.path)}
               />
             </WebFileHeaderSection>
           ))}

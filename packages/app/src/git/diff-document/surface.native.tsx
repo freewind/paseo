@@ -76,6 +76,9 @@ const AnimatedScrollView = createAnimatedComponent(ScrollView);
 const SYSTEM_MONO = "monospace";
 const CODE_LEFT_PADDING = 8;
 
+const EMPTY_WRAP_TOGGLE_BY_PATH: ReadonlyMap<string, { wrapped: boolean; onToggle: () => void }> =
+  new Map();
+
 export function DiffSurface(props: DiffSurfaceProps) {
   const { t } = useTranslation();
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
@@ -213,6 +216,18 @@ export function DiffSurface(props: DiffSurfaceProps) {
     [fileWindowTop, model.files, viewport.height],
   );
 
+  const wrapToggleByPath = useMemo(() => {
+    if (!props.fileWrapToggle) return EMPTY_WRAP_TOGGLE_BY_PATH;
+    const map = new Map<string, { wrapped: boolean; onToggle: () => void }>();
+    for (const file of interactionFiles) {
+      map.set(file.path, {
+        wrapped: props.fileWrapToggle.wrappedFor(file.path),
+        onToggle: () => props.fileWrapToggle?.onToggle(file.path),
+      });
+    }
+    return map;
+  }, [interactionFiles, props.fileWrapToggle]);
+
   const scrollHandler = useAnimatedScrollHandler((event) => {
     scrollTop.value = event.contentOffset.y;
   });
@@ -297,6 +312,7 @@ export function DiffSurface(props: DiffSurfaceProps) {
             mode={props.mode}
             onToggleFile={props.onToggleFile}
             onSelectPath={props.onSelectPath}
+            wrapToggle={wrapToggleByPath.get(file.path)}
           />
         ))}
         {interactionFiles.map((file) => (
@@ -376,6 +392,7 @@ function NativeCanvasFileHeader({
   mode,
   onToggleFile,
   onSelectPath,
+  wrapToggle,
 }: {
   file: DiffFileSection;
   viewportWidth: number;
@@ -388,6 +405,9 @@ function NativeCanvasFileHeader({
   mode: DiffSurfaceProps["mode"];
   onToggleFile: DiffSurfaceProps["onToggleFile"];
   onSelectPath: DiffSurfaceProps["onSelectPath"];
+  wrapToggle?: DiffSurfaceProps["fileWrapToggle"] extends undefined
+    ? never
+    : { wrapped: boolean; onToggle: () => void };
 }) {
   const [active, setActive] = useState(false);
   const picture = useMemo(
@@ -426,6 +446,7 @@ function NativeCanvasFileHeader({
         onSelectPath={onSelectPath}
         canvasRendered
         onActiveChange={setActive}
+        wrapToggle={wrapToggle}
       />
     </Animated.View>
   );

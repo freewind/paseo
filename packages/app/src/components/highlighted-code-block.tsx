@@ -10,7 +10,7 @@ import {
 import { StyleSheet } from "react-native-unistyles";
 import { MarkdownTextSpan } from "@/components/markdown-text";
 import * as Clipboard from "expo-clipboard";
-import { Check, Copy } from "lucide-react-native";
+import { Check, Copy, WrapText } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import type { HighlightToken } from "@getpaseo/highlight";
 import { isNative, isWeb } from "@/constants/platform";
@@ -87,6 +87,8 @@ export const HighlightedCodeBlock = React.memo(function HighlightedCodeBlock({
 
   const isCompact = useIsCompactFormFactor();
   const [isHovered, setIsHovered] = useState(false);
+  const [wrapLines, setWrapLines] = useState(false);
+  const toggleWrap = useCallback(() => setWrapLines((current) => !current), []);
   const handlePointerEnter = useCallback(() => setIsHovered(true), []);
   const handlePointerLeave = useCallback(() => setIsHovered(false), []);
   const controlsVisible = isHovered || isNative || isCompact;
@@ -108,22 +110,36 @@ export const HighlightedCodeBlock = React.memo(function HighlightedCodeBlock({
         nestedScrollEnabled
         showsVerticalScrollIndicator
       >
-        {/* Code never wraps: the inner horizontal scroll carries long lines instead, so
-            indentation and column alignment survive on a phone-width screen. */}
-        <ScrollView
-          horizontal
-          nestedScrollEnabled
-          showsHorizontalScrollIndicator
-          contentContainerStyle={styles.horizontalContent}
-        >
+        {/* Default is no wrap: the inner horizontal scroll carries long lines, so indentation
+            and column alignment survive on a phone-width screen. Wrapping is a per-block,
+            ephemeral opt-in from the header toggle — it is never persisted. */}
+        {wrapLines ? (
           <View style={styles.codeLines}>
             {keyedLines
               ? renderCodeLines(keyedLines, innerTextStyle)
               : renderPlainCodeLines(renderedCode, innerTextStyle)}
           </View>
-        </ScrollView>
+        ) : (
+          <ScrollView
+            horizontal
+            nestedScrollEnabled
+            showsHorizontalScrollIndicator
+            contentContainerStyle={styles.horizontalContent}
+          >
+            <View style={styles.codeLines}>
+              {keyedLines
+                ? renderCodeLines(keyedLines, innerTextStyle)
+                : renderPlainCodeLines(renderedCode, innerTextStyle)}
+            </View>
+          </ScrollView>
+        )}
       </ScrollView>
-      <CopyButton getCode={getCode} visible={controlsVisible} />
+      <CodeBlockControls
+        visible={controlsVisible}
+        wrapLines={wrapLines}
+        onToggleWrap={toggleWrap}
+        getCode={getCode}
+      />
     </View>
   );
 });
@@ -199,6 +215,67 @@ function splitFenceStyle(inheritedStyles: TextStyle, textStyle: TextStyle): Spli
     innerTextStyle: [inheritedStyles, textOnly],
   };
 }
+
+interface CodeBlockControlsProps {
+  getCode: () => string;
+  visible: boolean;
+  wrapLines: boolean;
+  onToggleWrap: () => void;
+}
+
+const CodeBlockControls = React.memo(function CodeBlockControls({
+  getCode,
+  visible,
+  wrapLines,
+  onToggleWrap,
+}: CodeBlockControlsProps) {
+  return (
+    <>
+      <WrapToggleButton visible={visible} wrapLines={wrapLines} onToggle={onToggleWrap} />
+      <CopyButton getCode={getCode} visible={visible} />
+    </>
+  );
+});
+
+const WrapToggleButton = React.memo(function WrapToggleButton({
+  visible,
+  wrapLines,
+  onToggle,
+}: {
+  visible: boolean;
+  wrapLines: boolean;
+  onToggle: () => void;
+}) {
+  const { t } = useTranslation();
+  const visibilityStyle = visible
+    ? copyButtonStyles.containerVisible
+    : copyButtonStyles.containerHidden;
+  const wrapperStyle = useMemo(
+    () => [copyButtonStyles.container, visibilityStyle, wrapToggleStyles.wrapToggleOffset],
+    [visibilityStyle],
+  );
+  const accessibilityState = useMemo(() => ({ checked: wrapLines }), [wrapLines]);
+  return (
+    <Pressable
+      onPress={onToggle}
+      style={wrapperStyle}
+      pointerEvents={visible ? "auto" : "none"}
+      accessibilityRole="switch"
+      accessibilityState={accessibilityState}
+      accessibilityLabel={wrapLines ? t("codeBlock.disableWrap") : t("codeBlock.enableWrap")}
+      hitSlop={8}
+      dataSet={markdownCopyDataSet.ignore}
+      testID="code-block-wrap-toggle"
+    >
+      {({ hovered }) => {
+        const iconColor = hovered
+          ? copyButtonStyles.iconHoveredColor.color
+          : copyButtonStyles.iconColor.color;
+        return <WrapText size={14} color={iconColor} />;
+      }}
+    </Pressable>
+  );
+});
 
 interface CopyButtonProps {
   getCode: () => string;
@@ -283,6 +360,12 @@ const styles = StyleSheet.create(() => ({
     alignSelf: "flex-start",
     flexShrink: 0,
     flexDirection: "column" as const,
+  },
+}));
+
+const wrapToggleStyles = StyleSheet.create((theme) => ({
+  wrapToggleOffset: {
+    right: theme.spacing[8],
   },
 }));
 

@@ -13,9 +13,28 @@ type ThemedDiffDocumentProps = DiffDocumentProps & {
 };
 
 const EMPTY_PATHS: string[] = [];
+const EMPTY_WRAP_OVERRIDES: ReadonlyMap<string, boolean> = new Map();
 
 function ThemedDiffDocument(props: ThemedDiffDocumentProps) {
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  // Per-file ephemeral wrap overrides: header toggle flips one file's body between the
+  // global wrap preference and its opposite. Component state only — gone on unmount.
+  const [wrapOverrides, setWrapOverrides] =
+    useState<ReadonlyMap<string, boolean>>(EMPTY_WRAP_OVERRIDES);
+  const fileWrapToggle = useMemo(
+    () => ({
+      wrappedFor: (path: string) => wrapOverrides.get(path) ?? props.displayPreferences.wrapLines,
+      onToggle: (path: string) => {
+        setWrapOverrides((current) => {
+          const effective = current.get(path) ?? props.displayPreferences.wrapLines;
+          const next = new Map(current);
+          next.set(path, !effective);
+          return next;
+        });
+      },
+    }),
+    [props.displayPreferences.wrapLines, wrapOverrides],
+  );
   const paletteRef = useRef(props.palette);
   paletteRef.current = retainDiffPalette(paletteRef.current, props.palette);
   const palette = paletteRef.current;
@@ -40,6 +59,7 @@ function ThemedDiffDocument(props: ThemedDiffDocumentProps) {
       onToggleFile={toggleFile}
       selectedPath={selectedPath}
       onSelectPath={setSelectedPath}
+      fileWrapToggle={fileWrapToggle}
     />
   );
 }
