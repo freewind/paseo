@@ -120,6 +120,8 @@ export const es: TranslationResources = {
     menu: {
       item: "Comentar",
       itemSelected: "Comentar la selección",
+      addToTodo: "Añadir a tareas",
+      addToTodoSelected: "Añadir selección a tareas",
       title: "Comentario",
     },
     sheet: {
@@ -376,6 +378,8 @@ export const es: TranslationResources = {
     delete: "Eliminar nota",
     markDone: "Marcar como hecho",
     markNotDone: "Marcar como pendiente",
+    addedToTodo: "Añadido a tareas",
+    failedToAdd: "Error al añadir a tareas",
     attachImage: "Adjuntar imagen",
   },
   message: {

@@ -119,6 +119,8 @@ export const ko: TranslationResources = {
     menu: {
       item: "댓글",
       itemSelected: "선택한 텍스트에 댓글",
+      addToTodo: "할 일에 추가",
+      addToTodoSelected: "선택 항목을 할 일에 추가",
       title: "댓글",
     },
     sheet: {
@@ -368,6 +370,8 @@ export const ko: TranslationResources = {
     delete: "메모 삭제",
     markDone: "완료로 표시",
     markNotDone: "미완료로 표시",
+    addedToTodo: "할 일에 추가했습니다",
+    failedToAdd: "할 일에 추가하지 못했습니다",
     attachImage: "이미지 첨부",
   },
   message: {

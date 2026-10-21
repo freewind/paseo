@@ -1315,6 +1315,22 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     },
     [replaceText, textSource],
   );
+  const streamMemosSupported = useHostFeature(serverId, "agentMemos");
+  const handleAddSelectionToTodo = useCallback(
+    (blockText: string) => {
+      if (!agentId) return;
+      const client = getHostRuntimeStore().getClient(serverId);
+      if (!client) {
+        toastApi.error(t("agentMemos.failedToAdd"));
+        return;
+      }
+      client
+        .addAgentMemo(agentId, blockText)
+        .then(() => toastApi.show(t("agentMemos.addedToTodo"), { variant: "success" }))
+        .catch(() => toastApi.error(t("agentMemos.failedToAdd")));
+    },
+    [agentId, serverId, t, toastApi],
+  );
   const composerSection = (
     <RenderProfile id={`AgentComposerSection:${agentId}`}>
       <AgentComposerSection
@@ -1346,6 +1362,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
       <RenderProfile id={`AgentStreamSection:${agentId}`}>
         <CommentableAgentStreamSection
           onCommentCommit={handleCommentCommit}
+          onAddToTodo={streamMemosSupported ? handleAddSelectionToTodo : undefined}
           streamViewRef={streamViewRef}
           serverId={serverId}
           workspaceId={workspaceId}
@@ -1489,14 +1506,16 @@ function SheetAgentFacts({ serverId, agentId }: { serverId: string; agentId: str
   return text ? <PaneSubtitle text={text} testID="agent-pane-subtitle" /> : null;
 type CommentableAgentStreamSectionProps = React.ComponentProps<typeof AgentStreamSection> & {
   onCommentCommit: (input: { blockText: string; comment: string; sendNow: boolean }) => void;
+  onAddToTodo?: (blockText: string) => void;
 };
 
 function CommentableAgentStreamSection({
   onCommentCommit,
+  onAddToTodo,
   ...props
 }: CommentableAgentStreamSectionProps) {
   return (
-    <AssistantCommentProvider onCommit={onCommentCommit}>
+    <AssistantCommentProvider onCommit={onCommentCommit} onAddToTodo={onAddToTodo}>
       <AgentStreamSection {...props} />
     </AssistantCommentProvider>
   );

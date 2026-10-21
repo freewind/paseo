@@ -120,6 +120,8 @@ export const ja: TranslationResources = {
     menu: {
       item: "コメント",
       itemSelected: "選択範囲にコメント",
+      addToTodo: "To-do に追加",
+      addToTodoSelected: "選択範囲を To-do に追加",
       title: "コメント",
     },
     sheet: {
@@ -372,6 +374,8 @@ export const ja: TranslationResources = {
     delete: "メモを削除",
     markDone: "完了にする",
     markNotDone: "未完了に戻す",
+    addedToTodo: "To-do に追加しました",
+    failedToAdd: "To-do への追加に失敗しました",
     attachImage: "画像を添付",
   },
   message: {

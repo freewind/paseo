@@ -50,6 +50,9 @@ export function MarkdownCommentableBlock({
   const handleSelect = useCallback(() => {
     comment?.requestComment(selectedText ?? blockText);
   }, [comment, blockText, selectedText]);
+  const handleAddToTodo = useCallback(() => {
+    comment?.requestAddToTodo?.(selectedText ?? blockText);
+  }, [comment, blockText, selectedText]);
   const leading = useMemo(() => <ThemedCommentIcon size={ICON_SIZE.sm} />, []);
 
   // A block with nothing to quote, or with no composer to attach to, still renders the box it
@@ -78,6 +81,15 @@ export function MarkdownCommentableBlock({
         <ContextMenuItem leading={leading} onSelect={handleSelect} testID="markdown-comment-item">
           {selectedText ? t("comment.menu.itemSelected") : t("comment.menu.item")}
         </ContextMenuItem>
+        {comment.requestAddToTodo ? (
+          <ContextMenuItem
+            leading={leading}
+            onSelect={handleAddToTodo}
+            testID="markdown-add-to-todo-item"
+          >
+            {selectedText ? t("comment.menu.addToTodoSelected") : t("comment.menu.addToTodo")}
+          </ContextMenuItem>
+        ) : null}
       </ContextMenuContent>
     </ContextMenu>
   );

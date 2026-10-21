@@ -120,6 +120,8 @@ export const ru: TranslationResources = {
     menu: {
       item: "Комментарий",
       itemSelected: "Комментировать выделенное",
+      addToTodo: "Добавить в задачи",
+      addToTodoSelected: "Добавить выделенное в задачи",
       title: "Комментарий",
     },
     sheet: {
@@ -372,6 +374,8 @@ export const ru: TranslationResources = {
     delete: "Удалить заметку",
     markDone: "Отметить как выполненное",
     markNotDone: "Отметить как невыполненное",
+    addedToTodo: "Добавлено в задачи",
+    failedToAdd: "Не удалось добавить в задачи",
     attachImage: "Прикрепить изображение",
   },
   message: {

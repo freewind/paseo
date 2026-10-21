@@ -119,6 +119,8 @@ export const ar: TranslationResources = {
     menu: {
       item: "تعليق",
       itemSelected: "التعليق على المحدد",
+      addToTodo: "إضافة إلى المهام",
+      addToTodoSelected: "إضافة التحديد إلى المهام",
       title: "تعليق",
     },
     sheet: {
@@ -367,6 +369,8 @@ export const ar: TranslationResources = {
     delete: "حذف المذكرة",
     markDone: "تحديد كمنجز",
     markNotDone: "تحديد كغير منجز",
+    addedToTodo: "تمت الإضافة إلى المهام",
+    failedToAdd: "فشل الإضافة إلى المهام",
     attachImage: "إرفاق صورة",
   },
   message: {

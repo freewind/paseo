@@ -121,6 +121,8 @@ export const fr: TranslationResources = {
     menu: {
       item: "Commenter",
       itemSelected: "Commenter la sélection",
+      addToTodo: "Ajouter aux tâches",
+      addToTodoSelected: "Ajouter la sélection aux tâches",
       title: "Commentaire",
     },
     sheet: {
@@ -376,6 +378,8 @@ export const fr: TranslationResources = {
     delete: "Supprimer le mémo",
     markDone: "Marquer comme fait",
     markNotDone: "Marquer comme non fait",
+    addedToTodo: "Ajouté aux tâches",
+    failedToAdd: "Échec de l’ajout aux tâches",
     attachImage: "Joindre une image",
   },
   message: {

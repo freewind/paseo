@@ -119,6 +119,8 @@ export const zhCN: TranslationResources = {
     menu: {
       item: "评论",
       itemSelected: "评论所选文字",
+      addToTodo: "加入 To-dos",
+      addToTodoSelected: "将选中内容加入 To-dos",
       title: "评论",
     },
     sheet: {
@@ -367,6 +369,8 @@ export const zhCN: TranslationResources = {
     delete: "删除备忘",
     markDone: "标记为完成",
     markNotDone: "标记为未完成",
+    addedToTodo: "已加入 To-dos",
+    failedToAdd: "加入 To-dos 失败",
     attachImage: "附加图片",
   },
   message: {
