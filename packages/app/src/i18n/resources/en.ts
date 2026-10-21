@@ -371,6 +371,7 @@ export const en = {
     addedToTodo: "Added to To-dos",
     failedToAdd: "Failed to add to To-dos",
     attachImage: "Attach image",
+    pasteFailed: "Failed to paste image",
   },
   message: {
     diagram: {

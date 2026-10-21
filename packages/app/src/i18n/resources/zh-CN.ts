@@ -369,6 +369,7 @@ export const zhCN: TranslationResources = {
     addedToTodo: "已加入 To-dos",
     failedToAdd: "加入 To-dos 失败",
     attachImage: "附加图片",
+    pasteFailed: "粘贴图片失败",
   },
   message: {
     diagram: {
