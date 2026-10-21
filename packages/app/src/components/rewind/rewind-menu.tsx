@@ -144,17 +144,6 @@ export const RewindMenu = memo(function RewindMenu({
           <Text style={styles.warningText}>{t("rewind.warning")}</Text>
         </View>
         <DropdownMenuSeparator />
-        {onRegenerate ? (
-          <DropdownMenuItem
-            closeOnSelect={false}
-            disabled={isLocked || isRegenerateDisabled}
-            leading={regenerateLeading}
-            onSelect={handleRegenerateSelect}
-            testID="rewind-menu-regenerate"
-          >
-            {t("rewind.actions.regenerate")}
-          </DropdownMenuItem>
-        ) : null}
         {items.map((item) => (
           <DropdownMenuItem
             key={item.mode}
@@ -168,6 +157,17 @@ export const RewindMenu = memo(function RewindMenu({
             {item.label}
           </DropdownMenuItem>
         ))}
+        {onRegenerate ? (
+          <DropdownMenuItem
+            closeOnSelect={false}
+            disabled={isLocked || isRegenerateDisabled}
+            leading={regenerateLeading}
+            onSelect={handleRegenerateSelect}
+            testID="rewind-menu-regenerate"
+          >
+            {t("rewind.actions.regenerate")}
+          </DropdownMenuItem>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );
