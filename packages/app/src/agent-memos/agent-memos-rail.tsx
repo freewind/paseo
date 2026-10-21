@@ -55,8 +55,8 @@ export const AgentMemosRail = memo(function AgentMemosRail({
   compact?: boolean;
   /** The sheet carries the title in its header, so the rail drops its own and keeps the add button. */
   showTitle?: boolean;
-  /** Appends text to the composer without sending; returns the previous text for undo. */
-  onAppendToComposer: (text: string) => void;
+  /** Appends the memo (text + images) to the composer without sending. */
+  onAppendToComposer: (memo: AgentMemo) => void;
 }) {
   const { t } = useTranslation();
   const supported = useHostFeature(serverId, "agentMemos");
@@ -91,8 +91,8 @@ export const AgentMemosRail = memo(function AgentMemosRail({
 
   // Pressing the text only appends it; the memo stays until the trash button removes it.
   const handleMemoPress = useCallback(
-    (text: string) => {
-      onAppendToComposer(text);
+    (entry: AgentMemo) => {
+      onAppendToComposer(entry);
     },
     [onAppendToComposer],
   );
@@ -200,14 +200,14 @@ function AgentMemoRow({
 }: {
   entry: AgentMemo;
   supportsCompletion: boolean;
-  onUse: (text: string) => void;
+  onUse: (memo: AgentMemo) => void;
   onCompletedChange: (memoId: string, completed: boolean) => void;
   onRequestDelete: (entry: AgentMemo) => void;
   onOpenImage: (image: ImageAttachment) => void;
 }) {
   const { t } = useTranslation();
   const isCompleted = entry.completed === true;
-  const handleUse = useCallback(() => onUse(entry.text), [entry.text, onUse]);
+  const handleUse = useCallback(() => onUse(entry), [entry, onUse]);
   const handleToggleCompleted = useCallback(
     () => onCompletedChange(entry.id, !isCompleted),
     [entry.id, isCompleted, onCompletedChange],

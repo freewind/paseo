@@ -2,12 +2,13 @@ import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { AdaptiveModalSheet } from "@/components/adaptive-modal-sheet";
 import { AgentMemosRail } from "./agent-memos-rail";
+import type { AgentMemo } from "@getpaseo/protocol/messages";
 
 interface AgentMemosSheetProps {
   visible: boolean;
   serverId: string;
   agentId: string;
-  onAppendToComposer: (text: string) => void;
+  onAppendToComposer: (memo: AgentMemo) => void;
   onClose: () => void;
 }
 
@@ -26,9 +27,9 @@ export function AgentMemosSheet({
   const { t } = useTranslation();
   const header = useMemo(() => ({ title: t("agentMemos.toggle") }), [t]);
   const handleAppendToComposer = useCallback(
-    (text: string) => {
+    (memo: AgentMemo) => {
       onClose();
-      onAppendToComposer(text);
+      onAppendToComposer(memo);
     },
     [onAppendToComposer, onClose],
   );
