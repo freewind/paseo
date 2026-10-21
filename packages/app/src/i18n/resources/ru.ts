@@ -354,6 +354,14 @@ export const ru: TranslationResources = {
       runningAgent: "Этот агент всё ещё работает. Перемещение в архив остановит его.",
       archive: "Архивировать",
     },
+    deleteSheet: {
+      confirmTitle: "Удалить сессию?",
+      confirmMessage:
+        "Удалить «{{agent}}» навсегда? Она будет стёрта с диска, действие необратимо.",
+      delete: "Удалить",
+      deleting: "Удаление…",
+      failed: "Не удалось удалить сессию",
+    },
   },
   agentMemos: {
     toggle: "Заметки агента",

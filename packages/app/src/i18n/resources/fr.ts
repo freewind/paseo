@@ -358,6 +358,14 @@ export const fr: TranslationResources = {
       runningAgent: "Cet agent est toujours en cours d’exécution. L’archiver l’arrêtera.",
       archive: "Archiver",
     },
+    deleteSheet: {
+      confirmTitle: "Supprimer la session ?",
+      confirmMessage:
+        "Supprimer « {{agent}} » définitivement ? Il sera retiré du disque, action irréversible.",
+      delete: "Supprimer",
+      deleting: "Suppression…",
+      failed: "Échec de la suppression de la session",
+    },
   },
   agentMemos: {
     toggle: "Mémos de l'agent",

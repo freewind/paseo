@@ -833,19 +833,6 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
     [client],
   );
 
-  const _deleteAgent = useCallback(
-    (agentId: string) => {
-      if (!client) {
-        console.warn("[Session] deleteAgent skipped: daemon unavailable");
-        return;
-      }
-      void client.deleteAgent(agentId).catch((error) => {
-        console.error("[Session] Failed to delete agent:", error);
-      });
-    },
-    [client],
-  );
-
   const _archiveAgent = useCallback(
     (agentId: string) => {
       if (!client) {

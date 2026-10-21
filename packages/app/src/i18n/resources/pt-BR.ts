@@ -354,6 +354,14 @@ export const ptBR: TranslationResources = {
       runningAgent: "Este agente ainda está em execução. Arquivá-lo interromperá o agente.",
       archive: "Arquivar",
     },
+    deleteSheet: {
+      confirmTitle: "Excluir sessão?",
+      confirmMessage:
+        'Excluir "{{agent}}" permanentemente? Ele será removido do disco e não poderá ser desfeito.',
+      delete: "Excluir",
+      deleting: "Excluindo…",
+      failed: "Falha ao excluir a sessão",
+    },
   },
   agentMemos: {
     toggle: "Notas do agente",

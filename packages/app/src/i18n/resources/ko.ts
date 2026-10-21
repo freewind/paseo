@@ -351,6 +351,13 @@ export const ko: TranslationResources = {
       runningAgent: "이 에이전트는 아직 실행 중입니다. 보관하면 에이전트가 중지됩니다.",
       archive: "보관",
     },
+    deleteSheet: {
+      confirmTitle: "세션을 삭제할까요?",
+      confirmMessage: '"{{agent}}"을(를) 영구 삭제할까요? 디스크에서 제거되며 되돌릴 수 없습니다.',
+      delete: "삭제",
+      deleting: "삭제 중…",
+      failed: "세션 삭제 실패",
+    },
   },
   agentMemos: {
     toggle: "에이전트 메모",

@@ -16,11 +16,14 @@ import { useTranslation } from "react-i18next";
 import { useIsCompactFormFactor } from "@/constants/layout";
 import { useTimeAgo } from "@/hooks/use-time-ago";
 import { type AggregatedAgent } from "@/hooks/use-aggregated-agents";
+import { useArchiveAgent } from "@/hooks/use-archive-agent";
+import { useDeleteAgent } from "@/hooks/use-delete-agent";
+import { confirmDialog } from "@/utils/confirm-dialog";
+import { useToast } from "@/contexts/toast-context";
 import { useSessionStore } from "@/stores/session-store";
 import { Archive, ChevronRight } from "lucide-react-native";
 import { useProviderIcon } from "@/components/provider-icons";
 import { navigateToAgent } from "@/utils/navigate-to-agent";
-import { useArchiveAgent } from "@/hooks/use-archive-agent";
 import { HighlightedText } from "@/components/ui/highlighted-text";
 import { StatusBadge, type StatusBadgeVariant } from "@/components/ui/status-badge";
 import { findHighlightRanges } from "@/components/ui/highlighted-text-segments";
@@ -352,10 +355,12 @@ export function AgentList({
 }: AgentListProps) {
   const { theme } = useUnistyles();
   const { t } = useTranslation();
+  const toast = useToast();
   const insets = useSafeAreaInsets();
   const [actionAgent, setActionAgent] = useState<AggregatedAgent | null>(null);
   const isMobile = useIsCompactFormFactor();
   const { archiveAgent } = useArchiveAgent();
+  const { deleteAgent, isDeletingAgent } = useDeleteAgent();
 
   const actionClient = useSessionStore((state) =>
     actionAgent?.serverId ? (state.sessions[actionAgent.serverId]?.client ?? null) : null,
@@ -384,23 +389,9 @@ export function AgentList({
     [isActionSheetVisible, onAgentSelect],
   );
 
-  const handleAgentLongPress = useCallback(
-    (agent: AggregatedAgent) => {
-      const isRunning = agent.status === "running";
-      if (isRunning) {
-        setActionAgent(agent);
-        return;
-      }
-
-      const client = useSessionStore.getState().sessions[agent.serverId]?.client ?? null;
-      if (!client) {
-        setActionAgent(agent);
-        return;
-      }
-      void archiveAgent({ serverId: agent.serverId, agentId: agent.id }).catch(() => {});
-    },
-    [archiveAgent],
-  );
+  const handleAgentLongPress = useCallback((agent: AggregatedAgent) => {
+    setActionAgent(agent);
+  }, []);
 
   const handleCloseActionSheet = useCallback(() => {
     setActionAgent(null);
@@ -414,6 +405,30 @@ export function AgentList({
     void archiveAgent({ serverId: actionAgent.serverId, agentId: actionAgent.id }).catch(() => {});
     setActionAgent(null);
   }, [actionAgent, actionClient, archiveAgent]);
+
+  const handleDeleteAgent = useCallback(async () => {
+    if (!actionAgent || !actionClient) {
+      return;
+    }
+    const confirmed = await confirmDialog({
+      title: t("agentList.deleteSheet.confirmTitle"),
+      message: t("agentList.deleteSheet.confirmMessage", { agent: actionAgent.title }),
+      confirmLabel: t("agentList.deleteSheet.delete"),
+      cancelLabel: t("common.actions.cancel"),
+      destructive: true,
+    });
+    if (!confirmed) return;
+    try {
+      await deleteAgent({ serverId: actionAgent.serverId, agentId: actionAgent.id });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("agentList.deleteSheet.failed"));
+    }
+    setActionAgent(null);
+  }, [actionAgent, actionClient, deleteAgent, t, toast]);
+
+  const handleDeleteAgentPress = useCallback(() => {
+    void handleDeleteAgent();
+  }, [handleDeleteAgent]);
 
   const flatItems = useMemo((): FlatListItem[] => {
     const buckets = new Map<DateSectionKey, AggregatedAgent[]>();
@@ -486,6 +501,13 @@ export function AgentList({
     () => [styles.sheetArchiveText, isActionDaemonUnavailable && styles.sheetArchiveTextDisabled],
     [isActionDaemonUnavailable],
   );
+  const isDeletingActionAgent = actionAgent
+    ? isDeletingAgent({ serverId: actionAgent.serverId, agentId: actionAgent.id })
+    : false;
+  const isActionBusy = isActionDaemonUnavailable || isDeletingActionAgent;
+  const sheetTitleText = isActionDaemonUnavailable
+    ? t("agentList.archiveSheet.hostOffline")
+    : t("agentList.archiveSheet.runningAgent");
 
   const refreshControl = useMemo(
     () =>
@@ -524,11 +546,7 @@ export function AgentList({
           <Pressable style={styles.sheetBackdrop} onPress={handleCloseActionSheet} />
           <View style={sheetContainerStyle}>
             <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>
-              {isActionDaemonUnavailable
-                ? t("agentList.archiveSheet.hostOffline")
-                : t("agentList.archiveSheet.runningAgent")}
-            </Text>
+            <Text style={styles.sheetTitle}>{sheetTitleText}</Text>
             <View style={styles.sheetButtonRow}>
               <Pressable
                 style={[styles.sheetButton, styles.sheetCancelButton]}
@@ -538,7 +556,7 @@ export function AgentList({
                 <Text style={styles.sheetCancelText}>{t("common.actions.cancel")}</Text>
               </Pressable>
               <Pressable
-                disabled={isActionDaemonUnavailable}
+                disabled={isActionBusy}
                 style={[styles.sheetButton, styles.sheetArchiveButton]}
                 onPress={handleArchiveAgent}
                 testID="agent-action-archive"
@@ -546,6 +564,20 @@ export function AgentList({
                 <Text style={sheetArchiveTextStyle}>{t("agentList.archiveSheet.archive")}</Text>
               </Pressable>
             </View>
+            <Pressable
+              disabled={isActionBusy}
+              style={styles.sheetDeleteButton}
+              onPress={handleDeleteAgentPress}
+              accessibilityRole="button"
+              accessibilityLabel={t("agentList.deleteSheet.delete")}
+              testID="agent-action-delete"
+            >
+              <Text style={styles.sheetDeleteText}>
+                {isDeletingActionAgent
+                  ? t("agentList.deleteSheet.deleting")
+                  : t("agentList.deleteSheet.delete")}
+              </Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -740,6 +772,15 @@ const styles = StyleSheet.create((theme) => ({
   },
   sheetArchiveTextDisabled: {
     opacity: 0.5,
+  },
+  sheetDeleteButton: {
+    alignItems: "center",
+    paddingVertical: theme.spacing[2],
+  },
+  sheetDeleteText: {
+    color: theme.colors.destructive,
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.medium,
   },
   sheetCancelButton: {
     backgroundColor: theme.colors.surface1,

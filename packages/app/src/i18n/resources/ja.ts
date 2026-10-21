@@ -355,6 +355,13 @@ export const ja: TranslationResources = {
       runningAgent: "このエージェントはまだ実行中です。アーカイブするとエージェントが停止します。",
       archive: "アーカイブ",
     },
+    deleteSheet: {
+      confirmTitle: "セッションを削除しますか？",
+      confirmMessage: "「{{agent}}」を完全に削除しますか？ディスクから削除され、元に戻せません。",
+      delete: "削除",
+      deleting: "削除中…",
+      failed: "セッションの削除に失敗しました",
+    },
   },
   agentMemos: {
     toggle: "エージェントメモ",

@@ -350,6 +350,13 @@ export const ar: TranslationResources = {
       runningAgent: "هذا الوكيل لا يزال قيد التشغيل. ستؤدي أرشفته إلى إيقاف الوكيل.",
       archive: "أرشيف",
     },
+    deleteSheet: {
+      confirmTitle: "حذف الجلسة؟",
+      confirmMessage: 'حذف "{{agent}}" نهائيًا؟ ستتم إزالته من القرص ولا يمكن التراجع.',
+      delete: "حذف",
+      deleting: "جارٍ الحذف…",
+      failed: "فشل حذف الجلسة",
+    },
   },
   agentMemos: {
     toggle: "مذكرات الوكيل",
