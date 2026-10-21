@@ -111,6 +111,10 @@ export const en = {
       settingOff: "Off",
     },
   },
+  codeBlock: {
+    enableWrap: "Wrap long lines",
+    disableWrap: "Scroll long lines",
+  },
   comment: {
     menu: {
       item: "Comment",

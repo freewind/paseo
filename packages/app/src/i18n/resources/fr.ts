@@ -117,6 +117,10 @@ export const fr: TranslationResources = {
       settingOff: "Désactivé",
     },
   },
+  codeBlock: {
+    enableWrap: "Retour à la ligne",
+    disableWrap: "Faire défiler les lignes",
+  },
   comment: {
     menu: {
       item: "Commenter",

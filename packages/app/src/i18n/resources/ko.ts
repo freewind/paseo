@@ -115,6 +115,10 @@ export const ko: TranslationResources = {
       settingOff: "꺼짐",
     },
   },
+  codeBlock: {
+    enableWrap: "긴 줄 자동 줄바꿈",
+    disableWrap: "긴 줄 스크롤",
+  },
   comment: {
     menu: {
       item: "댓글",

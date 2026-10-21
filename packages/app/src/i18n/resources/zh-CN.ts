@@ -115,6 +115,10 @@ export const zhCN: TranslationResources = {
       settingOff: "关",
     },
   },
+  codeBlock: {
+    enableWrap: "自动换行长行",
+    disableWrap: "滚动长行",
+  },
   comment: {
     menu: {
       item: "评论",

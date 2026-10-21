@@ -115,6 +115,10 @@ export const ar: TranslationResources = {
       settingOff: "إيقاف",
     },
   },
+  codeBlock: {
+    enableWrap: "التفاف الأسطر الطويلة",
+    disableWrap: "تمرير الأسطر الطويلة",
+  },
   comment: {
     menu: {
       item: "تعليق",

@@ -116,6 +116,10 @@ export const es: TranslationResources = {
       settingOff: "Desactivado",
     },
   },
+  codeBlock: {
+    enableWrap: "Ajustar líneas largas",
+    disableWrap: "Desplazar líneas largas",
+  },
   comment: {
     menu: {
       item: "Comentar",

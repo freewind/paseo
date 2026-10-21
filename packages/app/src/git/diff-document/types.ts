@@ -228,4 +228,13 @@ export type DiffSurfaceProps = DiffDocumentProps & {
   onToggleFile: (path: string) => void;
   selectedPath: string | null;
   onSelectPath: (path: string) => void;
+  /**
+   * Per-file ephemeral wrap override. Present when the surface offers the header toggle:
+   * `wrapped` is the effective value (override ?? global preference) and toggling stores the
+   * override for this file only, never persisted.
+   */
+  fileWrapToggle?: {
+    wrappedFor: (path: string) => boolean;
+    onToggle: (path: string) => void;
+  };
 };

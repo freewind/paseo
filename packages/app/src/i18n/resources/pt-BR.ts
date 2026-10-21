@@ -116,6 +116,10 @@ export const ptBR: TranslationResources = {
       settingOff: "Desligado",
     },
   },
+  codeBlock: {
+    enableWrap: "Quebrar linhas longas",
+    disableWrap: "Rolar linhas longas",
+  },
   comment: {
     menu: {
       item: "Comentar",

@@ -116,6 +116,10 @@ export const ja: TranslationResources = {
       settingOff: "オフ",
     },
   },
+  codeBlock: {
+    enableWrap: "長い行を折り返す",
+    disableWrap: "長い行をスクロール",
+  },
   comment: {
     menu: {
       item: "コメント",

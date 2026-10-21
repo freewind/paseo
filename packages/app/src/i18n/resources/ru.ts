@@ -116,6 +116,10 @@ export const ru: TranslationResources = {
       settingOff: "Выкл",
     },
   },
+  codeBlock: {
+    enableWrap: "Переносить длинные строки",
+    disableWrap: "Прокручивать длинные строки",
+  },
   comment: {
     menu: {
       item: "Комментарий",
