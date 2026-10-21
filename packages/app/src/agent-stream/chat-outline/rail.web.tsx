@@ -153,9 +153,6 @@ export const ChatOutlineRail = memo(function ChatOutlineRail({
             onHover={handlePointerEnterTick}
             onFocusChange={handleFocusChange}
             onJumpToPrompt={onJumpToPrompt}
-            // The dot card repeats a truncated preview the text form already shows in
-            // full, so the two forms never open a popover at the same time.
-            showPreview={variant !== "text"}
           />
         ))}
       </View>
@@ -187,8 +184,6 @@ interface ChatOutlineTickProps {
   label: string;
   isActive: boolean;
   hasAttention: boolean;
-  /** False while the text form shows the prompt beside the dots. */
-  showPreview: boolean;
   magnification: number;
   onHover: (index: number) => void;
   onFocusChange: (index: number, focused: boolean) => void;
@@ -202,7 +197,6 @@ const ChatOutlineTick = memo(function ChatOutlineTick({
   label,
   isActive,
   hasAttention,
-  showPreview,
   magnification,
   onHover,
   onFocusChange,
@@ -244,7 +238,7 @@ const ChatOutlineTick = memo(function ChatOutlineTick({
           ]}
         />
       </Pressable>
-      {showPreview && hasAttention ? (
+      {hasAttention ? (
         <View style={styles.preview} pointerEvents="none" aria-hidden testID="chat-outline-preview">
           <Text style={styles.previewText} numberOfLines={2}>
             {preview}
