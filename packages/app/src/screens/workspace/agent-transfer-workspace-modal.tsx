@@ -2,39 +2,50 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { StyleSheet } from "react-native-unistyles";
-import { Check } from "lucide-react-native";
-import { withUnistyles } from "react-native-unistyles";
+import { SelectField } from "@/components/ui/select-field";
 import { AdaptiveModalSheet, type SheetHeader } from "@/components/adaptive-modal-sheet";
+import type {
+  TransferWorkspaceProject,
+  TransferWorkspaceSelection,
+} from "./use-agent-transfer-workspace";
 
-export interface TransferWorkspaceOption {
-  key: string;
-  label: string;
-  detail?: string;
+const CREATE_WORKSPACE_VALUE = "__create__";
+
+interface ProjectOptionValue {
+  viewKey: string;
 }
 
 export interface AgentTransferWorkspaceModalProps {
   visible: boolean;
   agentTitle: string;
-  options: readonly TransferWorkspaceOption[];
+  projects: readonly TransferWorkspaceProject[];
   onClose: () => void;
-  onSelect: (option: TransferWorkspaceOption) => void;
+  onSelect: (selection: TransferWorkspaceSelection) => void;
   testID?: string;
 }
 
 /**
- * Pick a destination workspace for an agent transfer. One option per visible
- * workspace plus one per project without one; the selected row is the option key.
+ * Pick a destination for an agent transfer: first the project, then one of its workspaces
+ * or an implicit "create new workspace" entry. Both pickers are searchable; the filters are
+ * applied here with a plain case-sensitive substring match and the combobox keeps ranking
+ * the surviving options.
  */
 export const AgentTransferWorkspaceModal = memo(function AgentTransferWorkspaceModal({
   visible,
   agentTitle,
-  options,
+  projects,
   onClose,
   onSelect,
   testID,
 }: AgentTransferWorkspaceModalProps) {
   const { t } = useTranslation();
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [selectedProject, setSelectedProject] = useState<ProjectOptionValue | null>(null);
+  const [selectedWorkspace, setSelectedWorkspace] = useState<TransferWorkspaceSelection | null>(
+    null,
+  );
+  const [projectSearch, setProjectSearch] = useState("");
+  const [workspaceSearch, setWorkspaceSearch] = useState("");
+
   const sheetHeader = useMemo<SheetHeader>(
     () => ({
       title: t("workspace.tabs.transfer.title", { agent: agentTitle }),
@@ -42,34 +53,115 @@ export const AgentTransferWorkspaceModal = memo(function AgentTransferWorkspaceM
     [agentTitle, t],
   );
 
-  const handleOptionPress = useCallback(
-    (key: string) => setSelectedKey((current) => (current === key ? null : key)),
-    [],
+  const projectOptions = useMemo(() => {
+    const query = projectSearch.trim();
+    return projects
+      .filter((project) => (query ? project.projectName.includes(query) : true))
+      .map((project) => ({
+        id: project.viewKey,
+        value: { viewKey: project.viewKey } satisfies ProjectOptionValue,
+        label: project.projectName,
+      }));
+  }, [projectSearch, projects]);
+
+  const activeProject = useMemo(
+    () => projects.find((project) => project.viewKey === selectedProject?.viewKey) ?? null,
+    [projects, selectedProject],
   );
 
+  const workspaceOptions = useMemo(() => {
+    if (!activeProject) return [];
+    const query = workspaceSearch.trim();
+    const match = (label: string) => (query ? label.includes(query) : true);
+    const options: Array<{
+      id: string;
+      value: TransferWorkspaceSelection;
+      label: string;
+    }> = [];
+    if (!query || t("workspace.tabs.transfer.createNew").includes(query)) {
+      options.push({
+        id: CREATE_WORKSPACE_VALUE,
+        value: { kind: "create", projectViewKey: activeProject.viewKey },
+        label: t("workspace.tabs.transfer.createNew"),
+      });
+    }
+    for (const workspace of activeProject.workspaces) {
+      if (!match(workspace.label)) continue;
+      options.push({
+        id: workspace.workspaceId,
+        value: { kind: "workspace", workspaceId: workspace.workspaceId },
+        label: workspace.label,
+      });
+    }
+    return options;
+  }, [activeProject, t, workspaceSearch]);
+
+  const handleProjectChange = useCallback((value: ProjectOptionValue) => {
+    setSelectedProject(value);
+    setSelectedWorkspace(null);
+    setWorkspaceSearch("");
+  }, []);
+
+  const handleWorkspaceChange = useCallback((value: TransferWorkspaceSelection) => {
+    setSelectedWorkspace(value);
+  }, []);
+
   const handleConfirm = useCallback(() => {
-    const selected = options.find((option) => option.key === selectedKey);
-    if (!selected) return;
+    if (!selectedWorkspace) return;
     onClose();
-    onSelect(selected);
-  }, [onClose, onSelect, options, selectedKey]);
+    onSelect(selectedWorkspace);
+  }, [onClose, onSelect, selectedWorkspace]);
+
+  const selectedProjectDisplay = useMemo(
+    () => (activeProject ? { label: activeProject.projectName } : null),
+    [activeProject],
+  );
+
+  const selectedWorkspaceDisplay = useMemo(() => {
+    if (!selectedWorkspace || !activeProject) return null;
+    if (selectedWorkspace.kind === "create") {
+      return { label: t("workspace.tabs.transfer.createNew") };
+    }
+    const workspace = activeProject.workspaces.find(
+      (entry) => entry.workspaceId === selectedWorkspace.workspaceId,
+    );
+    return workspace ? { label: workspace.label } : null;
+  }, [activeProject, selectedWorkspace, t]);
 
   return (
     <AdaptiveModalSheet visible={visible} onClose={onClose} header={sheetHeader} testID={testID}>
       <View style={styles.body}>
-        {options.map((option) => (
-          <TransferOptionRow
-            key={option.key}
-            option={option}
-            isSelected={option.key === selectedKey}
-            testIDBase={testID ?? "agent-transfer-workspace"}
-            onPress={handleOptionPress}
-          />
-        ))}
+        <SelectField<ProjectOptionValue>
+          label={t("workspace.tabs.transfer.projectLabel")}
+          value={selectedProject}
+          selectedDisplay={selectedProjectDisplay}
+          options={projectOptions}
+          onChange={handleProjectChange}
+          placeholder={t("workspace.tabs.transfer.projectPlaceholder")}
+          emptyText={t("workspace.tabs.transfer.projectEmpty")}
+          searchable
+          searchPlaceholder={t("workspace.tabs.transfer.searchPlaceholder")}
+          onSearchQueryChange={setProjectSearch}
+          testID={testID ? `${testID}-project` : "agent-transfer-workspace-project"}
+        />
+        <SelectField<TransferWorkspaceSelection>
+          label={t("workspace.tabs.transfer.workspaceLabel")}
+          value={selectedWorkspace}
+          selectedDisplay={selectedWorkspaceDisplay}
+          options={workspaceOptions}
+          onChange={handleWorkspaceChange}
+          placeholder={t("workspace.tabs.transfer.workspacePlaceholder")}
+          emptyText={t("workspace.tabs.transfer.workspaceEmpty")}
+          disabled={!activeProject}
+          searchable
+          searchPlaceholder={t("workspace.tabs.transfer.searchPlaceholder")}
+          onSearchQueryChange={setWorkspaceSearch}
+          testID={testID ? `${testID}-workspace` : "agent-transfer-workspace-workspace"}
+        />
         <Pressable
-          style={[styles.confirmButton, selectedKey === null && styles.confirmButtonDisabled]}
+          style={[styles.confirmButton, selectedWorkspace === null && styles.confirmButtonDisabled]}
           onPress={handleConfirm}
-          disabled={selectedKey === null}
+          disabled={selectedWorkspace === null}
           accessibilityRole="button"
           accessibilityLabel={t("workspace.tabs.transfer.confirm")}
           testID={testID ? `${testID}-confirm` : "agent-transfer-workspace-confirm"}
@@ -81,76 +173,10 @@ export const AgentTransferWorkspaceModal = memo(function AgentTransferWorkspaceM
   );
 });
 
-const ThemedCheck = withUnistyles(Check, (theme) => ({ color: theme.colors.foreground }));
-
-const TransferOptionRow = memo(function TransferOptionRow({
-  option,
-  isSelected,
-  testIDBase,
-  onPress,
-}: {
-  option: TransferWorkspaceOption;
-  isSelected: boolean;
-  testIDBase: string;
-  onPress: (key: string) => void;
-}) {
-  const { t: _t } = useTranslation();
-  void _t;
-  const handlePress = useCallback(() => onPress(option.key), [option.key, onPress]);
-  return (
-    <Pressable
-      style={[styles.optionRow, isSelected && styles.optionRowSelected]}
-      onPress={handlePress}
-      accessibilityRole="button"
-      accessibilityLabel={option.label}
-      testID={`${testIDBase}-option-${option.key}`}
-    >
-      <View style={styles.optionText}>
-        <Text style={styles.optionLabel} numberOfLines={1}>
-          {option.label}
-        </Text>
-        {option.detail ? (
-          <Text style={styles.optionDetail} numberOfLines={1}>
-            {option.detail}
-          </Text>
-        ) : null}
-      </View>
-      {isSelected ? <ThemedCheck size={16} /> : null}
-    </Pressable>
-  );
-});
-
 const styles = StyleSheet.create((theme) => ({
   body: {
     padding: theme.spacing[4],
-    gap: theme.spacing[2],
-  },
-  optionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.spacing[2],
-    paddingVertical: theme.spacing[3],
-    paddingHorizontal: theme.spacing[3],
-    borderRadius: theme.borderRadius.md,
-    borderWidth: theme.borderWidth[1],
-    borderColor: theme.colors.border,
-  },
-  optionRowSelected: {
-    borderColor: theme.colors.borderAccent,
-    backgroundColor: theme.colors.surface2,
-  },
-  optionText: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  optionLabel: {
-    color: theme.colors.foreground,
-    fontSize: theme.fontSize.base,
-  },
-  optionDetail: {
-    color: theme.colors.foregroundMuted,
-    fontSize: theme.fontSize.sm,
+    gap: theme.spacing[3],
   },
   confirmButton: {
     marginTop: theme.spacing[2],

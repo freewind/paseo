@@ -1,16 +1,28 @@
 import { useCallback, useMemo, useState, type ReactElement } from "react";
 import { useHosts } from "@/runtime/host-runtime";
-import { normalizeWorkspacePath } from "@/utils/workspace-identity";
 import { useTranslation } from "react-i18next";
 import { useWorkspaceStructure } from "@/stores/session-store-hooks";
 import { useSessionStore } from "@/stores/session-store";
 import { navigateToWorkspace } from "@/stores/navigation-active-workspace-store";
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
 import { useToast } from "@/contexts/toast-context";
-import {
-  AgentTransferWorkspaceModal,
-  type TransferWorkspaceOption,
-} from "./agent-transfer-workspace-modal";
+import { AgentTransferWorkspaceModal } from "./agent-transfer-workspace-modal";
+
+export interface TransferWorkspaceEntry {
+  workspaceId: string;
+  label: string;
+}
+
+export interface TransferWorkspaceProject {
+  /** The daemon treats an unknown workspace id as a project id and creates a root workspace. */
+  viewKey: string;
+  projectName: string;
+  workspaces: readonly TransferWorkspaceEntry[];
+}
+
+export type TransferWorkspaceSelection =
+  | { kind: "workspace"; workspaceId: string }
+  | { kind: "create"; projectViewKey: string };
 
 interface UseAgentTransferWorkspaceInput {
   serverId: string;
@@ -19,17 +31,19 @@ interface UseAgentTransferWorkspaceInput {
 }
 
 interface UseAgentTransferWorkspaceResult {
-  /** One option per visible workspace plus one per project without any. */
-  transferOptions: readonly TransferWorkspaceOption[];
+  /** One entry per visible project with its candidate workspaces. */
+  transferProjects: readonly TransferWorkspaceProject[];
   onMoveAgentToWorkspace: (agentId: string) => void;
   transferModal: ReactElement | null;
 }
 
 /**
- * Move an agent to another workspace on this daemon. Options come from the workspace
- * structure the client already holds: every workspace, plus every project whose
- * directory has no workspace — choosing one creates a plain directory-backed
- * workspace at the project root on the daemon. A running turn blocks the transfer.
+ * Move an agent to another workspace on this daemon. Projects come from the workspace
+ * structure the client already holds; each project lists its workspaces (root-directory
+ * workspaces included) plus an implicit "create new" choice that the daemon resolves by
+ * creating a plain directory-backed workspace at the project root, named after the agent.
+ * The agent's current workspace and archiving workspaces are never offered. A running
+ * turn blocks the transfer.
  */
 export function useAgentTransferWorkspace(
   input: UseAgentTransferWorkspaceInput,
@@ -40,64 +54,61 @@ export function useAgentTransferWorkspace(
   const hosts = useHosts();
   const allServerIds = useMemo(() => hosts.map((host) => host.serverId), [hosts]);
   const structure = useWorkspaceStructure(allServerIds);
-  const [pending, setPending] = useState<{ agentId: string; agentTitle: string } | null>(null);
+  const [pending, setPending] = useState<{
+    agentId: string;
+    agentTitle: string;
+    currentWorkspaceId: string | null;
+  } | null>(null);
 
-  const transferOptions = useMemo<readonly TransferWorkspaceOption[]>(() => {
+  const transferProjects = useMemo<readonly TransferWorkspaceProject[]>(() => {
     if (!enabled) return [];
-    const options: TransferWorkspaceOption[] = [];
+    const projects: TransferWorkspaceProject[] = [];
     for (const project of structure.projects) {
-      const workspaces = project.workspaceKeys;
-      if (workspaces.length === 0) {
-        options.push({
-          key: `project:${project.viewKey}`,
-          label: t("workspace.tabs.transfer.createAtProjectRoot", { project: project.projectName }),
-        });
-        continue;
-      }
-      for (const workspaceKey of workspaces) {
+      const workspaces: TransferWorkspaceEntry[] = [];
+      for (const workspaceKey of project.workspaceKeys) {
         const workspace = useSessionStore
           .getState()
           .sessions[serverId]?.workspaces.get(workspaceKey);
         if (!workspace || workspace.archivingAt) continue;
-        if (!areEquivalentPaths(workspace.workspaceDirectory, project.iconWorkingDir)) {
-          options.push({
-            key: `workspace:${serverId}:${workspace.id}`,
-            label: workspace.title ?? workspace.name,
-            detail: project.projectName,
-          });
-        }
+        if (workspace.id && workspace.id === pending?.currentWorkspaceId) continue;
+        workspaces.push({
+          workspaceId: workspace.id,
+          label: workspace.title ?? workspace.name,
+        });
       }
+      projects.push({
+        viewKey: project.viewKey,
+        projectName: project.projectName,
+        workspaces,
+      });
     }
-    return options;
-  }, [enabled, serverId, structure.projects, t]);
+    return projects;
+  }, [enabled, pending?.currentWorkspaceId, serverId, structure.projects]);
 
   const onMoveAgentToWorkspace = useCallback(
     (agentId: string) => {
       if (!enabled) return;
       const agent = useSessionStore.getState().sessions[serverId]?.agents.get(agentId) ?? null;
-      setPending({ agentId, agentTitle: agent?.title ?? agentId });
+      setPending({
+        agentId,
+        agentTitle: agent?.title ?? agentId,
+        currentWorkspaceId: agent?.workspaceId ?? null,
+      });
     },
     [enabled, serverId],
   );
 
   const handleSelect = useCallback(
-    async (option: TransferWorkspaceOption) => {
+    async (selection: TransferWorkspaceSelection) => {
       if (!pending) return;
       const client = getHostRuntimeStore().getClient(serverId);
       if (!client) {
         toast.error(t("workspace.terminal.hostDisconnected"));
         return;
       }
-      const [kind, , workspaceId] = option.key.split(":");
-      if (kind === "workspace" && !workspaceId) {
-        toast.error(t("workspace.tabs.transfer.failed"));
-        return;
-      }
       const targetWorkspaceId =
-        kind === "workspace" ? (workspaceId as string) : option.key.slice("project:".length);
-      const projectKey = option.key.startsWith("project:")
-        ? option.key.slice("project:".length)
-        : undefined;
+        selection.kind === "workspace" ? selection.workspaceId : selection.projectViewKey;
+      const projectKey = selection.kind === "create" ? selection.projectViewKey : undefined;
       try {
         toast.show(t("workspace.tabs.transfer.moving"), { durationMs: null });
         const result = await client.transferAgentWorkspace(
@@ -122,8 +133,8 @@ export function useAgentTransferWorkspace(
 
   const handleClose = useCallback(() => setPending(null), []);
 
-  const handleOptionSelect = useCallback(
-    (option: TransferWorkspaceOption) => void handleSelect(option),
+  const handleSelectTransfer = useCallback(
+    (selection: TransferWorkspaceSelection) => void handleSelect(selection),
     [handleSelect],
   );
 
@@ -133,20 +144,14 @@ export function useAgentTransferWorkspace(
         <AgentTransferWorkspaceModal
           visible={pending !== null}
           agentTitle={pending?.agentTitle ?? ""}
-          options={transferOptions}
+          projects={transferProjects}
           onClose={handleClose}
-          onSelect={handleOptionSelect}
+          onSelect={handleSelectTransfer}
           testID="agent-transfer-workspace"
         />
       ) : null,
-    [enabled, handleOptionSelect, handleClose, pending, transferOptions],
+    [enabled, handleClose, handleSelectTransfer, pending, transferProjects],
   );
 
-  return { transferOptions, onMoveAgentToWorkspace, transferModal };
-}
-
-function areEquivalentPaths(left: string, right: string): boolean {
-  const normalizedLeft = normalizeWorkspacePath(left);
-  const normalizedRight = normalizeWorkspacePath(right);
-  return normalizedLeft !== null && normalizedLeft === normalizedRight;
+  return { transferProjects, onMoveAgentToWorkspace, transferModal };
 }

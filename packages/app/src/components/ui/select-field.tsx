@@ -54,6 +54,7 @@ export interface SelectFieldProps<TValue> {
   error?: string | null;
   searchable?: boolean;
   searchPlaceholder?: string;
+  onSearchQueryChange?: (query: string) => void;
   title?: string;
   size?: FieldControlSize;
   getValueKey?: (value: TValue) => string;
@@ -184,6 +185,7 @@ export function SelectField<TValue>({
   error,
   searchable = false,
   searchPlaceholder,
+  onSearchQueryChange,
   title,
   size = "md",
   getValueKey,
@@ -320,6 +322,7 @@ export function SelectField<TValue>({
         onSelect={handleSelect}
         searchable={searchable}
         searchPlaceholder={searchPlaceholder}
+        onSearchQueryChange={onSearchQueryChange}
         emptyText={loading && visibleOptions.length === 0 ? "Loading..." : emptyText}
         title={title ?? label}
         open={open}
