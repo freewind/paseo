@@ -128,43 +128,6 @@ function buildCanonicalDetailDisplay(input: ToolCallDisplayInput): DetailDisplay
   }
 }
 
-const TOOL_DISCOVERY_MCP_PREFIX = "mcp__tool_discovery__";
-
-/**
- * Tool-discovery calls are three levels of noise on a phone: the MCP prefix, the vendor
- * name, and the action. The badge keeps `td_<action>` and only the argument the action is
- * about, so `td_execute codegraph_search_symbols` still says what ran.
- */
-function buildToolDiscoveryDisplay(input: ToolCallDisplayInput): DetailDisplay | null {
-  const normalized = input.name.trim().toLowerCase();
-  if (!normalized.startsWith(TOOL_DISCOVERY_MCP_PREFIX)) return null;
-  const action = normalized.slice(TOOL_DISCOVERY_MCP_PREFIX.length);
-  const rawInput = input.detail.type === "unknown" ? input.detail.input : undefined;
-  return {
-    displayName: `td_${action}`,
-    summary: readToolDiscoverySummary(action, rawInput),
-  };
-}
-
-function readToolDiscoverySummary(action: string, rawInput: unknown): string | undefined {
-  if (!isRecord(rawInput)) return undefined;
-  if (action === "get") {
-    const tools = rawInput.tools;
-    if (!Array.isArray(tools)) return undefined;
-    const names = tools
-      .map((entry) => readString(entry))
-      .filter((entry): entry is string => entry !== undefined);
-    return names.length > 0 ? names.join(", ") : undefined;
-  }
-  if (action === "search") {
-    return readString(rawInput.query);
-  }
-  if (action === "execute") {
-    return readString(rawInput.tool);
-  }
-  return undefined;
-}
-
 function buildUnknownDetailOverride(input: ToolCallDisplayInput): DetailDisplay {
   const lowerName = input.name.trim().toLowerCase();
   if (input.detail.type === "unknown" && lowerName === "task") {
@@ -188,19 +151,13 @@ function buildUnknownDetailOverride(input: ToolCallDisplayInput): DetailDisplay 
 }
 
 export function buildToolCallDisplayModel(input: ToolCallDisplayInput): ToolCallDisplayModel {
-  const toolDiscoveryDisplay = buildToolDiscoveryDisplay(input);
   const canonicalDisplay = buildCanonicalDetailDisplay(input);
   const unknownDetailOverride = buildUnknownDetailOverride(input);
   const displayName =
-    toolDiscoveryDisplay?.displayName ??
     unknownDetailOverride.displayName ??
     canonicalDisplay.displayName ??
     humanizeToolName(input.name);
-  // A tool-discovery call never falls back to another summary source: whatever the action
-  // does not name explicitly stays off the badge.
-  const summary = toolDiscoveryDisplay
-    ? toolDiscoveryDisplay.summary
-    : (unknownDetailOverride.summary ?? canonicalDisplay.summary);
+  const summary = unknownDetailOverride.summary ?? canonicalDisplay.summary;
   const errorText = input.status === "failed" ? formatErrorText(input.error) : undefined;
 
   return {
