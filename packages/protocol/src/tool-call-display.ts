@@ -127,6 +127,11 @@ function buildCanonicalDetailDisplay(input: ToolCallDisplayInput): DetailDisplay
   }
 }
 
+function readUnknownInputFilePath(input: unknown): string | undefined {
+  if (!isRecord(input)) return undefined;
+  return readString(input.path);
+}
+
 function buildUnknownDetailOverride(input: ToolCallDisplayInput): DetailDisplay {
   const lowerName = input.name.trim().toLowerCase();
   if (input.detail.type === "unknown" && lowerName === "task") {
@@ -145,6 +150,14 @@ function buildUnknownDetailOverride(input: ToolCallDisplayInput): DetailDisplay 
       displayName: "Terminal",
       summary: input.detail.type === "plain_text" ? readString(input.detail.label) : undefined,
     };
+  }
+  // A tool the daemon could not map still names the file it works on, so its badge keeps the
+  // same path summary the canonical read/edit/write details get instead of showing nothing.
+  if (input.detail.type === "unknown") {
+    const filePath = readUnknownInputFilePath(input.detail.input);
+    if (filePath) {
+      return { summary: stripCwdPrefix(filePath, input.cwd) };
+    }
   }
   return {};
 }

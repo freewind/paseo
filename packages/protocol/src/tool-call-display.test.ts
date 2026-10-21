@@ -38,6 +38,21 @@ describe("shared tool-call display mapping", () => {
     });
   });
 
+  it("keeps the path of an unmapped tool as its summary", () => {
+    const display = buildToolCallDisplayModel({
+      name: "edit",
+      status: "running",
+      error: null,
+      detail: {
+        type: "unknown",
+        input: { path: "/tmp/repo/src/index.ts", operations: [{ oldText: "a", newText: "b" }] },
+        output: null,
+      },
+      cwd: "/tmp/repo",
+    });
+
+    expect(display).toEqual({ displayName: "Edit", summary: "src/index.ts" });
+  });
   it("leaves other MCP tools untouched", () => {
     const display = buildToolCallDisplayModel({
       name: "mcp__exa__web_search",
