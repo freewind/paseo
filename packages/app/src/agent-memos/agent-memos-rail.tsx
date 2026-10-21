@@ -122,6 +122,26 @@ export const AgentMemosRail = memo(function AgentMemosRail({
       style={[styles.container, compact ? styles.containerCompact : styles.containerGutter]}
       testID="agent-memos-rail"
     >
+      <View style={styles.list}>
+        {orderedMemos.map((entry) => (
+          <AgentMemoRow
+            key={entry.id}
+            entry={entry}
+            supportsCompletion={supportsCompletion}
+            onUse={handleMemoPress}
+            onCompletedChange={handleMemoCompletedChange}
+            onRequestDelete={handleRequestDelete}
+            onOpenImage={handleOpenMemoImage}
+          />
+        ))}
+        {isAdding ? (
+          <AgentMemoComposer
+            onSubmit={handleAddMemo}
+            onCancel={handleCancelAdd}
+            canAttachImages={supportsImages}
+          />
+        ) : null}
+      </View>
       <View style={[styles.header, showTitle ? null : styles.headerTrailing]}>
         {showTitle ? (
           <View style={styles.titleGroup}>
@@ -147,26 +167,6 @@ export const AgentMemosRail = memo(function AgentMemosRail({
             <Text style={styles.tooltipText}>{t("agentMemos.add")}</Text>
           </TooltipContent>
         </Tooltip>
-      </View>
-      <View style={styles.list}>
-        {orderedMemos.map((entry) => (
-          <AgentMemoRow
-            key={entry.id}
-            entry={entry}
-            supportsCompletion={supportsCompletion}
-            onUse={handleMemoPress}
-            onCompletedChange={handleMemoCompletedChange}
-            onRequestDelete={handleRequestDelete}
-            onOpenImage={handleOpenMemoImage}
-          />
-        ))}
-        {isAdding ? (
-          <AgentMemoComposer
-            onSubmit={handleAddMemo}
-            onCancel={handleCancelAdd}
-            canAttachImages={supportsImages}
-          />
-        ) : null}
       </View>
       <AttachmentLightbox source={lightboxSource} onClose={handleCloseLightbox} />
     </View>
