@@ -31,11 +31,17 @@ interface AssistantCommentSheetProps {
   request: AssistantCommentRequest | null;
   onCancel: () => void;
   onAttach: (comment: string) => void;
+  onSend: (comment: string) => void;
 }
 
 const SNAP_POINTS = ["55%", "85%"];
 
-export function AssistantCommentSheet({ request, onCancel, onAttach }: AssistantCommentSheetProps) {
+export function AssistantCommentSheet({
+  request,
+  onCancel,
+  onAttach,
+  onSend,
+}: AssistantCommentSheetProps) {
   const [retained, setRetained] = useState<AssistantCommentRequest | null>(request);
   const [comment, setComment] = useState("");
 
@@ -57,6 +63,13 @@ export function AssistantCommentSheet({ request, onCancel, onAttach }: Assistant
       onAttach(comment);
     }
   }, [comment, onAttach]);
+
+  /** Same commit as attach, then the composer sends it instead of waiting for the user. */
+  const handleSend = useCallback(() => {
+    if (comment.trim().length > 0) {
+      onSend(comment);
+    }
+  }, [comment, onSend]);
 
   // Desktop only: Enter attaches, Shift+Enter keeps the newline. Mobile soft
   // keyboards have no Enter key, so they keep the attach button.
@@ -81,16 +94,24 @@ export function AssistantCommentSheet({ request, onCancel, onAttach }: Assistant
             {t("common.actions.cancel")}
           </Button>
           <Button
-            variant="default"
+            variant="secondary"
             disabled={comment.trim().length === 0}
             onPress={handleAttach}
             testID="assistant-comment-attach"
           >
             {t("comment.sheet.attach")}
           </Button>
+          <Button
+            variant="default"
+            disabled={comment.trim().length === 0}
+            onPress={handleSend}
+            testID="assistant-comment-send"
+          >
+            {t("comment.sheet.sendNow")}
+          </Button>
         </View>
       ) : null,
-    [close, comment, handleAttach, retained, t],
+    [close, comment, handleAttach, handleSend, retained, t],
   );
 
   return (

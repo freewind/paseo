@@ -1282,15 +1282,23 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
       composerState,
     ],
   );
+  const composerSubmitNowRef = useRef<((text: string) => void) | null>(null);
+  const handleComposerSubmitNow = useCallback((submitNow: (text: string) => void) => {
+    composerSubmitNowRef.current = submitNow;
+  }, []);
   const handleCommentCommit = useCallback(
-    ({ blockText, comment }: { blockText: string; comment: string }) => {
-      replaceText(
-        buildCommentDraftText({
-          existingText: textSource.getSnapshot(),
-          blockText,
-          comment,
-        }),
-      );
+    ({ blockText, comment, sendNow }: { blockText: string; comment: string; sendNow: boolean }) => {
+      const nextText = buildCommentDraftText({
+        existingText: textSource.getSnapshot(),
+        blockText,
+        comment,
+      });
+      // Write the draft first: a send that cannot start (host offline) leaves the text in place
+      // instead of swallowing what the user typed.
+      replaceText(nextText);
+      if (sendNow) {
+        composerSubmitNowRef.current?.(nextText);
+      }
     },
     [replaceText, textSource],
   );
@@ -1306,6 +1314,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
         isSubmitLoading={false}
         agentInputDraft={agentInputDraft}
         onAttentionInputFocus={onAttentionInputFocus}
+        onSubmitNow={handleComposerSubmitNow}
         onAttentionPromptSend={onAttentionPromptSend}
         onComposerHeightChange={handleComposerHeightChange}
         onMessageSent={handleMessageSent}
@@ -1456,7 +1465,7 @@ function TimelineSyncErrorCallout({
 }
 
 type CommentableAgentStreamSectionProps = React.ComponentProps<typeof AgentStreamSection> & {
-  onCommentCommit: (input: { blockText: string; comment: string }) => void;
+  onCommentCommit: (input: { blockText: string; comment: string; sendNow: boolean }) => void;
 };
 
 function CommentableAgentStreamSection({
@@ -1588,6 +1597,7 @@ const AgentComposerSection = memo(function AgentComposerSection({
   isSubmitLoading,
   agentInputDraft,
   onAttentionInputFocus,
+  onSubmitNow,
   onAttentionPromptSend,
   onComposerHeightChange,
   onMessageSent,
@@ -1606,6 +1616,7 @@ const AgentComposerSection = memo(function AgentComposerSection({
   isSubmitLoading: boolean;
   agentInputDraft: AgentInputDraft;
   onAttentionInputFocus: () => void;
+  onSubmitNow: (submitNow: (text: string) => void) => void;
   onAttentionPromptSend: () => void;
   onComposerHeightChange: (height: number) => void;
   onMessageSent: () => void;
@@ -1634,6 +1645,7 @@ const AgentComposerSection = memo(function AgentComposerSection({
       isSubmitLoading={isSubmitLoading}
       agentInputDraft={agentInputDraft}
       onAttentionInputFocus={onAttentionInputFocus}
+      onSubmitNow={onSubmitNow}
       onAttentionPromptSend={onAttentionPromptSend}
       onComposerHeightChange={onComposerHeightChange}
       onMessageSent={onMessageSent}
@@ -1654,6 +1666,7 @@ function ActiveAgentComposer({
   isSubmitLoading,
   agentInputDraft,
   onAttentionInputFocus,
+  onSubmitNow,
   onAttentionPromptSend,
   onComposerHeightChange,
   onMessageSent,
@@ -1670,6 +1683,7 @@ function ActiveAgentComposer({
   isSubmitLoading: boolean;
   agentInputDraft: AgentInputDraft;
   onAttentionInputFocus: () => void;
+  onSubmitNow: (submitNow: (text: string) => void) => void;
   onAttentionPromptSend: () => void;
   onComposerHeightChange: (height: number) => void;
   onMessageSent: () => void;
@@ -1815,6 +1829,7 @@ function ActiveAgentComposer({
         autoFocusKey={String(agentInputDraft.attachmentFocusRequestId)}
         isSubmitLoading={isSubmitLoading}
         onAttentionInputFocus={onAttentionInputFocus}
+        onSubmitNow={onSubmitNow}
         onAttentionPromptSend={onAttentionPromptSend}
         onComposerHeightChange={onComposerHeightChange}
         onMessageSent={onMessageSent}

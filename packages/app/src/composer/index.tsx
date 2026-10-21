@@ -999,6 +999,11 @@ interface ComposerProps {
   autoFocusKey?: string;
   /** Callback to expose a focus function to parent components (desktop only). */
   onFocusInput?: (focus: () => void) => void;
+  /**
+   * Exposes an imperative submit for text the host built itself, such as a quoted comment.
+   * It runs the normal send path, so attachments, queueing, and draft clearing match a keyboard send.
+   */
+  onSubmitNow?: (submitNow: (text: string) => void) => void;
   /** Draft context for listing commands before an agent exists. Omitted for running agents. */
   commandDraft?: DraftCommandTarget;
   /** Called when a message is about to be sent (any path: keyboard, dictation, queued). */
@@ -1316,6 +1321,7 @@ function ComposerContentImpl({
   autoFocus = false,
   autoFocusKey,
   onFocusInput,
+  onSubmitNow,
   commandDraft,
   onMessageSent,
   onComposerHeightChange,
@@ -1845,6 +1851,17 @@ function ComposerContentImpl({
     },
     [cwd, handleSubmit, textSource],
   );
+
+  const submitTextNow = useCallback(
+    (text: string) => {
+      handleSubmit({ text, attachments: [], cwd });
+    },
+    [cwd, handleSubmit],
+  );
+
+  useEffect(() => {
+    onSubmitNow?.(submitTextNow);
+  }, [onSubmitNow, submitTextNow]);
 
   const handlePasteImage = useCallback(async () => {
     try {

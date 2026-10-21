@@ -121,6 +121,7 @@ export const en = {
       quote: "Quoting",
       placeholder: "Write your comment",
       attach: "Attach",
+      sendNow: "Send now",
     },
   },
   composer: {
