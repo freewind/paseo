@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-22 18:05
+最近一次保存：2026-10-22 18:30
 
 ---
 
@@ -255,3 +255,19 @@ Notes：
 - 文本大纲的 hover 与 focus 都不再写 hoveredIndex / focusedIndex；左侧 attention 只由圆点自己驱动。
 - ChatOutlineTextRail / ChatOutlineTextRow 去掉 onHover、onLeave、onFocusChange。
 - 既有阻塞：`src/agent-stream/chat-outline/rail.web.test.tsx` 与 `sheet.test.tsx` 在当前 main 上加载即报 `SyntaxError: Unexpected identifier 'ReactElement'`（已用 stash 验证与本次无关）。这两文件无法运行，本次只用 lint / typecheck 与浏览器测试断言修改自证。
+
+---
+
+### 右侧文本大纲跟随聊天滚动
+
+- 状态：已完成
+- 最近保存：2026-10-22 18:30
+
+聊天区滚动会更新 activeSeq，但右侧列表只换文字颜色，列表本身不动。
+
+Notes：
+
+- 行用 onLayout 上报 y 与高度，ScrollView 上报可视高度；activeSeq 变化时把对应行滚到垂直居中。
+- 按测量出的行框算，不用 index × 行高：行最多两行，中间还有带序号的分隔线。
+- 程序滚动开 500ms 窗口，窗口外的 onScroll / onScrollBeginDrag 视为用户手动滚动，暂停跟随；从 popover 跳转后恢复。
+- 左侧 dots 不动：它按屏幕高度比例排布，不滚动。
