@@ -122,6 +122,7 @@ export const zhCN: TranslationResources = {
   comment: {
     menu: {
       item: "评论",
+      copy: "复制",
       addToTodo: "添加到备忘",
       title: "评论",
     },

@@ -124,6 +124,7 @@ export const fr: TranslationResources = {
   comment: {
     menu: {
       item: "Commenter",
+      copy: "Copier",
       addToTodo: "Ajouter aux mémos",
       title: "Commentaire",
     },

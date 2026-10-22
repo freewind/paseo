@@ -123,6 +123,7 @@ export const ja: TranslationResources = {
   comment: {
     menu: {
       item: "コメント",
+      copy: "コピー",
       addToTodo: "メモに追加",
       title: "コメント",
     },

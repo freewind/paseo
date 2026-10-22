@@ -123,6 +123,7 @@ export const ru: TranslationResources = {
   comment: {
     menu: {
       item: "Комментировать",
+      copy: "Копировать",
       addToTodo: "Добавить в заметки",
       title: "Комментарий",
     },

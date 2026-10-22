@@ -122,6 +122,7 @@ export const ko: TranslationResources = {
   comment: {
     menu: {
       item: "댓글",
+      copy: "복사",
       addToTodo: "메모에 추가",
       title: "댓글",
     },

@@ -122,6 +122,7 @@ export const ar: TranslationResources = {
   comment: {
     menu: {
       item: "تعليق",
+      copy: "نسخ",
       addToTodo: "إضافة إلى المذكرات",
       title: "تعليق",
     },

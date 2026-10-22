@@ -2,7 +2,8 @@ import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { View, type StyleProp, type ViewStyle } from "react-native";
 import { useTranslation } from "react-i18next";
 import { withUnistyles } from "react-native-unistyles";
-import { ClipboardList, MessageSquarePlus } from "lucide-react-native";
+import * as Clipboard from "expo-clipboard";
+import { ClipboardList, Copy, MessageSquarePlus } from "lucide-react-native";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -16,6 +17,7 @@ import { readAssistantCommentSelection } from "@/assistant-comment/selection";
 const mutedColorMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
 const ThemedCommentIcon = withUnistyles(MessageSquarePlus, mutedColorMapping);
 const ThemedMemoIcon = withUnistyles(ClipboardList, mutedColorMapping);
+const ThemedCopyIcon = withUnistyles(Copy, mutedColorMapping);
 
 interface MarkdownCommentableBlockProps {
   blockText: string;
@@ -54,6 +56,10 @@ export function MarkdownCommentableBlock({
   const handleAddToTodo = useCallback(() => {
     comment?.requestAddToTodo?.(selectedText ?? blockText);
   }, [comment, blockText, selectedText]);
+  const handleCopy = useCallback(() => {
+    void Clipboard.setStringAsync(selectedText ?? blockText).catch(() => undefined);
+  }, [blockText, selectedText]);
+  const copyLeading = useMemo(() => <ThemedCopyIcon size={ICON_SIZE.sm} />, []);
   const commentLeading = useMemo(() => <ThemedCommentIcon size={ICON_SIZE.sm} />, []);
   const memoLeading = useMemo(() => <ThemedMemoIcon size={ICON_SIZE.sm} />, []);
 
@@ -80,6 +86,9 @@ export function MarkdownCommentableBlock({
         horizontalPadding={4}
         testID="assistant-comment-menu"
       >
+        <ContextMenuItem leading={copyLeading} onSelect={handleCopy} testID="markdown-copy-item">
+          {t("comment.menu.copy")}
+        </ContextMenuItem>
         <ContextMenuItem
           leading={commentLeading}
           onSelect={handleSelect}
