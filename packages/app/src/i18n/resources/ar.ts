@@ -346,6 +346,7 @@ export const ar: TranslationResources = {
     },
     badges: {
       archived: "مؤرشف",
+      subagent: "وكيل فرعي",
       pending: "{{count}}معلق",
       attention: "انتباه",
     },

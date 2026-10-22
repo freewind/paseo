@@ -347,6 +347,7 @@ export const en = {
     },
     badges: {
       archived: "Archived",
+      subagent: "Subagent",
       pending: "{{count}} pending",
       attention: "Attention",
     },

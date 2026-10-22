@@ -347,6 +347,7 @@ export const ko: TranslationResources = {
     },
     badges: {
       archived: "보관됨",
+      subagent: "하위 에이전트",
       pending: "대기 {{count}}개",
       attention: "주의",
     },

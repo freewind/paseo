@@ -351,6 +351,7 @@ export const ja: TranslationResources = {
     },
     badges: {
       archived: "アーカイブ済み",
+      subagent: "サブエージェント",
       pending: "{{count}}件保留中",
       attention: "注意",
     },

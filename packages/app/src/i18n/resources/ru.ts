@@ -350,6 +350,7 @@ export const ru: TranslationResources = {
     },
     badges: {
       archived: "В архиве",
+      subagent: "Подагент",
       pending: "На рассмотрении: {{count}}",
       attention: "Внимание",
     },

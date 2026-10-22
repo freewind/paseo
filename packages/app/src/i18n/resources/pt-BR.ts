@@ -350,6 +350,7 @@ export const ptBR: TranslationResources = {
     },
     badges: {
       archived: "Arquivado",
+      subagent: "Subagente",
       pending: "{{count}} pendente(s)",
       attention: "Atenção",
     },

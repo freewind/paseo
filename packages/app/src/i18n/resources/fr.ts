@@ -355,6 +355,7 @@ export const fr: TranslationResources = {
     badges: {
       archived: "Archivé",
       pending: "{{count}} en attente",
+      subagent: "Sous-agent",
       attention: "Attention",
     },
     archiveSheet: {

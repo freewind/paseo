@@ -354,6 +354,7 @@ export const es: TranslationResources = {
     },
     badges: {
       archived: "Archivado",
+      subagent: "Subagente",
       pending: "{{count}}pendiente",
       attention: "Atención",
     },
