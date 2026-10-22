@@ -157,7 +157,7 @@ function readSummaryValue(input: Record<string, unknown>, key: string): string |
     if (items.length === 0) {
       return undefined;
     }
-    // Two patterns already fill a badge line; the rest would only be cut off.
+    // At most two values: more already overflows a badge line and would only be cut off.
     return items.length > 2 ? `${items[0]} | ${items[1]} | …` : items.join(" | ");
   }
   return readString(value);
@@ -181,6 +181,10 @@ function collapseWhitespace(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
+/**
+ * At most two parts — what the call asks for, then where — however many keys match. A badge that
+ * grew to three or four stops being something the reader takes in at a glance.
+ */
 function buildUnknownInputSummary(input: unknown, cwd: string | undefined): string | undefined {
   if (!isRecord(input)) {
     return undefined;

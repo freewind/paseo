@@ -240,6 +240,29 @@ describe("tool-call-display", () => {
     expect(prompt.summary).toBe("fix the badge then run the tests");
   });
 
+  it("keeps the summary to two parts when many candidate keys match", () => {
+    const display = buildToolCallDisplayModel({
+      name: "mcp__serena__replace_symbol_body",
+      status: "completed",
+      error: null,
+      detail: {
+        type: "unknown",
+        input: {
+          query: "first matching query",
+          pattern: "Foo",
+          name_path_pattern: "Foo/bar",
+          name_path: "Foo/baz",
+          path: "src/a.ts",
+          relative_path: "src/b.ts",
+          projectPath: "/tmp/repo",
+        },
+        output: null,
+      },
+    });
+
+    expect(display.summary).toBe("first matching query · src/a.ts");
+  });
+
   it("keeps a path summary for an unmapped tool that names only a file", () => {
     const display = buildToolCallDisplayModel({
       name: "mcp__other__stat",
