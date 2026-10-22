@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-23 05:10
+最近一次保存：2026-10-23 05:35
 
 ---
 
@@ -691,3 +691,22 @@ Notes：
 - i18n `agentMemos.clear` × 9。
 - **未新增协议 RPC**：新 RPC 要走 feature gate，用户当前 daemon 上按钮会被隐藏，得重建 host 才生效；逐条删除现有 daemon 立刻可用，备忘量是个位数。
 - 未新增测试：该目录本来没有测试文件，纯 UI 确认流程。验证：lint、typecheck、format 全过。
+
+---
+
+### 工具卡片标题显示意图字段
+
+- 状态：已完成（`ba234e223`）
+- 最近保存：2026-10-23 05:35
+
+需求：工具卡片标题原来只显示 path，希望像 `mcp__fsearch__grep packages/protocol` 这样一眼能看出意图，比如先显 query。
+
+改 `packages/protocol/src/tool-call-display.ts` 的 unknown 分支（MCP 工具在 daemon 里都是 unknown detail）：取一个意图字段 + 一个目标字段，用 `·` 连接。
+
+- 意图顺序：`query`、`pattern`、`patterns`、`substring_pattern`、`name_path_pattern`、`name_path`、`title`、`url`、`prompt`
+- 目标顺序：`path`、`relative_path`、`projectPath`、`cwd`
+- 数组取前两项，多于两个补 `…`；值里的空白折成一行；目标走 `stripCwdPrefix`
+- **`command` 刻意不取**：既有测试 `does not derive command summary from unknown raw detail` 明确禁止，避免无关字段变成摘要
+- 删掉旧的 `readUnknownInputFilePath`，改 `buildUnknownInputSummary`
+
+验证：`build:client`；`tool-call-display.test.ts` 14 passed（新增 5）、`types/stream.test.ts` 65 passed；lint、typecheck、format 全过。
