@@ -8,9 +8,7 @@ import {
   PROMPT_DETAIL_WIDTH,
   type ChatOutlinePrompt,
 } from "./model";
-// An extension-qualified import is required here: `./prompt-detail` resolves back to this
-// platform file on web and creates a self-import.
-const { PromptDetailContent } = require("./prompt-detail.tsx") as typeof import("./prompt-detail");
+import { PromptDetailContent } from "./prompt-detail-content";
 
 interface Rect {
   x: number;
