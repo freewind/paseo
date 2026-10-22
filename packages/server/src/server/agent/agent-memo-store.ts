@@ -119,10 +119,12 @@ export class AgentMemoStore {
     assertMemoImages(images);
     return this.enqueue(async () => {
       await this.load();
+      const now = new Date().toISOString();
       const memo: AgentMemo = {
         id: `memo_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
         text,
-        createdAt: new Date().toISOString(),
+        createdAt: now,
+        updatedAt: now,
         ...(images && images.length > 0 ? { images: [...images] } : {}),
       };
       const memos = this.snapshot().memosByAgentId[agentId] ?? [];
@@ -158,6 +160,7 @@ export class AgentMemoStore {
       const updated: AgentMemo = {
         ...memos[index]!,
         text,
+        updatedAt: new Date().toISOString(),
         ...(images === undefined ? {} : { images: images.length > 0 ? [...images] : undefined }),
       };
       assertMemoImagesBudget({
@@ -188,7 +191,11 @@ export class AgentMemoStore {
       if (index < 0) {
         throw new Error(`Memo not found: ${memoId}`);
       }
-      const updated: AgentMemo = { ...memos[index]!, completed };
+      const updated: AgentMemo = {
+        ...memos[index]!,
+        completed,
+        updatedAt: new Date().toISOString(),
+      };
       const next = [...memos];
       next[index] = updated;
       await this.persist({
