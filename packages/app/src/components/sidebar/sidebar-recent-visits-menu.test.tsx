@@ -28,7 +28,13 @@ const { theme, mocks } = vi.hoisted(() => ({
     workspaces: {} as Record<string, { title: string | null; name: string }>,
     agents: {} as Record<
       string,
-      { title: string | null; archivedAt: Date | null; parentAgentId?: string | null } | undefined
+      | {
+          title: string | null;
+          archivedAt: Date | null;
+          parentAgentId?: string | null;
+          updatedAt?: Date;
+        }
+      | undefined
     >,
     hosts: [] as { serverId: string; label: string }[],
     currentAgentId: null as string | null,
@@ -58,7 +64,9 @@ vi.mock("lucide-react-native", () => ({
 
 vi.mock("react-native", () => ({
   Platform: { OS: "web", select: (spec: Record<string, unknown>) => spec.web ?? spec.default },
-  Text: ({ children }: { children?: React.ReactNode }) => <span>{children}</span>,
+  Text: ({ children, testID }: { children?: React.ReactNode; testID?: string }) => (
+    <span data-testid={testID}>{children}</span>
+  ),
   View: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
 }));
 
@@ -349,6 +357,22 @@ describe("SidebarRecentVisitsMenu", () => {
     expect(onBeforeNavigate.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.navigateToWorkspace.mock.invocationCallOrder[0],
     );
+  });
+
+  it("shows how long ago the session was updated", () => {
+    mocks.agents["server-1:agent-a"] = {
+      title: "Fix login",
+      archivedAt: null,
+      updatedAt: new Date(Date.now() - 5 * 60_000),
+    };
+    visit("server-1", "workspace-a", "agent-a");
+
+    render();
+
+    const updated = container?.querySelector(
+      '[data-testid="sidebar-recent-visit-updated-agent-a"]',
+    );
+    expect(updated?.textContent).toBe("5m");
   });
 
   it("shows an empty state before anything has been visited", () => {
