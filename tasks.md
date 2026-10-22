@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-22 18:50
+最近一次保存：2026-10-22 19:15
 
 ---
 
@@ -288,3 +288,18 @@ Notes：
 - 删掉硬编码的 "Search hosts" 占位符，改用 Combobox 默认的 common.placeholders.search。
 - title 未改（用户说不需要加 title）。
 - host-picker.test.tsx 6 passed。
+
+---
+
+### 备忘录缩略图加反色边框
+
+- 状态：已完成
+- 最近保存：2026-10-22 19:15
+
+行内 24×24 与编辑态 32×32 的缩略图都没边框，图片内容与背景相近时边界看不出来。
+
+Notes：
+
+- 边框色用 `theme.colors.foreground`：它本来就是背景的反色（深色主题近白、浅色主题近黑），需要它的时候一定和图片本身不同色，不新增 token。
+- 彩色边框方案被否决：项目里没有 `borderColor: palette.*` 的先例，且彩色可能在某个主题里与图撞色。
+- 两处样式：agent-memos-rail 的 memoImage、agent-memo-composer 的 thumbnail（后者覆盖已存图、新加图、粘贴占位）。
