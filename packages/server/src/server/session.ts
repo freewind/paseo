@@ -7625,7 +7625,13 @@ export class Session {
       : null;
     this.emit({
       type: "fetch_agent_response",
-      payload: { requestId, agent, project, error: null },
+      payload: {
+        requestId,
+        agent,
+        project,
+        memos: this.agentMemoStore.list(resolved.agentId),
+        error: null,
+      },
     });
   }
 

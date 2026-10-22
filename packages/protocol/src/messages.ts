@@ -4804,6 +4804,10 @@ export const FetchAgentResponseMessageSchema = z.object({
     requestId: z.string(),
     agent: AgentSnapshotPayloadSchema.nullable(),
     project: ProjectPlacementPayloadSchema.nullable().optional(),
+    // COMPAT(agentMemosOnFetch): added in v0.11.0, remove gate after 2027-05-05.
+    // Memos ride the agent fetch so a freshly opened client shows the stored list; older
+    // daemons omit it and the client keeps whatever it already has.
+    memos: z.array(AgentMemoSchema).optional(),
     error: z.string().nullable(),
   }),
 });
