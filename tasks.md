@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-23 05:35
+最近一次保存：2026-10-23 06:05
 
 ---
 
@@ -710,3 +710,17 @@ Notes：
 - 删掉旧的 `readUnknownInputFilePath`，改 `buildUnknownInputSummary`
 
 验证：`build:client`；`tool-call-display.test.ts` 14 passed（新增 5）、`types/stream.test.ts` 65 passed；lint、typecheck、format 全过。
+
+---
+
+### 工具标题摘要：字段清单扩充与「最多两段」
+
+- 状态：已完成（`965d25b27`、`8eb79c9e9`）
+- 最近保存：2026-10-23 06:05
+
+约束：多字段同时命中只取两个片段；字段按顺序排，不按工具名特判。
+
+- `965d25b27`：固定「意图 + 目标」两段，各取第一个命中的键；数组最多两个值，多于两个补 `…`；补测试锁定七组候选键同时命中时仍只有两段。
+- `8eb79c9e9`：意图列表补 `symbol`、`symbolName`、`symbol_name`、`memory_name`、`uri`、`initialPrompt`、`message`；目标列表补 `filePath`、`file_path`、`file`、`projectPath`、`project_path`、`directory`、`dir`。同一资源被两段重复写时只显示一次。
+
+**踩坑**：改 `packages/protocol` 后不跑 `npm run build:client`，app 侧测试会跑旧的编译产物，新字段全部返回 undefined。先 build 再跑测试。
