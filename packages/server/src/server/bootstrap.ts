@@ -133,6 +133,7 @@ import { createSpeechService } from "./speech/speech-runtime.js";
 import { AgentManager } from "./agent/agent-manager.js";
 import { AgentStorage } from "./agent/agent-storage.js";
 import { AgentMemoStore } from "./agent/agent-memo-store.js";
+import { NavigationStateStore } from "./navigation/navigation-state-store.js";
 import { attachAgentStoragePersistence } from "./persistence-hooks.js";
 import { createAgentMcpServer } from "./agent/mcp-server.js";
 import {
@@ -898,6 +899,7 @@ export async function createPaseoDaemon(
 
   const agentStorage = new AgentStorage(config.agentStoragePath, logger);
   const agentMemoStore = new AgentMemoStore(config.paseoHome, logger);
+  const navigationStateStore = new NavigationStateStore(config.paseoHome, logger);
   const projectRegistry = new FileBackedProjectRegistry(
     path.join(config.paseoHome, "projects", "projects.json"),
     logger,
@@ -993,6 +995,7 @@ export async function createPaseoDaemon(
   await agentStorage.initialize();
   logger.info({ elapsed: elapsed() }, "Agent storage initialized");
   await agentMemoStore.initialize();
+  await navigationStateStore.initialize();
   await bootstrapWorkspaceRegistries({
     serverId,
     paseoHome: config.paseoHome,
@@ -1699,6 +1702,7 @@ export async function createPaseoDaemon(
               agentManager,
               agentStorage,
               agentMemoStore,
+              navigationStateStore,
               downloadTokenStore,
               config.paseoHome,
               daemonConfigStore,

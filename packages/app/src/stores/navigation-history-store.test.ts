@@ -429,57 +429,43 @@ describe("navigation history store", () => {
   });
 });
 
-describe("navigation history store persistence", () => {
-  function createStorage() {
-    const values = new Map<string, string>();
-    return {
-      getItem: (key: string) => values.get(key) ?? null,
-      setItem: (key: string, value: string) => {
-        values.set(key, value);
-      },
-    };
-  }
-
-  it("restores the positions a reload would otherwise drop", () => {
-    const storage = createStorage();
-    const first = createNavigationHistoryStore({ storage });
-    first.recordNavigation(agentEntry(workspaceA, "agent-1"));
-    first.recordNavigation(agentEntry(workspaceB, "agent-2"));
-
-    const reloaded = createNavigationHistoryStore({ storage });
-
-    expect(reloaded.getSnapshot().entries).toEqual(first.getSnapshot().entries);
-    expect(reloaded.getSnapshot().cursor).toBe(1);
-    expect(reloaded.getCanGoBack()).toBe(true);
-  });
-
-  it("keeps the cursor where the user left it", () => {
-    const storage = createStorage();
-    const first = createNavigationHistoryStore({ storage });
-    first.recordNavigation(agentEntry(workspaceA, "agent-1"));
-    first.recordNavigation(agentEntry(workspaceB, "agent-2"));
-    first.navigateBack();
-
-    const reloaded = createNavigationHistoryStore({ storage });
-
-    expect(reloaded.getSnapshot().cursor).toBe(0);
-    expect(reloaded.getCanGoForward()).toBe(true);
-  });
-
-  it("ignores a payload it cannot read instead of seeding broken entries", () => {
-    const storage = createStorage();
-    storage.setItem("paseo.navigation-history.v1", "{not json");
-
-    const store = createNavigationHistoryStore({ storage });
-
-    expect(store.getSnapshot().entries).toEqual([]);
-    expect(store.getCanGoBack()).toBe(false);
-  });
-
-  it("keeps working without storage", () => {
+describe("navigation history restore", () => {
+  it("replaces the history with the stored path", () => {
     const store = createNavigationHistoryStore();
     store.recordNavigation(agentEntry(workspaceA, "agent-1"));
 
-    expect(store.getSnapshot().entries).toHaveLength(1);
+    store.restore({
+      entries: [agentEntry(workspaceA, "agent-2"), agentEntry(workspaceB, "agent-3")],
+      cursor: 1,
+      recentAgentVisits: [{ serverId: "server-1", workspaceId: "workspace-b", agentId: "agent-3" }],
+    });
+
+    const snapshot = store.getSnapshot();
+    expect(snapshot.entries.map((item) => item.pathname)).toEqual([workspaceA, workspaceB]);
+    expect(snapshot.cursor).toBe(1);
+    expect(store.getCanGoBack()).toBe(true);
+    expect(store.getRecentAgentVisits().map((visit) => visit.agentId)).toEqual(["agent-3"]);
+  });
+
+  it("clamps a cursor that points past the stored entries", () => {
+    const store = createNavigationHistoryStore();
+
+    store.restore({
+      entries: [agentEntry(workspaceA, "agent-1")],
+      cursor: 9,
+      recentAgentVisits: [],
+    });
+
+    expect(store.getSnapshot().cursor).toBe(0);
+    expect(store.getCanGoForward()).toBe(false);
+  });
+
+  it("lands on an empty history when nothing was stored", () => {
+    const store = createNavigationHistoryStore();
+
+    store.restore({ entries: [], cursor: -1, recentAgentVisits: [] });
+
+    expect(store.getCanGoBack()).toBe(false);
+    expect(store.getCanGoForward()).toBe(false);
   });
 });

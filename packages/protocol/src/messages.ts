@@ -23,6 +23,11 @@ import { CLIENT_CAPS } from "./client-capabilities.js";
 import { AGENT_LIFECYCLE_STATUSES } from "./agent-lifecycle.js";
 import { MAX_EXPLICIT_AGENT_TITLE_CHARS } from "./agent-title-limits.js";
 import { AGENT_MEMO_MAX_CHARS } from "./agent-memo-limits.js";
+import {
+  NAVIGATION_DEVICE_KEY_MAX_CHARS,
+  NAVIGATION_RECENT_VISITS_MAX,
+  NAVIGATION_STACK_MAX_ENTRIES,
+} from "./navigation-limits.js";
 import { AgentProviderSchema } from "./provider-manifest.js";
 import { ProviderPaseoToolsPolicySchema } from "./provider-config.js";
 import { TOOL_CALL_ICON_NAMES } from "./agent-types.js";
@@ -1674,6 +1679,68 @@ export const AgentMemoSetCompletedResponseSchema = z.object({
     memoId: z.string(),
     memo: AgentMemoSchema.nullable(),
     memos: z.array(AgentMemoSchema),
+    error: z.string().nullable(),
+  }),
+});
+
+// Navigation state is what the sidebar's back/forward and recent visits need in order to survive
+// a reload. The daemon only stores it: a target travels as the client's canonical key string, so
+// a newer client can add target kinds without the host having to understand them.
+export const NavigationStackEntrySchema = z.object({
+  pathname: z.string(),
+  serverId: z.string().nullable(),
+  workspaceId: z.string().nullable(),
+  targetKey: z.string().nullable(),
+  tabId: z.string().nullable(),
+});
+
+export const NavigationStackSchema = z.object({
+  entries: z.array(NavigationStackEntrySchema).max(NAVIGATION_STACK_MAX_ENTRIES),
+  cursor: z.number().int(),
+});
+
+export const NavigationRecentVisitSchema = z.object({
+  serverId: z.string(),
+  workspaceId: z.string(),
+  agentId: z.string(),
+});
+
+export const NavigationStateSchema = z.object({
+  recentVisits: z.array(NavigationRecentVisitSchema).max(NAVIGATION_RECENT_VISITS_MAX),
+  // Null until a client has ever walked somewhere; the daemon keeps the rest untouched.
+  stack: NavigationStackSchema.nullable(),
+});
+export type NavigationState = z.infer<typeof NavigationStateSchema>;
+export type NavigationStackEntry = z.infer<typeof NavigationStackEntrySchema>;
+export type NavigationRecentVisit = z.infer<typeof NavigationRecentVisitSchema>;
+
+export const NavigationStateGetRequestSchema = z.object({
+  type: z.literal("navigation.state.get.request"),
+  requestId: z.string(),
+  deviceKey: z.string().min(1).max(NAVIGATION_DEVICE_KEY_MAX_CHARS),
+});
+
+export const NavigationStateGetResponseSchema = z.object({
+  type: z.literal("navigation.state.get.response"),
+  payload: z.object({
+    requestId: z.string(),
+    state: NavigationStateSchema,
+    error: z.string().nullable(),
+  }),
+});
+
+export const NavigationStateSetRequestSchema = z.object({
+  type: z.literal("navigation.state.set.request"),
+  requestId: z.string(),
+  deviceKey: z.string().min(1).max(NAVIGATION_DEVICE_KEY_MAX_CHARS),
+  state: NavigationStateSchema,
+});
+
+export const NavigationStateSetResponseSchema = z.object({
+  type: z.literal("navigation.state.set.response"),
+  payload: z.object({
+    requestId: z.string(),
+    state: NavigationStateSchema,
     error: z.string().nullable(),
   }),
 });
@@ -3440,6 +3507,8 @@ export const SessionInboundMessageSchema = z.discriminatedUnion("type", [
   AgentMemoUpdateRequestSchema,
   AgentMemoDeleteRequestSchema,
   AgentMemoSetCompletedRequestSchema,
+  NavigationStateGetRequestSchema,
+  NavigationStateSetRequestSchema,
   AgentSkillsGetStatusRequestSchema,
   AgentSkillsReconcileRequestSchema,
   AgentSkillsUninstallRequestSchema,
@@ -3836,6 +3905,9 @@ export const ServerInfoStatusPayloadSchema = z
         // COMPAT(agentMemoCompletion): added in v0.11.0, remove gate after 2027-05-05.
         // Memos persist a completed flag; clients gate the completion checkbox on this.
         agentMemoCompletion: z.boolean().optional(),
+        // COMPAT(navigationState): added in v0.11.0, remove gate after 2027-05-05.
+        // The host stores each client's back/forward stack and the shared recent visits.
+        navigationState: z.boolean().optional(),
         // COMPAT(agentMemoImages): added in v0.11.0, remove gate after 2027-05-05.
         // Memos carry inline images; clients gate the attach/paste entry on this.
         agentMemoImages: z.boolean().optional(),
@@ -7091,6 +7163,8 @@ export const SessionOutboundMessageSchema = z.discriminatedUnion("type", [
   AgentMemoUpdateResponseSchema,
   AgentMemoDeleteResponseSchema,
   AgentMemoSetCompletedResponseSchema,
+  NavigationStateGetResponseSchema,
+  NavigationStateSetResponseSchema,
   AgentSkillsGetStatusResponseSchema,
   AgentSkillsReconcileResponseSchema,
   AgentSkillsUninstallResponseSchema,

@@ -11,6 +11,7 @@ import { CreationClient } from "./creation/index.js";
 import type { CreationSnapshot } from "@getpaseo/protocol/messages";
 import type { AgentMemo } from "@getpaseo/protocol/messages";
 import type { ImageAttachment } from "@getpaseo/protocol/messages";
+import type { NavigationState } from "@getpaseo/protocol/messages";
 
 export interface AgentMemoOperationPayload {
   requestId: string;
@@ -3451,6 +3452,39 @@ export class DaemonClient {
     });
     if (payload.error) throw new Error(payload.error);
     return payload;
+  }
+
+  /**
+   * The sidebar's back/forward stack and recent visits, stored per daemon so they survive a
+   * reload and are shared across clients. `state.stack` is null when this device has no stack.
+   */
+  async getNavigationState(
+    deviceKey: string,
+    options?: { requestId?: string; timeout?: number },
+  ): Promise<NavigationState> {
+    const payload = await this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "navigation.state.get.request", deviceKey },
+      responseType: "navigation.state.get.response",
+      timeout: options?.timeout,
+    });
+    if (payload.error) throw new Error(payload.error);
+    return payload.state;
+  }
+
+  async setNavigationState(
+    deviceKey: string,
+    state: NavigationState,
+    options?: { requestId?: string; timeout?: number },
+  ): Promise<NavigationState> {
+    const payload = await this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "navigation.state.set.request", deviceKey, state },
+      responseType: "navigation.state.set.response",
+      timeout: options?.timeout,
+    });
+    if (payload.error) throw new Error(payload.error);
+    return payload.state;
   }
 
   async transferAgentWorkspace(
