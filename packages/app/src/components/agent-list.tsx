@@ -310,6 +310,11 @@ function SessionRow({
             numberOfLines={1}
             testID={`agent-row-project-${agent.serverId}-${agent.id}`}
           />
+          <SessionModelCell
+            model={agent.model}
+            onPress={handlePress}
+            onLongPress={handleLongPress}
+          />
           {showHostColumn ? (
             <Text style={styles.columnMetaHost} numberOfLines={1}>
               {agent.serverLabel}
@@ -321,11 +326,6 @@ function SessionRow({
             style={styles.columnMeta}
             numberOfLines={1}
             testID={`agent-row-branch-${agent.serverId}-${agent.id}`}
-          />
-          <SessionModelCell
-            model={agent.model}
-            onPress={handlePress}
-            onLongPress={handleLongPress}
           />
           <AgentActivityTime date={agent.lastActivityAt} isMobile={false} />
         </View>
