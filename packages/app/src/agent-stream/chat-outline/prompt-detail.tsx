@@ -39,13 +39,20 @@ export function PromptDetailContent({
   const [fullText, setFullText] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const textEpoch = useRef(0);
+  // The reader is a fresh closure on most renders — it closes over the loaded timeline. Holding
+  // it in a ref keeps the read tied to the prompt being shown instead of restarting it, which
+  // repainted "Loading…" every time the chat re-rendered.
+  const requestPromptTextRef = useRef(onRequestPromptText);
+  useEffect(() => {
+    requestPromptTextRef.current = onRequestPromptText;
+  }, [onRequestPromptText]);
 
   useEffect(() => {
     const request = textEpoch;
     const epoch = ++request.current;
     setIsLoading(true);
     setFullText(null);
-    void onRequestPromptText(prompt.seq).then((text) => {
+    void requestPromptTextRef.current(prompt.seq).then((text) => {
       if (request.current === epoch) {
         setFullText(text);
         setIsLoading(false);
@@ -55,7 +62,7 @@ export function PromptDetailContent({
     return () => {
       request.current++;
     };
-  }, [onRequestPromptText, prompt.seq]);
+  }, [prompt.seq]);
 
   const handleJump = useCallback(() => {
     onJumpToPrompt(prompt.seq);
