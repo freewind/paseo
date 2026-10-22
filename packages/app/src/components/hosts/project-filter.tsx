@@ -107,7 +107,6 @@ export function ProjectFilter({
         value={selectedProject}
         onSelect={handleSelect}
         renderOption={renderOption}
-        searchable={false}
         title="Filter by project"
         desktopPlacement="bottom-start"
         open={isOpen}
