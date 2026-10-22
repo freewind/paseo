@@ -1,6 +1,11 @@
 import { describe, expect, test } from "vitest";
 import type { ProjectDescriptor, WorkspaceDescriptor } from "@/stores/session-store";
-import { buildWorkspaceStructureProjects, createProjectViewKey } from "./workspace-structure";
+import {
+  buildWorkspaceStructureProjects,
+  createProjectViewKey,
+  parseWorkspaceStructureKey,
+  workspaceStructureKey,
+} from "./workspace-structure";
 
 function project(input: {
   id: string;
@@ -172,5 +177,23 @@ describe("buildWorkspaceStructureProjects", () => {
     expect(result.find((item) => item.projectKey === placementShapedKey)?.viewKey).toBe(
       placementShapedKey,
     );
+  });
+});
+
+describe("workspace structure keys", () => {
+  test("round-trips the host and workspace identity", () => {
+    const key = workspaceStructureKey({ serverId: "srv_abc", workspaceId: "ws_123" });
+
+    expect(key).toBe("srv_abc:ws_123");
+    expect(parseWorkspaceStructureKey(key)).toEqual({
+      serverId: "srv_abc",
+      workspaceId: "ws_123",
+    });
+  });
+
+  test("rejects keys that are missing a half", () => {
+    expect(parseWorkspaceStructureKey("")).toBeNull();
+    expect(parseWorkspaceStructureKey(":ws_123")).toBeNull();
+    expect(parseWorkspaceStructureKey("srv_abc:")).toBeNull();
   });
 });

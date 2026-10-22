@@ -24,6 +24,30 @@ export interface WorkspaceStructure {
   projects: WorkspaceStructureProject[];
 }
 
+/**
+ * A structure key is `serverId:workspaceId`. It is the only identity that survives the
+ * cross-host merge in `buildWorkspaceStructureProjects`, so every consumer must decode it
+ * instead of treating it as a session workspace Map key.
+ */
+export function workspaceStructureKey(input: { serverId: string; workspaceId: string }): string {
+  return `${input.serverId}:${input.workspaceId}`;
+}
+
+export function parseWorkspaceStructureKey(
+  value: string,
+): { serverId: string; workspaceId: string } | null {
+  const separatorIndex = value.indexOf(":");
+  if (separatorIndex <= 0) {
+    return null;
+  }
+  const serverId = value.slice(0, separatorIndex);
+  const workspaceId = value.slice(separatorIndex + 1);
+  if (!workspaceId) {
+    return null;
+  }
+  return { serverId, workspaceId };
+}
+
 interface WorkspaceStructureSession {
   serverId: string;
   projects: Iterable<ProjectDescriptor>;
@@ -86,7 +110,10 @@ export function buildWorkspaceStructureProjects(input: {
       byProject.get(viewKey)?.workspaces.push({
         workspaceId: workspace.id,
         workspaceName: workspace.name,
-        workspaceKey: `${session.serverId}:${workspace.id}`,
+        workspaceKey: workspaceStructureKey({
+          serverId: session.serverId,
+          workspaceId: workspace.id,
+        }),
       });
     }
   }

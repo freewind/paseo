@@ -2,7 +2,8 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { StyleSheet } from "react-native-unistyles";
-import { SelectField } from "@/components/ui/select-field";
+import { SelectField, type SelectFieldRenderOptionInput } from "@/components/ui/select-field";
+import { ComboboxItem } from "@/components/ui/combobox";
 import { AdaptiveModalSheet, type SheetHeader } from "@/components/adaptive-modal-sheet";
 import type {
   TransferWorkspaceProject,
@@ -69,6 +70,33 @@ export const AgentTransferWorkspaceModal = memo(function AgentTransferWorkspaceM
     [projects, selectedProject],
   );
 
+  const currentWorkspaceId = useMemo(
+    () => activeProject?.workspaces.find((workspace) => workspace.isCurrent)?.workspaceId ?? null,
+    [activeProject],
+  );
+  const currentWorkspaceSuffix = t("workspace.tabs.transfer.currentWorkspace");
+
+  const renderWorkspaceOption = useCallback(
+    (input: SelectFieldRenderOptionInput<TransferWorkspaceSelection>) => {
+      const { option, selected, active, onPress } = input;
+      const isCurrent =
+        option.value.kind === "workspace" && option.value.workspaceId === currentWorkspaceId;
+      return (
+        <ComboboxItem
+          label={option.label}
+          description={option.description}
+          kind={option.kind}
+          testID={option.testID}
+          selected={selected}
+          active={active}
+          disabled={isCurrent}
+          onPress={onPress}
+        />
+      );
+    },
+    [currentWorkspaceId],
+  );
+
   const workspaceOptions = useMemo(() => {
     if (!activeProject) return [];
     const query = workspaceSearch.trim();
@@ -86,15 +114,18 @@ export const AgentTransferWorkspaceModal = memo(function AgentTransferWorkspaceM
       });
     }
     for (const workspace of activeProject.workspaces) {
-      if (!match(workspace.label)) continue;
+      const label = workspace.isCurrent
+        ? `${workspace.label} ${currentWorkspaceSuffix}`
+        : workspace.label;
+      if (!match(label)) continue;
       options.push({
         id: workspace.workspaceId,
         value: { kind: "workspace", workspaceId: workspace.workspaceId },
-        label: workspace.label,
+        label,
       });
     }
     return options;
-  }, [activeProject, t, workspaceSearch]);
+  }, [activeProject, currentWorkspaceSuffix, t, workspaceSearch]);
 
   const handleProjectChange = useCallback((value: ProjectOptionValue) => {
     setSelectedProject(value);
@@ -102,9 +133,15 @@ export const AgentTransferWorkspaceModal = memo(function AgentTransferWorkspaceM
     setWorkspaceSearch("");
   }, []);
 
-  const handleWorkspaceChange = useCallback((value: TransferWorkspaceSelection) => {
-    setSelectedWorkspace(value);
-  }, []);
+  const handleWorkspaceChange = useCallback(
+    (value: TransferWorkspaceSelection) => {
+      if (value.kind === "workspace" && value.workspaceId === currentWorkspaceId) {
+        return;
+      }
+      setSelectedWorkspace(value);
+    },
+    [currentWorkspaceId],
+  );
 
   const handleConfirm = useCallback(() => {
     if (!selectedWorkspace) return;
@@ -156,6 +193,7 @@ export const AgentTransferWorkspaceModal = memo(function AgentTransferWorkspaceM
           searchable
           searchPlaceholder={t("workspace.tabs.transfer.searchPlaceholder")}
           onSearchQueryChange={setWorkspaceSearch}
+          renderOption={renderWorkspaceOption}
           testID={testID ? `${testID}-workspace` : "agent-transfer-workspace-workspace"}
         />
         <Pressable

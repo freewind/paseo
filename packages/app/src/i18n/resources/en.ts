@@ -729,6 +729,7 @@ export const en = {
         title: 'Move Agent session "{{agent}}" to workspace',
         confirm: "Move agent",
         createNew: "Create new workspace",
+        currentWorkspace: "(Current)",
         projectLabel: "Project",
         projectPlaceholder: "Select a project",
         projectEmpty: "No matching project",
