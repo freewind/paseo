@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-22 17:40
+最近一次保存：2026-10-22 18:05
 
 ---
 
@@ -240,3 +240,18 @@ Notes：
 - 新增 `components/ui/inline-confirm.tsx`：触发点点击后原地变取消/确认；web 上点外部或 Esc 复原；支持受控 open（context window 圆环就是受控切换到确认态）。
 - useCompactContext 不再弹确认，只暴露 canCompact 与 sendCompact。
 - docs/design.md 两种确认的分工已写入：会丢工作用 confirmDialog，触发点已说明后果的小操作用 InlineConfirm。
+
+---
+
+### hover 文本大纲时不再点亮左侧圆点
+
+- 状态：已完成
+- 最近保存：2026-10-22 18:05
+
+左侧 dots 与右侧文本大纲共用同一个 hoveredIndex，hover 文本行会走同一个 hoverIntent.pointAt，左侧对应圆点放大并弹出 preview 卡片。
+
+Notes：
+
+- 文本大纲的 hover 与 focus 都不再写 hoveredIndex / focusedIndex；左侧 attention 只由圆点自己驱动。
+- ChatOutlineTextRail / ChatOutlineTextRow 去掉 onHover、onLeave、onFocusChange。
+- 既有阻塞：`src/agent-stream/chat-outline/rail.web.test.tsx` 与 `sheet.test.tsx` 在当前 main 上加载即报 `SyntaxError: Unexpected identifier 'ReactElement'`（已用 stash 验证与本次无关）。这两文件无法运行，本次只用 lint / typecheck 与浏览器测试断言修改自证。
