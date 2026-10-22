@@ -19,6 +19,7 @@ import {
 } from "@/stores/navigation-active-workspace-store";
 import { useSessionStore } from "@/stores/session-store";
 import { useWorkspace } from "@/stores/session-store-hooks";
+import { useCompactTimeAgo } from "@/hooks/use-time-ago";
 import { navigationHistoryStore, type RecentAgentVisit } from "@/stores/navigation-history-store";
 import { useWorkspaceLayoutStore } from "@/stores/workspace-layout-store";
 import { ICON_SIZE, type Theme } from "@/styles/theme";
@@ -104,7 +105,7 @@ export function SidebarRecentVisitsMenu({ onBeforeNavigate }: SidebarRecentVisit
         side="bottom"
         align="start"
         offset={8}
-        width={280}
+        width={360}
         maxHeight={360}
         scrollable
         sheetTitle={t("sidebar.recentVisits.trigger")}
@@ -207,11 +208,8 @@ function RecentVisitMenuItem({
   // Only a Paseo-managed subagent carries a parent. Provider-internal subagents never reach this
   // list (their target is not an agent chat), so a row without one is a top-level agent.
   const isSubagent = agent?.parentAgentId != null;
-  const statusBadges = useMemo(() => {
-    if (!isCurrent && !isSubagent) {
-      return undefined;
-    }
-    return (
+  const statusBadges = useMemo(
+    () => (
       <View style={styles.badges}>
         {isSubagent ? (
           <Text
@@ -222,9 +220,14 @@ function RecentVisitMenuItem({
           </Text>
         ) : null}
         {isCurrent ? <Text style={styles.current}>{t("sidebar.recentVisits.current")}</Text> : null}
+        <RecentVisitUpdatedAt
+          date={agent?.updatedAt ?? null}
+          testID={`sidebar-recent-visit-updated-${visit.agentId}`}
+        />
       </View>
-    );
-  }, [isCurrent, isSubagent, t, visit.agentId]);
+    ),
+    [agent?.updatedAt, isCurrent, isSubagent, t, visit.agentId],
+  );
 
   const handleSelect = useCallback(() => {
     onBeforeNavigate?.();
@@ -245,6 +248,22 @@ function RecentVisitMenuItem({
     >
       {agent?.title?.trim() || visit.agentId}
     </DropdownMenuItem>
+  );
+}
+
+/**
+ * The refreshed-at label keeps its own tick subscription, so an aging timestamp re-renders this
+ * Text instead of the menu row it sits in.
+ */
+function RecentVisitUpdatedAt({ date, testID }: { date: Date | null; testID: string }) {
+  const label = useCompactTimeAgo(date);
+  if (label.length === 0) {
+    return null;
+  }
+  return (
+    <Text style={styles.updatedAt} testID={testID}>
+      {label}
+    </Text>
   );
 }
 
@@ -293,5 +312,9 @@ const styles = StyleSheet.create((theme) => ({
   subagentBadge: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.foregroundMuted,
+  },
+  updatedAt: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.foregroundExtraMuted,
   },
 }));
