@@ -100,6 +100,8 @@ export interface WorkspaceHeaderWorkspaceActions {
   onCreateAgent: () => void;
   onMarkAsRead?: () => void;
   onMarkAsUnread?: () => void;
+  /** Restores the agent archived most recently in this workspace and opens it. */
+  onRestoreLastArchivedAgent?: () => void;
 }
 
 function WorkspaceHeaderWorkspaceActionItems({
@@ -123,6 +125,7 @@ function WorkspaceHeaderWorkspaceActionItems({
   onCreateAgent,
   onMarkAsRead,
   onMarkAsUnread,
+  onRestoreLastArchivedAgent,
 }: WorkspaceHeaderWorkspaceActions) {
   return (
     <WorkspaceMenuActionItems
@@ -149,6 +152,7 @@ function WorkspaceHeaderWorkspaceActionItems({
       archiveLabel={archiveLabel}
       archiveStatus={isArchiving ? "pending" : "idle"}
       archivePendingLabel={archiveLabel}
+      onRestoreLastArchivedAgent={onRestoreLastArchivedAgent}
     />
   );
 }

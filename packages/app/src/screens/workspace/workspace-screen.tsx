@@ -228,6 +228,7 @@ import { getIsElectron, isNative, isWeb } from "@/constants/platform";
 import { buildHostRootRoute, buildSettingsHostRoute } from "@/utils/host-routes";
 import { appLog } from "@/utils/app-log";
 import { useWorkspaceTerminals } from "@/screens/workspace/terminals/use-workspace-terminals";
+import { useRestoreLastArchivedAgent } from "@/hooks/use-restore-last-archived-agent";
 import type { TerminalProfile } from "@getpaseo/protocol/messages";
 import {
   WorkspaceHeaderMenuDesktop,
@@ -1135,6 +1136,10 @@ function WorkspaceHeaderTitleBar({
   activeTabDescriptor,
   headerMenuEntries,
 }: WorkspaceHeaderTitleBarProps) {
+  const restoreLastArchivedAgent = useRestoreLastArchivedAgent({
+    serverId: normalizedServerId,
+    workspaceId: normalizedWorkspaceId,
+  });
   const headerMenuTestID = "workspace-header-title-menu";
   const showHeaderMenu =
     !isLoading && activeTabDescriptor?.target.kind === "agent" && headerMenuEntries.length > 0;
@@ -1197,6 +1202,7 @@ function WorkspaceHeaderTitleBar({
             onArchive={onArchive}
             isArchiving={isArchiving}
             archiveLabel={archiveLabel}
+            onRestoreLastArchivedAgent={restoreLastArchivedAgent}
           />
         ) : (
           <WorkspaceHeaderMenuDesktop
@@ -1220,6 +1226,7 @@ function WorkspaceHeaderTitleBar({
             onArchive={onArchive}
             isArchiving={isArchiving}
             archiveLabel={archiveLabel}
+            onRestoreLastArchivedAgent={restoreLastArchivedAgent}
           />
         )}
           <WorkspaceScriptsButton

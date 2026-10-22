@@ -8,6 +8,7 @@ import { getForgePresentation, normalizeForge } from "@/git/forge";
 import type { SidebarWorkspaceEntry } from "@/hooks/use-sidebar-workspaces-list";
 import { useAppSettings } from "@/hooks/use-settings";
 import { useCreateWorkspaceAgent } from "@/hooks/use-create-workspace-agent";
+import { useRestoreLastArchivedAgent } from "@/hooks/use-restore-last-archived-agent";
 import { WorkspaceMenuActionItems } from "@/components/workspace-menu-action-items";
 import type { Theme } from "@/styles/theme";
 import type { ShortcutKey } from "@/utils/format-shortcut";
@@ -101,6 +102,7 @@ function SidebarWorkspaceMenuItems({
       serverId && workspaceId ? { serverId, workspaceId, labels: workspaceLabels ?? [] } : null,
     [serverId, workspaceId, workspaceLabels],
   );
+  const restoreLastArchivedAgent = useRestoreLastArchivedAgent({ serverId, workspaceId });
   return (
     <WorkspaceMenuActionItems
       surface={surface}
@@ -121,6 +123,7 @@ function SidebarWorkspaceMenuItems({
       archiveStatus={archiveStatus}
       archivePendingLabel={archivePendingLabel}
       archiveShortcutKeys={archiveShortcutKeys}
+      onRestoreLastArchivedAgent={restoreLastArchivedAgent}
     />
   );
 }

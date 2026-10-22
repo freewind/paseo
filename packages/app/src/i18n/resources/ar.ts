@@ -1423,6 +1423,7 @@ export const ar: TranslationResources = {
         archiveWorkspace: "أرشفة مساحة العمل",
         hideFromSidebar: "إخفاء من الشريط الجانبي",
         archiving: "أرشفة...",
+        restoreLastArchivedAgent: "استعادة آخر وكيل مؤرشف",
         hiding: "إخفاء...",
       },
       confirmations: {
@@ -1444,6 +1445,8 @@ export const ar: TranslationResources = {
         hostDisconnected: "Host غير متصل",
         hideFailed: "فشل في إخفاء مساحة العمل",
         archiveFailed: "فشل في أرشفة مساحة العمل",
+        noArchivedAgent: "لا يوجد وكيل مؤرشف في مساحة العمل هذه",
+        restoreArchivedAgentFailed: "تعذر استعادة الوكيل المؤرشف",
       },
     },
   },

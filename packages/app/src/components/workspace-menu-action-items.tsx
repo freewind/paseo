@@ -2,6 +2,7 @@ import React, { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Archive,
+  ArchiveRestore,
   Circle,
   CircleCheck,
   Copy,
@@ -33,6 +34,7 @@ const IconPencil = withUnistyles(Pencil);
 const IconCircle = withUnistyles(Circle);
 const IconCircleCheck = withUnistyles(CircleCheck);
 const IconArchive = withUnistyles(Archive);
+const IconRestoreLastArchivedAgent = withUnistyles(ArchiveRestore);
 const IconPin = withUnistyles(Pin);
 const IconPinOff = withUnistyles(PinOff);
 const IconTag = withUnistyles(Tag);
@@ -51,6 +53,9 @@ const LEADING_UNPIN = <IconPinOff size={16} uniProps={muted} />;
 const LEADING_TAG = <IconTag size={16} uniProps={muted} />;
 const LEADING_SETTINGS = <IconSettings size={16} uniProps={muted} />;
 const LEADING_ARCHIVE = <IconArchive size={16} uniProps={muted} />;
+const LEADING_RESTORE_LAST_ARCHIVED_AGENT = (
+  <IconRestoreLastArchivedAgent size={16} uniProps={muted} />
+);
 
 export type WorkspaceMenuSurface = "context" | "dropdown";
 
@@ -80,6 +85,8 @@ export interface WorkspaceMenuActionItemsProps {
   archiveStatus?: "idle" | "pending" | "success";
   archivePendingLabel?: string;
   archiveShortcutKeys?: ShortcutKey[][] | null;
+  /** Restores the agent archived most recently in this workspace and opens it. */
+  onRestoreLastArchivedAgent?: () => void;
 }
 
 function WorkspaceMenuItem({
@@ -192,6 +199,7 @@ function WorkspaceMenuStateItems(props: WorkspaceMenuActionItemsProps) {
     archiveStatus = "idle",
     archivePendingLabel,
     archiveShortcutKeys,
+    onRestoreLastArchivedAgent,
   } = props;
   const { t } = useTranslation();
   const closeMenu = useDropdownMenuClose();
@@ -278,6 +286,16 @@ function WorkspaceMenuStateItems(props: WorkspaceMenuActionItemsProps) {
           onSelect={handleArchive}
         >
           {archiveLabel ?? t("sidebar.workspace.actions.archive")}
+        </WorkspaceMenuItem>
+      ) : null}
+      {onRestoreLastArchivedAgent ? (
+        <WorkspaceMenuItem
+          surface={surface}
+          testID={`${testIDPrefix}-restore-last-archived-agent-${workspaceKey}`}
+          leading={LEADING_RESTORE_LAST_ARCHIVED_AGENT}
+          onSelect={onRestoreLastArchivedAgent}
+        >
+          {t("sidebar.workspace.actions.restoreLastArchivedAgent")}
         </WorkspaceMenuItem>
       ) : null}
     </>

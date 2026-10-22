@@ -1453,6 +1453,7 @@ export const ptBR: TranslationResources = {
         archiveWorkspace: "Arquivar workspace",
         hideFromSidebar: "Ocultar da barra lateral",
         archiving: "Arquivando...",
+        restoreLastArchivedAgent: "Restaurar último agente arquivado",
         hiding: "Ocultando...",
       },
       confirmations: {
@@ -1474,6 +1475,8 @@ export const ptBR: TranslationResources = {
         hostDisconnected: "Host não está conectado",
         hideFailed: "Falha ao ocultar workspace",
         archiveFailed: "Falha ao arquivar workspace",
+        noArchivedAgent: "Nenhum agente arquivado neste workspace",
+        restoreArchivedAgentFailed: "Não foi possível restaurar o agente arquivado",
       },
     },
   },

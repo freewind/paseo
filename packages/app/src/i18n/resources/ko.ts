@@ -1433,6 +1433,7 @@ export const ko: TranslationResources = {
         archiveWorkspace: "워크스페이스 보관",
         hideFromSidebar: "사이드바에서 숨기기",
         archiving: "보관하는 중...",
+        restoreLastArchivedAgent: "마지막으로 보관한 에이전트 복원",
         hiding: "숨기는 중...",
       },
       confirmations: {
@@ -1454,6 +1455,8 @@ export const ko: TranslationResources = {
         hostDisconnected: "호스트가 연결되어 있지 않습니다",
         hideFailed: "워크스페이스를 숨기지 못했습니다",
         archiveFailed: "워크스페이스를 보관하지 못했습니다.",
+        noArchivedAgent: "이 워크스페이스에 보관된 에이전트가 없습니다",
+        restoreArchivedAgentFailed: "보관된 에이전트를 복원하지 못했습니다",
       },
     },
   },

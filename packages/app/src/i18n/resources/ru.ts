@@ -1444,6 +1444,7 @@ export const ru: TranslationResources = {
         archiveWorkspace: "Архивировать рабочее пространство",
         hideFromSidebar: "Скрыть на боковой панели",
         archiving: "Архивирование...",
+        restoreLastArchivedAgent: "Вернуть последнего архивированного агента",
         hiding: "Скрытие...",
       },
       confirmations: {
@@ -1465,6 +1466,8 @@ export const ru: TranslationResources = {
         hostDisconnected: "Хост не подключён",
         hideFailed: "Не удалось скрыть рабочее пространство",
         archiveFailed: "Не удалось архивировать рабочее пространство",
+        noArchivedAgent: "В этом рабочем пространстве нет архивированных агентов",
+        restoreArchivedAgentFailed: "Не удалось вернуть архивированного агента",
       },
     },
   },

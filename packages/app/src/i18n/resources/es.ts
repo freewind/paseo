@@ -1468,6 +1468,7 @@ export const es: TranslationResources = {
         archiveWorkspace: "Archivar espacio de trabajo",
         hideFromSidebar: "Ocultar de la barra lateral",
         archiving: "Archivando...",
+        restoreLastArchivedAgent: "Recuperar último agente archivado",
         hiding: "Ocultación...",
       },
       confirmations: {
@@ -1489,6 +1490,8 @@ export const es: TranslationResources = {
         hostDisconnected: "Hostno está conectado",
         hideFailed: "No se pudo ocultar el espacio de trabajo",
         archiveFailed: "No se pudo archivar el espacio de trabajo",
+        noArchivedAgent: "No hay agentes archivados en este espacio de trabajo",
+        restoreArchivedAgentFailed: "No se pudo recuperar el agente archivado",
       },
     },
   },

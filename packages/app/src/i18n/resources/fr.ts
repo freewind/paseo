@@ -1478,6 +1478,7 @@ export const fr: TranslationResources = {
         hideFromSidebar: "Masquer de la barre latérale",
         archiving: "Archivage…",
         hiding: "Masquage…",
+        restoreLastArchivedAgent: "Restaurer le dernier agent archivé",
       },
       confirmations: {
         hideTitle: "Masquer l’espace de travail ?",
@@ -1498,6 +1499,8 @@ export const fr: TranslationResources = {
         hostDisconnected: "L’hôte n’est pas connecté",
         hideFailed: "Impossible de masquer l’espace de travail",
         archiveFailed: "Impossible d’archiver l’espace de travail",
+        noArchivedAgent: "Aucun agent archivé dans cet espace de travail",
+        restoreArchivedAgentFailed: "Impossible de restaurer l'agent archivé",
       },
     },
   },

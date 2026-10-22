@@ -1441,6 +1441,7 @@ export const en = {
         archiveWorkspace: "Archive workspace",
         hideFromSidebar: "Hide from sidebar",
         archiving: "Archiving...",
+        restoreLastArchivedAgent: "Restore last archived agent",
         hiding: "Hiding...",
       },
       confirmations: {
@@ -1462,6 +1463,8 @@ export const en = {
         hostDisconnected: "Host is not connected",
         hideFailed: "Failed to hide workspace",
         archiveFailed: "Failed to archive workspace",
+        noArchivedAgent: "No archived agent in this workspace",
+        restoreArchivedAgentFailed: "Couldn't restore the archived agent",
       },
     },
   },

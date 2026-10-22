@@ -1440,6 +1440,7 @@ export const ja: TranslationResources = {
         archiveWorkspace: "ワークスペースをアーカイブ",
         hideFromSidebar: "サイドバーから非表示",
         archiving: "アーカイブ中...",
+        restoreLastArchivedAgent: "最後にアーカイブしたエージェントを戻す",
         hiding: "非表示にしています...",
       },
       confirmations: {
@@ -1461,6 +1462,8 @@ export const ja: TranslationResources = {
         hostDisconnected: "ホストが接続されていません",
         hideFailed: "ワークスペースの非表示に失敗しました",
         archiveFailed: "ワークスペースのアーカイブに失敗しました",
+        noArchivedAgent: "このワークスペースにアーカイブされたエージェントはありません",
+        restoreArchivedAgentFailed: "アーカイブされたエージェントを戻せませんでした",
       },
     },
   },
