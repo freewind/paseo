@@ -729,6 +729,8 @@ export const zhCN: TranslationResources = {
         reloadAgent: "重新加载 Agent",
         reloadAgentTooltip: "重新加载 Agent 以更新 skills、MCPs 或登录状态。",
         markAsUnread: "设置成未读",
+        deleteAgent: "彻底删除会话",
+        deleteAgentTooltip: "从 Paseo 永久删除此会话，provider 自己的会话记录不受影响。",
         close: "关闭",
         renameTerminal: "重命名 Terminal",
         renameAgent: "重命名 Agent",

@@ -733,6 +733,9 @@ export const en = {
         reloadAgent: "Reload agent",
         reloadAgentTooltip: "Reload agent to update skills, MCPs or login status.",
         markAsUnread: "Mark as unread",
+        deleteAgent: "Delete session",
+        deleteAgentTooltip:
+          "Permanently deletes this session from Paseo. The provider's own transcript is left alone.",
         close: "Close",
         renameTerminal: "Rename terminal",
         renameAgent: "Rename agent",

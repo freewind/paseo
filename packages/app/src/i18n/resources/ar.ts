@@ -727,6 +727,8 @@ export const ar: TranslationResources = {
         reloadAgent: "إعادة تحميل الوكيل",
         reloadAgentTooltip: "قم بإعادة تحميل الوكيل لتحديث المهارات أو MCPs أو حالة تسجيل الدخول.",
         markAsUnread: "تعيين كغير مقروء",
+        deleteAgent: "حذف الجلسة",
+        deleteAgentTooltip: "يحذف هذه الجلسة نهائيًا من Paseo. سجل المزوّد نفسه يبقى كما هو.",
         close: "يغلق",
         renameTerminal: "إعادة تسمية المحطة",
         renameAgent: "إعادة تسمية الوكيل",

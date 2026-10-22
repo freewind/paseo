@@ -24,6 +24,8 @@ export interface WorkspaceTabMenuLabels {
   reloadAgent: string;
   reloadAgentTooltip: string;
   markAsUnread: string;
+  deleteAgent: string;
+  deleteAgentTooltip: string;
   close: string;
 }
 
@@ -46,6 +48,8 @@ export const DEFAULT_WORKSPACE_TAB_MENU_LABELS: WorkspaceTabMenuLabels = {
   reloadAgent: i18n.t("workspace.tabs.menu.reloadAgent"),
   reloadAgentTooltip: i18n.t("workspace.tabs.menu.reloadAgentTooltip"),
   markAsUnread: i18n.t("workspace.tabs.menu.markAsUnread"),
+  deleteAgent: i18n.t("workspace.tabs.menu.deleteAgent"),
+  deleteAgentTooltip: i18n.t("workspace.tabs.menu.deleteAgentTooltip"),
   close: i18n.t("workspace.tabs.menu.close"),
 };
 
@@ -64,6 +68,7 @@ export type WorkspaceTabMenuEntry =
         | "circle"
         | "pencil"
         | "folder-input"
+        | "trash-2"
         | "x";
       hint?: string;
       tooltip?: string;
@@ -108,6 +113,8 @@ interface BuildWorkspaceTabMenuEntriesInput {
   onCloseOtherTabs: (tabId: string) => Promise<void> | void;
   onMarkAsUnread?: (agentId: string) => Promise<void> | void;
   canMarkAsUnread?: boolean;
+  /** Deletes the session outright; the caller owns the confirmation. */
+  onDeleteAgent?: (agentId: string) => void;
   labels?: WorkspaceTabMenuLabels;
 }
 
@@ -133,6 +140,7 @@ interface BuildWorkspaceDesktopTabActionsInput {
   onCloseOtherTabs: (tabId: string) => Promise<void> | void;
   onMarkAsUnread?: (agentId: string) => Promise<void> | void;
   canMarkAsUnread?: (agentId: string) => boolean;
+  onDeleteAgent?: (agentId: string) => void;
   labels?: WorkspaceTabMenuLabels;
 }
 
@@ -228,6 +236,7 @@ export function buildWorkspaceTabMenuEntries(
     onCloseOtherTabs,
     onMarkAsUnread,
     canMarkAsUnread = false,
+    onDeleteAgent,
   } = input;
   const labels = input.labels ?? DEFAULT_WORKSPACE_TAB_MENU_LABELS;
   const isFirstTab = index === 0;
@@ -400,6 +409,22 @@ export function buildWorkspaceTabMenuEntries(
       });
     }
   }
+  if (tab.target.kind === "agent" && onDeleteAgent) {
+    const { agentId } = tab.target;
+    entries.push({ kind: "separator", key: "delete-separator" });
+    entries.push({
+      kind: "item",
+      key: "delete-agent",
+      label: labels.deleteAgent,
+      icon: "trash-2",
+      tooltip: labels.deleteAgentTooltip,
+      destructive: true,
+      testID: `${menuTestIDBase}-delete-agent`,
+      onSelect: () => {
+        onDeleteAgent(agentId);
+      },
+    });
+  }
   entries.push({
     kind: "item",
     key: "close",
@@ -442,6 +467,7 @@ export function buildWorkspaceDesktopTabActions(
       onCloseTabsAfter: input.onCloseTabsToRight,
       onCloseOtherTabs: input.onCloseOtherTabs,
       onMarkAsUnread: input.onMarkAsUnread,
+      onDeleteAgent: input.onDeleteAgent,
       canMarkAsUnread:
         input.tab.target.kind === "agent" && input.canMarkAsUnread
           ? input.canMarkAsUnread(input.tab.target.agentId)

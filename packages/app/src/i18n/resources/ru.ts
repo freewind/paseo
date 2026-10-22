@@ -737,6 +737,8 @@ export const ru: TranslationResources = {
         reloadAgent: "Перезагрузить агента",
         reloadAgentTooltip: "Перезагрузите агента, чтобы обновить навыки, MCP или статус входа.",
         markAsUnread: "Отметить как непрочитанное",
+        deleteAgent: "Удалить сессию",
+        deleteAgentTooltip: "Безвозвратно удаляет сессию из Paseo. Запись у провайдера остаётся.",
         close: "Закрыть",
         renameTerminal: "Переименовать терминал",
         renameAgent: "Переименовать агента",

@@ -736,6 +736,9 @@ export const ja: TranslationResources = {
         reloadAgentTooltip:
           "スキル、MCP、ログイン状態を更新するためにエージェントを再読み込みします。",
         markAsUnread: "未読にする",
+        deleteAgent: "セッションを完全に削除",
+        deleteAgentTooltip:
+          "Paseo からこのセッションを完全に削除します。プロバイダー側の記録は残ります。",
         close: "閉じる",
         renameTerminal: "ターミナルの名前を変更",
         renameAgent: "エージェントの名前を変更",

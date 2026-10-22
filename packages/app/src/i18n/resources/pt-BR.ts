@@ -735,6 +735,9 @@ export const ptBR: TranslationResources = {
         reloadAgent: "Recarregar agente",
         reloadAgentTooltip: "Recarregue o agente para atualizar skills, MCPs ou status de login.",
         markAsUnread: "Marcar como não lido",
+        deleteAgent: "Excluir sessão",
+        deleteAgentTooltip:
+          "Exclui esta sessão do Paseo permanentemente. O histórico do provedor não é afetado.",
         close: "Fechar",
         renameTerminal: "Renomear terminal",
         renameAgent: "Renomear agente",

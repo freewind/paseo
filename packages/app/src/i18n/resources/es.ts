@@ -742,6 +742,9 @@ export const es: TranslationResources = {
         reloadAgentTooltip:
           "Vuelva a cargar el agente para actualizar habilidades, MCP o estado de inicio de sesión.",
         markAsUnread: "Marcar como no leído",
+        deleteAgent: "Eliminar sesión",
+        deleteAgentTooltip:
+          "Elimina esta sesión de Paseo de forma permanente. El historial del proveedor no se toca.",
         close: "Cerrar",
         renameTerminal: "Cambiar nombre de terminal",
         renameAgent: "Cambiar nombre del agente",

@@ -754,6 +754,9 @@ export const fr: TranslationResources = {
           "Rechargez l’agent pour mettre à jour les skills, les MCP ou l’état de connexion.",
         hideAgent: "Masquer cet agent",
         markAsUnread: "Marquer comme non lu",
+        deleteAgent: "Supprimer la session",
+        deleteAgentTooltip:
+          "Supprime définitivement cette session de Paseo. L’historique du fournisseur reste intact.",
         close: "Fermer",
         renameTerminal: "Renommer le terminal",
         renameAgent: "Renommer l’agent",
