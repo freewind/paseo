@@ -372,6 +372,8 @@ export const es: TranslationResources = {
     },
   },
   agentMemos: {
+    edit: "Editar nota",
+    save: "Guardar nota",
     toggle: "Notas del agente",
     add: "Añadir nota",
     placeholder: "Nueva nota",

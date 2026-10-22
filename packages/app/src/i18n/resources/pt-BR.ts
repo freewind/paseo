@@ -368,6 +368,8 @@ export const ptBR: TranslationResources = {
     },
   },
   agentMemos: {
+    edit: "Editar nota",
+    save: "Salvar nota",
     toggle: "Notas do agente",
     add: "Adicionar nota",
     placeholder: "Nova nota",

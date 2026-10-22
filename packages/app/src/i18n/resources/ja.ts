@@ -368,6 +368,8 @@ export const ja: TranslationResources = {
     },
   },
   agentMemos: {
+    edit: "メモを編集",
+    save: "メモを保存",
     toggle: "エージェントメモ",
     add: "メモを追加",
     placeholder: "新しいメモ",

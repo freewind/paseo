@@ -363,6 +363,8 @@ export const ar: TranslationResources = {
     },
   },
   agentMemos: {
+    edit: "تحرير المذكرة",
+    save: "حفظ المذكرة",
     toggle: "مذكرات الوكيل",
     add: "إضافة مذكرة",
     placeholder: "مذكرة جديدة",

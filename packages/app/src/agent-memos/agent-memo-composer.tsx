@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { Check, ImagePlus, X } from "lucide-react-native";
 import type { AttachmentMetadata } from "@/attachments/types";
+import type { ImageAttachment } from "@getpaseo/protocol/messages";
 import { persistAttachmentFromBlob } from "@/attachments/service";
 import { persistAttachmentFromDataUrl } from "@/attachments/service";
 import { persistAttachmentFromFileUri } from "@/attachments/service";
@@ -38,28 +39,49 @@ const memoImagePersister = {
 };
 
 /**
- * Text plus images for a new memo.
+ * Text plus images for a memo.
  *
  * Images enter the draft as `kind: "image"` attachment metadata — the same shape the composer
  * uses — so preview, removal and garbage-collection retention are the existing ones. Bytes stay
  * in the attachment store while the draft is open; only the submit path encodes them to the
  * inline base64 the daemon stores.
+ *
+ * Editing an existing memo seeds the draft with its text and its stored images. Stored images
+ * are inline base64 that lives with the memo, not in the attachment store, so they preview
+ * straight from the data URL and are handed back untouched unless removed.
  */
 export function AgentMemoComposer({
   onSubmit,
   onCancel,
   canAttachImages,
+  initialText = "",
+  initialImages,
+  submitLabel,
 }: {
-  onSubmit: (text: string, images: readonly AttachmentMetadata[]) => Promise<void>;
+  onSubmit: (
+    text: string,
+    images: readonly AttachmentMetadata[],
+    keptImages: readonly ImageAttachment[],
+  ) => Promise<void>;
   onCancel: () => void;
   /** Host capability: a daemon without it would store the memo and drop the image. */
   canAttachImages: boolean;
+  /** Editing seeds the draft with the memo's text; a new memo starts empty. */
+  initialText?: string;
+  /** The memo's stored images, kept unless the user removes them. */
+  initialImages?: readonly ImageAttachment[];
+  /** Submit button label: a new memo adds, an edited one saves. */
+  submitLabel?: string;
 }) {
   const { t } = useTranslation();
   const toast = useToast();
   const { pickImages } = useImageAttachmentPicker();
-  const [text, setText] = useState("");
+  const [text, setText] = useState(initialText);
   const [images, setImages] = useState<AttachmentMetadata[]>([]);
+  // Stored images carry no id, so the draft wraps each one in a stable one for keying and removal.
+  const [keptImages, setKeptImages] = useState<KeptMemoImage[]>(() =>
+    (initialImages ?? []).map((image, index) => ({ id: `stored-${index}`, image })),
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef<EditingTextInputHandle | null>(null);
   // Attachment ids are retained for as long as they sit in this draft: the draft is component
@@ -104,6 +126,10 @@ export function AgentMemoComposer({
     },
     [releaseImage],
   );
+
+  const handleRemoveKeptImage = useCallback((id: string) => {
+    setKeptImages((current) => current.filter((entry) => entry.id !== id));
+  }, []);
 
   const handlePickImage = useCallback(() => {
     void pickAndPersistImages({ pickImages, persister: memoImagePersister })
@@ -214,7 +240,11 @@ export function AgentMemoComposer({
     setIsSubmitting(true);
     void (async () => {
       try {
-        await onSubmit(trimmedText, images);
+        await onSubmit(
+          trimmedText,
+          images,
+          keptImages.map((entry) => entry.image),
+        );
         for (const attachment of images) {
           releaseImage(attachment.id);
         }
@@ -227,14 +257,14 @@ export function AgentMemoComposer({
         setIsSubmitting(false);
       }
     })();
-  }, [canSubmit, images, onSubmit, releaseImage, trimmedText]);
+  }, [canSubmit, images, keptImages, onSubmit, releaseImage, trimmedText]);
 
   return (
     <View style={styles.container}>
       <View style={styles.inputRow}>
         <MemoTextInput
           ref={inputRef}
-          initialValue=""
+          initialValue={initialText}
           onChangeText={setText}
           onSubmitEditing={submit}
           placeholder={t("agentMemos.placeholder")}
@@ -260,7 +290,7 @@ export function AgentMemoComposer({
           onPress={submit}
           disabled={!canSubmit}
           accessibilityRole="button"
-          accessibilityLabel={t("agentMemos.add")}
+          accessibilityLabel={submitLabel ?? t("agentMemos.add")}
           testID="agent-memo-submit"
           style={styles.iconButton}
           hitSlop={6}
@@ -278,10 +308,18 @@ export function AgentMemoComposer({
           <ThemedX size={14} />
         </Pressable>
       </View>
-      {images.length > 0 || pendingImages.length > 0 ? (
+      {keptImages.length > 0 || images.length > 0 || pendingImages.length > 0 ? (
         <View style={styles.imageRow}>
           {pendingImages.map((entry) => (
             <PendingPasteImage key={entry.id} uri={entry.previewUri} />
+          ))}
+          {keptImages.map((entry) => (
+            <MemoStoredImage
+              key={entry.id}
+              image={entry.image}
+              id={entry.id}
+              onRemove={handleRemoveKeptImage}
+            />
           ))}
           {images.map((attachment) => (
             <MemoDraftImage
@@ -292,6 +330,39 @@ export function AgentMemoComposer({
           ))}
         </View>
       ) : null}
+    </View>
+  );
+}
+
+/** A stored memo image: inline base64, removed by dropping it from the kept set. */
+function MemoStoredImage({
+  image,
+  id,
+  onRemove,
+}: {
+  image: ImageAttachment;
+  id: string;
+  onRemove: (id: string) => void;
+}) {
+  const { t } = useTranslation();
+  const source = useMemo(
+    () => ({ uri: `data:${image.mimeType};base64,${image.data}` }),
+    [image.data, image.mimeType],
+  );
+  const handleRemove = useCallback(() => onRemove(id), [id, onRemove]);
+  return (
+    <View style={styles.thumbnail}>
+      <Image source={source} style={styles.thumbnailImage} />
+      <Pressable
+        onPress={handleRemove}
+        accessibilityRole="button"
+        accessibilityLabel={t("composer.attachments.removeImage")}
+        testID={`agent-memo-kept-image-remove-${id}`}
+        style={styles.thumbnailRemove}
+        hitSlop={6}
+      >
+        <ThemedX size={12} />
+      </Pressable>
     </View>
   );
 }
@@ -335,6 +406,12 @@ function MemoDraftImage({
 }
 
 const THUMBNAIL_SIZE = 32;
+
+/** A stored memo image plus the draft-local id used to key and remove it. */
+interface KeptMemoImage {
+  id: string;
+  image: ImageAttachment;
+}
 
 const styles = StyleSheet.create((theme: Theme) => ({
   container: {

@@ -368,6 +368,8 @@ export const ru: TranslationResources = {
     },
   },
   agentMemos: {
+    edit: "Изменить заметку",
+    save: "Сохранить заметку",
     toggle: "Заметки агента",
     add: "Добавить заметку",
     placeholder: "Новая заметка",

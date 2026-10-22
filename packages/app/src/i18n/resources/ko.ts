@@ -364,6 +364,8 @@ export const ko: TranslationResources = {
     },
   },
   agentMemos: {
+    edit: "메모 편집",
+    save: "메모 저장",
     toggle: "에이전트 메모",
     add: "메모 추가",
     placeholder: "새 메모",

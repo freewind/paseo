@@ -372,6 +372,8 @@ export const fr: TranslationResources = {
     },
   },
   agentMemos: {
+    edit: "Modifier le mémo",
+    save: "Enregistrer le mémo",
     toggle: "Mémos de l'agent",
     add: "Ajouter un mémo",
     placeholder: "Nouveau mémo",
