@@ -842,3 +842,5 @@ Notes：
 **已知代价**：预览会触发 `ensureAgentLoaded`，未加载的会话被拉起来后常驻内存（daemon 没有空闲回收）。用户已确认先接受，后续再考虑 daemon 侧只读导出。
 
 验证：`sessions-screen` 3 条、`conversation-markdown` 6 条通过；lint、typecheck、format 均 exit 0。**待用户实机复验**弹窗与图标。
+
+**修复（`6606dc604`）**：`useFetchQuery` 要求 `staleTimeMs` 有限，之前传 `Number.POSITIVE_INFINITY`，导致一打开 History 页就抛 `Fetch queries must declare a finite staleTimeMs`。改为 5 分钟。
