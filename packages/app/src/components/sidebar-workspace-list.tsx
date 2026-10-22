@@ -1204,7 +1204,6 @@ function WorkspaceRowInner({
                   reserveIdleStatusIndicatorSpace={reserveIdleStatusIndicatorSpace}
                   nameHighlightRanges={nameHighlightRanges}
                 >
-                  {" "}
                   <WorkspaceRowRightGroup
                     workspace={workspace}
                     backdrop={backdrop}
