@@ -455,6 +455,10 @@ const styles = StyleSheet.create((theme: Theme) => ({
     height: THUMBNAIL_SIZE,
     borderRadius: theme.borderRadius.sm,
     overflow: "hidden",
+    // Same rule as the rail's: the border is the background's opposite, so a pale or dark
+    // image against a near-matching surface still has an edge.
+    borderWidth: theme.borderWidth[1],
+    borderColor: theme.colors.foreground,
     backgroundColor: theme.colors.surface2,
   },
   thumbnailImage: {
