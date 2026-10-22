@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-22 17:20
+最近一次保存：2026-10-22 17:40
 
 ---
 
@@ -224,3 +224,19 @@ Notes：
 - 已存图是跟备忘录存的 inline base64，不在附件库里（encodeAttachmentsForSend 读不到），所以按 data URL 直接预览、原 base64 原样回传；新增图片仍走附件流程。
 - 提交走 updateMemo：图片集合没变就省略 images 参数（daemon 保留原图），变了传完整数组，空数组就是把图清空。比的是 each image 的 data，长度相同但换了图也能识别。
 - 编辑态同样 autoFocus，目的是点了编辑就能直接改。
+
+---
+
+### 备忘录删除与压缩上下文改为原位确认
+
+- 状态：已完成
+- 最近保存：2026-10-22 17:40
+
+网页上这两处弹的是浏览器原生 window.confirm，因为 confirmDialog 的三端实现都是系统对话框（native Alert、desktop dialog.ask、web window.confirm）。
+
+Notes：
+
+- 全仓 confirmDialog 调用点 34 处 / 25 文件，本次只动这两处，其余保留系统对话框。
+- 新增 `components/ui/inline-confirm.tsx`：触发点点击后原地变取消/确认；web 上点外部或 Esc 复原；支持受控 open（context window 圆环就是受控切换到确认态）。
+- useCompactContext 不再弹确认，只暴露 canCompact 与 sendCompact。
+- docs/design.md 两种确认的分工已写入：会丢工作用 confirmDialog，触发点已说明后果的小操作用 InlineConfirm。
