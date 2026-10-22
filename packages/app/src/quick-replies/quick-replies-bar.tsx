@@ -5,6 +5,7 @@ import type { QuickReply } from "@getpaseo/protocol/messages";
 import { useTranslation } from "react-i18next";
 import { useCallback, useMemo } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { iconButtonChromeStyle } from "@/components/ui/icon-button-chrome";
 import { ICON_SIZE, type Theme } from "@/styles/theme";
 
 const mutedIconMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
@@ -40,11 +41,8 @@ export function QuickRepliesBar({
     [],
   );
   const editChipStyle = useCallback(
-    ({ pressed, hovered = false }: ChipPressableState) => [
-      styles.editChip,
-      Boolean(hovered) && styles.editChipHovered,
-      pressed && styles.editChipPressed,
-    ],
+    ({ pressed, hovered = false }: ChipPressableState) =>
+      iconButtonChromeStyle({ size: "large", state: { hovered: Boolean(hovered), pressed } }),
     [],
   );
   const editButton = (
@@ -175,18 +173,6 @@ const styles = StyleSheet.create((theme: Theme) => ({
   chipText: {
     color: theme.colors.foregroundMuted,
     fontSize: theme.fontSize.lg,
-  },
-  editChip: {
-    flexShrink: 0,
-    paddingHorizontal: theme.spacing[0.5],
-    paddingVertical: theme.spacing[0.5],
-    backgroundColor: "transparent",
-  },
-  editChipHovered: {
-    opacity: 0.8,
-  },
-  editChipPressed: {
-    opacity: 0.6,
   },
   tooltipText: {
     color: theme.colors.foreground,
