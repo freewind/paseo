@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-23 07:00
+最近一次保存：2026-10-23 07:20
 
 ---
 
@@ -764,3 +764,19 @@ Notes：
 **tooltip**：归档/删除各一个，文案与 `accessibilityLabel` 同源。删除按钮的 tooltip 外套一层 `View`（`InlineConfirm` 是函数组件接不了 ref）。抽了 `RowActionTooltip` 避免嵌套过深。
 
 验证：lint、typecheck（exit 0）、format 全过；`agent-list.tsx` 无既有测试文件。**待用户实机复验**闪烁是否消失。
+
+---
+
+### i18n 通用动词复用
+
+- 状态：已完成（`c27df77cf`）
+- 最近保存：2026-10-23 07:20
+
+需求：按钮已在具体功能里，文案只留动词（管理 / 添加 / 清空），别再缀「备忘」「常用回复」；能复用通用 key 就不要自己维护。
+
+- `common.actions` 新增 `manage`、`add`、`clear`、`edit`、`delete`、`save`（×9 语言）。
+- 删除专用键：`composer.quickReplies.edit`、`agentMemos.add`、`agentMemos.clear`、`agentMemos.edit`、`agentMemos.delete`、`agentMemos.save`（×9）。
+- 调用处改走 common：`quick-replies-bar.tsx`（manage）、`agent-memos-rail.tsx`（add/clear/edit/delete/save）、`comment-sheet.tsx`（add）、`agent-memo-composer.tsx`（add）。
+- 保留：`composer.quickReplies.editTitle`（编辑面板标题）、`agentMemos.toggle`/`sheetTitle`/占位符（需要名词）。
+
+验证：lint、typecheck、format 均 exit 0；`agent-memos` + `assistant-comment` + `quick-replies` 5 个文件 41 passed。
