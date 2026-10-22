@@ -50,7 +50,6 @@ export const ja: TranslationResources = {
       clear: "クリア",
       edit: "編集",
       delete: "削除",
-      save: "保存",
     },
     placeholders: {
       search: "検索...",
@@ -2377,10 +2376,8 @@ export const ja: TranslationResources = {
     },
     plugins: pluginSettings.ja,
     metadataGeneration: {
-      titlePrompt: "タイトルプロンプト",
       titlePromptHint:
         "ワークスペースタイトル生成時に Paseo が従う指示。空欄はデフォルトのスタイルを使用;paseo.json の設定が優先されます。",
-      titlePromptPlaceholder: "例:[モジュール] 短いタスク要約",
       titlePromptSave: "保存",
       titlePromptSaving: "保存中...",
       title: "メタデータ生成",

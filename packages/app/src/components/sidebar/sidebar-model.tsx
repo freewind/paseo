@@ -337,7 +337,6 @@ export function SidebarModelProvider({
       pinnedCollapsed,
       pinnedKeys,
       pinnedWorkspaceOrder,
-      filteredWorkspaceEntriesByKey,
       t,
       nameFilteredWorkspaceEntries,
     ],

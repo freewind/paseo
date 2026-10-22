@@ -95,7 +95,7 @@ interface BuildWorkspaceTabMenuEntriesInput {
   menuTestIDBase: string;
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
-  onCopyConversationMarkdown: (agentId: string) => Promise<void> | void;
+  onCopyConversationMarkdown?: (agentId: string) => Promise<void> | void;
   /** Full-session copy into a new conversation; present only when the daemon advertises it. */
   onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
   canCloneAgent?: boolean;
@@ -124,7 +124,7 @@ interface BuildWorkspaceDesktopTabActionsInput {
   tabCount: number;
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
-  onCopyConversationMarkdown: (agentId: string) => Promise<void> | void;
+  onCopyConversationMarkdown?: (agentId: string) => Promise<void> | void;
   onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
   canCloneAgent?: boolean;
   onMoveAgentToWorkspace?: (agentId: string) => void;
@@ -226,8 +226,6 @@ export function buildWorkspaceTabMenuEntries(
     onMoveAgentToWorkspace,
     onCopyTerminalId,
     onCopyFilePath,
-    onOpenFileInEditor,
-    onRevealFile,
     onReloadAgent,
     onRenameTab,
     onCloseTab,
@@ -274,7 +272,7 @@ export function buildWorkspaceTabMenuEntries(
       icon: "copy",
       testID: `${menuTestIDBase}-copy-conversation-markdown`,
       onSelect: () => {
-        void onCopyConversationMarkdown(agentId);
+        void onCopyConversationMarkdown?.(agentId);
       },
     });
     if (canCloneAgent && onCopyAgentAsNew) {

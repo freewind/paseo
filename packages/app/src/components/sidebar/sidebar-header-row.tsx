@@ -16,8 +16,6 @@ interface SidebarHeaderRowProps {
   label: string;
   onPress: () => void;
   isActive?: boolean;
-  /** Renders the row inert: no press, no hover highlight, muted icon and label. */
-  disabled?: boolean;
   testID?: string;
   nativeID?: string;
   accessibilityLabel?: string;
@@ -45,7 +43,6 @@ export function SidebarHeaderRow({
   label,
   onPress,
   isActive = false,
-  disabled = false,
   testID,
   nativeID,
   accessibilityLabel,
@@ -61,11 +58,11 @@ export function SidebarHeaderRow({
   const [isPressed, setIsPressed] = useState(false);
   const handlePressIn = useCallback(() => setIsPressed(true), []);
   const handlePressOut = useCallback(() => setIsPressed(false), []);
-  const isHighlighted = !disabled && (isHovered || isActive);
+  const isHighlighted = isHovered || isActive;
   const iconSize = variant === "header" ? "md" : "sm";
 
   let right = trailing ?? null;
-  if (right === null && !disabled && shortcutKeys && isHovered) {
+  if (right === null && shortcutKeys && isHovered) {
     right = <Shortcut chord={shortcutKeys} />;
   }
 
@@ -85,9 +82,8 @@ export function SidebarHeaderRow({
           accessible
           accessibilityRole="button"
           accessibilityLabel={accessibilityLabel ?? label}
-          accessibilityState={getRowAccessibilityState(isActive, disabled)}
+          accessibilityState={isActive ? SELECTED_STATE : undefined}
           aria-selected={isActive}
-          aria-disabled={disabled}
           style={styles.button}
         >
           {icon ? (
@@ -99,15 +95,7 @@ export function SidebarHeaderRow({
           ) : (
             <View style={variant === "header" ? styles.iconSpacer : styles.iconSpacerCompact} />
           )}
-          <Text
-            style={[
-              styles.label,
-              isHighlighted && styles.labelHighlighted,
-              disabled && styles.labelDisabled,
-            ]}
-          >
-            {label}
-          </Text>
+          <Text style={[styles.label, isHighlighted && styles.labelHighlighted]}>{label}</Text>
         </Pressable>
         {right === null ? null : (
           <Pressable
@@ -126,38 +114,7 @@ export function SidebarHeaderRow({
   );
 }
 
-interface SidebarRowAccessibilityState {
-  selected?: boolean;
-  disabled?: boolean;
-}
-
-/**
- * `selected` keeps the existing active-row semantics; `disabled` is only added
- * when the row is actually inert, so enabled callers see no change.
- */
-function getRowAccessibilityState(
-  isActive: boolean,
-  disabled: boolean,
-): SidebarRowAccessibilityState | undefined {
-  if (!isActive && !disabled) {
-    return undefined;
-  }
-  const state: SidebarRowAccessibilityState = {};
-  if (isActive) {
-    state.selected = true;
-  }
-  if (disabled) {
-    state.disabled = true;
-  }
-  return state;
-}
-
-function getIconColorMapping(isHighlighted: boolean, disabled: boolean) {
-  if (disabled) {
-    return foregroundExtraMutedColorMapping;
-  }
-  return isHighlighted ? foregroundColorMapping : foregroundMutedColorMapping;
-}
+const SELECTED_STATE = { selected: true } as const;
 
 const styles = StyleSheet.create((theme) => ({
   container: {
@@ -218,9 +175,6 @@ const styles = StyleSheet.create((theme) => ({
   },
   labelHighlighted: {
     color: theme.colors.foreground,
-  },
-  labelDisabled: {
-    color: theme.colors.foregroundExtraMuted,
   },
   trailing: {
     flexDirection: "row",

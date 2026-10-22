@@ -2,9 +2,7 @@ import React, { useCallback, useMemo } from "react";
 import { View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { WorkspaceMenuActionItems } from "@/components/workspace-menu-action-items";
-import { useWorkspaceLabelMenuPages, type WorkspaceLabelTarget } from "@/workspace-labels/picker";
-import { Ellipsis, Globe } from "lucide-react-native";
+import { Copy, Ellipsis, Globe, Import as ImportIcon, Settings } from "lucide-react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import type { TerminalProfile } from "@getpaseo/protocol/messages";
 import {
@@ -36,19 +34,17 @@ import {
 import { usePluginWorkspaceMenu } from "@/plugins";
 
 const ThemedEllipsis = withUnistyles(Ellipsis);
+const ThemedCopy = withUnistyles(Copy);
 const ThemedGlobe = withUnistyles(Globe);
+const ThemedImport = withUnistyles(ImportIcon);
+const ThemedSettings = withUnistyles(Settings);
 
 const mutedColorMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
 
 const MENU_NEW_BROWSER_ICON = <ThemedGlobe size={16} uniProps={mutedColorMapping} />;
 const MENU_IMPORT_ICON = <ThemedImport size={16} uniProps={mutedColorMapping} />;
 const MENU_COPY_ICON = <ThemedCopy size={16} uniProps={mutedColorMapping} />;
-const MENU_RENAME_ICON = <ThemedPencil size={16} uniProps={mutedColorMapping} />;
-const MENU_ARCHIVE_ICON = <ThemedArchive size={16} uniProps={mutedColorMapping} />;
-const MENU_PIN_ICON = <ThemedPin size={16} uniProps={mutedColorMapping} />;
-const MENU_UNPIN_ICON = <ThemedPinOff size={16} uniProps={mutedColorMapping} />;
 const MENU_SETTINGS_ICON = <ThemedSettings size={16} uniProps={mutedColorMapping} />;
-const MENU_NEW_TERMINAL_ICON = <TerminalProfileIcon iconKey={undefined} size={16} />;
 function WorkspaceHeaderMenuTriggerIcon() {
   return (
     <ThemedEllipsis
@@ -88,20 +84,6 @@ export interface WorkspaceHeaderWorkspaceActions {
   onCopyWorkspacePath: () => void;
   onCopyBranchName: () => void;
   onOpenSetupTab: () => void;
-  onRename?: () => void;
-  onTogglePin?: () => void;
-  isPinned?: boolean;
-  onArchive?: () => void;
-  isArchiving?: boolean;
-  archiveLabel?: string;
-  workspaceKey: string;
-  workspaceTarget: WorkspaceLabelTarget | null;
-  workspaceDirectory?: string | null;
-  onCreateAgent: () => void;
-  onMarkAsRead?: () => void;
-  onMarkAsUnread?: () => void;
-  /** Restores the agent archived most recently in this workspace and opens it. */
-  onRestoreLastArchivedAgent?: () => void;
 }
 
 function WorkspaceHeaderWorkspaceActionItems({
@@ -113,47 +95,48 @@ function WorkspaceHeaderWorkspaceActionItems({
   onCopyWorkspacePath,
   onCopyBranchName,
   onOpenSetupTab,
-  onRename,
-  onTogglePin,
-  isPinned,
-  onArchive,
-  isArchiving,
-  archiveLabel,
-  workspaceKey,
-  workspaceTarget,
-  workspaceDirectory,
-  onCreateAgent,
-  onMarkAsRead,
-  onMarkAsUnread,
-  onRestoreLastArchivedAgent,
 }: WorkspaceHeaderWorkspaceActions) {
+  const { t } = useTranslation();
   return (
-    <WorkspaceMenuActionItems
-      surface="dropdown"
-      workspaceKey={workspaceKey}
-      workspaceTarget={workspaceTarget}
-      onCreateAgent={onCreateAgent}
-      onCopyPath={onCopyWorkspacePath}
-      copyPathDisabled={copyPathDisabled}
-      onCopyBranchName={onCopyBranchName}
-      showBranchName={Boolean(currentBranchName)}
-      onRename={onRename}
-      onMarkAsRead={onMarkAsRead}
-      onMarkAsUnread={onMarkAsUnread}
-      onTogglePin={onTogglePin}
-      isPinned={isPinned}
-      onOpenImportSheet={onOpenImportSheet}
-      importAgentDisabled={importAgentDisabled}
-      showImportSession
-      showWorkspaceSetup={showWorkspaceSetup}
-      onOpenSetupTab={onOpenSetupTab}
-      openInFileManagerPath={workspaceDirectory}
-      onArchive={onArchive}
-      archiveLabel={archiveLabel}
-      archiveStatus={isArchiving ? "pending" : "idle"}
-      archivePendingLabel={archiveLabel}
-      onRestoreLastArchivedAgent={onRestoreLastArchivedAgent}
-    />
+    <>
+      <DropdownMenuItem
+        testID="workspace-header-copy-path"
+        leading={MENU_COPY_ICON}
+        disabled={copyPathDisabled}
+        onSelect={onCopyWorkspacePath}
+      >
+        {t("workspace.header.actions.copyPath")}
+      </DropdownMenuItem>
+      {currentBranchName ? (
+        <DropdownMenuItem
+          testID="workspace-header-copy-branch-name"
+          leading={MENU_COPY_ICON}
+          onSelect={onCopyBranchName}
+        >
+          {t("workspace.header.actions.copyBranchName")}
+        </DropdownMenuItem>
+      ) : null}
+      <DropdownMenuItem
+        testID="workspace-header-import-agent"
+        leading={MENU_IMPORT_ICON}
+        disabled={importAgentDisabled}
+        onSelect={onOpenImportSheet}
+      >
+        {t("workspace.header.actions.importSession")}
+      </DropdownMenuItem>
+      {showWorkspaceSetup ? (
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            testID="workspace-header-show-setup"
+            leading={MENU_SETTINGS_ICON}
+            onSelect={onOpenSetupTab}
+          >
+            {t("workspace.header.actions.showSetup")}
+          </DropdownMenuItem>
+        </>
+      ) : null}
+    </>
   );
 }
 
@@ -174,7 +157,6 @@ function workspaceHeaderMenuButtonStyle({
  */
 export function WorkspaceHeaderMenuDesktop(props: WorkspaceHeaderWorkspaceActions) {
   const { t } = useTranslation();
-  const pages = useWorkspaceLabelMenuPages(props.workspaceTarget);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -185,7 +167,7 @@ export function WorkspaceHeaderMenuDesktop(props: WorkspaceHeaderWorkspaceAction
       >
         <WorkspaceHeaderMenuTriggerIcon />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" width={220} testID="workspace-header-menu" pages={pages}>
+      <DropdownMenuContent align="start" width={220} testID="workspace-header-menu">
         <WorkspaceHeaderWorkspaceActionItems {...props} />
       </DropdownMenuContent>
     </DropdownMenu>
@@ -229,7 +211,6 @@ export interface WorkspaceHeaderMenuMobileProps extends WorkspaceHeaderWorkspace
   scripts: UseWorkspaceScriptsMenuPagesInput;
   showCreateBrowserTab: boolean;
   createTerminalDisabled: boolean;
-  onCreateTerminal: () => void;
   onCreateTerminalWithProfile: (profile: TerminalProfile) => void;
   onCreateBrowser: () => void;
 }
@@ -248,7 +229,6 @@ export function WorkspaceHeaderMenuMobile({
   scripts,
   showCreateBrowserTab,
   createTerminalDisabled,
-  onCreateTerminal,
   onCreateTerminalWithProfile,
   onCreateBrowser,
   ...workspaceActions
@@ -261,7 +241,6 @@ export function WorkspaceHeaderMenuMobile({
     () => resolveTerminalProfiles(config?.terminalProfiles),
     [config?.terminalProfiles],
   );
-  const pages = useWorkspaceLabelMenuPages(workspaceActions.workspaceTarget);
 
   const handleEditProfiles = useCallback(() => {
     router.push(buildSettingsHostSectionRoute(normalizedServerId, "terminals") as Href);
@@ -311,12 +290,7 @@ export function WorkspaceHeaderMenuMobile({
             {t("workspace.header.actions.newBrowser")}
           </DropdownMenuItem>
         ) : null}
-        <WorkspaceHeaderWorkspaceActionItems
-          {...workspaceActions}
-          workspaceKey={workspaceActions.workspaceKey}
-          workspaceTarget={workspaceActions.workspaceTarget}
-          onCreateAgent={workspaceActions.onCreateAgent}
-        />
+        <WorkspaceHeaderWorkspaceActionItems {...workspaceActions} />
         <DropdownMenuSeparator />
         <DropdownMenuLabel>{t("workspace.tabs.actions.terminalProfilesMenu")}</DropdownMenuLabel>
         {profiles.map((profile) => (

@@ -5,13 +5,10 @@ import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { useTranslation } from "react-i18next";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { InlineConfirm } from "@/components/ui/inline-confirm";
 import { useIsCompactFormFactor } from "@/constants/layout";
 import { isNative } from "@/constants/platform";
 import { useHostReportsUsage } from "@/usage";
 import type { Theme } from "@/styles/theme";
-import { useCompactContext } from "@/hooks/use-compact-context";
-import { Button } from "@/components/ui/button";
 import { ContextWindowDetails } from "./context-window-details";
 import { ContextWindowSheet } from "./context-window-sheet";
 import { formatContextPercentage } from "./context-window-meter.utils";
@@ -162,29 +159,8 @@ export function ContextWindowMeter({
   // Compact screens open the details in a sheet, which can hold a pressable Refresh.
   const isCompact = useIsCompactFormFactor();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [isSheetConfirmingCompact, setIsSheetConfirmingCompact] = useState(false);
   const openSheet = useCallback(() => setIsSheetOpen(true), []);
-  const closeSheet = useCallback(() => {
-    setIsSheetConfirmingCompact(false);
-    setIsSheetOpen(false);
-  }, []);
-  const { canCompact, sendCompact } = useCompactContext({ serverId, agentId });
-  const [isConfirmingCompact, setIsConfirmingCompact] = useState(false);
-  const handleStartCompact = useCallback(() => setIsConfirmingCompact(true), []);
-  const handleConfirmCompact = useCallback(() => {
-    setIsConfirmingCompact(false);
-    void sendCompact();
-  }, [sendCompact]);
-  const handleCompactOpenChange = useCallback((next: boolean) => {
-    if (!next) setIsConfirmingCompact(false);
-  }, []);
-  const handleSheetStartCompact = useCallback(() => setIsSheetConfirmingCompact(true), []);
-  const handleSheetCancelCompact = useCallback(() => setIsSheetConfirmingCompact(false), []);
-  const handleSheetCompact = useCallback(() => {
-    setIsSheetConfirmingCompact(false);
-    closeSheet();
-    void sendCompact();
-  }, [closeSheet, sendCompact]);
+  const closeSheet = useCallback(() => setIsSheetOpen(false), []);
   const percentage =
     maxTokens !== null && usedTokens !== null ? getUsagePercentage(maxTokens, usedTokens) : null;
   const geometry = getMeterGeometry(showPercentage, glyphSize);
@@ -226,29 +202,6 @@ export function ContextWindowMeter({
     : t("contextWindow.accessibilityNoData");
 
   if (isCompact) {
-    const compactAction = isSheetConfirmingCompact ? (
-      <View style={styles.confirmActions}>
-        <Button
-          variant="secondary"
-          style={styles.confirmAction}
-          onPress={handleSheetCancelCompact}
-          testID="context-window-compact-cancel"
-        >
-          {t("common.actions.cancel")}
-        </Button>
-        <Button
-          style={styles.confirmAction}
-          onPress={handleSheetCompact}
-          testID="context-window-compact-confirm"
-        >
-          {t("contextWindow.compactConfirm")}
-        </Button>
-      </View>
-    ) : (
-      <Button onPress={handleSheetStartCompact} testID="context-window-compact">
-        {t("contextWindow.compactConfirm")}
-      </Button>
-    );
     return (
       <>
         <Pressable
@@ -270,7 +223,6 @@ export function ContextWindowMeter({
             showTitle={false}
             refreshable
           />
-          {canCompact ? compactAction : null}
         </ContextWindowSheet>
       </>
     );
@@ -325,7 +277,6 @@ export function ContextWindowMeter({
           testID="context-window-meter"
           accessibilityRole="image"
           accessibilityLabel={accessibilityLabel}
-          onPress={canCompact ? handleStartCompact : undefined}
         >
           {ring}
           {percentageLabel}

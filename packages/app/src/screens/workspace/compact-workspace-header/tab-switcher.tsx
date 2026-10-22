@@ -186,6 +186,14 @@ function MobileWorkspaceTabOption({
   const tabMenuLabels = useMemo<WorkspaceTabMenuLabels>(
     () => ({
       copyResumeCommand: t("workspace.tabs.menu.copyResumeCommand"),
+      moveToWorkspace: t("workspace.tabs.menu.moveToWorkspace"),
+      openInEditor: t("workspace.tabs.menu.openInEditor"),
+      revealIn: t("workspace.tabs.menu.revealIn"),
+      copyConversationMarkdown: t("workspace.tabs.menu.copyConversationMarkdown"),
+      copyAgentAsNew: t("workspace.tabs.menu.copyAgentAsNew"),
+      markAsUnread: t("workspace.tabs.menu.markAsUnread"),
+      deleteAgent: t("workspace.tabs.menu.deleteAgent"),
+      deleteAgentTooltip: t("workspace.tabs.menu.deleteAgentTooltip"),
       copyAgentId: t("workspace.tabs.menu.copyAgentId"),
       copyTerminalId: t("workspace.tabs.menu.copyTerminalId"),
       copyFilePath: t("workspace.tabs.menu.copyFilePath"),

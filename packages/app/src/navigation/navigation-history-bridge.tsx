@@ -8,10 +8,9 @@ import {
   navigationHistoryStore,
   type NavigationHistoryEntry,
 } from "@/stores/navigation-history-store";
-import {
-  useWorkspaceLayoutStore,
-  type WorkspaceLayoutStore,
-} from "@/stores/workspace-layout-store";
+import { useWorkspaceLayoutStore } from "@/stores/workspace-layout-store";
+
+type WorkspaceLayoutStore = ReturnType<typeof useWorkspaceLayoutStore.getState>;
 import { parseHostWorkspaceRouteFromPathname } from "@/utils/host-routes";
 import { buildWorkspaceTabPersistenceKey, type WorkspaceTabTarget } from "@/workspace-tabs/model";
 

@@ -50,7 +50,6 @@ export const es: TranslationResources = {
       clear: "Borrar",
       edit: "Editar",
       delete: "Eliminar",
-      save: "Guardar",
     },
     placeholders: {
       search: "Buscar...",
@@ -2410,10 +2409,8 @@ export const es: TranslationResources = {
     },
     plugins: pluginSettings.es,
     metadataGeneration: {
-      titlePrompt: "Indicación del título",
       titlePromptHint:
         "Instrucciones que Paseo sigue al generar títulos de espacios de trabajo. Vacío usa el estilo predeterminado; paseo.json sigue teniendo prioridad.",
-      titlePromptPlaceholder: "p. ej. [Módulo] resumen breve de la tarea",
       titlePromptSave: "Guardar",
       titlePromptSaving: "Guardando...",
       title: "Generación de metadatos",

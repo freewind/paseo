@@ -1,6 +1,10 @@
 import { useStableEvent } from "@/hooks/use-stable-event";
 import { getAgentAttachmentPillContent } from "@/attachments/attachment-pill-content";
-import { AssistantForkMenu, type AssistantForkTarget } from "@/components/assistant-fork-menu";
+import {
+  AssistantForkMenu,
+  type AssistantForkChoice,
+  type AssistantForkTarget,
+} from "@/components/assistant-fork-menu";
 import { AttachmentLightbox, type ImageLightboxSource } from "@/components/attachment-lightbox";
 import {
   AttachmentFrame,
@@ -77,72 +81,16 @@ import Animated, {
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
-import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from "react-native-svg";
+import Svg, { Defs, Rect, Stop, LinearGradient as SvgLinearGradient } from "react-native-svg";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
-import { inlineUnistylesStyle } from "@/styles/unistyles-inline-style";
-import { MarkdownRenderer, type MarkdownStyles } from "@/components/markdown/renderer";
-import type { TaskActivity, TodoEntry, UserMessageImageAttachment } from "@/types/stream";
-import type { AgentAttachment } from "@getpaseo/protocol/messages";
-import type { ToolCallDetail } from "@getpaseo/protocol/agent-types";
-import { buildToolCallPresentation } from "@/tool-calls/presentation";
-import { resolveToolCallIcon } from "@/utils/tool-call-icon";
-import { getMarkdownListMarker, getMarkdownListSpacing } from "@/utils/markdown-list";
-import { markdownNodeContainsType } from "@/utils/markdown-ast";
-import { useStableEvent } from "@/hooks/use-stable-event";
-import { splitMarkdownBlocks } from "@/utils/split-markdown-blocks";
-import { colorMarkdownLinkChildren } from "@/components/markdown/link-children";
-import { createAssistantMarkdownParser } from "@/utils/assistant-markdown-parser";
-import { formatDuration, formatMessageTimestamp } from "@/utils/time";
-import { formatTurnStats } from "@/utils/format-turn-stats";
-import { writeMarkdownToRichClipboard } from "@/utils/rich-clipboard";
-import { getDefaultMarkdownClipboardEnvironment } from "@/utils/rich-clipboard-default-environment";
-import { setAssistantMarkdownBlockHeight } from "@/utils/assistant-message-height-estimate";
-import { isRenderProfileEnabled } from "@/utils/render-profiler";
-import { getAgentAttachmentPillContent } from "@/attachments/attachment-pill-content";
-import { PlanCard } from "./plan-card";
-import { useToolCallSheet } from "./tool-call-sheet";
-import { ToolCallDetailsContent } from "./tool-call-details";
-import { CopyTextButton } from "./copy-text-button";
-import { buildToolCallDetailText } from "@/utils/tool-call-detail-text";
-import {
-  AssistantInlineCodePathLink,
-  type AssistantFileLinkSource,
-  AssistantMarkdownCodeLink,
-  AssistantMarkdownLink,
-  type InlinePathTarget,
-  useAssistantFileLinkActions,
-  useAssistantLinkPress,
-} from "@/assistant-file-links";
-import { getCompactionMarkerLabel } from "./message-compaction-label";
-import { useAssistantImage } from "@/assistant-image/use-assistant-image";
-import {
-  AttachmentFrame,
-  AttachmentLabel,
-  AttachmentThumbnail,
-} from "@/components/attachment-pill";
-import { AttachmentLightbox, type ImageLightboxSource } from "@/components/attachment-lightbox";
-import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
-import { isWeb, isNative } from "@/constants/platform";
-import type { AgentCapabilityFlags } from "@getpaseo/protocol/agent-types";
-import { RewindMenu, type RewindMode } from "@/components/rewind/rewind-menu";
-import { useRewindAgentMutation } from "@/components/rewind/use-rewind-agent-mutation";
-import type { RegenerateUserMessageInput } from "@/components/rewind/regenerate-user-message";
-import {
-  AssistantForkMenu,
-  type AssistantForkChoice,
-  type AssistantForkTarget,
-} from "@/components/assistant-fork-menu";
-import { useRetainedPanelActive } from "@/components/retained-panel";
-import {
-  markdownCopyDataSet,
-  markdownCopyOrderedListDataSet,
-  markdownCopyTableCellDataSet,
-  type MarkdownCopyInlineTag,
-} from "@/assistant-selection-copy/markup";
 import { capAssistantMessageForRender, getUtf8ByteLength } from "./assistant-message-render-limit";
 import { getTurnDurationLabel } from "./assistant-turn-footer-label";
+import { getCompactionMarkerLabel } from "./message-compaction-label";
+import { PlanCard } from "./plan-card";
+import { ToolCallDetailsContent } from "./tool-call-details";
+import { useToolCallSheet } from "./tool-call-sheet";
 export type { InlinePathTarget } from "@/assistant-file-links";
-export type { AssistantForkChoice, AssistantForkTarget };
+export type { AssistantForkTarget };
 
 interface UserMessageProps {
   serverId?: string;
@@ -158,10 +106,6 @@ interface UserMessageProps {
   isLastInGroup?: boolean;
   isPending?: boolean;
   disableOuterSpacing?: boolean;
-  /** Resend this message verbatim after rewinding it away; absent when unavailable. */
-  onRegenerate?: (input: RegenerateUserMessageInput) => Promise<void>;
-  /** A turn is open, so resend is offered but not selectable. */
-  isRegenerateDisabled?: boolean;
 }
 
 const MessageOuterSpacingContext = createContext(false);
@@ -446,23 +390,6 @@ function UserMessageImagePill({ image, onOpen, accessibilityLabel }: UserMessage
 
 const MESSAGE_TEXT_DATASET = { messageText: "true" };
 
-/** Resend is offered only for a settled message on a host that can resend it at all. */
-function resolveCanRegenerate(input: {
-  onRegenerate: UserMessageProps["onRegenerate"];
-  messageId: string | undefined;
-  isPending: boolean;
-}): boolean {
-  return Boolean(input.onRegenerate && input.messageId && !input.isPending);
-}
-
-/** The item stays visible while a turn is open, so it reads as unavailable rather than missing. */
-function resolveRegenerateDisabled(
-  isRegenerateDisabled: boolean,
-  isRegenerating: boolean,
-): boolean {
-  return isRegenerateDisabled || isRegenerating;
-}
-
 export const UserMessage = memo(function UserMessage({
   serverId,
   agentId,
@@ -477,8 +404,6 @@ export const UserMessage = memo(function UserMessage({
   isLastInGroup = true,
   isPending = false,
   disableOuterSpacing,
-  onRegenerate,
-  isRegenerateDisabled = false,
 }: UserMessageProps) {
   const isCompact = useIsCompactFormFactor();
   const { t } = useTranslation();
@@ -494,26 +419,11 @@ export const UserMessage = memo(function UserMessage({
   const hasImages = images.length > 0;
   const hasAttachments = attachments.length > 0;
   const showTrailingRow = !isPending && hasText && (isCompact || isNative || isHovered);
-  const canRegenerate = resolveCanRegenerate({ onRegenerate, messageId, isPending });
   const formattedTimestamp = useMemo(
     () => formatMessageTimestamp(new Date(timestamp)),
     [timestamp],
   );
   const rewindMutation = useRewindAgentMutation({ serverId, agentId, client, messageId });
-  const [isRegenerating, setIsRegenerating] = useState(false);
-
-  const handleRegenerate = useCallback(async () => {
-    if (!onRegenerate || !messageId || isRegenerating) return;
-    setIsRegenerating(true);
-    try {
-      // Rewind first; only a successful rewind resends, so the message is never both
-      // present and about to repeat.
-      await rewindMutation.rewindAgent({ mode: "conversation", rewoundText: "" });
-      await onRegenerate({ text: message, images, attachments });
-    } finally {
-      setIsRegenerating(false);
-    }
-  }, [onRegenerate, messageId, isRegenerating, rewindMutation, message, images, attachments]);
 
   const handlePointerEnter = useCallback(() => setIsHovered(true), []);
   const handlePointerLeave = useCallback(() => setIsHovered(false), []);
@@ -619,11 +529,6 @@ export const UserMessage = memo(function UserMessage({
                 isPending={rewindMutation.isPending}
                 rewoundText={message}
                 onRewind={handleRewind}
-                onRegenerate={canRegenerate ? handleRegenerate : undefined}
-                isRegenerateDisabled={resolveRegenerateDisabled(
-                  isRegenerateDisabled,
-                  isRegenerating,
-                )}
               />
             ) : null}
             <TurnCopyButton
@@ -643,10 +548,7 @@ interface AssistantTurnFooterProps {
   getContent: () => string;
   completedAt?: Date;
   durationMs?: number | null;
-  ttftMs?: number;
-  outputTokens?: number;
-  onFork?: (choice: AssistantForkChoice) => Promise<void> | void;
-  supportsSessionFork?: boolean;
+  onFork?: (target: AssistantForkTarget) => Promise<void> | void;
 }
 
 const assistantTurnFooterStylesheet = StyleSheet.create((theme) => ({
@@ -677,11 +579,6 @@ const assistantTurnFooterStylesheet = StyleSheet.create((theme) => ({
     color: theme.colors.foregroundMuted,
     fontSize: STREAM_METADATA_FONT_SIZE,
   },
-  stats: {
-    marginTop: theme.spacing[1],
-    color: theme.colors.foregroundExtraMuted,
-    fontSize: STREAM_METADATA_FONT_SIZE,
-  },
 }));
 
 const TIMESTAMP_REVEAL_MS = 3000;
@@ -695,10 +592,7 @@ export const AssistantTurnFooter = memo(function AssistantTurnFooter({
   getContent,
   completedAt,
   durationMs,
-  ttftMs,
-  outputTokens,
   onFork,
-  supportsSessionFork,
 }: AssistantTurnFooterProps) {
   const { t } = useTranslation();
   const [hovered, setHovered] = useState(false);
@@ -727,15 +621,6 @@ export const AssistantTurnFooter = memo(function AssistantTurnFooter({
   const primaryLabel = durationLabel || timestampLabel;
   const canSwap = Boolean(durationLabel && timestampLabel);
   const showTimestamp = canSwap && (isWeb ? hovered : pressedReveal);
-  const statsLabel = useMemo(
-    () =>
-      formatTurnStats({
-        ttftMs,
-        durationMs,
-        outputTokens,
-      }),
-    [durationMs, outputTokens, ttftMs],
-  );
 
   const handleHoverIn = useCallback(() => setHovered(true), []);
   const handleHoverOut = useCallback(() => setHovered(false), []);
@@ -751,59 +636,39 @@ export const AssistantTurnFooter = memo(function AssistantTurnFooter({
     }, TIMESTAMP_REVEAL_MS);
   }, [canSwap]);
   const handleFork = useCallback(
-    (choice: AssistantForkChoice) => {
-      return onFork?.(choice);
-    },
+    (choice: AssistantForkChoice) => onFork?.(choice.target),
     [onFork],
   );
   const canFork = Boolean(onFork);
 
   return (
-    <>
-      <View style={assistantTurnFooterStylesheet.container}>
-        <TurnCopyButton
-          getContent={getContent}
-          containerStyle={assistantTurnFooterStylesheet.copyButton}
-        />
-        {canFork ? (
-          <AssistantForkMenu
-            onFork={handleFork}
-            supportsSessionFork={Boolean(supportsSessionFork)}
-          />
-        ) : null}
-        {primaryLabel ? (
-          <Pressable
-            onPress={handlePress}
-            onHoverIn={handleHoverIn}
-            onHoverOut={handleHoverOut}
-            accessibilityRole={canSwap ? "button" : undefined}
-            accessibilityLabel={
-              canSwap ? `${durationLabel}, ended ${timestampLabel}` : primaryLabel
-            }
-          >
-            <View style={assistantTurnFooterStylesheet.labelWrapper}>
-              {/* Sizer reserves space for whichever label is longer so the
-                  container width is stable across hover transitions. */}
-              <Text style={assistantTurnFooterStylesheet.labelSizer} aria-hidden>
-                {primaryLabel.length >= timestampLabel.length ? primaryLabel : timestampLabel}
-              </Text>
-              <Text style={assistantTurnFooterStylesheet.labelOverlay}>
-                {showTimestamp ? timestampLabel : primaryLabel}
-              </Text>
-            </View>
-          </Pressable>
-        ) : null}
-      </View>
-      {statsLabel ? (
-        <Text
-          style={assistantTurnFooterStylesheet.stats}
-          testID="assistant-turn-stats"
-          numberOfLines={1}
+    <View style={assistantTurnFooterStylesheet.container}>
+      <TurnCopyButton
+        getContent={getContent}
+        containerStyle={assistantTurnFooterStylesheet.copyButton}
+      />
+      {canFork ? <AssistantForkMenu onFork={handleFork} supportsSessionFork={false} /> : null}
+      {primaryLabel ? (
+        <Pressable
+          onPress={handlePress}
+          onHoverIn={handleHoverIn}
+          onHoverOut={handleHoverOut}
+          accessibilityRole={canSwap ? "button" : undefined}
+          accessibilityLabel={canSwap ? `${durationLabel}, ended ${timestampLabel}` : primaryLabel}
         >
-          {`🌿 ${statsLabel}`}
-        </Text>
+          <View style={assistantTurnFooterStylesheet.labelWrapper}>
+            {/* Sizer reserves space for whichever label is longer so the
+                container width is stable across hover transitions. */}
+            <Text style={assistantTurnFooterStylesheet.labelSizer} aria-hidden>
+              {primaryLabel.length >= timestampLabel.length ? primaryLabel : timestampLabel}
+            </Text>
+            <Text style={assistantTurnFooterStylesheet.labelOverlay}>
+              {showTimestamp ? timestampLabel : primaryLabel}
+            </Text>
+          </View>
+        </Pressable>
       ) : null}
-    </>
+    </View>
   );
 });
 
@@ -1033,12 +898,6 @@ const expandableBadgeStylesheet = StyleSheet.create((theme) => ({
     alignItems: "center",
     overflow: "hidden",
   },
-  pressTarget: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    minWidth: 0,
-  },
   iconBadge: {
     width: 22,
     height: 22,
@@ -1067,11 +926,6 @@ const expandableBadgeStylesheet = StyleSheet.create((theme) => ({
     color: theme.colors.foregroundMuted,
     fontSize: theme.fontSize.base,
     fontWeight: theme.fontWeight.normal,
-  },
-  // The two-column row spaces the summary with a margin; the combined inline flow uses a
-  // leading space in the text itself (nested native Text ignores margins, web does not),
-  // so the column indent lives in this style instead of the shared one.
-  secondaryLabelColumnIndent: {
     marginLeft: theme.spacing[2],
   },
   secondaryLabelActive: {
@@ -1092,10 +946,6 @@ const expandableBadgeStylesheet = StyleSheet.create((theme) => ({
     marginLeft: theme.spacing[1],
     padding: theme.spacing[1],
     borderRadius: theme.borderRadius.md,
-    flexShrink: 0,
-  },
-  trailingAction: {
-    marginLeft: theme.spacing[1],
     flexShrink: 0,
   },
   openFileButtonPlaceholderIcon: {
@@ -1161,26 +1011,21 @@ const expandableBadgeStylesheet = StyleSheet.create((theme) => ({
 interface NativeExpandableBadgeShimmerProps {
   label: string;
   secondaryLabel?: string;
-  /** Mirrors the real row's combined-flow line cap; undefined keeps the two-column layout. */
-  secondaryLabelMaxLines?: number;
   rowWidth: number;
   rowHeight: number;
   peakWidth: number;
   durationSeconds: number;
   gradientId: string;
-  multiline: boolean;
 }
 
 const NativeExpandableBadgeShimmer = memo(function NativeExpandableBadgeShimmer({
   label,
   secondaryLabel,
-  secondaryLabelMaxLines,
   rowWidth,
   rowHeight,
   peakWidth,
   durationSeconds,
   gradientId,
-  multiline,
 }: NativeExpandableBadgeShimmerProps) {
   const isPanelActive = useRetainedPanelActive();
   const shimmerTranslateX = useSharedValue(0);
@@ -1239,43 +1084,23 @@ const NativeExpandableBadgeShimmer = memo(function NativeExpandableBadgeShimmer(
     [nativeShimmerPeakStyle, peakWidth, rowHeight],
   );
 
-  const maskElement = useMemo(() => {
-    if (secondaryLabelMaxLines !== undefined) {
-      return (
-        <View pointerEvents="none" style={nativeShimmerMaskStyle}>
-          <ExpandableBadgeInlineText
-            label={label}
-            secondaryLabel={secondaryLabel}
-            labelStyle={nativeLabelMaskStyle}
-            secondaryLabelStyle={nativeSecondaryMaskStyle}
-            maxLines={secondaryLabelMaxLines}
-          />
-        </View>
-      );
-    }
-    return (
+  const maskElement = useMemo(
+    () => (
       <View pointerEvents="none" style={nativeShimmerMaskStyle}>
         <Text style={nativeLabelMaskStyle} numberOfLines={1}>
           {label}
         </Text>
         {secondaryLabel ? (
-          <Text style={nativeSecondaryMaskStyle} numberOfLines={multiline ? undefined : 1}>
+          <Text style={nativeSecondaryMaskStyle} numberOfLines={1}>
             {secondaryLabel}
           </Text>
         ) : (
           <View style={expandableBadgeStylesheet.spacer} />
         )}
       </View>
-    );
-  }, [
-    secondaryLabelMaxLines,
-    nativeShimmerMaskStyle,
-    nativeLabelMaskStyle,
-    nativeSecondaryMaskStyle,
-    label,
-    secondaryLabel,
-    multiline,
-  ]);
+    ),
+    [nativeShimmerMaskStyle, nativeLabelMaskStyle, nativeSecondaryMaskStyle, label, secondaryLabel],
+  );
 
   return (
     <View style={expandableBadgeStylesheet.shimmerOverlay} pointerEvents="none">
@@ -1680,11 +1505,6 @@ export const TodoListCard = memo(function TodoListCard({
 interface ExpandableBadgeProps {
   label: string;
   secondaryLabel?: string;
-  /**
-   * Combined line cap for the name+summary text flow; when set, the two strings render as
-   * one wrapping text capped at that many lines. Undefined keeps the two-column label row.
-   */
-  secondaryLabelMaxLines?: number;
   icon?: ComponentType<{ size?: number; color?: string }>;
   isExpanded: boolean;
   style?: StyleProp<ViewStyle>;
@@ -1692,7 +1512,6 @@ interface ExpandableBadgeProps {
   onOpenFile?: () => void;
   onDetailHoverChange?: (hovered: boolean) => void;
   renderDetails?: () => ReactNode;
-  trailingAction?: ReactNode;
   isLoading?: boolean;
   isError?: boolean;
   isLastInSequence?: boolean;
@@ -1706,7 +1525,6 @@ interface ExpandableBadgeSecondaryLabelProps {
   secondaryLabelStyle: StyleProp<TextStyle>;
   shouldMeasureWebShimmer: boolean;
   onSecondaryLayout: (event: LayoutChangeEvent) => void;
-  multiline: boolean;
 }
 
 function ExpandableBadgeSecondaryLabel({
@@ -1714,7 +1532,6 @@ function ExpandableBadgeSecondaryLabel({
   secondaryLabelStyle,
   shouldMeasureWebShimmer,
   onSecondaryLayout,
-  multiline,
 }: ExpandableBadgeSecondaryLabelProps) {
   if (!secondaryLabel) {
     return null;
@@ -1722,7 +1539,7 @@ function ExpandableBadgeSecondaryLabel({
   return (
     <Text
       style={secondaryLabelStyle}
-      numberOfLines={multiline ? undefined : 1}
+      numberOfLines={1}
       onLayout={shouldMeasureWebShimmer ? onSecondaryLayout : undefined}
     >
       {secondaryLabel}
@@ -1730,82 +1547,39 @@ function ExpandableBadgeSecondaryLabel({
   );
 }
 
-interface ExpandableBadgeInlineTextProps {
-  label: string;
-  secondaryLabel?: string;
-  labelStyle: StyleProp<TextStyle>;
-  secondaryLabelStyle: StyleProp<TextStyle>;
-  /** Extra style for the whole flow; the web shimmer puts its animated text style here. */
-  outerStyle?: StyleProp<TextStyle>;
-  onLayout?: (event: LayoutChangeEvent) => void;
-  maxLines: number;
-}
-
-/**
- * The tool-call title: name and summary as one continuous text flow, capped at
- * `maxLines` total with a tail ellipsis. A single outer Text owns `numberOfLines`, so the
- * summary wraps onto the name's line and reuses the full width underneath it — no reserved
- * left column. The nested spans keep each part's own styling.
- */
-function ExpandableBadgeInlineText({
-  label,
-  secondaryLabel,
-  labelStyle,
-  secondaryLabelStyle,
-  outerStyle,
-  onLayout,
-  maxLines,
-}: ExpandableBadgeInlineTextProps) {
-  return (
-    <Text style={outerStyle} numberOfLines={maxLines} ellipsizeMode="tail" onLayout={onLayout}>
-      <Text style={labelStyle}>{label}</Text>
-      {secondaryLabel ? <Text style={secondaryLabelStyle}>{` ${secondaryLabel}`}</Text> : null}
-    </Text>
-  );
-}
-
 interface ExpandableBadgeWebShimmerOverlayProps {
   label: string;
   secondaryLabel?: string;
-  /** Mirrors the real row's combined-flow line cap; undefined keeps the two-column layout. */
-  secondaryLabelMaxLines?: number;
   shimmerLabelTextStyle: StyleProp<TextStyle>;
   shimmerSecondaryTextStyle: StyleProp<TextStyle>;
-  multiline: boolean;
+  showOpenFileButton: boolean;
 }
 
 function ExpandableBadgeWebShimmerOverlay({
   label,
   secondaryLabel,
-  secondaryLabelMaxLines,
   shimmerLabelTextStyle,
   shimmerSecondaryTextStyle,
-  multiline,
+  showOpenFileButton,
 }: ExpandableBadgeWebShimmerOverlayProps) {
-  if (secondaryLabelMaxLines !== undefined) {
-    return (
-      <View style={expandableBadgeStylesheet.shimmerOverlay} pointerEvents="none">
-        <ExpandableBadgeInlineText
-          label={label}
-          secondaryLabel={secondaryLabel}
-          labelStyle={shimmerLabelTextStyle}
-          secondaryLabelStyle={shimmerSecondaryTextStyle}
-          maxLines={secondaryLabelMaxLines}
-        />
-      </View>
-    );
-  }
   return (
     <View style={expandableBadgeStylesheet.shimmerOverlay} pointerEvents="none">
       <Text style={shimmerLabelTextStyle} numberOfLines={1}>
         {label}
       </Text>
       {secondaryLabel ? (
-        <Text style={shimmerSecondaryTextStyle} numberOfLines={multiline ? undefined : 1}>
+        <Text style={shimmerSecondaryTextStyle} numberOfLines={1}>
           {secondaryLabel}
         </Text>
       ) : null}
-      {!secondaryLabel ? <View style={expandableBadgeStylesheet.spacer} /> : null}
+      {showOpenFileButton ? (
+        <View style={expandableBadgeStylesheet.openFileButton}>
+          <View style={expandableBadgeStylesheet.openFileButtonPlaceholderIcon} />
+        </View>
+      ) : null}
+      {!secondaryLabel && !showOpenFileButton ? (
+        <View style={expandableBadgeStylesheet.spacer} />
+      ) : null}
     </View>
   );
 }
@@ -1815,11 +1589,6 @@ interface ExpandableBadgeLabelRowProps {
   labelStyle: StyleProp<TextStyle>;
   secondaryLabel?: string;
   secondaryLabelStyle: StyleProp<TextStyle>;
-  /**
-   * Combined line cap for the name+summary text flow. Undefined keeps the two-column
-   * label row used by callers other than the tool-call title.
-   */
-  secondaryLabelMaxLines?: number;
   shouldMeasureWebShimmer: boolean;
   shouldMeasureNativeShimmer: boolean;
   isWebShimmer: boolean;
@@ -1834,7 +1603,11 @@ interface ExpandableBadgeLabelRowProps {
   onLabelRowLayout: (event: LayoutChangeEvent) => void;
   onLabelLayout: (event: LayoutChangeEvent) => void;
   onSecondaryLayout: (event: LayoutChangeEvent) => void;
-  multiline: boolean;
+  showOpenFileButton: boolean;
+  isOpenFileHovered: boolean;
+  onOpenFilePress: (event: GestureResponderEvent) => void;
+  onOpenFileHoverIn: () => void;
+  onOpenFileHoverOut: () => void;
 }
 
 function ExpandableBadgeLabelRow({
@@ -1842,7 +1615,6 @@ function ExpandableBadgeLabelRow({
   labelStyle,
   secondaryLabel,
   secondaryLabelStyle,
-  secondaryLabelMaxLines,
   shouldMeasureWebShimmer,
   shouldMeasureNativeShimmer,
   isWebShimmer,
@@ -1857,48 +1629,13 @@ function ExpandableBadgeLabelRow({
   onLabelRowLayout,
   onLabelLayout,
   onSecondaryLayout,
-  multiline,
+  showOpenFileButton,
+  isOpenFileHovered,
+  onOpenFilePress,
+  onOpenFileHoverIn,
+  onOpenFileHoverOut,
 }: ExpandableBadgeLabelRowProps) {
-  if (secondaryLabelMaxLines !== undefined) {
-    return (
-      <View
-        style={expandableBadgeStylesheet.labelRow}
-        onLayout={shouldMeasureNativeShimmer ? onLabelRowLayout : undefined}
-      >
-        <ExpandableBadgeInlineText
-          label={label}
-          secondaryLabel={secondaryLabel}
-          labelStyle={labelStyle}
-          secondaryLabelStyle={secondaryLabelStyle}
-          onLayout={shouldMeasureWebShimmer ? onLabelLayout : undefined}
-          maxLines={secondaryLabelMaxLines}
-        />
-        {isWebShimmer ? (
-          <ExpandableBadgeWebShimmerOverlay
-            label={label}
-            secondaryLabel={secondaryLabel}
-            secondaryLabelMaxLines={secondaryLabelMaxLines}
-            shimmerLabelTextStyle={shimmerLabelTextStyle}
-            shimmerSecondaryTextStyle={shimmerSecondaryTextStyle}
-            multiline={multiline}
-          />
-        ) : null}
-        {isNativeShimmer ? (
-          <NativeExpandableBadgeShimmer
-            label={label}
-            secondaryLabel={secondaryLabel}
-            secondaryLabelMaxLines={secondaryLabelMaxLines}
-            rowWidth={labelRowWidth}
-            rowHeight={labelRowHeight}
-            peakWidth={nativeShimmerPeakWidth}
-            durationSeconds={shimmerDuration}
-            gradientId={nativeGradientId}
-            multiline={multiline}
-          />
-        ) : null}
-      </View>
-    );
-  }
+  const { t } = useTranslation();
   return (
     <View
       style={expandableBadgeStylesheet.labelRow}
@@ -1916,15 +1653,31 @@ function ExpandableBadgeLabelRow({
         secondaryLabelStyle={secondaryLabelStyle}
         shouldMeasureWebShimmer={shouldMeasureWebShimmer}
         onSecondaryLayout={onSecondaryLayout}
-        multiline={multiline}
       />
+      {showOpenFileButton ? (
+        <Pressable
+          onPress={onOpenFilePress}
+          onHoverIn={onOpenFileHoverIn}
+          onHoverOut={onOpenFileHoverOut}
+          accessibilityRole="button"
+          accessibilityLabel={t("message.actions.openFile")}
+          testID="tool-call-open-file"
+          style={expandableBadgeStylesheet.openFileButton}
+          hitSlop={6}
+        >
+          <ThemedFileSymlinkIcon
+            size={14}
+            uniProps={isOpenFileHovered ? foregroundColorMapping : foregroundMutedColorMapping}
+          />
+        </Pressable>
+      ) : null}
       {isWebShimmer ? (
         <ExpandableBadgeWebShimmerOverlay
           label={label}
           secondaryLabel={secondaryLabel}
           shimmerLabelTextStyle={shimmerLabelTextStyle}
           shimmerSecondaryTextStyle={shimmerSecondaryTextStyle}
-          multiline={multiline}
+          showOpenFileButton={showOpenFileButton}
         />
       ) : null}
       {isNativeShimmer ? (
@@ -1936,7 +1689,6 @@ function ExpandableBadgeLabelRow({
           peakWidth={nativeShimmerPeakWidth}
           durationSeconds={shimmerDuration}
           gradientId={nativeGradientId}
-          multiline={multiline}
         />
       ) : null}
     </View>
@@ -1962,13 +1714,6 @@ function ExpandableBadgeLabelRow({
 // with a tight viewBox per icon — see option (2) in the design discussion.
 const LUCIDE_TOOL_ICON_NUDGE_LEFT: ViewStyle = { marginLeft: -1 };
 const LUCIDE_CHEVRON_NUDGE_LEFT: ViewStyle = { marginLeft: -4 };
-
-/** Memoizes the badge icon through `withUnistyles`; null when there is no icon. */
-function useExpandableBadgeIcon(
-  icon: ExpandableBadgeProps["icon"],
-): ComponentType<{ size?: number; uniProps?: typeof foregroundColorMapping }> | null {
-  return useMemo(() => (icon ? withUnistyles(icon) : null), [icon]);
-}
 
 function renderExpandableBadgeIcon({
   isError,
@@ -2018,38 +1763,6 @@ function renderExpandableBadgeIconSlot({
   return iconNode;
 }
 
-/**
- * Shimmer timing and span metrics for the badge. Wraps `computeShimmerMetrics` so the
- * inline-flow branch stays out of `ExpandableBadge`: when the title renders as one
- * combined text flow (secondaryLabelMaxLines set), it is measured as a single text node
- * (onLabelLayout), so the separately measured secondary span must stay out of the span
- * math for the web shimmer track to cover the whole visible title.
- */
-function useBadgeShimmerMetrics(input: {
-  label: string;
-  secondaryLabel?: string;
-  secondaryLabelMaxLines?: number;
-  isLoading: boolean;
-  labelRowWidth: number;
-  labelRowHeight: number;
-  labelOffsetX: number;
-  labelWidth: number;
-  secondaryOffsetX: number;
-  secondaryWidth: number;
-}) {
-  return computeShimmerMetrics({
-    label: input.label,
-    secondaryLabel: input.secondaryLabelMaxLines !== undefined ? undefined : input.secondaryLabel,
-    isLoading: input.isLoading,
-    labelRowWidth: input.labelRowWidth,
-    labelRowHeight: input.labelRowHeight,
-    labelOffsetX: input.labelOffsetX,
-    labelWidth: input.labelWidth,
-    secondaryOffsetX: input.secondaryOffsetX,
-    secondaryWidth: input.secondaryWidth,
-  });
-}
-
 function computeShimmerMetrics(input: {
   label: string;
   secondaryLabel: string | undefined;
@@ -2076,7 +1789,6 @@ function computeShimmerMetrics(input: {
   // measuring while idle so a retained badge has dimensions when it starts loading.
   const shouldMeasureWebShimmer = isWeb;
   const shouldMeasureNativeShimmer = input.isLoading && isNative;
-
   const isNativeShimmer =
     shouldMeasureNativeShimmer && input.labelRowWidth > 0 && input.labelRowHeight > 0;
   const webShimmerSpanStartX = input.labelOffsetX;
@@ -2153,124 +1865,16 @@ function buildShimmerTextStyle(input: {
   });
 }
 
-/**
- * The badge's pressable chrome and label text styles. Split out of `ExpandableBadge` to
- * keep the component under the complexity cap.
- */
-function useExpandableBadgeStyles(input: {
-  isLastInSequence: boolean;
-  resolvedDisableOuterSpacing: boolean;
-  style: ExpandableBadgeProps["style"];
-  isPressed: boolean;
-  isInteractive: boolean;
-  isExpanded: boolean;
-  borderlessWhenExpanded: boolean;
-  isActive: boolean;
-  isLoading: boolean;
-  inlineFlow: boolean;
-  shimmerLabelStyle: StyleProp<TextStyle>;
-  shimmerSecondaryStyle: StyleProp<TextStyle>;
-}) {
-  const containerStyle = useMemo(
-    () => [
-      expandableBadgeStylesheet.container,
-      !input.resolvedDisableOuterSpacing &&
-        (input.isLastInSequence
-          ? expandableBadgeStylesheet.containerLastInSequence
-          : expandableBadgeStylesheet.containerSpacing),
-      input.style,
-    ],
-    [input.isLastInSequence, input.resolvedDisableOuterSpacing, input.style],
-  );
-
-  const pressableStyle = useMemo(
-    () => [
-      expandableBadgeStylesheet.pressable,
-      input.isPressed && input.isInteractive ? expandableBadgeStylesheet.pressablePressed : null,
-      input.isExpanded && expandableBadgeStylesheet.pressableExpanded,
-      input.isExpanded &&
-        !input.borderlessWhenExpanded &&
-        expandableBadgeStylesheet.pressableExpandedAttached,
-    ],
-    [input.borderlessWhenExpanded, input.isExpanded, input.isInteractive, input.isPressed],
-  );
-
-  const detailWrapperStyle = useMemo(
-    () => [
-      expandableBadgeStylesheet.detailWrapper,
-      input.borderlessWhenExpanded && expandableBadgeStylesheet.detailWrapperBorderless,
-    ],
-    [input.borderlessWhenExpanded],
-  );
-
-  const accessibilityState = useMemo(
-    () => (input.isInteractive ? { expanded: input.isExpanded } : undefined),
-    [input.isExpanded, input.isInteractive],
-  );
-
-  const labelStyle = useMemo(
-    () => [
-      expandableBadgeStylesheet.label,
-      input.isActive && expandableBadgeStylesheet.labelActive,
-      input.isLoading && expandableBadgeStylesheet.labelLoading,
-    ],
-    [input.isActive, input.isLoading],
-  );
-
-  const secondaryLabelStyle = useMemo(
-    () => [
-      expandableBadgeStylesheet.secondaryLabel,
-      input.isActive && expandableBadgeStylesheet.secondaryLabelActive,
-      // Only the two-column row indents the summary with a margin; the combined inline
-      // flow spaces it with the leading space inside the text itself.
-      input.inlineFlow ? null : expandableBadgeStylesheet.secondaryLabelColumnIndent,
-    ],
-    [input.isActive, input.inlineFlow],
-  );
-
-  const shimmerLabelTextStyle = useMemo(
-    () => [
-      expandableBadgeStylesheet.label,
-      input.isLoading && expandableBadgeStylesheet.labelLoading,
-      expandableBadgeStylesheet.shimmerText,
-      input.shimmerLabelStyle,
-    ],
-    [input.isLoading, input.shimmerLabelStyle],
-  );
-
-  const shimmerSecondaryTextStyle = useMemo(
-    () => [
-      expandableBadgeStylesheet.secondaryLabel,
-      expandableBadgeStylesheet.shimmerText,
-      input.shimmerSecondaryStyle,
-    ],
-    [input.shimmerSecondaryStyle],
-  );
-
-  return {
-    containerStyle,
-    pressableStyle,
-    detailWrapperStyle,
-    accessibilityState,
-    labelStyle,
-    secondaryLabelStyle,
-    shimmerLabelTextStyle,
-    shimmerSecondaryTextStyle,
-  };
-}
-
 export const ExpandableBadge = memo(function ExpandableBadge({
   label,
   style,
   secondaryLabel,
-  secondaryLabelMaxLines,
   icon,
   isExpanded,
   onToggle,
   onOpenFile,
   onDetailHoverChange,
   renderDetails,
-  trailingAction,
   isLoading = false,
   isError = false,
   isLastInSequence = false,
@@ -2279,7 +1883,6 @@ export const ExpandableBadge = memo(function ExpandableBadge({
   testID,
 }: ExpandableBadgeProps) {
   const resolvedDisableOuterSpacing = useDisableOuterSpacing(disableOuterSpacing);
-  const { settings } = useAppSettings();
   const [isHovered, setIsHovered] = useState(false);
   const [isOpenFileHovered, setIsOpenFileHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
@@ -2310,21 +1913,16 @@ export const ExpandableBadge = memo(function ExpandableBadge({
   const handleOpenFileHoverIn = useCallback(() => setIsOpenFileHovered(true), []);
   const handleOpenFileHoverOut = useCallback(() => setIsOpenFileHovered(false), []);
 
-  const {
-    labelRowWidth,
-    labelRowHeight,
-    labelOffsetX,
-    labelWidth,
-    secondaryOffsetX,
-    secondaryWidth,
-    handleLabelRowLayout,
-    handleLabelLayout,
-    handleSecondaryLayout,
-  } = useBadgeShimmerMeasurements();
-
   const nativeGradientIdRef = useRef(
     `shimmer-gradient-${Math.random().toString(36).substring(2, 9)}`,
   );
+  const [labelRowWidth, setLabelRowWidth] = useState(0);
+  const [labelRowHeight, setLabelRowHeight] = useState(0);
+  const [labelOffsetX, setLabelOffsetX] = useState(0);
+  const [labelWidth, setLabelWidth] = useState(0);
+  const [secondaryOffsetX, setSecondaryOffsetX] = useState(0);
+  const [secondaryWidth, setSecondaryWidth] = useState(0);
+
   const {
     shimmerDuration,
     nativeShimmerPeakWidth,
@@ -2335,10 +1933,9 @@ export const ExpandableBadge = memo(function ExpandableBadge({
     webShimmerPeakWidth,
     webShimmerTrackStart,
     webShimmerTrackEnd,
-  } = useBadgeShimmerMetrics({
+  } = computeShimmerMetrics({
     label,
     secondaryLabel,
-    secondaryLabelMaxLines,
     isLoading,
     labelRowWidth,
     labelRowHeight,
@@ -2347,6 +1944,42 @@ export const ExpandableBadge = memo(function ExpandableBadge({
     secondaryOffsetX,
     secondaryWidth,
   });
+
+  const handleLabelRowLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      if (!shouldMeasureNativeShimmer) {
+        return;
+      }
+      const { width, height } = event.nativeEvent.layout;
+      setLabelRowWidth((previous) => (Math.abs(previous - width) > 0.5 ? width : previous));
+      setLabelRowHeight((previous) => (Math.abs(previous - height) > 0.5 ? height : previous));
+    },
+    [shouldMeasureNativeShimmer],
+  );
+
+  const handleLabelLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      if (!shouldMeasureWebShimmer) {
+        return;
+      }
+      const { x, width } = event.nativeEvent.layout;
+      setLabelOffsetX((previous) => (Math.abs(previous - x) > 0.5 ? x : previous));
+      setLabelWidth((previous) => (Math.abs(previous - width) > 0.5 ? width : previous));
+    },
+    [shouldMeasureWebShimmer],
+  );
+
+  const handleSecondaryLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      if (!shouldMeasureWebShimmer || !secondaryLabel) {
+        return;
+      }
+      const { x, width } = event.nativeEvent.layout;
+      setSecondaryOffsetX((previous) => (Math.abs(previous - x) > 0.5 ? x : previous));
+      setSecondaryWidth((previous) => (Math.abs(previous - width) > 0.5 ? width : previous));
+    },
+    [shouldMeasureWebShimmer, secondaryLabel],
+  );
 
   useEffect(() => {
     if (!isWebShimmer) {
@@ -2400,31 +2033,78 @@ export const ExpandableBadge = memo(function ExpandableBadge({
     ],
   );
 
+  const containerStyle = useMemo(
+    () => [
+      expandableBadgeStylesheet.container,
+      !resolvedDisableOuterSpacing &&
+        (isLastInSequence
+          ? expandableBadgeStylesheet.containerLastInSequence
+          : expandableBadgeStylesheet.containerSpacing),
+      style,
+    ],
+    [isLastInSequence, resolvedDisableOuterSpacing, style],
+  );
+
+  const pressableStyle = useMemo(
+    () => [
+      expandableBadgeStylesheet.pressable,
+      isPressed && isInteractive ? expandableBadgeStylesheet.pressablePressed : null,
+      isExpanded && expandableBadgeStylesheet.pressableExpanded,
+      isExpanded && !borderlessWhenExpanded && expandableBadgeStylesheet.pressableExpandedAttached,
+    ],
+    [borderlessWhenExpanded, isExpanded, isInteractive, isPressed],
+  );
+
+  const detailWrapperStyle = useMemo(
+    () => [
+      expandableBadgeStylesheet.detailWrapper,
+      borderlessWhenExpanded && expandableBadgeStylesheet.detailWrapperBorderless,
+    ],
+    [borderlessWhenExpanded],
+  );
+
+  const accessibilityState = useMemo(
+    () => (isInteractive ? { expanded: isExpanded } : undefined),
+    [isExpanded, isInteractive],
+  );
+
   const isActive = isHovered || isExpanded;
 
-  const {
-    containerStyle,
-    pressableStyle,
-    detailWrapperStyle,
-    accessibilityState,
-    labelStyle,
-    secondaryLabelStyle,
-    shimmerLabelTextStyle,
-    shimmerSecondaryTextStyle,
-  } = useExpandableBadgeStyles({
-    isLastInSequence,
-    resolvedDisableOuterSpacing,
-    style,
-    isPressed,
-    isInteractive,
-    isExpanded,
-    borderlessWhenExpanded,
-    isActive,
-    isLoading,
-    inlineFlow: secondaryLabelMaxLines !== undefined,
-    shimmerLabelStyle,
-    shimmerSecondaryStyle,
-  });
+  const labelStyle = useMemo(
+    () => [
+      expandableBadgeStylesheet.label,
+      isActive && expandableBadgeStylesheet.labelActive,
+      isLoading && expandableBadgeStylesheet.labelLoading,
+    ],
+    [isActive, isLoading],
+  );
+
+  const secondaryLabelStyle = useMemo(
+    () => [
+      expandableBadgeStylesheet.secondaryLabel,
+      isActive && expandableBadgeStylesheet.secondaryLabelActive,
+    ],
+    [isActive],
+  );
+
+  const shimmerLabelTextStyle = useMemo(
+    () => [
+      expandableBadgeStylesheet.label,
+      isLoading && expandableBadgeStylesheet.labelLoading,
+      expandableBadgeStylesheet.shimmerText,
+      shimmerLabelStyle,
+    ],
+    [isLoading, shimmerLabelStyle],
+  );
+
+  const shimmerSecondaryTextStyle = useMemo(
+    () => [
+      expandableBadgeStylesheet.secondaryLabel,
+      expandableBadgeStylesheet.shimmerText,
+      shimmerSecondaryStyle,
+    ],
+    [shimmerSecondaryStyle],
+  );
 
   const chevronStyle = useMemo(
     () => [
@@ -2437,7 +2117,7 @@ export const ExpandableBadge = memo(function ExpandableBadge({
     [isExpanded],
   );
 
-  const ThemedIcon = useExpandableBadgeIcon(icon);
+  const ThemedIcon = useMemo(() => (icon ? withUnistyles(icon) : null), [icon]);
   const iconNode = renderExpandableBadgeIcon({ isError, isActive, ThemedIcon });
   const iconSlotNode = renderExpandableBadgeIconSlot({
     showChevron: isInteractive && (isHovered || isExpanded),
@@ -2461,20 +2141,19 @@ export const ExpandableBadge = memo(function ExpandableBadge({
       onPointerEnter={isWeb ? handleHoverIn : undefined}
       onPointerLeave={isWeb ? handleHoverOut : undefined}
     >
-      <View style={expandableBadgeStylesheet.headerRow}>
-        <Pressable
-          {...pressHandlers}
-          disabled={!isInteractive}
-          accessibilityState={accessibilityState}
-          style={[pressableStyle, expandableBadgeStylesheet.pressTarget]}
-        >
+      <Pressable
+        {...pressHandlers}
+        disabled={!isInteractive}
+        accessibilityState={accessibilityState}
+        style={pressableStyle}
+      >
+        <View style={expandableBadgeStylesheet.headerRow}>
           <View style={expandableBadgeStylesheet.iconBadge}>{iconSlotNode}</View>
           <ExpandableBadgeLabelRow
             label={label}
             labelStyle={labelStyle}
             secondaryLabel={secondaryLabel}
             secondaryLabelStyle={secondaryLabelStyle}
-            secondaryLabelMaxLines={secondaryLabelMaxLines}
             shouldMeasureWebShimmer={shouldMeasureWebShimmer}
             shouldMeasureNativeShimmer={shouldMeasureNativeShimmer}
             isWebShimmer={isWebShimmer}
@@ -2489,22 +2168,14 @@ export const ExpandableBadge = memo(function ExpandableBadge({
             onLabelRowLayout={handleLabelRowLayout}
             onLabelLayout={handleLabelLayout}
             onSecondaryLayout={handleSecondaryLayout}
-            multiline={settings.workspaceTitleMultiline}
+            showOpenFileButton={Boolean(onOpenFile && isHovered)}
+            isOpenFileHovered={isOpenFileHovered}
+            onOpenFilePress={handleOpenFilePress}
+            onOpenFileHoverIn={handleOpenFileHoverIn}
+            onOpenFileHoverOut={handleOpenFileHoverOut}
           />
-        </Pressable>
-        {/* Web renders role="button" as a real <button>, and a button inside a button
-            is invalid HTML: the row's actions sit beside the press target, not in it. */}
-        <ExpandableBadgeOpenFileButton
-          visible={Boolean(onOpenFile && isHovered)}
-          isHovered={isOpenFileHovered}
-          onPress={handleOpenFilePress}
-          onHoverIn={handleOpenFileHoverIn}
-          onHoverOut={handleOpenFileHoverOut}
-        />
-        {isExpanded && trailingAction ? (
-          <View style={expandableBadgeStylesheet.trailingAction}>{trailingAction}</View>
-        ) : null}
-      </View>
+        </View>
+      </Pressable>
       {detailContent ? (
         <Pressable
           ref={detailWrapperRef}
@@ -2522,7 +2193,6 @@ export const ExpandableBadge = memo(function ExpandableBadge({
 function areExpandableBadgePropsEqual(previous: ExpandableBadgeProps, next: ExpandableBadgeProps) {
   if (previous.label !== next.label) return false;
   if (previous.secondaryLabel !== next.secondaryLabel) return false;
-  if (previous.secondaryLabelMaxLines !== next.secondaryLabelMaxLines) return false;
   if (previous.icon !== next.icon) return false;
   if (previous.isExpanded !== next.isExpanded) return false;
   if (previous.style !== next.style) return false;
@@ -2536,53 +2206,7 @@ function areExpandableBadgePropsEqual(previous: ExpandableBadgeProps, next: Expa
   if (previous.onOpenFile !== next.onOpenFile) return false;
   if (previous.onDetailHoverChange !== next.onDetailHoverChange) return false;
   if (previous.renderDetails !== next.renderDetails) return false;
-  if (previous.trailingAction !== next.trailingAction) return false;
   return true;
-}
-
-/**
- * Measured layout of the badge's label row and its text spans, for the shimmer effects.
- * Split out of `ExpandableBadge` to keep the component under the complexity cap; the
- * measurement callbacks measure whenever invoked so a retained badge has dimensions when a
- * shimmer starts.
- */
-function useBadgeShimmerMeasurements() {
-  const [labelRowWidth, setLabelRowWidth] = useState(0);
-  const [labelRowHeight, setLabelRowHeight] = useState(0);
-  const [labelOffsetX, setLabelOffsetX] = useState(0);
-  const [labelWidth, setLabelWidth] = useState(0);
-  const [secondaryOffsetX, setSecondaryOffsetX] = useState(0);
-  const [secondaryWidth, setSecondaryWidth] = useState(0);
-
-  const handleLabelRowLayout = useCallback((event: LayoutChangeEvent) => {
-    const { width, height } = event.nativeEvent.layout;
-    setLabelRowWidth((previous) => (Math.abs(previous - width) > 0.5 ? width : previous));
-    setLabelRowHeight((previous) => (Math.abs(previous - height) > 0.5 ? height : previous));
-  }, []);
-
-  const handleLabelLayout = useCallback((event: LayoutChangeEvent) => {
-    const { x, width } = event.nativeEvent.layout;
-    setLabelOffsetX((previous) => (Math.abs(previous - x) > 0.5 ? x : previous));
-    setLabelWidth((previous) => (Math.abs(previous - width) > 0.5 ? width : previous));
-  }, []);
-
-  const handleSecondaryLayout = useCallback((event: LayoutChangeEvent) => {
-    const { x, width } = event.nativeEvent.layout;
-    setSecondaryOffsetX((previous) => (Math.abs(previous - x) > 0.5 ? x : previous));
-    setSecondaryWidth((previous) => (Math.abs(previous - width) > 0.5 ? width : previous));
-  }, []);
-
-  return {
-    labelRowWidth,
-    labelRowHeight,
-    labelOffsetX,
-    labelWidth,
-    secondaryOffsetX,
-    secondaryWidth,
-    handleLabelRowLayout,
-    handleLabelLayout,
-    handleSecondaryLayout,
-  };
 }
 
 interface ToolCallProps {
@@ -2744,20 +2368,6 @@ export const ToolCall = memo(function ToolCall({
     maxDetailHeight,
   ]);
 
-  const getCopyText = useCallback(
-    () => buildToolCallDetailText(effectiveDetail, toolName),
-    [effectiveDetail, toolName],
-  );
-  // Desktop shows details inline, so the badge carries the copy action itself; it
-  // stays hidden while collapsed to keep the idle row uncluttered.
-  const copyAction = useMemo(
-    () =>
-      shouldRenderInline && isExpanded ? (
-        <CopyTextButton getText={getCopyText} size={16} />
-      ) : undefined,
-    [shouldRenderInline, isExpanded, getCopyText],
-  );
-
   if (presentation.isPlan && effectiveDetail?.type === "plan") {
     return (
       <PlanCard
@@ -2774,13 +2384,11 @@ export const ToolCall = memo(function ToolCall({
       testID="tool-call-badge"
       label={presentation.displayName}
       secondaryLabel={presentation.summary}
-      secondaryLabelMaxLines={3}
       icon={presentation.icon}
       isExpanded={shouldRenderInline && isExpanded}
       onToggle={presentation.canOpenDetails ? handleToggle : undefined}
       onOpenFile={handleOpenFile}
       renderDetails={presentation.canOpenDetails && shouldRenderInline ? renderDetails : undefined}
-      trailingAction={copyAction}
       isLoading={status === "running" || status === "executing"}
       isError={status === "failed"}
       isLastInSequence={isLastInSequence}
@@ -2808,44 +2416,4 @@ function areToolCallPropsEqual(previous: ToolCallProps, next: ToolCallProps) {
   if (previous.forceInline !== next.forceInline) return false;
   if (previous.maxDetailHeight !== next.maxDetailHeight) return false;
   return true;
-}
-
-/**
- * The badge's "open file" action. It sits beside the press target, never inside it:
- * web renders role="button" as a real <button>, and nested buttons are invalid HTML.
- */
-function ExpandableBadgeOpenFileButton({
-  visible,
-  isHovered,
-  onPress,
-  onHoverIn,
-  onHoverOut,
-}: {
-  visible: boolean;
-  isHovered: boolean;
-  onPress: (event: GestureResponderEvent) => void;
-  onHoverIn: () => void;
-  onHoverOut: () => void;
-}): ReactElement | null {
-  const { t } = useTranslation();
-  if (!visible) {
-    return null;
-  }
-  return (
-    <Pressable
-      onPress={onPress}
-      onHoverIn={onHoverIn}
-      onHoverOut={onHoverOut}
-      accessibilityRole="button"
-      accessibilityLabel={t("message.actions.openFile")}
-      testID="tool-call-open-file"
-      style={expandableBadgeStylesheet.openFileButton}
-      hitSlop={6}
-    >
-      <ThemedFileSymlinkIcon
-        size={14}
-        uniProps={isHovered ? foregroundColorMapping : foregroundMutedColorMapping}
-      />
-    </Pressable>
-  );
 }

@@ -1,8 +1,8 @@
 import { memo, useMemo, useCallback, useState, type ReactNode } from "react";
-import { Text, View } from "react-native";
-import { StyleSheet } from "react-native-unistyles";
+import { Text, View, type ViewStyle } from "react-native";
+import { StyleSheet, withUnistyles } from "react-native-unistyles";
+import { CircleAlert, Folder, FolderGit2, Monitor } from "lucide-react-native";
 import { ProjectStatusIndicator } from "@/components/sidebar/project-leading-visual";
-import { SidebarStatusSlot } from "@/components/sidebar/sidebar-status-slot";
 import type { SidebarSurfaceBackdrop } from "@/styles/surface-backdrop";
 import {
   WorkspaceMetaRow,
@@ -29,8 +29,6 @@ import { shouldRenderSyncedStatusLoader } from "@/utils/status-loader";
 import { StatusRing } from "@/components/status-ring";
 import { resolveSidebarWorkspacePrimaryLabel } from "@/components/sidebar/sidebar-workspace-title";
 import { DensityIcon } from "@/components/ui/density-icon";
-import { HighlightedText } from "@/components/ui/highlighted-text";
-import type { MatchRange } from "@getpaseo/protocol/search/text-match";
 import { TrailingActionScrim } from "@/components/ui/trailing-action-scrim";
 import { useWorkspaceLabelDefinitions } from "@/workspace-labels";
 
@@ -100,7 +98,6 @@ export const SidebarWorkspaceRowContent = memo(function SidebarWorkspaceRowConte
   shortcutNumber = null,
   showShortcutBadge = false,
   reserveIdleStatusIndicatorSpace = true,
-  nameHighlightRanges,
   children,
 }: {
   workspace: SidebarWorkspaceEntry;
@@ -118,12 +115,10 @@ export const SidebarWorkspaceRowContent = memo(function SidebarWorkspaceRowConte
   showShortcutBadge?: boolean;
   /** Keep the empty leading slot when the workspace has no active status. */
   reserveIdleStatusIndicatorSpace?: boolean;
-  /** Name-search highlight over the row's primary label; absent when the search is off. */
-  nameHighlightRanges?: readonly MatchRange[];
   children?: ReactNode;
 }) {
   const {
-    settings: { workspaceTitleSource, workspaceTitleMultiline },
+    settings: { workspaceTitleSource },
   } = useAppSettings();
   const workspaceLabel = resolveSidebarWorkspacePrimaryLabel({ workspace, workspaceTitleSource });
   // The workspace carries label names; their colors live in its host's catalog, so the row is
@@ -161,32 +156,9 @@ export const SidebarWorkspaceRowContent = memo(function SidebarWorkspaceRowConte
         )}
         <View style={styles.workspaceContentColumn}>
           <View style={styles.workspaceTitleRow}>
-            <View style={sidebarWorkspaceRowStyles.titleWithCount}>
-              {nameHighlightRanges && nameHighlightRanges.length > 0 ? (
-                <HighlightedText
-                  text={workspaceLabel}
-                  ranges={nameHighlightRanges}
-                  style={workspaceBranchTextStyle}
-                  numberOfLines={workspaceTitleMultiline ? undefined : 1}
-                />
-              ) : (
-                <Text
-                  style={workspaceBranchTextStyle}
-                  numberOfLines={workspaceTitleMultiline ? undefined : 1}
-                >
-                  {workspaceLabel}
-                </Text>
-              )}
-              {workspace.activeAgentCount >= 2 ? (
-                <Text
-                  style={sidebarWorkspaceRowStyles.agentCountText}
-                  numberOfLines={1}
-                  testID={`sidebar-workspace-agent-count-${workspace.workspaceKey}`}
-                >
-                  ({workspace.activeAgentCount})
-                </Text>
-              ) : null}
-            </View>
+            <Text style={workspaceBranchTextStyle} numberOfLines={1}>
+              {workspaceLabel}
+            </Text>
             <View style={sidebarWorkspaceRowStyles.rowRight}>{children}</View>
           </View>
           <WorkspaceMetaRow
@@ -281,6 +253,25 @@ function WorkspaceStatusIndicator({
   );
 }
 
+function StatusDotOverlay({ dotColorStyle }: { dotColorStyle: ViewStyle }) {
+  return <View style={[styles.statusDotOverlay, dotColorStyle]} />;
+}
+
+function getStatusDotColorStyle(bucket: SidebarStateBucket) {
+  switch (bucket) {
+    case "needs_input":
+      return styles.statusDotNeedsInput;
+    case "failed":
+      return styles.statusDotFailed;
+    case "running":
+      return styles.statusDotRunning;
+    case "attention":
+      return styles.statusDotAttention;
+    case "done":
+      return null;
+  }
+}
+
 export const sidebarWorkspaceRowStyles = StyleSheet.create((theme) => ({
   // How far a workspace row sits inside the group header above it — a project row or a
   // status group header. Both groupings share this one indent, so every grouped workspace row
@@ -297,18 +288,6 @@ export const sidebarWorkspaceRowStyles = StyleSheet.create((theme) => ({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: theme.spacing[2],
-    flexShrink: 0,
-  },
-  titleWithCount: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: theme.spacing[0.5],
-    flexShrink: 1,
-    minWidth: 0,
-  },
-  agentCountText: {
-    color: theme.colors.foregroundMuted,
-    fontSize: theme.fontSize.sm,
     flexShrink: 0,
   },
   shortcutBadge: {
@@ -549,5 +528,21 @@ const styles = StyleSheet.create((theme) => ({
   },
   workspaceBranchTextHovered: {
     opacity: 1,
+  },
+  statusDotNeedsInput: {
+    backgroundColor: getStatusDotColor({ theme, bucket: "needs_input" }) ?? undefined,
+    borderColor: theme.colors.surface0,
+  },
+  statusDotFailed: {
+    backgroundColor: getStatusDotColor({ theme, bucket: "failed" }) ?? undefined,
+    borderColor: theme.colors.surface0,
+  },
+  statusDotRunning: {
+    backgroundColor: getStatusDotColor({ theme, bucket: "running" }) ?? undefined,
+    borderColor: theme.colors.surface0,
+  },
+  statusDotAttention: {
+    backgroundColor: getStatusDotColor({ theme, bucket: "attention" }) ?? undefined,
+    borderColor: theme.colors.surface0,
   },
 }));

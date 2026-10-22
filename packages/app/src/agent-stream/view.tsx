@@ -68,7 +68,6 @@ import { type AgentStreamRenderModel, buildAgentStreamRenderModel } from "./mode
 import { resolveStreamRenderStrategy } from "./strategy-resolver";
 import { type StreamSegmentRenderers, type StreamViewportHandle } from "./strategy";
 import { ChatOutlineRail } from "@/agent-stream/chat-outline/rail";
-import { ChatOutlineSheet, useChatOutlineSheetController } from "@/agent-stream/chat-outline/sheet";
 import { useChatOutline } from "@/agent-stream/chat-outline/use-chat-outline";
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
 import { planTimelineTailFetch } from "@/timeline/timeline-sync-plan";
@@ -154,7 +153,6 @@ function renderStreamItemWithTurnFooter(input: {
   layoutItem: StreamLayoutItem;
   strategy: TurnContentStrategy;
   supportsTimelineCursor: boolean;
-  supportsSessionFork: boolean;
   onForkAssistantTurn?: AssistantTurnForkHandler;
 }): ReactNode {
   if (!input.content) {
@@ -169,7 +167,6 @@ function renderStreamItemWithTurnFooter(input: {
       timing={footerHost.timing}
       startIndex={footerHost.startIndex}
       supportsTimelineCursor={input.supportsTimelineCursor}
-      supportsSessionFork={input.supportsSessionFork}
       onForkAssistantTurn={input.onForkAssistantTurn}
     />
   ) : null;
@@ -256,10 +253,7 @@ function renderStreamRow(input: {
 export interface AgentStreamViewHandle {
   scrollToBottom(reason?: BottomAnchorLocalRequest["reason"]): void;
   prepareForViewportChange(): void;
-  openChatOutline(): void;
 }
-
-import type { RegenerateUserMessageInput } from "@/components/rewind/regenerate-user-message";
 
 export interface AgentStreamViewProps {
   agentId: string;
@@ -278,10 +272,7 @@ export interface AgentStreamViewProps {
   bottomOverlayControlClearance?: number;
   toast?: ToastApi | null;
   onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
-  onChatOutlineAvailabilityChange?: (available: boolean) => void;
   readOnly?: boolean;
-  /** Resend a user message verbatim after a rewind removed it and its successors. */
-  onRegenerateUserMessage?: (input: RegenerateUserMessageInput) => Promise<void>;
   historyPagination?: {
     hasOlder: boolean;
     isLoadingOlder: boolean;
@@ -312,25 +303,6 @@ function useRetainedValue<T>(value: T, active: boolean): T {
   return active ? value : retainedRef.current;
 }
 const EMPTY_PENDING_MESSAGE_SUBMISSIONS: readonly PendingMessageSubmission[] = [];
-
-/**
- * Build one regenerate callback per user message, or undefined when the surface is
- * read-only or a turn is open. Returned as a stable top-level function so the JSX
- * never allocates a fresh closure in the render body.
- */
-function createRegenerateHandler(
-  onRegenerateUserMessage: ((input: RegenerateUserMessageInput) => Promise<void>) | undefined,
-  unavailable: boolean,
-  item: Extract<StreamItem, { kind: "user_message" }>,
-): ((input: RegenerateUserMessageInput) => Promise<void>) | undefined {
-  if (!onRegenerateUserMessage || unavailable) return undefined;
-  return () =>
-    onRegenerateUserMessage({
-      text: item.text,
-      images: item.images,
-      attachments: item.attachments,
-    });
-}
 const GROUPED_TOOL_CALL_DETAIL_MAX_HEIGHT = 200;
 
 function resolveBottomOverlayControlOffset(clearance: number | undefined): number {
@@ -354,9 +326,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
       bottomOverlayControlClearance,
       toast,
       onOpenWorkspaceFile,
-      onChatOutlineAvailabilityChange,
       readOnly = false,
-      onRegenerateUserMessage,
       historyPagination,
     },
     ref,
@@ -365,9 +335,6 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
     const autoExpandReasoning = useSettings((settings) => settings.autoExpandReasoning);
     const toolCallDetailLevel = useSettings((settings) => settings.toolCallDetailLevel);
     const chatOutlineEnabled = useSettings((settings) => settings.chatOutlineEnabled);
-    const chatOutlineVariant = useSettings((settings) =>
-      settings.chatOutlineTextLabels ? "text" : "dots",
-    );
     const contentMaxWidth = useSettings(resolveContentMaxWidth);
     const viewportRef = useRef<StreamViewportHandle | null>(null);
     const pendingClientMessageIds = useMemo(
@@ -401,12 +368,6 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
     );
     const streamHead = providedStreamHead ?? sessionStreamHead;
     const forkAgent = useForkAgent({ serverId: resolvedServerId, toast, readOnly });
-    // Session forks need a host that can branch a provider session; without the
-    // feature the menu keeps its two history-copy rows and nothing else. A
-    // read-only pane passes no fork handler at all, so it needs no check here.
-    const supportsSessionFork = useSessionStore(
-      (state) => state.sessions[resolvedServerId]?.serverInfo?.features?.agentForkSession === true,
-    );
     const supportsAgentForkContextCursor = useSessionStore(
       (state) =>
         state.sessions[resolvedServerId]?.serverInfo?.features?.agentForkContextCursor === true,
@@ -512,13 +473,12 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
     });
 
     const handleForkAssistantTurn: AssistantTurnForkHandler = useStableEvent(
-      async ({ choice, boundary }) => {
+      async ({ target, boundary }) => {
         await forkAgent({
           agentId,
           agent: context,
           workspaceId: context.workspaceId,
-          mode: choice.mode,
-          target: choice.target,
+          target,
           boundary,
         });
       },
@@ -528,13 +488,12 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
     // projects the whole timeline when neither boundary field is given, so the
     // fork carries everything up to now, including the response still streaming
     // in front of the user.
-    const handleForkInFlightTurn: InFlightTurnForkHandler = useStableEvent(async (choice) => {
+    const handleForkInFlightTurn: InFlightTurnForkHandler = useStableEvent(async (target) => {
       await forkAgent({
         agentId,
         agent: context,
         workspaceId: context.workspaceId,
-        mode: choice.mode,
-        target: choice.target,
+        target,
       });
     });
 
@@ -633,27 +592,17 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
           mountedHistoryMessageIds.has(messageId) || liveHeadMessageIds.has(messageId),
       };
     }, [baseRenderModel.segments.liveHead, mountedHistoryMessageIds]);
-    const isChatOutlineEnabled = supportsChatOutline && chatOutlineEnabled;
     const chatOutline = useChatOutline({
       agentId,
       serverId: resolvedServerId,
       timelineEpoch,
       tail: effectiveStreamItems,
       head: effectiveStreamHead,
-      enabled: isChatOutlineEnabled,
+      enabled: supportsChatOutline && chatOutlineEnabled,
       viewportRef,
       onJumpError: handleTimelineHistoryLoadError,
       mountedHistoryMessageIds,
       revealLoadedMessage: revealLoadedHistory,
-    });
-    const chatOutlineSheet = useChatOutlineSheetController({
-      isCompact: isMobile,
-      isActive,
-      enabled: isChatOutlineEnabled,
-      agentId,
-      timelineEpoch,
-      promptCount: chatOutline.prompts.length,
-      onAvailabilityChange: onChatOutlineAvailabilityChange,
     });
 
     useImperativeHandle(
@@ -665,9 +614,8 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
         prepareForViewportChange() {
           viewportRef.current?.prepareForViewportChange();
         },
-        openChatOutline: chatOutlineSheet.open,
       }),
-      [chatOutlineSheet.open],
+      [],
     );
 
     const scrollToBottom = useCallback(() => {
@@ -717,10 +665,6 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
 
     const renderUserMessageItem = useCallback(
       (layoutItem: StreamLayoutItem, item: Extract<StreamItem, { kind: "user_message" }>) => {
-        // A read-only transcript cannot rewind, so resend is not offered there at all. An open
-        // turn keeps the item visible but disabled, so the menu never disappears under the
-        // pointer. The component keys the row by messageId, so the closure is stable per message.
-        const regenerate = createRegenerateHandler(onRegenerateUserMessage, readOnly, item);
         return (
           <UserMessage
             serverId={resolvedServerId}
@@ -738,21 +682,10 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
               item.clientMessageId !== undefined &&
               pendingClientMessageIds.has(item.clientMessageId)
             }
-            onRegenerate={regenerate}
-            isRegenerateDisabled={isTurnActive}
           />
         );
       },
-      [
-        context.capabilities,
-        agentId,
-        client,
-        pendingClientMessageIds,
-        resolvedServerId,
-        onRegenerateUserMessage,
-        readOnly,
-        isTurnActive,
-      ],
+      [context.capabilities, agentId, client, pendingClientMessageIds, resolvedServerId],
     );
 
     const renderAssistantMessageItem = useCallback(
@@ -962,7 +895,6 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
           layoutItem,
           strategy: streamRenderStrategy,
           supportsTimelineCursor: supportsAgentForkContextCursor,
-          supportsSessionFork,
           onForkAssistantTurn: readOnly ? undefined : handleForkAssistantTurn,
         });
       },
@@ -972,7 +904,6 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
         renderStreamItemContent,
         streamRenderStrategy,
         supportsAgentForkContextCursor,
-        supportsSessionFork,
       ],
     );
 
@@ -998,7 +929,6 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
             host={bottomTurnFooterHost}
             strategy={streamRenderStrategy}
             supportsTimelineCursor={supportsAgentForkContextCursor}
-            supportsSessionFork={supportsSessionFork}
             onForkAssistantTurn={readOnly ? undefined : handleForkAssistantTurn}
             onForkInFlightTurn={readOnly ? undefined : handleForkInFlightTurn}
           />
@@ -1012,7 +942,6 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
         bottomTurnFooterHost,
         streamRenderStrategy,
         supportsAgentForkContextCursor,
-        supportsSessionFork,
       ],
     );
     const renderModel = useMemo<AgentStreamRenderModel>(() => {
@@ -1185,18 +1114,6 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
               prompts={chatOutline.prompts}
               activePrompt={chatOutline.activePrompt}
               onJumpToPrompt={chatOutline.jumpToPrompt}
-              variant={chatOutlineVariant}
-              contentMaxWidth={contentMaxWidth}
-              agentId={agentId}
-              onRequestPromptText={chatOutline.fetchPromptText}
-            />
-            <ChatOutlineSheet
-              prompts={chatOutline.prompts}
-              activePrompt={chatOutline.activePrompt}
-              visible={chatOutlineSheet.visible}
-              onClose={chatOutlineSheet.close}
-              onJumpToPrompt={chatOutline.jumpToPrompt}
-              onRequestPromptText={chatOutline.fetchPromptText}
             />
             {(!isNearBottom || isTimelineDetached) && (
               <View style={scrollToBottomContainerStyle} pointerEvents="box-none">
@@ -1338,9 +1255,6 @@ function agentStreamViewPropsEqual(
   }
   if (left.toast !== right.toast) reasons.push("toast");
   if (left.onOpenWorkspaceFile !== right.onOpenWorkspaceFile) reasons.push("onOpenWorkspaceFile");
-  if (left.onChatOutlineAvailabilityChange !== right.onChatOutlineAvailabilityChange) {
-    reasons.push("onChatOutlineAvailabilityChange");
-  }
   if (left.readOnly !== right.readOnly) reasons.push("readOnly");
   if (!historyPaginationPropsEqual(left.historyPagination, right.historyPagination)) {
     reasons.push("historyPagination");
@@ -1809,7 +1723,7 @@ const permissionStyles = StyleSheet.create((theme) => ({
     color: theme.colors.foregroundMuted,
   },
   optionsContainer: {
-    gap: theme.spacing[3],
+    gap: theme.spacing[2],
   },
   optionsContainerDesktop: {
     flexDirection: "row",
@@ -1820,7 +1734,7 @@ const permissionStyles = StyleSheet.create((theme) => ({
   },
   optionButton: {
     paddingVertical: theme.spacing[2],
-    paddingHorizontal: theme.spacing[4],
+    paddingHorizontal: theme.spacing[3],
     borderRadius: theme.borderRadius.md,
     alignItems: "center",
     borderWidth: theme.borderWidth[1],

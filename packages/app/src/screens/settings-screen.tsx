@@ -5,9 +5,10 @@ import {
   Alert,
   Pressable,
   ScrollView,
+  Switch,
   Text,
-  View,
   type PressableStateCallbackType,
+  View,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "expo-router/react-navigation";
@@ -1029,7 +1030,7 @@ function SettingsSidebar({
             onSelect={onSelectSection}
           />
         ))}
-      </SidebarGroup>
+      </View>
       {hasHosts ? (
         <SidebarGroup label={t("settings.groups.host")}>
           <HostPicker
@@ -1613,6 +1614,9 @@ const sidebarStyles = StyleSheet.create((theme) => ({
     backgroundColor: theme.colors.surfaceSidebar,
   },
   scrollBody: {
+    flex: 1,
+  },
+  list: {
     flex: 1,
   },
   searchRow: {

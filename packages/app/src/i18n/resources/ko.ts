@@ -49,7 +49,6 @@ export const ko: TranslationResources = {
       clear: "지우기",
       edit: "편집",
       delete: "삭제",
-      save: "저장",
     },
     placeholders: {
       search: "검색...",
@@ -2365,10 +2364,8 @@ export const ko: TranslationResources = {
     },
     plugins: pluginSettings.ko,
     metadataGeneration: {
-      titlePrompt: "제목 프롬프트",
       titlePromptHint:
         "Paseo가 워크スペース 제목을 생성할 때 따르는 지침. 비워 두면 기본 스타일을 사용하며 paseo.json 설정이 우선합니다.",
-      titlePromptPlaceholder: "예: [모듈] 짧은 작업 요약",
       titlePromptSave: "저장",
       titlePromptSaving: "저장 중...",
       title: "메타데이터 생성",

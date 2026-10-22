@@ -77,13 +77,13 @@ export interface SidebarWorkspaceSession {
   serverId: string;
   workspaces: Map<string, WorkspaceDescriptor>;
   workspaceAgentActivity: Map<string, WorkspaceAgentActivity>;
-  agents: ReadonlyMap<string, Agent>;
+  agents?: ReadonlyMap<string, Agent>;
 }
 
 interface SidebarWorkspaceSessionSource {
   workspaces: Map<string, WorkspaceDescriptor>;
   workspaceAgentActivity: Map<string, WorkspaceAgentActivity>;
-  agents: ReadonlyMap<string, Agent>;
+  agents?: ReadonlyMap<string, Agent>;
 }
 
 export function selectSidebarWorkspaceSessions(

@@ -74,7 +74,10 @@ function walkTurns(
   let outputTokens = from.outputTokens;
   for (const item of items) {
     if (startsNewTurn(item, previousItem)) {
-      closeTurn({ userAt, lastItemAt, assistantIds, previousItem, firstDeltaAt, outputTokens }, into);
+      closeTurn(
+        { userAt, lastItemAt, assistantIds, previousItem, firstDeltaAt, outputTokens },
+        into,
+      );
       userAt = item.kind === "user_message" ? item.timestamp : null;
       lastItemAt = null;
       assistantIds = [];

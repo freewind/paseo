@@ -184,7 +184,7 @@ export function SidebarStatusWorkspaceList({
   // Searching is result mode: a matching row must be visible, so the pinned
   // section and every status group open for the duration of the query. The
   // stored collapse state is read again as soon as the query is cleared.
-  const effectivePinnedCollapsed = hasNameSearch ? false : pinnedCollapsed;
+  const _effectivePinnedCollapsed = hasNameSearch ? false : pinnedCollapsed;
   const effectiveCollapsedWorkspaceGroupKeys = hasNameSearch
     ? EMPTY_SECTION_KEYS
     : collapsedWorkspaceGroupKeys;

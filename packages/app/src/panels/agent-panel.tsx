@@ -1,5 +1,4 @@
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
-import { AssistantCommentProvider, buildCommentDraftText } from "@/assistant-comment";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
@@ -39,18 +38,7 @@ import {
   resolveComposerTrackTailClearance,
 } from "@/composer/pill-styles";
 import { getActiveMessageSubmissions } from "@/composer/submission/model";
-import type { AgentInputSubmitResult } from "@/composer/submit";
 import { RewindComposerRestoreProvider } from "@/components/rewind/composer-restore";
-import { AgentMemosRail } from "@/agent-memos/agent-memos-rail";
-import { useAgentMemos } from "@/agent-memos/use-agent-memos";
-import { appendMemoText, memoImagesToAttachments } from "@/agent-memos/memo-append";
-import type { AgentMemo } from "@getpaseo/protocol/messages";
-import { AgentMemosSheet } from "@/agent-memos/agent-memos-sheet";
-import { useHostFeature } from "@/runtime/host-features";
-import {
-  regenerateUserMessage,
-  type RegenerateUserMessageInput,
-} from "@/components/rewind/regenerate-user-message";
 import { useProviderIcon } from "@/components/provider-icons";
 import { useToastHost, type ToastApi, type ToastState } from "@/components/toast-host";
 import type { WorkspaceComposerAttachment } from "@/attachments/types";
@@ -69,8 +57,6 @@ import {
 } from "@/hooks/use-agent-screen-state-machine";
 import { useArchiveAgent } from "@/hooks/use-archive-agent";
 import { useContainerWidthBelow } from "@/hooks/use-container-width";
-import { useIsQuickRepliesSupported } from "@/quick-replies/use-quick-replies";
-import { QUICK_REPLIES_GUTTER_BREAKPOINT } from "@/quick-replies/layout";
 import { reconcileMissingAgentStateWithPresentAgent } from "@/panels/agent-panel-load-state";
 import { TimelineSyncStatus } from "@/timeline/sync-status";
 import { usePaneContext, usePaneFocus } from "@/panels/pane-context";
@@ -325,12 +311,6 @@ function storeFetchedAgentDetail(input: {
     });
   }
 
-  // An omitted list means "unchanged", not "empty": a daemon that predates memos on
-  // fetch stays quiet, and clearing here would wipe what an add reply just wrote.
-  if (input.result.memos) {
-    store.setAgentMemos(input.serverId, hydrated.id, input.result.memos);
-  }
-
   store.setPendingPermissions(input.serverId, (previous) => {
     const next = new Map(previous);
     for (const [key, pending] of next.entries()) {
@@ -358,7 +338,6 @@ function useAgentPanelDescriptor(
       const agent =
         session?.agents?.get(target.agentId) ?? session?.agentDetails?.get(target.agentId) ?? null;
       return {
-        hasAgent: agent !== null,
         provider: agent?.provider ?? "codex",
         title: agent?.title ?? null,
         status: agent?.status ?? null,
@@ -370,11 +349,7 @@ function useAgentPanelDescriptor(
     }),
   );
   const provider = descriptorState.provider;
-  // An agent that exists but carries no title (a fresh clone, or a daemon that never named it)
-  // falls back to its id. Waiting for a title that will never arrive left the tab loading forever.
-  const label =
-    resolveWorkspaceAgentTabLabel(descriptorState.title) ??
-    (descriptorState.hasAgent ? target.agentId : null);
+  const label = resolveWorkspaceAgentTabLabel(descriptorState.title);
   const icon = useProviderIcon(provider, context.serverId);
 
   return {
@@ -777,7 +752,6 @@ function ChatAgentContent({
   const { api: toastApi, toast: toastState, dismiss: dismissToast } = useToastHost();
   const { isArchivingAgent } = useArchiveAgent();
   const streamViewRef = useRef<AgentStreamViewHandle>(null);
-  const [chatOutlineAvailable, setChatOutlineAvailable] = useState(false);
   const clearOnAgentBlurRef = useRef<() => void>(() => {});
   const wasPaneFocusedRef = useRef(isPaneFocused);
   const initAttemptTokenRef = useRef(0);
@@ -972,19 +946,6 @@ function ChatAgentContent({
     streamViewRef.current?.scrollToBottom("rewind");
   }, []);
 
-  const handleRegenerateUserMessage = useCallback(
-    async (input: RegenerateUserMessageInput) => {
-      const supportsForgeAttachments =
-        useSessionStore.getState().sessions[serverId]?.serverInfo?.features?.forgeSearch === true;
-      await regenerateUserMessage(
-        { client, serverId, agentId: agentId ?? null, supportsForgeAttachments },
-        input,
-      );
-      streamViewRef.current?.scrollToBottom("message-sent");
-    },
-    [client, serverId, agentId, streamViewRef],
-  );
-
   const retryAgentLoad = useCallback(() => {
     setMissingAgentState({ kind: "idle" });
     if (!agentId || !viewedTimelineSync) return;
@@ -1129,8 +1090,6 @@ function ChatAgentContent({
       toast={toastState}
       dismiss={dismissToast}
       streamViewRef={streamViewRef}
-      chatOutlineAvailable={chatOutlineAvailable}
-      onChatOutlineAvailabilityChange={setChatOutlineAvailable}
       handleComposerHeightChange={handleComposerHeightChange}
       handleMessageSent={handleMessageSent}
       handleRewindComplete={handleRewindComplete}
@@ -1143,7 +1102,6 @@ function ChatAgentContent({
       onAttentionInputFocus={attentionController.clearOnInputFocus}
       onAttentionPromptSend={attentionController.clearOnPromptSend}
       onOpenWorkspaceFile={onOpenWorkspaceFile}
-      onRegenerateUserMessage={handleRegenerateUserMessage}
     />
   );
 }
@@ -1162,8 +1120,6 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   toast,
   dismiss,
   streamViewRef,
-  chatOutlineAvailable,
-  onChatOutlineAvailabilityChange,
   handleComposerHeightChange,
   handleMessageSent,
   handleRewindComplete,
@@ -1176,7 +1132,6 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   onAttentionInputFocus,
   onAttentionPromptSend,
   onOpenWorkspaceFile,
-  onRegenerateUserMessage,
 }: {
   serverId: string;
   workspaceId: string;
@@ -1191,8 +1146,6 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   toast: ToastState | null;
   dismiss: () => void;
   streamViewRef: React.RefObject<AgentStreamViewHandle | null>;
-  chatOutlineAvailable: boolean;
-  onChatOutlineAvailabilityChange: (available: boolean) => void;
   handleComposerHeightChange: (height: number) => void;
   handleMessageSent: () => void;
   handleRewindComplete: () => void;
@@ -1205,7 +1158,6 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   onAttentionInputFocus: () => void;
   onAttentionPromptSend: () => void;
   onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
-  onRegenerateUserMessage?: (input: RegenerateUserMessageInput) => Promise<void>;
 }) {
   const { t } = useTranslation();
   // The workspace sheet is for looking; Open as tab brings the agent back with its composer.
@@ -1213,32 +1165,6 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   // The dock lays out fullscreen for the same session the composer edits in.
   const composerEditingSession = useComposerEditingSession("chat");
   const isComposerFullscreen = useComposerFullscreen(composerEditingSession);
-  const [isQuickRepliesSheetOpen, setIsQuickRepliesSheetOpen] = useState(false);
-  const [isMemosSheetOpen, setIsMemosSheetOpen] = useState(false);
-  const isCompactFormFactor = useIsCompactFormFactor();
-  const quickRepliesAvailable = useIsQuickRepliesSupported(serverId);
-  // One pane-width reading decides both surfaces: the composer's gutter when there is room for
-  // it beside the centered input column, and this row's entry when there is not.
-  const { onLayout: onPaneLayout, isBelow: isQuickRepliesGutterNarrow } = useContainerWidthBelow(
-    QUICK_REPLIES_GUTTER_BREAKPOINT,
-    { initialIsBelow: true },
-  );
-  const hasQuickRepliesEntry = quickRepliesAvailable && isQuickRepliesGutterNarrow;
-  const showsQuickRepliesGutter = quickRepliesAvailable && !isQuickRepliesGutterNarrow;
-  const openQuickRepliesSheet = useCallback(() => {
-    setIsQuickRepliesSheetOpen(true);
-  }, []);
-  // Memos leave the composer entirely on a compact layout: the row carries an icon button and the
-  // list moves into a sheet, so the input keeps its vertical space.
-  const memosSupported = useHostFeature(serverId, "agentMemos");
-  const hasMemosEntry = memosSupported && isCompactFormFactor;
-  const openMemosSheet = useCallback(() => {
-    setIsMemosSheetOpen(true);
-  }, []);
-  const openChatOutline = useCallback(
-    () => streamViewRef.current?.openChatOutline(),
-    [streamViewRef],
-  );
   const subagentRows = useSubagentsForParent({ serverId, parentAgentId: agentId });
   const tasks = useSessionStore((state): TodoEntry[] | undefined =>
     state.sessions[serverId]?.agentTasks.get(agentId),
@@ -1255,8 +1181,6 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     tasks,
     archiveFinishedStatus: archiveFinishedSubagents.status,
     hasPluginComposerPills,
-    hasQuickRepliesEntry,
-    hasMemosEntry,
   });
   const rawAgentInputDraft = useAgentInputDraft({
     draftKey: buildDraftStoreKey({
@@ -1304,62 +1228,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
       composerState,
     ],
   );
-  const composerSubmitNowRef = useRef<((text: string) => Promise<AgentInputSubmitResult>) | null>(
-    null,
-  );
-  const handleComposerSubmitNow = useCallback(
-    (submitNow: (text: string) => Promise<AgentInputSubmitResult>) => {
-      composerSubmitNowRef.current = submitNow;
-    },
-    [],
-  );
-  const handleCommentCommit = useCallback(
-    ({ blockText, comment, sendNow }: { blockText: string; comment: string; sendNow: boolean }) => {
-      const nextText = buildCommentDraftText({
-        existingText: textSource.getSnapshot(),
-        blockText,
-        comment,
-      });
-      const submitNow = composerSubmitNowRef.current;
-      if (sendNow && submitNow) {
-        // Write nothing into the draft first: the submit clears the input, so a replacement queued
-        // here would be applied after that clear and put the text back. A submit that never starts
-        // (`noop`, e.g. host offline) is the one case where the text has to land in the composer.
-        void submitNow(nextText).then((result) => {
-          if (result === "noop") {
-            replaceText(nextText);
-          }
-          return undefined;
-        });
-        return;
-      }
-      replaceText(nextText);
-    },
-    [replaceText, textSource],
-  );
-  const streamMemosSupported = useHostFeature(serverId, "agentMemos");
-  const handleAddSelectionToTodo = useCallback(
-    (blockText: string) => {
-      if (!agentId) return;
-      const client = getHostRuntimeStore().getClient(serverId);
-      if (!client) {
-        toastApi.error(t("agentMemos.failedToAdd"));
-        return;
-      }
-      client
-        .addAgentMemo(agentId, blockText)
-        .then((payload) => {
-          // The add reply carries the authoritative list; without writing it back the memo
-          // exists on the daemon but never reaches this client's rail.
-          useSessionStore.getState().setAgentMemos(serverId, agentId, payload.memos);
-          toastApi.show(t("agentMemos.addedToTodo"), { variant: "success" });
-          return undefined;
-        })
-        .catch(() => toastApi.error(t("agentMemos.failedToAdd")));
-    },
-    [agentId, serverId, t, toastApi],
-  );
-  const composerSection = (
+  const composerSection = showsComposer ? (
     <RenderProfile id={`AgentComposerSection:${agentId}`}>
       <AgentComposerSection
         agentId={agentId}
@@ -1372,15 +1241,9 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
         agentInputDraft={agentInputDraft}
         editingSession={composerEditingSession}
         onAttentionInputFocus={onAttentionInputFocus}
-        onSubmitNow={handleComposerSubmitNow}
         onAttentionPromptSend={onAttentionPromptSend}
         onComposerHeightChange={handleComposerHeightChange}
         onMessageSent={handleMessageSent}
-        quickRepliesGutterVisible={showsQuickRepliesGutter}
-        quickRepliesSheetVisible={isQuickRepliesSheetOpen}
-        onQuickRepliesSheetVisibleChange={setIsQuickRepliesSheetOpen}
-        memosSheetVisible={isMemosSheetOpen}
-        onMemosSheetVisibleChange={setIsMemosSheetOpen}
       />
     </RenderProfile>
   ) : null;
@@ -1388,9 +1251,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     <View style={animatedStaticStyles.content}>
       {showsComposer ? null : <SheetAgentFacts serverId={serverId} agentId={agentId} />}
       <RenderProfile id={`AgentStreamSection:${agentId}`}>
-        <CommentableAgentStreamSection
-          onCommentCommit={handleCommentCommit}
-          onAddToTodo={streamMemosSupported ? handleAddSelectionToTodo : undefined}
+        <AgentStreamSection
           streamViewRef={streamViewRef}
           serverId={serverId}
           workspaceId={workspaceId}
@@ -1400,11 +1261,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
           hasAppliedAuthoritativeHistory={hasAppliedAuthoritativeHistory}
           hasActiveComposer={hasActiveComposer}
           hasVisibleAgentTracks={hasVisibleAgentTracks}
-          chatOutlineAvailable={chatOutlineAvailable}
-          onChatOutlineAvailabilityChange={onChatOutlineAvailabilityChange}
           toast={toastApi}
           onOpenWorkspaceFile={onOpenWorkspaceFile}
-          onRegenerateUserMessage={onRegenerateUserMessage}
         />
       </RenderProfile>
       {hasActiveComposer ? (
@@ -1417,12 +1275,6 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
           archiveFinishedStatus={archiveFinishedSubagents.status}
           onArchiveFinished={archiveFinishedSubagents.archiveFinished}
           hasPluginComposerPills={hasPluginComposerPills}
-          chatOutlineAvailable={chatOutlineAvailable}
-          onOpenChatOutline={openChatOutline}
-          hasQuickRepliesEntry={hasQuickRepliesEntry}
-          onOpenQuickReplies={openQuickRepliesSheet}
-          hasMemosEntry={hasMemosEntry}
-          onOpenAgentMemos={openMemosSheet}
         />
       ) : null}
     </View>
@@ -1464,7 +1316,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
       setText={agentInputDraft.replaceText}
       onRewindComplete={handleRewindComplete}
     >
-      <View style={styles.root} onLayout={onPaneLayout}>
+      <View style={styles.root}>
         {dock}
 
         {isArchivingCurrentAgent ? (
@@ -1532,21 +1384,6 @@ function TimelineSyncErrorCallout({
 function SheetAgentFacts({ serverId, agentId }: { serverId: string; agentId: string }) {
   const text = useAgentFactsLine(serverId, agentId);
   return text ? <PaneSubtitle text={text} testID="agent-pane-subtitle" /> : null;
-type CommentableAgentStreamSectionProps = React.ComponentProps<typeof AgentStreamSection> & {
-  onCommentCommit: (input: { blockText: string; comment: string; sendNow: boolean }) => void;
-  onAddToTodo?: (blockText: string) => void;
-};
-
-function CommentableAgentStreamSection({
-  onCommentCommit,
-  onAddToTodo,
-  ...props
-}: CommentableAgentStreamSectionProps) {
-  return (
-    <AssistantCommentProvider onCommit={onCommentCommit} onAddToTodo={onAddToTodo}>
-      <AgentStreamSection {...props} />
-    </AssistantCommentProvider>
-  );
 }
 
 const AgentStreamSection = memo(function AgentStreamSection({
@@ -1559,11 +1396,8 @@ const AgentStreamSection = memo(function AgentStreamSection({
   hasAppliedAuthoritativeHistory,
   hasActiveComposer,
   hasVisibleAgentTracks,
-  chatOutlineAvailable,
-  onChatOutlineAvailabilityChange,
   toast,
   onOpenWorkspaceFile,
-  onRegenerateUserMessage,
 }: {
   streamViewRef: React.RefObject<AgentStreamViewHandle | null>;
   serverId: string;
@@ -1574,16 +1408,13 @@ const AgentStreamSection = memo(function AgentStreamSection({
   hasAppliedAuthoritativeHistory: boolean;
   hasActiveComposer: boolean;
   hasVisibleAgentTracks: boolean;
-  chatOutlineAvailable: boolean;
-  onChatOutlineAvailabilityChange: (available: boolean) => void;
   toast: ReturnType<typeof useToastHost>["api"];
   onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
-  onRegenerateUserMessage?: (input: RegenerateUserMessageInput) => Promise<void>;
 }) {
   const isCompactFormFactor = useIsCompactFormFactor();
   const hasWorkspaceDiffStat = useWorkspaceHasDiffStat(serverId, workspaceId);
   const hasVisibleComposerTracks =
-    hasActiveComposer && (hasVisibleAgentTracks || hasWorkspaceDiffStat || chatOutlineAvailable);
+    hasActiveComposer && (hasVisibleAgentTracks || hasWorkspaceDiffStat);
   const bottomOverlayTailClearance = hasVisibleComposerTracks
     ? resolveComposerTrackTailClearance(isCompactFormFactor)
     : 0;
@@ -1651,8 +1482,6 @@ const AgentStreamSection = memo(function AgentStreamSection({
       pendingMessageSubmissions={pendingMessageSubmissions}
       turnPresentation={turnPresentation}
       onOpenWorkspaceFile={onOpenWorkspaceFile}
-      onChatOutlineAvailabilityChange={onChatOutlineAvailabilityChange}
-      onRegenerateUserMessage={onRegenerateUserMessage}
     />
   );
 });
@@ -1668,15 +1497,9 @@ const AgentComposerSection = memo(function AgentComposerSection({
   agentInputDraft,
   editingSession,
   onAttentionInputFocus,
-  onSubmitNow,
   onAttentionPromptSend,
   onComposerHeightChange,
   onMessageSent,
-  quickRepliesGutterVisible,
-  quickRepliesSheetVisible,
-  onQuickRepliesSheetVisibleChange,
-  memosSheetVisible,
-  onMemosSheetVisibleChange,
 }: {
   agentId?: string;
   serverId: string;
@@ -1688,15 +1511,9 @@ const AgentComposerSection = memo(function AgentComposerSection({
   agentInputDraft: AgentInputDraft;
   editingSession: ComposerEditingSession;
   onAttentionInputFocus: () => void;
-  onSubmitNow: (submitNow: (text: string) => Promise<AgentInputSubmitResult>) => void;
   onAttentionPromptSend: () => void;
   onComposerHeightChange: (height: number) => void;
   onMessageSent: () => void;
-  quickRepliesGutterVisible: boolean;
-  quickRepliesSheetVisible: boolean;
-  onQuickRepliesSheetVisibleChange: (visible: boolean) => void;
-  memosSheetVisible: boolean;
-  onMemosSheetVisibleChange: (visible: boolean) => void;
 }) {
   if (!agentId) {
     return null;
@@ -1718,15 +1535,9 @@ const AgentComposerSection = memo(function AgentComposerSection({
       agentInputDraft={agentInputDraft}
       editingSession={editingSession}
       onAttentionInputFocus={onAttentionInputFocus}
-      onSubmitNow={onSubmitNow}
       onAttentionPromptSend={onAttentionPromptSend}
       onComposerHeightChange={onComposerHeightChange}
       onMessageSent={onMessageSent}
-      quickRepliesGutterVisible={quickRepliesGutterVisible}
-      quickRepliesSheetVisible={quickRepliesSheetVisible}
-      onQuickRepliesSheetVisibleChange={onQuickRepliesSheetVisibleChange}
-      memosSheetVisible={memosSheetVisible}
-      onMemosSheetVisibleChange={onMemosSheetVisibleChange}
     />
   );
 });
@@ -1740,15 +1551,9 @@ function ActiveAgentComposer({
   agentInputDraft,
   editingSession,
   onAttentionInputFocus,
-  onSubmitNow,
   onAttentionPromptSend,
   onComposerHeightChange,
   onMessageSent,
-  quickRepliesGutterVisible,
-  quickRepliesSheetVisible,
-  onQuickRepliesSheetVisibleChange,
-  memosSheetVisible,
-  onMemosSheetVisibleChange,
 }: {
   agentId: string;
   serverId: string;
@@ -1758,15 +1563,9 @@ function ActiveAgentComposer({
   agentInputDraft: AgentInputDraft;
   editingSession: ComposerEditingSession;
   onAttentionInputFocus: () => void;
-  onSubmitNow: (submitNow: (text: string) => Promise<AgentInputSubmitResult>) => void;
   onAttentionPromptSend: () => void;
   onComposerHeightChange: (height: number) => void;
   onMessageSent: () => void;
-  quickRepliesGutterVisible: boolean;
-  quickRepliesSheetVisible: boolean;
-  onQuickRepliesSheetVisibleChange: (visible: boolean) => void;
-  memosSheetVisible: boolean;
-  onMemosSheetVisibleChange: (visible: boolean) => void;
 }) {
   const isCompactFormFactor = useIsCompactFormFactor();
   const { onLayout: onInputAreaLayout, isBelow: isCompactComposerLayout } = useContainerWidthBelow(
@@ -1841,61 +1640,6 @@ function ActiveAgentComposer({
     ],
   );
 
-  // The rail hides itself when the host has no memo support; gating here as well keeps the
-  // composer from reserving a gutter for a rail that would render nothing.
-  const memosSupported = useHostFeature(serverId, "agentMemos");
-  const { setMemoCompleted } = useAgentMemos({ serverId, agentId });
-  const markMemoCompleted = useCallback(
-    (memoId: string) => setMemoCompleted(memoId, true),
-    [setMemoCompleted],
-  );
-  const handleMemoAppendToComposer = useCallback(
-    async (entry: AgentMemo) => {
-      const current = agentInputDraft.textSource.getSnapshot();
-      agentInputDraft.replaceText(appendMemoText(current, entry.text));
-      const metadata = await memoImagesToAttachments(entry.images).catch(() => []);
-      if (metadata.length > 0) {
-        const imageAttachments = metadata.map((item) => ({
-          kind: "image" as const,
-          metadata: item,
-        }));
-        agentInputDraft.setAttachments((attachments) => [...attachments, ...imageAttachments]);
-      }
-      if (entry.completed !== true) {
-        void markMemoCompleted(entry.id).catch(() => undefined);
-      }
-    },
-    [agentInputDraft, markMemoCompleted],
-  );
-  const closeMemosSheet = useCallback(
-    () => onMemosSheetVisibleChange(false),
-    [onMemosSheetVisibleChange],
-  );
-
-  // Built here rather than inline in JSX: the composer places it in whichever slot the layout
-  // has room for, and a stable element keeps that placement from re-rendering the rail. A compact
-  // layout has no slot for it at all: the tracks row opens the sheet instead, so the input keeps
-  // its height.
-  const memosRail = useMemo(
-    () =>
-      memosSupported && !isCompactFormFactor ? (
-        <AgentMemosRail
-          serverId={serverId}
-          agentId={agentId}
-          compact={isCompactComposerLayout}
-          onAppendToComposer={handleMemoAppendToComposer}
-        />
-      ) : null,
-    [
-      agentId,
-      handleMemoAppendToComposer,
-      isCompactComposerLayout,
-      isCompactFormFactor,
-      memosSupported,
-      serverId,
-    ],
-  );
-
   return (
     <View style={animatedStaticStyles.inputAreaWrapper} onLayout={onInputAreaLayout}>
       <Composer
@@ -1918,26 +1662,12 @@ function ActiveAgentComposer({
         autoFocusKey={String(agentInputDraft.attachmentFocusRequestId)}
         isSubmitLoading={isSubmitLoading}
         onAttentionInputFocus={onAttentionInputFocus}
-        onSubmitNow={onSubmitNow}
         onAttentionPromptSend={onAttentionPromptSend}
         onComposerHeightChange={onComposerHeightChange}
         onMessageSent={onMessageSent}
         onClientSlashCommand={handleClientSlashCommand}
         isCompactLayout={isCompactComposerLayout}
-        memosRail={memosRail}
-        quickRepliesGutterVisible={quickRepliesGutterVisible}
-        quickRepliesSheetVisible={quickRepliesSheetVisible}
-        onQuickRepliesSheetVisibleChange={onQuickRepliesSheetVisibleChange}
       />
-      {memosSupported ? (
-        <AgentMemosSheet
-          visible={memosSheetVisible}
-          serverId={serverId}
-          agentId={agentId}
-          onAppendToComposer={handleMemoAppendToComposer}
-          onClose={closeMemosSheet}
-        />
-      ) : null}
     </View>
   );
 }

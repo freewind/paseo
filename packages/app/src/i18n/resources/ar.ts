@@ -49,7 +49,6 @@ export const ar: TranslationResources = {
       clear: "مسح",
       edit: "تعديل",
       delete: "حذف",
-      save: "حفظ",
     },
     placeholders: {
       search: "يبحث...",
@@ -2388,10 +2387,8 @@ export const ar: TranslationResources = {
     },
     plugins: pluginSettings.ar,
     metadataGeneration: {
-      titlePrompt: "موجّه العنوان",
       titlePromptHint:
         "التعليمات التي يتبعها Paseo عند إنشاء عناوين مساحات العمل. الفراغ يعني النمط الافتراضي، ويبقى paseo.json له الأولوية.",
-      titlePromptPlaceholder: "مثال: [وحدة] ملخص مهمة قصير",
       titlePromptSave: "حفظ",
       titlePromptSaving: "جارٍ الحفظ...",
       title: "إنشاء البيانات الوصفية",

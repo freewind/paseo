@@ -547,7 +547,7 @@ export interface WorkspaceDesktopTabsRowProps {
   onCloseTab: (tabId: string) => Promise<void> | void;
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
-  onCopyConversationMarkdown: (agentId: string) => Promise<void> | void;
+  onCopyConversationMarkdown?: (agentId: string) => Promise<void> | void;
   onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
   canCloneAgent?: boolean;
   onMoveAgentToWorkspace?: (agentId: string) => void;
@@ -874,7 +874,7 @@ function TabChip({
       onPointerLeave={handleTabPointerLeave}
     >
       <ContextMenu key={tab.key}>
-        <Tooltip delayDuration={400} enabledOnDesktop enabledOnMobile={false} interactive>
+        <Tooltip delayDuration={400}>
           <TooltipTrigger asChild triggerRefProp="triggerRef">
             <ContextMenuTrigger
               {...(dragHandleProps?.attributes as object | undefined)}
@@ -1120,6 +1120,7 @@ function ResolvedWorkspaceDesktopTabsRow({
     [exitFocusModeWidth, focusModeEnabled, showPaneMaximizeAction, showPaneSplitActions],
   );
 
+  const isCompact = useIsCompactFormFactor();
   const panePanelKinds = useMemo(() => tabs.map(({ tab }) => tab.kind), [tabs]);
 
   const fallbackTabLabels = useMemo(
@@ -1140,10 +1141,13 @@ function ResolvedWorkspaceDesktopTabsRow({
       copyResumeCommand: t("workspace.tabs.menu.copyResumeCommand"),
       moveToWorkspace: t("workspace.tabs.menu.moveToWorkspace"),
       openInEditor: t("workspace.tabs.menu.openInEditor"),
-      revealIn: t("workspace.tabs.menu.revealFile"),
-      copyAgentId: t("workspace.tabs.menu.copyAgentId"),
+      revealIn: t("workspace.tabs.menu.revealIn"),
       copyConversationMarkdown: t("workspace.tabs.menu.copyConversationMarkdown"),
-      copyAgentAsNew: t("workspace.tabs.menu.copyAgentAsNewConversation"),
+      copyAgentAsNew: t("workspace.tabs.menu.copyAgentAsNew"),
+      markAsUnread: t("workspace.tabs.menu.markAsUnread"),
+      deleteAgent: t("workspace.tabs.menu.deleteAgent"),
+      deleteAgentTooltip: t("workspace.tabs.menu.deleteAgentTooltip"),
+      copyAgentId: t("workspace.tabs.menu.copyAgentId"),
       copyTerminalId: t("workspace.tabs.menu.copyTerminalId"),
       copyFilePath: t("workspace.tabs.menu.copyFilePath"),
       rename: t("workspace.tabs.menu.rename"),
@@ -1155,9 +1159,6 @@ function ResolvedWorkspaceDesktopTabsRow({
       reloadAgent: t("workspace.tabs.menu.reloadAgent"),
       reloadAgentTooltip: t("workspace.tabs.menu.reloadAgentTooltip"),
       hideAgent: t("workspace.tabs.menu.hideAgent"),
-      markAsUnread: t("workspace.tabs.menu.markAsUnread"),
-      deleteAgent: t("workspace.tabs.menu.deleteAgent"),
-      deleteAgentTooltip: t("workspace.tabs.menu.deleteAgentTooltip"),
       close: t("workspace.tabs.menu.close"),
     }),
     [t],
@@ -1398,7 +1399,6 @@ function ResolvedWorkspaceDesktopTabsRow({
       tabMenuLabels,
       tabDropPreviewIndex,
       displayedTabs.length,
-      normalizedWorkspaceId,
     ],
   );
 
@@ -1548,7 +1548,7 @@ function ResolvedDesktopTabChip({
   tabCount: number;
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
-  onCopyConversationMarkdown: (agentId: string) => Promise<void> | void;
+  onCopyConversationMarkdown?: (agentId: string) => Promise<void> | void;
   onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
   canCloneAgent?: boolean;
   onMoveAgentToWorkspace?: (agentId: string) => void;

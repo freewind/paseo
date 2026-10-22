@@ -72,14 +72,8 @@ interface SplitContainerProps {
   onCloseTab: (tabId: string) => Promise<void> | void;
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
-  onCopyConversationMarkdown: (agentId: string) => Promise<void> | void;
-  onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
-  onMoveAgentToWorkspace?: (agentId: string) => void;
-  canCloneAgent?: boolean;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
-  onOpenFileInEditor?: (path: string) => void;
-  onRevealFile?: (path: string) => void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
   onRenameTab: (tab: WorkspaceTabDescriptor) => void;
   onCloseTabsToLeft: (tabId: string, paneTabs: WorkspaceTabDescriptor[]) => Promise<void> | void;
@@ -163,14 +157,8 @@ export function SplitContainer({
   onCloseTab,
   onCopyResumeCommand,
   onCopyAgentId,
-  onCopyConversationMarkdown,
-  onCopyAgentAsNew,
-  canCloneAgent,
-  onMoveAgentToWorkspace,
   onCopyTerminalId,
   onCopyFilePath,
-  onOpenFileInEditor,
-  onRevealFile,
   onReloadAgent,
   onRenameTab,
   onCloseTabsToLeft,
@@ -397,14 +385,8 @@ function SplitNodeView({
   onCloseTab,
   onCopyResumeCommand,
   onCopyAgentId,
-  onCopyConversationMarkdown,
-  onCopyAgentAsNew,
-  canCloneAgent,
-  onMoveAgentToWorkspace,
   onCopyTerminalId,
   onCopyFilePath,
-  onOpenFileInEditor,
-  onRevealFile,
   onReloadAgent,
   onRenameTab,
   onCloseTabsToLeft,
@@ -491,14 +473,8 @@ function SplitNodeView({
             onCloseTab={onCloseTab}
             onCopyResumeCommand={onCopyResumeCommand}
             onCopyAgentId={onCopyAgentId}
-            onCopyConversationMarkdown={onCopyConversationMarkdown}
-            onCopyAgentAsNew={onCopyAgentAsNew}
-            onMoveAgentToWorkspace={onMoveAgentToWorkspace}
-            canCloneAgent={canCloneAgent}
             onCopyTerminalId={onCopyTerminalId}
             onCopyFilePath={onCopyFilePath}
-            onOpenFileInEditor={onOpenFileInEditor}
-            onRevealFile={onRevealFile}
             onReloadAgent={onReloadAgent}
             onRenameTab={onRenameTab}
             onCloseTabsToLeft={onCloseTabsToLeft}
@@ -549,14 +525,8 @@ function SplitNodeView({
               onCloseTab={onCloseTab}
               onCopyResumeCommand={onCopyResumeCommand}
               onCopyAgentId={onCopyAgentId}
-              onCopyConversationMarkdown={onCopyConversationMarkdown}
-              onCopyAgentAsNew={onCopyAgentAsNew}
-              onMoveAgentToWorkspace={onMoveAgentToWorkspace}
-              canCloneAgent={canCloneAgent}
               onCopyTerminalId={onCopyTerminalId}
               onCopyFilePath={onCopyFilePath}
-              onOpenFileInEditor={onOpenFileInEditor}
-              onRevealFile={onRevealFile}
               onReloadAgent={onReloadAgent}
               onRenameTab={onRenameTab}
               onCloseTabsToLeft={onCloseTabsToLeft}
@@ -615,14 +585,8 @@ const SplitPaneView = memo(function SplitPaneView({
   onCloseTab,
   onCopyResumeCommand,
   onCopyAgentId,
-  onCopyConversationMarkdown,
-  onCopyAgentAsNew,
-  canCloneAgent,
-  onMoveAgentToWorkspace,
   onCopyTerminalId,
   onCopyFilePath,
-  onOpenFileInEditor,
-  onRevealFile,
   onReloadAgent,
   onRenameTab,
   onCloseTabsToLeft,
@@ -757,14 +721,8 @@ const SplitPaneView = memo(function SplitPaneView({
             onCloseTab={onCloseTab}
             onCopyResumeCommand={onCopyResumeCommand}
             onCopyAgentId={onCopyAgentId}
-            onCopyConversationMarkdown={onCopyConversationMarkdown}
-            onCopyAgentAsNew={onCopyAgentAsNew}
-            onMoveAgentToWorkspace={onMoveAgentToWorkspace}
-            canCloneAgent={canCloneAgent}
             onCopyTerminalId={onCopyTerminalId}
             onCopyFilePath={onCopyFilePath}
-            onOpenFileInEditor={onOpenFileInEditor}
-            onRevealFile={onRevealFile}
             onReloadAgent={onReloadAgent}
             onRenameTab={onRenameTab}
             onCloseTabsToLeft={handleCloseTabsToLeft}

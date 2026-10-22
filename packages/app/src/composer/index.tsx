@@ -29,6 +29,7 @@ import {
   memo,
   type ReactElement,
 } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { useIsCompactFormFactor } from "@/constants/layout";
@@ -2403,15 +2404,6 @@ function ComposerContentImpl({
     ],
     [isComposerLocked, isFullscreen],
   );
-  const inputAreaContentStyle = useMemo(
-    () => [styles.inputAreaContent, isFullscreen && styles.fullscreenFill],
-    [isFullscreen],
-  );
-  const messageInputContainerStyle = useMemo(
-    () => [styles.messageInputContainer, isFullscreen && styles.fullscreenFill],
-    [isFullscreen],
-  );
-
   const attachmentTray = useMemo(
     () =>
       renderAttachmentTray({

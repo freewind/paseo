@@ -228,6 +228,7 @@ test("time ties use workspace identity so renaming cannot move Created rows", ()
   expect(
     buildWorkspaceStructureProjects({ sessions, workspaceSort: "created" })[0].workspaceKeys,
   ).toEqual(["h:a", "h:b"]);
+});
 describe("workspace structure keys", () => {
   test("round-trips the host and workspace identity", () => {
     const key = workspaceStructureKey({ serverId: "srv_abc", workspaceId: "ws_123" });

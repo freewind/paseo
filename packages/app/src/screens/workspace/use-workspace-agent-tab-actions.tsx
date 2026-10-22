@@ -167,7 +167,7 @@ export interface UseWorkspaceAgentTabActionsInput {
 export interface WorkspaceAgentTabActions {
   onCopyResumeCommand: (agentId: string) => Promise<void>;
   onCopyAgentId: (agentId: string) => Promise<void>;
-  onCopyConversationMarkdown: (agentId: string) => Promise<void>;
+  onCopyConversationMarkdown?: (agentId: string) => Promise<void>;
   onCopyAgentAsNew: (agentId: string) => Promise<void>;
   canCloneAgent: boolean;
   /** Present only when the daemon advertises `agentTransferWorkspace`. */

@@ -55,7 +55,7 @@ export interface ForkAgentRequest {
   agentId: string;
   agent: ForkAgentSource;
   workspaceId?: string;
-  mode: AssistantForkMode;
+  mode?: AssistantForkMode;
   target: AssistantForkTarget;
   boundary?: ForkAgentBoundary;
 }

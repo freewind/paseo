@@ -39,6 +39,8 @@ import { PromptDetailPopover } from "./prompt-detail.web";
 
 // Hover tracking lives on the rail and the slots, never on the Pressable inside them:
 // magnifying a slot must not move the box the pointer is resting on. See docs/hover.md.
+const noPromptText = async () => null;
+
 const RAIL_WIDTH = 36;
 const SLOT_HEIGHT = 8;
 const MIN_PANEL_WIDTH = 918;
@@ -122,7 +124,9 @@ export const ChatOutlineRail = memo(function ChatOutlineRail({
   // The text outline rides the gutter on the right, beside the dots rather than
   // instead of them, so the two navigations never contend for the same edge.
   const textRailWidth =
-    variant === "text" ? resolveTextRailWidth(panelWidth, contentMaxWidth) : null;
+    variant === "text" && contentMaxWidth !== undefined
+      ? resolveTextRailWidth(panelWidth, contentMaxWidth)
+      : null;
 
   if (isPanelNarrow) {
     return <View style={styles.panelMeasure} pointerEvents="box-none" onLayout={onLayout} />;
@@ -167,9 +171,9 @@ export const ChatOutlineRail = memo(function ChatOutlineRail({
           activeSeq={activeSeq}
           width={textRailWidth}
           panelRef={panelRef}
-          agentId={agentId}
+          agentId={agentId ?? ""}
           onJumpToPrompt={onJumpToPrompt}
-          onRequestPromptText={onRequestPromptText}
+          onRequestPromptText={onRequestPromptText ?? noPromptText}
         />
       )}
     </View>

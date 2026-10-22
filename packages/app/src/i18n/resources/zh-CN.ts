@@ -49,7 +49,6 @@ export const zhCN: TranslationResources = {
       clear: "清空",
       edit: "编辑",
       delete: "删除",
-      save: "保存",
     },
     placeholders: {
       search: "搜索...",
@@ -2385,9 +2384,7 @@ export const zhCN: TranslationResources = {
     },
     plugins: pluginSettings["zh-CN"],
     metadataGeneration: {
-      titlePrompt: "标题提示词",
       titlePromptHint: "Paseo 生成工作区标题时遵循的指令。留空用默认风格;paseo.json 的配置优先。",
-      titlePromptPlaceholder: "例如:[模块] 简短任务摘要",
       titlePromptSave: "保存",
       titlePromptSaving: "保存中...",
       title: "元数据生成",

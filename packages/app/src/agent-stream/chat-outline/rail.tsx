@@ -8,16 +8,16 @@ export interface ChatOutlineRailProps {
   activePrompt: ActivePromptSource;
   onJumpToPrompt: (seq: number) => void;
   /** "text" adds a worded outline in the right gutter; the dots stay either way. */
-  variant: ChatOutlineVariant;
+  variant?: ChatOutlineVariant;
   /** The transcript's content column width. The text outline takes the gutter beside it. */
-  contentMaxWidth: number;
+  contentMaxWidth?: number;
   /** Identifies the chat, so a collapsed outline stays collapsed for that chat alone. */
-  agentId: string;
+  agentId?: string;
   /**
    * The prompt's complete text, for the outline's own preview. The index carries
    * only a truncated preview, so a preview of full text asks for it on demand.
    */
-  onRequestPromptText: (seq: number) => Promise<string | null>;
+  onRequestPromptText?: (seq: number) => Promise<string | null>;
 }
 
 // The outline is a wide-layout pointer affordance. Native navigates the transcript by

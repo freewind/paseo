@@ -31,7 +31,7 @@ import {
 } from "react";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import { useIsFocused } from "expo-router/react-navigation";
-import { BackHandler, Keyboard, Platform, Pressable, Text, ToastAndroid, View } from "react-native";
+import { BackHandler, Text, View } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter, type Href } from "expo-router";
 import * as Clipboard from "expo-clipboard";
@@ -80,7 +80,6 @@ import {
 import { openWorkspacePullRequest } from "@/workspace-tabs/open-supporting-view";
 import { traceInstant } from "@/performance/native-trace";
 import { useSessionStore, type WorkspaceDescriptor } from "@/stores/session-store";
-import { navigateToWorkspace } from "@/stores/navigation-active-workspace-store";
 import {
   canDismissPaneInLayout,
   collectAllTabs,
@@ -126,15 +125,8 @@ import {
   useWorkspaceSetupStore,
 } from "@/stores/workspace-setup-store";
 import { useWorkspace } from "@/stores/session-store-hooks";
-import { useSidebarWorkspacePinController } from "@/hooks/use-sidebar-workspace-pin";
-import { useHostFeature } from "@/runtime/host-features";
-import { useAgentTransferWorkspace } from "./use-agent-transfer-workspace";
-import { useAgentReadState } from "@/hooks/use-agent-read-state";
-import { useWorkspaceReadState } from "@/hooks/use-workspace-read-state";
-import type { WorkspaceLabelTarget } from "@/workspace-labels/picker";
 import { useWorkspaceTerminalSessionRetention } from "@/terminal/hooks/use-workspace-terminal-session-retention";
 import type { CheckoutStatusPayload } from "@/git/use-status-query";
-import { useDeleteAgentWithConfirm } from "@/hooks/use-delete-agent";
 import { confirmDialog } from "@/utils/confirm-dialog";
 import { useArchiveAgent } from "@/hooks/use-archive-agent";
 import { useStableEvent } from "@/hooks/use-stable-event";
@@ -150,18 +142,6 @@ import {
   useWorkspaceTabRename,
   WorkspaceTabRenameModal,
 } from "@/screens/workspace/use-workspace-tab-rename";
-import { MobileTabTrailingAccessory } from "@/screens/workspace/workspace-tab-trailing-accessory";
-import { type WorkspaceTabMenuEntry } from "@/screens/workspace/workspace-tab-menu";
-import { WorkspaceHeaderContextMenu } from "@/screens/workspace/workspace-header-context-menu";
-import { i18n } from "@/i18n/i18next";
-import { useIsLocalDaemon } from "@/hooks/use-is-local-daemon";
-import { openDesktopTarget, useDesktopOpenTargets } from "@/workspace/desktop-open-targets";
-import { useOpenFileInEditor } from "@/workspace/open-in-editor/file";
-import { resolveWorkspaceFilePaths } from "@/workspace/file-open";
-import {
-  nameClonedAgent,
-  useCopyAgentConversationMarkdown,
-} from "@/screens/workspace/use-workspace-agent-tab-actions";
 import {
   WorkspaceDesktopTabsRow,
   type WorkspaceDesktopTabRowItem,
@@ -201,9 +181,7 @@ import { useMountedTabSet } from "@/screens/workspace/use-mounted-tab-set";
 import { SheetTabs } from "@/screens/workspace/sheet-tabs";
 import type { PaneHost } from "@/panels/panel-manifest";
 import { WorkspaceFocusProvider } from "@/workspace/focus";
-import { WorkspaceRenameModal, type RenamableWorkspace } from "@/components/workspace-rename-modal";
 import { DiffDocumentWorkspaceCacheProvider } from "@/git/diff-document/workspace-cache";
-import { useWorkspaceHeaderArchive } from "@/workspace/use-workspace-header-archive";
 import type { NewTabSelection } from "@/workspace-tabs/new-tab";
 import {
   NewTabLauncherProvider,
@@ -226,9 +204,7 @@ import { findAdjacentPane } from "@/utils/split-navigation";
 import { supportsDesktopPaneSplits, useIsCompactFormFactor } from "@/constants/layout";
 import { getIsElectron, isNative, isWeb } from "@/constants/platform";
 import { buildHostRootRoute, buildSettingsHostRoute } from "@/utils/host-routes";
-import { appLog } from "@/utils/app-log";
 import { useWorkspaceTerminals } from "@/screens/workspace/terminals/use-workspace-terminals";
-import { useRestoreLastArchivedAgent } from "@/hooks/use-restore-last-archived-agent";
 import type { TerminalProfile } from "@getpaseo/protocol/messages";
 import {
   WorkspaceHeaderMenuDesktop,
@@ -261,38 +237,6 @@ function getWorkspaceScripts(
   workspaceDescriptor: WorkspaceDescriptor | null | undefined,
 ): WorkspaceDescriptor["scripts"] {
   return workspaceDescriptor?.scripts ?? EMPTY_WORKSPACE_SCRIPTS;
-}
-
-function useWorkspaceHeaderPin(
-  serverId: string,
-  workspace: WorkspaceDescriptor | null,
-): {
-  canPin: boolean;
-  isPinned: boolean;
-  handleTogglePin: (() => void) | undefined;
-} {
-  const canPin = useHostFeature(serverId, "workspacePinning");
-  const togglePin = useSidebarWorkspacePinController();
-  const isPinned = workspace?.pinnedAt != null;
-  const handleTogglePin =
-    !workspace || !canPin
-      ? undefined
-      : () => {
-          const workspaceKey = buildWorkspaceTabPersistenceKey({
-            serverId,
-            workspaceId: workspace.id,
-          });
-          if (!workspaceKey) {
-            return;
-          }
-          togglePin({
-            serverId,
-            workspaceId: workspace.id,
-            workspaceKey,
-            pinnedAt: workspace.pinnedAt ?? null,
-          });
-        };
-  return { canPin, isPinned, handleTogglePin };
 }
 
 interface WorkspaceFileLocationFields {
@@ -371,193 +315,6 @@ function useSyncWorkspaceActiveBrowser(input: {
   }, [focusedBrowserId, input.workspaceId]);
 }
 
-function getFallbackTabOptionLabel(
-  tab: WorkspaceTabDescriptor,
-  labels: {
-    newTab: string;
-    newAgent: string;
-    setup: string;
-    terminal: string;
-    browser: string;
-    agent: string;
-    changes: string;
-    files: string;
-    pullRequest: string;
-  },
-): string {
-  if (tab.target.kind === "new_tab") {
-    return labels.newTab;
-  }
-  if (tab.target.kind === "draft") {
-    return labels.newAgent;
-  }
-  if (tab.target.kind === "setup") {
-    return labels.setup;
-  }
-  if (tab.target.kind === "terminal") {
-    return labels.terminal;
-  }
-  if (tab.target.kind === "browser") {
-    return labels.browser;
-  }
-  if (tab.target.kind === "file") {
-    return tab.target.path.split("/").findLast(Boolean) ?? tab.target.path;
-  }
-  if (tab.target.kind === "working_diff" || tab.target.kind === "changes_tree") {
-    return labels.changes;
-  }
-  if (tab.target.kind === "files") {
-    return labels.files;
-  }
-  if (tab.target.kind === "pull_request") {
-    return labels.pullRequest;
-  }
-  if (tab.target.kind === "commit_diff") {
-    return tab.target.sha.slice(0, 7);
-  }
-  return labels.agent;
-}
-
-function getFallbackTabOptionDescription(
-  tab: WorkspaceTabDescriptor,
-  labels: {
-    newTab: string;
-    newAgent: string;
-    workspaceSetup: string;
-    agent: string;
-    terminal: string;
-    browser: string;
-    changes: string;
-    files: string;
-    pullRequest: string;
-  },
-): string {
-  if (tab.target.kind === "new_tab") {
-    return labels.newTab;
-  }
-  if (tab.target.kind === "draft") {
-    return labels.newAgent;
-  }
-  if (tab.target.kind === "setup") {
-    return labels.workspaceSetup;
-  }
-  if (tab.target.kind === "agent") {
-    return labels.agent;
-  }
-  if (tab.target.kind === "terminal") {
-    return labels.terminal;
-  }
-  if (tab.target.kind === "browser") {
-    return labels.browser;
-  }
-  if (tab.target.kind === "provider_subagent") {
-    return labels.agent;
-  }
-  if (tab.target.kind === "commit_diff") {
-    return tab.target.sha.slice(0, 7);
-  }
-  if (tab.target.kind === "working_diff" || tab.target.kind === "changes_tree") {
-    return labels.changes;
-  }
-  if (tab.target.kind === "files") {
-    return labels.files;
-  }
-  if (tab.target.kind === "pull_request") {
-    return labels.pullRequest;
-  }
-  if (tab.target.kind === "plugin") {
-    return tab.target.panelId;
-  }
-  return tab.target.path;
-}
-
-interface MobileWorkspaceTabSwitcherProps {
-  tabs: WorkspaceTabDescriptor[];
-  activeTabKey: string;
-  activeTab: WorkspaceTabDescriptor | null;
-  tabSwitcherOptions: ComboboxOption[];
-  tabByKey: Map<string, WorkspaceTabDescriptor>;
-  normalizedServerId: string;
-  normalizedWorkspaceId: string;
-  onSelectSwitcherTab: (key: string) => void;
-  onCopyResumeCommand: (agentId: string) => Promise<void> | void;
-  onCopyAgentId: (agentId: string) => Promise<void> | void;
-  onCopyConversationMarkdown: (agentId: string) => Promise<void> | void;
-  onCopyAgentAsNew: (agentId: string) => Promise<void> | void;
-  canCloneAgent: boolean;
-  onMoveAgentToWorkspace?: (agentId: string) => void;
-  onCopyTerminalId: (terminalId: string) => Promise<void> | void;
-  onCopyFilePath: (path: string) => Promise<void> | void;
-  onOpenFileInEditorCb?: (path: string) => void;
-  onRevealFileCb?: (path: string) => void;
-  onReloadAgent: (agentId: string) => Promise<void> | void;
-  onRenameTab: (tab: WorkspaceTabDescriptor) => void;
-  onCloseTab: (tabId: string) => Promise<void> | void;
-  onCloseTabsAbove: (tabId: string) => Promise<void> | void;
-  onCloseTabsBelow: (tabId: string) => Promise<void> | void;
-  onCloseOtherTabs: (tabId: string) => Promise<void> | void;
-}
-
-function MobileActiveTabTrigger({
-  activeTab,
-  normalizedServerId,
-  normalizedWorkspaceId,
-  backdrop,
-}: {
-  activeTab: WorkspaceTabDescriptor | null;
-  normalizedServerId: string;
-  normalizedWorkspaceId: string;
-  backdrop: SurfaceBackdrop;
-}) {
-  if (!activeTab) {
-    return null;
-  }
-
-  return (
-    <ResolvedMobileActiveTabTrigger
-      activeTab={activeTab}
-      normalizedServerId={normalizedServerId}
-      normalizedWorkspaceId={normalizedWorkspaceId}
-      backdrop={backdrop}
-    />
-  );
-}
-
-function ResolvedMobileActiveTabTrigger({
-  activeTab,
-  normalizedServerId,
-  normalizedWorkspaceId,
-  backdrop,
-}: {
-  activeTab: WorkspaceTabDescriptor;
-  normalizedServerId: string;
-  normalizedWorkspaceId: string;
-  backdrop: SurfaceBackdrop;
-}) {
-  const { t } = useTranslation();
-  return (
-    <WorkspaceTabPresentationResolver
-      tab={activeTab}
-      serverId={normalizedServerId}
-      workspaceId={normalizedWorkspaceId}
-    >
-      {(presentation) => (
-        <>
-          <View style={styles.switcherTriggerIcon} testID="workspace-active-tab-icon">
-            <WorkspaceTabIcon presentation={presentation} active backdrop={backdrop} />
-          </View>
-
-          <Text style={styles.switcherTriggerText} numberOfLines={1}>
-            {presentation.titleState === "loading"
-              ? t("workspace.tabs.loading")
-              : presentation.label}
-          </Text>
-        </>
-      )}
-    </WorkspaceTabPresentationResolver>
-  );
-}
-
 function WorkspaceDocumentTitleEffect({
   label,
   titleState,
@@ -579,353 +336,6 @@ function WorkspaceDocumentTitleEffect({
 
   return null;
 }
-
-function switcherTriggerStyle({ pressed }: { pressed?: boolean }) {
-  return [styles.switcherTrigger, Boolean(pressed) && styles.switcherTriggerPressed];
-}
-
-function MobileWorkspaceTabOption({
-  tab,
-  tabIndex,
-  tabCount,
-  normalizedServerId,
-  normalizedWorkspaceId,
-  selected,
-  active,
-  onPress,
-  onCopyResumeCommand,
-  onCopyAgentId,
-  onCopyConversationMarkdown,
-  onCopyAgentAsNew,
-  canCloneAgent,
-  onMoveAgentToWorkspace,
-  onCopyTerminalId,
-  onCopyFilePath,
-  onOpenFileInEditorCb,
-  onRevealFileCb,
-  onReloadAgent,
-  onRenameTab,
-  onCloseTab,
-  onCloseTabsAbove,
-  onCloseTabsBelow,
-  onCloseOtherTabs,
-  onDeleteAgent,
-}: {
-  tab: WorkspaceTabDescriptor;
-  tabIndex: number;
-  tabCount: number;
-  normalizedServerId: string;
-  normalizedWorkspaceId: string;
-  selected: boolean;
-  active: boolean;
-  onPress: () => void;
-  onCopyResumeCommand: (agentId: string) => Promise<void> | void;
-  onCopyAgentId: (agentId: string) => Promise<void> | void;
-  onCopyConversationMarkdown: (agentId: string) => Promise<void> | void;
-  onCopyAgentAsNew: (agentId: string) => Promise<void> | void;
-  canCloneAgent: boolean;
-  onMoveAgentToWorkspace?: (agentId: string) => void;
-  onCopyTerminalId: (terminalId: string) => Promise<void> | void;
-  onCopyFilePath: (path: string) => Promise<void> | void;
-  onOpenFileInEditorCb?: (path: string) => void;
-  onRevealFileCb?: (path: string) => void;
-  onReloadAgent: (agentId: string) => Promise<void> | void;
-  onRenameTab: (tab: WorkspaceTabDescriptor) => void;
-  onCloseTab: (tabId: string) => Promise<void> | void;
-  onCloseTabsAbove: (tabId: string) => Promise<void> | void;
-  onCloseTabsBelow: (tabId: string) => Promise<void> | void;
-  onCloseOtherTabs: (tabId: string) => Promise<void> | void;
-  onDeleteAgent: (agentId: string) => void;
-}) {
-  const { t } = useTranslation();
-  const agentId = tab.target.kind === "agent" ? tab.target.agentId : "";
-  const unreadState = useAgentReadState({
-    serverId: normalizedServerId,
-    workspaceId: normalizedWorkspaceId,
-    agentId,
-  });
-  const tabMenuLabels = useMemo<WorkspaceTabMenuLabels>(
-    () => ({
-      copyResumeCommand: t("workspace.tabs.menu.copyResumeCommand"),
-      moveToWorkspace: t("workspace.tabs.menu.moveToWorkspace"),
-      openInEditor: t("workspace.tabs.menu.openInEditor"),
-      revealIn: t("workspace.tabs.menu.revealFile"),
-      copyAgentId: t("workspace.tabs.menu.copyAgentId"),
-      copyConversationMarkdown: t("workspace.tabs.menu.copyConversationMarkdown"),
-      copyAgentAsNew: t("workspace.tabs.menu.copyAgentAsNewConversation"),
-      copyTerminalId: t("workspace.tabs.menu.copyTerminalId"),
-      copyFilePath: t("workspace.tabs.menu.copyFilePath"),
-      rename: t("workspace.tabs.menu.rename"),
-      closeAbove: t("workspace.tabs.menu.closeAbove"),
-      closeBelow: t("workspace.tabs.menu.closeBelow"),
-      closeLeft: t("workspace.tabs.menu.closeLeft"),
-      closeRight: t("workspace.tabs.menu.closeRight"),
-      closeOthers: t("workspace.tabs.menu.closeOthers"),
-      reloadAgent: t("workspace.tabs.menu.reloadAgent"),
-      reloadAgentTooltip: t("workspace.tabs.menu.reloadAgentTooltip"),
-      hideAgent: t("workspace.tabs.menu.hideAgent"),
-      markAsUnread: t("workspace.tabs.menu.markAsUnread"),
-      deleteAgent: t("workspace.tabs.menu.deleteAgent"),
-      deleteAgentTooltip: t("workspace.tabs.menu.deleteAgentTooltip"),
-      close: t("workspace.tabs.menu.close"),
-    }),
-    [t],
-  );
-  const menuTestIDBase = `workspace-tab-menu-${tab.tabId}`;
-  const menuEntries = buildWorkspaceTabMenuEntries({
-    surface: "mobile",
-    tab,
-    index: tabIndex,
-    tabCount,
-    menuTestIDBase,
-    onCopyResumeCommand,
-    onCopyAgentId,
-    onCopyConversationMarkdown,
-    onCopyAgentAsNew,
-    canCloneAgent,
-    onMoveAgentToWorkspace,
-    onCopyTerminalId,
-    onCopyFilePath,
-    onOpenFileInEditor: onOpenFileInEditorCb,
-    onRevealFile: onRevealFileCb,
-    onReloadAgent,
-    onRenameTab,
-    onCloseTab,
-    onCloseTabsBefore: onCloseTabsAbove,
-    onCloseTabsAfter: onCloseTabsBelow,
-    onCloseOtherTabs,
-    onMarkAsUnread: unreadState.markUnread,
-    canMarkAsUnread: unreadState.canMarkUnread,
-    onDeleteAgent,
-    labels: tabMenuLabels,
-  });
-
-  const fallbackLabels = useMemo(
-    () => ({
-      newTab: t("workspace.tabs.actions.newTab"),
-      newAgent: t("workspace.tabs.fallback.newAgent"),
-      setup: t("workspace.tabs.fallback.setup"),
-      terminal: t("workspace.tabs.fallback.terminal"),
-      browser: t("workspace.tabs.fallback.browser"),
-      agent: t("workspace.tabs.fallback.agent"),
-      changes: t("panels.diff.changesLabel"),
-      files: t("panels.files.label"),
-      pullRequest: t("panels.pullRequest.label"),
-    }),
-    [t],
-  );
-  const fallbackLabel = getFallbackTabOptionLabel(tab, fallbackLabels);
-  const trailingAccessory = useMemo(
-    () => (
-      <MobileTabTrailingAccessory
-        menuTestIDBase={menuTestIDBase}
-        presentationLabel={fallbackLabel}
-        menuEntries={menuEntries}
-      />
-    ),
-    [menuTestIDBase, fallbackLabel, menuEntries],
-  );
-
-  const renderPresentation = useCallback(
-    (presentation: WorkspaceTabPresentation) => (
-      <WorkspaceTabOptionRow
-        presentation={presentation}
-        selected={selected}
-        active={active}
-        onPress={onPress}
-        trailingAccessory={trailingAccessory}
-      />
-    ),
-    [selected, active, onPress, trailingAccessory],
-  );
-
-  return (
-    <WorkspaceTabPresentationResolver
-      tab={tab}
-      serverId={normalizedServerId}
-      workspaceId={normalizedWorkspaceId}
-    >
-      {renderPresentation}
-    </WorkspaceTabPresentationResolver>
-  );
-}
-
-const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
-  tabs,
-  activeTabKey,
-  activeTab,
-  tabSwitcherOptions,
-  tabByKey,
-  normalizedServerId,
-  normalizedWorkspaceId,
-  onSelectSwitcherTab,
-  onCopyResumeCommand,
-  onCopyAgentId,
-  onCopyConversationMarkdown,
-  onCopyAgentAsNew,
-  canCloneAgent,
-  onMoveAgentToWorkspace,
-  onCopyTerminalId,
-  onCopyFilePath,
-  onOpenFileInEditorCb,
-  onRevealFileCb,
-  onReloadAgent,
-  onRenameTab,
-  onCloseTab,
-  onCloseTabsAbove,
-  onCloseTabsBelow,
-  onCloseOtherTabs,
-}: MobileWorkspaceTabSwitcherProps) {
-  const { t } = useTranslation();
-  const onDeleteAgent = useDeleteAgentWithConfirm({ serverId: normalizedServerId });
-  const [isOpen, setIsOpen] = useState(false);
-  const anchorRef = useRef<View>(null);
-  const previousTabCountRef = useRef(tabs.length);
-  useEffect(() => {
-    if (tabs.length === previousTabCountRef.current) return;
-    previousTabCountRef.current = tabs.length;
-    if (tabs.length >= 2) {
-      appLog("workspace.tabs", "count", { count: tabs.length });
-    }
-  }, [tabs.length]);
-  const tabIndexByKey = useMemo(() => {
-    const map = new Map<string, number>();
-    tabs.forEach((tab, index) => {
-      map.set(tab.key, index);
-    });
-    return map;
-  }, [tabs]);
-
-  const handleOpenSwitcher = useCallback(() => {
-    Keyboard.dismiss();
-    setIsOpen(true);
-  }, []);
-
-  const renderTabOption = useCallback(
-    ({
-      option,
-      selected,
-      active,
-      onPress,
-    }: {
-      option: ComboboxOption;
-      selected: boolean;
-      active: boolean;
-      onPress: () => void;
-    }) => {
-      const tab = tabByKey.get(option.id);
-      if (!tab) {
-        return <View />;
-      }
-      const tabIndex = tabIndexByKey.get(tab.key) ?? -1;
-      if (tabIndex < 0) {
-        return <View />;
-      }
-      return (
-        <MobileWorkspaceTabOption
-          tab={tab}
-          tabIndex={tabIndex}
-          tabCount={tabs.length}
-          normalizedServerId={normalizedServerId}
-          normalizedWorkspaceId={normalizedWorkspaceId}
-          selected={selected}
-          active={active}
-          onPress={onPress}
-          onCopyResumeCommand={onCopyResumeCommand}
-          onCopyAgentId={onCopyAgentId}
-          onCopyConversationMarkdown={onCopyConversationMarkdown}
-          onCopyAgentAsNew={onCopyAgentAsNew}
-          canCloneAgent={canCloneAgent}
-          onMoveAgentToWorkspace={onMoveAgentToWorkspace}
-          onCopyTerminalId={onCopyTerminalId}
-          onCopyFilePath={onCopyFilePath}
-          onOpenFileInEditorCb={onOpenFileInEditorCb}
-          onRevealFileCb={onRevealFileCb}
-          onReloadAgent={onReloadAgent}
-          onRenameTab={onRenameTab}
-          onCloseTab={onCloseTab}
-          onCloseTabsAbove={onCloseTabsAbove}
-          onCloseTabsBelow={onCloseTabsBelow}
-          onCloseOtherTabs={onCloseOtherTabs}
-          onDeleteAgent={onDeleteAgent}
-        />
-      );
-    },
-    [
-      tabByKey,
-      tabIndexByKey,
-      tabs.length,
-      normalizedServerId,
-      normalizedWorkspaceId,
-      onCopyResumeCommand,
-      onCopyAgentId,
-      onCopyConversationMarkdown,
-      onCopyAgentAsNew,
-      canCloneAgent,
-      onMoveAgentToWorkspace,
-      onCopyTerminalId,
-      onCopyFilePath,
-      onOpenFileInEditorCb,
-      onRevealFileCb,
-      onReloadAgent,
-      onRenameTab,
-      onCloseTab,
-      onCloseTabsAbove,
-      onCloseTabsBelow,
-      onCloseOtherTabs,
-      onDeleteAgent,
-    ],
-  );
-
-  return (
-    <View style={styles.mobileTabsRow} testID="workspace-tabs-row">
-      <Pressable
-        ref={anchorRef}
-        testID="workspace-tab-switcher-trigger"
-        accessibilityRole="button"
-        accessibilityLabel={`🌿 ${t("workspace.tabs.switcher.trigger", { count: tabs.length })}`}
-        style={switcherTriggerStyle}
-        onPress={handleOpenSwitcher}
-      >
-        {({ pressed }) => (
-          <>
-            <View style={styles.switcherTriggerLeft}>
-              <MobileActiveTabTrigger
-                activeTab={activeTab}
-                normalizedServerId={normalizedServerId}
-                normalizedWorkspaceId={normalizedWorkspaceId}
-                backdrop={pressed ? "surface1" : "surface0"}
-              />
-            </View>
-            <ThemedChevronDown size={14} uniProps={mutedColorMapping} />
-            {tabs.length >= 2 ? (
-              <Text
-                style={styles.switcherTriggerCount}
-                numberOfLines={1}
-                testID="workspace-tab-switcher-count"
-              >
-                {tabs.length}
-              </Text>
-            ) : null}
-          </>
-        )}
-      </Pressable>
-
-      <Combobox
-        options={tabSwitcherOptions}
-        value={activeTabKey}
-        onSelect={onSelectSwitcherTab}
-        searchable={false}
-        title={t("workspace.tabs.switcher.title")}
-        searchPlaceholder={t("workspace.tabs.switcher.searchPlaceholder")}
-        open={isOpen}
-        onOpenChange={setIsOpen}
-        anchorRef={anchorRef}
-        renderOption={renderTabOption}
-      />
-    </View>
-  );
-});
 
 interface MobileMountedTabSlotProps {
   tabDescriptor: WorkspaceTabDescriptor;
@@ -1059,40 +469,13 @@ interface WorkspaceHeaderTitleBarProps {
   isSubtitleDistinct: boolean;
   currentBranchName: string | null;
   normalizedServerId: string;
-  normalizedWorkspaceId: string;
-  workspaceKey: string;
-  workspaceTarget: WorkspaceLabelTarget | null;
-  workspaceDirectory: string | null;
-  workspaceScripts: WorkspaceDescriptor["scripts"];
-  liveTerminalIds: string[];
-  onMarkAsRead?: () => void;
-  onMarkAsUnread?: () => void;
   showWorkspaceSetup: boolean;
-  showCreateBrowserTab: boolean;
-  isMobile: boolean;
-  createTerminalDisabled: boolean;
   importAgentDisabled: boolean;
   copyPathDisabled: boolean;
-  onCreateDraftTab: () => void;
-  onCreateTerminal: () => void;
-  onCreateTerminalWithProfile: (profile: TerminalProfile) => void;
-  onCreateBrowser: () => void;
   onOpenImportSheet: () => void;
   onCopyWorkspacePath: () => void;
   onCopyBranchName: () => void;
   onOpenSetupTab: () => void;
-  onRename?: () => void;
-  onTogglePin?: () => void;
-  isPinned?: boolean;
-  onArchive?: () => void;
-  isArchiving?: boolean;
-  archiveLabel?: string;
-  onScriptTerminalStarted: (terminalId: string) => void;
-  onViewScriptTerminal: (terminalId: string) => void;
-  onOpenUrlInBrowserTab: (url: string) => void;
-  /** Focused agent tab drives the header's right-click menu; null hides the agent entries. */
-  activeTabDescriptor: WorkspaceTabDescriptor | null;
-  headerMenuEntries: WorkspaceTabMenuEntry[];
 }
 
 function WorkspaceHeaderTitleBar({
@@ -1102,68 +485,14 @@ function WorkspaceHeaderTitleBar({
   isSubtitleDistinct,
   currentBranchName,
   normalizedServerId,
-  normalizedWorkspaceId,
-  workspaceKey,
-  workspaceTarget,
-  workspaceDirectory,
-  workspaceScripts,
-  liveTerminalIds,
   showWorkspaceSetup,
-  showCreateBrowserTab,
-  isMobile,
-  createTerminalDisabled,
   importAgentDisabled,
   copyPathDisabled,
-  onCreateDraftTab,
-  onMarkAsRead,
-  onMarkAsUnread,
-  onCreateTerminal,
-  onCreateTerminalWithProfile,
-  onCreateBrowser,
   onOpenImportSheet,
   onCopyWorkspacePath,
   onCopyBranchName,
   onOpenSetupTab,
-  onRename,
-  onTogglePin,
-  isPinned,
-  onArchive,
-  isArchiving,
-  archiveLabel,
-  onScriptTerminalStarted,
-  onViewScriptTerminal,
-  onOpenUrlInBrowserTab,
-  activeTabDescriptor,
-  headerMenuEntries,
 }: WorkspaceHeaderTitleBarProps) {
-  const restoreLastArchivedAgent = useRestoreLastArchivedAgent({
-    serverId: normalizedServerId,
-    workspaceId: normalizedWorkspaceId,
-  });
-  const headerMenuTestID = "workspace-header-title-menu";
-  const showHeaderMenu =
-    !isLoading && activeTabDescriptor?.target.kind === "agent" && headerMenuEntries.length > 0;
-  const titleNode = showHeaderMenu ? (
-    <WorkspaceHeaderContextMenu menuEntries={headerMenuEntries} testID={headerMenuTestID}>
-      <View style={styles.headerTitleTextGroup}>
-        <ScreenTitle testID="workspace-header-title">{title}</ScreenTitle>
-        <WorkspaceHeaderProjectRow
-          subtitle={subtitle}
-          isSubtitleDistinct={isSubtitleDistinct}
-          serverId={normalizedServerId}
-        />
-      </View>
-    </WorkspaceHeaderContextMenu>
-  ) : (
-    <View style={styles.headerTitleTextGroup}>
-      <ScreenTitle testID="workspace-header-title">{title}</ScreenTitle>
-      <WorkspaceHeaderProjectRow
-        subtitle={subtitle}
-        isSubtitleDistinct={isSubtitleDistinct}
-        serverId={normalizedServerId}
-      />
-    </View>
-  );
   return (
     <View style={styles.headerTitleContainer}>
       {isLoading ? (
@@ -1171,76 +500,26 @@ function WorkspaceHeaderTitleBar({
           <View style={styles.headerTitleSkeleton} />
         </View>
       ) : (
-        titleNode
+        <View style={styles.headerTitleTextGroup}>
+          <ScreenTitle testID="workspace-header-title">{title}</ScreenTitle>
+          <WorkspaceHeaderProjectRow
+            subtitle={subtitle}
+            isSubtitleDistinct={isSubtitleDistinct}
+            serverId={normalizedServerId}
+          />
+        </View>
       )}
       <View style={styles.compactHeaderMenuCluster}>
-        {isMobile ? (
-          <WorkspaceHeaderMenuMobile
-            normalizedServerId={normalizedServerId}
-            currentBranchName={currentBranchName}
-            showWorkspaceSetup={showWorkspaceSetup}
-            showCreateBrowserTab={showCreateBrowserTab}
-            createTerminalDisabled={createTerminalDisabled}
-            importAgentDisabled={importAgentDisabled}
-            copyPathDisabled={copyPathDisabled}
-            onCreateTerminal={onCreateTerminal}
-            onCreateTerminalWithProfile={onCreateTerminalWithProfile}
-            onCreateBrowser={onCreateBrowser}
-            onOpenImportSheet={onOpenImportSheet}
-            onCopyWorkspacePath={onCopyWorkspacePath}
-            onCopyBranchName={onCopyBranchName}
-            onOpenSetupTab={onOpenSetupTab}
-            workspaceKey={workspaceKey}
-            workspaceTarget={workspaceTarget}
-            onCreateAgent={onCreateDraftTab}
-            onMarkAsRead={onMarkAsRead}
-            onMarkAsUnread={onMarkAsUnread}
-            workspaceDirectory={workspaceTarget ? workspaceDirectory : null}
-            onRename={onRename}
-            onTogglePin={onTogglePin}
-            isPinned={isPinned}
-            onArchive={onArchive}
-            isArchiving={isArchiving}
-            archiveLabel={archiveLabel}
-            onRestoreLastArchivedAgent={restoreLastArchivedAgent}
-          />
-        ) : (
-          <WorkspaceHeaderMenuDesktop
-            workspaceKey={workspaceKey}
-            workspaceTarget={workspaceTarget}
-            onCreateAgent={onCreateDraftTab}
-            onMarkAsRead={onMarkAsRead}
-            onMarkAsUnread={onMarkAsUnread}
-            workspaceDirectory={workspaceTarget ? workspaceDirectory : null}
-            currentBranchName={currentBranchName}
-            showWorkspaceSetup={showWorkspaceSetup}
-            importAgentDisabled={importAgentDisabled}
-            copyPathDisabled={copyPathDisabled}
-            onOpenImportSheet={onOpenImportSheet}
-            onCopyWorkspacePath={onCopyWorkspacePath}
-            onCopyBranchName={onCopyBranchName}
-            onOpenSetupTab={onOpenSetupTab}
-            onRename={onRename}
-            onTogglePin={onTogglePin}
-            isPinned={isPinned}
-            onArchive={onArchive}
-            isArchiving={isArchiving}
-            archiveLabel={archiveLabel}
-            onRestoreLastArchivedAgent={restoreLastArchivedAgent}
-          />
-        )}
-          <WorkspaceScriptsButton
-            serverId={normalizedServerId}
-            workspaceId={normalizedWorkspaceId}
-            scripts={workspaceScripts}
-            liveTerminalIds={liveTerminalIds}
-            onScriptTerminalStarted={onScriptTerminalStarted}
-            onViewTerminal={onViewScriptTerminal}
-            onOpenUrlInBrowserTab={onOpenUrlInBrowserTab}
-            hideLabels
-            presentation="ghost"
-          />
-        ) : null}
+        <WorkspaceHeaderMenuDesktop
+          currentBranchName={currentBranchName}
+          showWorkspaceSetup={showWorkspaceSetup}
+          importAgentDisabled={importAgentDisabled}
+          copyPathDisabled={copyPathDisabled}
+          onOpenImportSheet={onOpenImportSheet}
+          onCopyWorkspacePath={onCopyWorkspacePath}
+          onCopyBranchName={onCopyBranchName}
+          onOpenSetupTab={onOpenSetupTab}
+        />
       </View>
     </View>
   );
@@ -1729,144 +1008,6 @@ function useLastMainPane(input: {
   return lastMainPaneRef;
 }
 
-/** A second hardware Back press inside this window leaves the app. */
-const DOUBLE_BACK_TO_EXIT_WINDOW_MS = 2000;
-
-/**
- * Menu entries for the workspace header title's right-click menu, built by the same shared
- * builder as the tab context menus so the two stay identical. Owns the focused agent's
- * unread state, which only the agent branch of the menu needs.
- */
-function useWorkspaceHeaderMenuEntries(input: {
-  activeTabDescriptor: WorkspaceTabDescriptor | null;
-  serverId: string;
-  workspaceId: string;
-  tabCount: number;
-  onCopyResumeCommand: (agentId: string) => Promise<void> | void;
-  onCopyAgentId: (agentId: string) => Promise<void> | void;
-  onCopyConversationMarkdown: (agentId: string) => Promise<void> | void;
-  onCopyAgentAsNew: (agentId: string) => Promise<void> | void;
-  canCloneAgent: boolean;
-  onMoveAgentToWorkspace?: (agentId: string) => void;
-  onCopyTerminalId: (terminalId: string) => Promise<void> | void;
-  onCopyFilePath: (path: string) => Promise<void> | void;
-  onReloadAgent: (agentId: string) => Promise<void> | void;
-  onRenameTab: (tab: WorkspaceTabDescriptor) => void;
-  onCloseTab: (tabId: string) => Promise<void> | void;
-  onCloseTabsBefore: (tabId: string) => Promise<void> | void;
-  onCloseTabsAfter: (tabId: string) => Promise<void> | void;
-  onCloseOtherTabs: (tabId: string) => Promise<void> | void;
-}): WorkspaceTabMenuEntry[] {
-  const { activeTabDescriptor, serverId, workspaceId } = input;
-  const agentId =
-    activeTabDescriptor?.target.kind === "agent" ? activeTabDescriptor.target.agentId : "";
-  const unreadState = useAgentReadState({ serverId, workspaceId, agentId });
-  const handleMarkUnread = useCallback(() => {
-    void unreadState.markUnread().catch(() => undefined);
-  }, [unreadState]);
-
-  return useMemo(() => {
-    if (!activeTabDescriptor) {
-      return [];
-    }
-    return buildWorkspaceTabMenuEntries({
-      surface: "desktop",
-      tab: activeTabDescriptor,
-      index: 0,
-      tabCount: input.tabCount,
-      menuTestIDBase: "workspace-header-title-menu",
-      onCopyResumeCommand: input.onCopyResumeCommand,
-      onCopyAgentId: input.onCopyAgentId,
-      onCopyConversationMarkdown: input.onCopyConversationMarkdown,
-      onCopyAgentAsNew: input.onCopyAgentAsNew,
-      canCloneAgent: input.canCloneAgent,
-      onMoveAgentToWorkspace: input.onMoveAgentToWorkspace,
-      onCopyTerminalId: input.onCopyTerminalId,
-      onCopyFilePath: input.onCopyFilePath,
-      onReloadAgent: input.onReloadAgent,
-      onRenameTab: input.onRenameTab,
-      onCloseTab: input.onCloseTab,
-      onCloseTabsBefore: input.onCloseTabsBefore,
-      onCloseTabsAfter: input.onCloseTabsAfter,
-      onCloseOtherTabs: input.onCloseOtherTabs,
-      onMarkAsUnread: handleMarkUnread,
-      canMarkAsUnread:
-        activeTabDescriptor.target.kind === "agent" ? unreadState.canMarkUnread : false,
-    });
-  }, [
-    activeTabDescriptor,
-    unreadState.canMarkUnread,
-    handleMarkUnread,
-    input.tabCount,
-    input.onCopyResumeCommand,
-    input.onCopyAgentId,
-    input.onCopyConversationMarkdown,
-    input.onCopyAgentAsNew,
-    input.canCloneAgent,
-    input.onMoveAgentToWorkspace,
-    input.onCopyTerminalId,
-    input.onCopyFilePath,
-    input.onReloadAgent,
-    input.onRenameTab,
-    input.onCloseTab,
-    input.onCloseTabsBefore,
-    input.onCloseTabsAfter,
-    input.onCloseOtherTabs,
-  ]);
-}
-
-/**
- * Open/reveal actions for a file tab's context menu. Null-safe when the workspace directory
- * is unknown, the daemon is remote, or no file-manager/editor target exists — the menu
- * receives a callback that no-ops, so callers can pass it unconditionally.
- */
-function useFileTabOpenActions(input: { serverId: string; workspaceDirectory: string | null }): {
-  openInEditor?: (filePath: string) => void;
-  reveal?: (filePath: string) => void;
-} {
-  const { serverId, workspaceDirectory } = input;
-  const toast = useToast();
-  const isLocalExecution = useIsLocalDaemon(serverId);
-  const { targets } = useDesktopOpenTargets({ isLocalExecution });
-  const openFileInEditor = useOpenFileInEditor({
-    serverId,
-    workspaceDirectory: workspaceDirectory ?? "",
-  });
-  const fileManagerTarget = useMemo(
-    () => targets.find((target) => target.kind === "file-manager") ?? null,
-    [targets],
-  );
-
-  const openInEditor = useMemo(() => {
-    if (!workspaceDirectory || !openFileInEditor) return undefined;
-    return (filePath: string) => openFileInEditor.open(filePath);
-  }, [openFileInEditor, workspaceDirectory]);
-
-  const reveal = useMemo(() => {
-    if (!fileManagerTarget || !workspaceDirectory) return undefined;
-    return (filePath: string) => {
-      const resolved = resolveWorkspaceFilePaths({
-        path: filePath,
-        workspaceRoot: workspaceDirectory,
-      });
-      if (!resolved?.absolutePath) return;
-      void openDesktopTarget({
-        editorId: fileManagerTarget.id,
-        workspacePath: workspaceDirectory,
-        filePath: resolved.absolutePath,
-      }).catch((cause: unknown) => {
-        toast.error(
-          cause instanceof Error
-            ? cause.message
-            : i18n.t("workspace.fileExplorer.errors.revealFailed"),
-        );
-      });
-    };
-  }, [fileManagerTarget, toast, workspaceDirectory]);
-
-  return { openInEditor, reveal };
-}
-
 function WorkspaceScreenContent({
   serverId,
   workspaceId,
@@ -1875,8 +1016,6 @@ function WorkspaceScreenContent({
   const { t } = useTranslation();
   const _insets = useSafeAreaInsets();
   const toast = useToast();
-  const router = useRouter();
-  const doubleBackToExit = useSettings((settings) => settings.doubleBackToExit);
   const isMobile = useIsCompactFormFactor();
   const canRenderDesktopPaneSplits = supportsDesktopPaneSplits();
   const layoutMode = useWorkspaceLayoutStore((state) => state.layoutMode);
@@ -1895,46 +1034,6 @@ function WorkspaceScreenContent({
     [workspaceId],
   );
   const workspaceDescriptor = useWorkspace(normalizedServerId, normalizedWorkspaceId);
-  const [isRenameOpen, setIsRenameOpen] = useState(false);
-  const handleOpenRename = useCallback(() => setIsRenameOpen(true), []);
-  const handleCloseRename = useCallback(() => setIsRenameOpen(false), []);
-  const renameWorkspace = useMemo<RenamableWorkspace>(
-    () => ({
-      serverId: normalizedServerId,
-      workspaceId: normalizedWorkspaceId,
-      name: workspaceDescriptor?.name ?? "",
-      title: workspaceDescriptor?.title ?? null,
-    }),
-    [normalizedServerId, normalizedWorkspaceId, workspaceDescriptor],
-  );
-  const workspaceReadState = useWorkspaceReadState({
-    serverId: normalizedServerId,
-    workspaceId: normalizedWorkspaceId,
-  });
-  const handleMarkWorkspaceAsRead = useCallback(() => {
-    void workspaceReadState.clearAttention().catch((error) => {
-      toast.error(
-        error instanceof Error ? error.message : t("workspace.terminal.hostDisconnected"),
-      );
-    });
-  }, [t, toast, workspaceReadState]);
-  const handleMarkWorkspaceAsUnread = useCallback(() => {
-    void workspaceReadState.markUnread().catch((error) => {
-      toast.error(
-        error instanceof Error ? error.message : t("workspace.terminal.hostDisconnected"),
-      );
-    });
-  }, [t, toast, workspaceReadState]);
-  const { archive: handleArchive, isArchiving } = useWorkspaceHeaderArchive({
-    serverId: normalizedServerId,
-    workspaceId: normalizedWorkspaceId,
-    workspace: workspaceDescriptor,
-  });
-  const archiveLabel = t("sidebar.workspace.actions.archiving");
-  const { isPinned: isWorkspacePinned, handleTogglePin } = useWorkspaceHeaderPin(
-    normalizedServerId,
-    workspaceDescriptor,
-  );
   useEffect(() => {
     if (!normalizedServerId || !normalizedWorkspaceId || workspaceDescriptor) return;
     void getHostRuntimeStore()
@@ -1968,22 +1067,6 @@ function WorkspaceScreenContent({
     (state) => state.sessions[normalizedServerId]?.serverInfo?.features?.providersSnapshot === true,
   );
   const workspaceDirectory = workspaceDescriptor?.workspaceDirectory || null;
-  const { openInEditor: handleOpenFileTabInEditor, reveal: handleRevealFileTab } =
-    useFileTabOpenActions({
-      serverId: normalizedServerId,
-      workspaceDirectory,
-    });
-  const workspaceTarget = useMemo<WorkspaceLabelTarget | null>(
-    () =>
-      workspaceDescriptor
-        ? {
-            serverId: normalizedServerId,
-            workspaceId: normalizedWorkspaceId,
-            labels: workspaceDescriptor.labels ?? [],
-          }
-        : null,
-    [workspaceDescriptor, normalizedServerId, normalizedWorkspaceId],
-  );
   const isMissingWorkspaceDirectory = Boolean(workspaceDescriptor) && !workspaceDirectory;
   const [isImportSheetVisible, setIsImportSheetVisible] = useState(false);
   const canOpenImportSheet = [client, isConnected, workspaceDirectory].every(Boolean);
@@ -2193,40 +1276,6 @@ function WorkspaceScreenContent({
     () => ({ expanded: isExplorerSidebarShowing }),
     [isExplorerSidebarShowing],
   );
-
-  const lastExitBackPressAtRef = useRef(0);
-
-  useEffect(() => {
-    // Declared before the explorer overlay handler below on purpose: React Native runs the
-    // most recently added subscription first, so the overlay keeps priority over this guard.
-    if (!doubleBackToExit || isWeb || !isMobile || !isRouteFocused) {
-      return;
-    }
-
-    const handler = BackHandler.addEventListener("hardwareBackPress", () => {
-      if (router.canGoBack() || isExplorerSidebarShowing) {
-        lastExitBackPressAtRef.current = 0;
-        return false;
-      }
-
-      const now = Date.now();
-      if (now - lastExitBackPressAtRef.current < DOUBLE_BACK_TO_EXIT_WINDOW_MS) {
-        lastExitBackPressAtRef.current = 0;
-        return false;
-      }
-
-      lastExitBackPressAtRef.current = now;
-      const message = t("settings.general.doubleBackToExit.toast");
-      if (Platform.OS === "android") {
-        ToastAndroid.showWithGravity(message, ToastAndroid.SHORT, ToastAndroid.BOTTOM);
-      } else {
-        toast.show(message, { durationMs: DOUBLE_BACK_TO_EXIT_WINDOW_MS });
-      }
-      return true;
-    });
-
-    return () => handler.remove();
-  }, [doubleBackToExit, isExplorerSidebarShowing, isMobile, isRouteFocused, router, t, toast]);
 
   useEffect(() => {
     // Back dismisses the compact overlay only. On a wide native layout the
@@ -3079,10 +2128,6 @@ function WorkspaceScreenContent({
     [toast, t],
   );
 
-  const handleCopyConversationMarkdown = useCopyAgentConversationMarkdown({
-    serverId: normalizedServerId,
-  });
-
   const handleCopyTerminalId = useCallback(
     async (terminalId: string) => {
       if (!terminalId) return;
@@ -3139,58 +2184,6 @@ function WorkspaceScreenContent({
       }
     },
     [normalizedServerId, toast, t],
-  );
-
-  const supportsCloneAgent = useSessionStore(
-    (state) => state.sessions[normalizedServerId]?.serverInfo?.features?.agentCloneSession === true,
-  );
-  const supportsAgentTransferWorkspace = useSessionStore(
-    (state) =>
-      state.sessions[normalizedServerId]?.serverInfo?.features?.agentTransferWorkspace === true,
-  );
-  const { onMoveAgentToWorkspace, transferModal: transferWorkspaceModal } =
-    useAgentTransferWorkspace({
-      serverId: normalizedServerId,
-      enabled: supportsAgentTransferWorkspace,
-    });
-
-  const handleCopyAgentAsNew = useCallback(
-    async (agentId: string) => {
-      if (!agentId) return;
-      if (!client || !isConnected) {
-        toast.error(t("workspace.terminal.hostDisconnected"));
-        return;
-      }
-      if (!supportsCloneAgent) {
-        toast.error(t("workspace.tabs.toasts.cloneUnavailable"));
-        return;
-      }
-      try {
-        const result = await client.cloneAgent(agentId, { targetWorkspace: "same" });
-        if (!result.newAgentId) {
-          toast.error(t("workspace.tabs.toasts.cloneFailed"));
-          return;
-        }
-        // Same naming as the tab actions' clone entry: the title must not depend on which surface
-        // the copy was started from.
-        void nameClonedAgent({
-          client,
-          serverId: normalizedServerId,
-          sourceAgentId: agentId,
-          newAgentId: result.newAgentId,
-        });
-        navigateToWorkspace({
-          serverId: normalizedServerId,
-          workspaceId: result.newWorkspaceId ?? normalizedWorkspaceId,
-          target: { kind: "agent", agentId: result.newAgentId },
-        });
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : t("workspace.tabs.toasts.cloneFailed"),
-        );
-      }
-    },
-    [client, isConnected, normalizedServerId, normalizedWorkspaceId, supportsCloneAgent, t, toast],
   );
 
   const handleReloadAgent = useCallback(
@@ -4313,125 +3306,46 @@ function WorkspaceScreenContent({
       `${WORKSPACE_FLOATING_PANEL_PORTAL_HOST_PREFIX}:${normalizedServerId}:${normalizedWorkspaceId}`,
     [normalizedServerId, normalizedWorkspaceId],
   );
-  const headerMenuEntries = useWorkspaceHeaderMenuEntries({
-    activeTabDescriptor,
-    serverId: normalizedServerId,
-    workspaceId: normalizedWorkspaceId,
-    tabCount: tabs.length,
-    onCopyResumeCommand: handleCopyResumeCommand,
-    onCopyAgentId: handleCopyAgentId,
-    onCopyConversationMarkdown: handleCopyConversationMarkdown,
-    onCopyAgentAsNew: handleCopyAgentAsNew,
-    canCloneAgent: supportsCloneAgent,
-    onMoveAgentToWorkspace,
-    onCopyTerminalId: handleCopyTerminalId,
-    onCopyFilePath: handleCopyFilePath,
-    onReloadAgent: handleReloadAgent,
-    onRenameTab: handleRenameTab,
-    onCloseTab: handleCloseTabById,
-    onCloseTabsBefore: handleCloseTabsToLeft,
-    onCloseTabsAfter: handleCloseTabsToRight,
-    onCloseOtherTabs: handleCloseOtherTabs,
-  });
-
   const renderWorkspaceScreenHeader = useCallback(
     () =>
       showScreenHeader ? (
-        <>
-          <ScreenHeader
-            left={
-              <>
-                <SidebarMenuToggle />
-                <WorkspaceHeaderTitleBar
-                  isLoading={isWorkspaceHeaderLoading}
-                  title={workspaceHeaderTitle}
-                  subtitle={workspaceHeaderSubtitle}
-                  isSubtitleDistinct={isWorkspaceHeaderSubtitleDistinct}
-                  currentBranchName={currentBranchName}
-                  normalizedServerId={normalizedServerId}
-                  normalizedWorkspaceId={normalizedWorkspaceId}
-                  workspaceKey={`${normalizedServerId}:${normalizedWorkspaceId}`}
-                  workspaceTarget={workspaceTarget}
-                  workspaceDirectory={workspaceDirectory}
-                  workspaceScripts={workspaceScripts}
-                  liveTerminalIds={liveTerminalIds}
-                  onMarkAsRead={
-                    workspaceReadState.hasClearableAttention ? handleMarkWorkspaceAsRead : undefined
-                  }
-                  onMarkAsUnread={
-                    workspaceReadState.canMarkUnread ? handleMarkWorkspaceAsUnread : undefined
-                  }
-                  showWorkspaceSetup={showWorkspaceSetup}
-                  showCreateBrowserTab={showCreateBrowserTab}
-                  isMobile={isMobile}
-                  createTerminalDisabled={createTerminalDisabled}
-                  importAgentDisabled={!canOpenImportSheet}
-                  copyPathDisabled={!workspaceDirectory}
-                  onCreateDraftTab={handleCreateDraftTab}
-                  onCreateTerminal={handleCreateTerminal}
-                  onCreateTerminalWithProfile={handleCreateTerminalWithProfile}
-                  onCreateBrowser={handleCreateBrowserTab}
-                  onOpenImportSheet={openImportSheet}
-                  onCopyWorkspacePath={handleCopyWorkspacePath}
-                  onCopyBranchName={handleCopyBranchName}
-                  onOpenSetupTab={handleOpenSetupTab}
-                  onRename={workspaceDescriptor ? handleOpenRename : undefined}
-                  onTogglePin={handleTogglePin}
-                  isPinned={isWorkspacePinned}
-                  onArchive={workspaceDescriptor ? handleArchive : undefined}
-                  isArchiving={isArchiving}
-                  archiveLabel={archiveLabel}
-                  onScriptTerminalStarted={handleScriptTerminalStarted}
-                  onViewScriptTerminal={handleViewScriptTerminal}
-                  onOpenUrlInBrowserTab={handleOpenUrlInBrowserTab}
-                  activeTabDescriptor={activeTabDescriptor}
-                  headerMenuEntries={headerMenuEntries}
-                />
-              </>
-            }
-            right={headerRight}
-          />
-          <WorkspaceRenameModal
-            visible={isRenameOpen}
-            workspace={renameWorkspace}
-            onClose={handleCloseRename}
-            testID="workspace-rename-modal-header"
-          />
-        </>
+        <ScreenHeader
+          left={
+            <>
+              <SidebarMenuToggle />
+              <WorkspaceHeaderTitleBar
+                isLoading={isWorkspaceHeaderLoading}
+                title={workspaceHeaderTitle}
+                subtitle={workspaceHeaderSubtitle}
+                isSubtitleDistinct={isWorkspaceHeaderSubtitleDistinct}
+                currentBranchName={currentBranchName}
+                normalizedServerId={normalizedServerId}
+                showWorkspaceSetup={showWorkspaceSetup}
+                importAgentDisabled={!canOpenImportSheet}
+                copyPathDisabled={!workspaceDirectory}
+                onOpenImportSheet={openImportSheet}
+                onCopyWorkspacePath={handleCopyWorkspacePath}
+                onCopyBranchName={handleCopyBranchName}
+                onOpenSetupTab={handleOpenSetupTab}
+              />
+            </>
+          }
+          right={headerRight}
+        />
       ) : null,
     [
-      archiveLabel,
       canOpenImportSheet,
-      workspaceReadState,
-      handleMarkWorkspaceAsRead,
-      handleMarkWorkspaceAsUnread,
-      createTerminalDisabled,
       currentBranchName,
-      handleArchive,
-      handleTogglePin,
-      isWorkspacePinned,
       handleCopyBranchName,
       handleCopyWorkspacePath,
-      handleCreateBrowserTab,
-      handleCreateDraftTab,
-      handleCloseRename,
-      handleCreateTerminal,
-      handleCreateTerminalWithProfile,
-      handleOpenRename,
       handleOpenSetupTab,
       headerRight,
-      isArchiving,
-      isMobile,
-      isRenameOpen,
       isWorkspaceHeaderLoading,
       normalizedServerId,
       openImportSheet,
       showScreenHeader,
       showWorkspaceSetup,
-      workspaceDescriptor,
       workspaceDirectory,
-      workspaceTarget,
-      renameWorkspace,
       workspaceHeaderSubtitle,
       workspaceHeaderTitle,
       isWorkspaceHeaderSubtitleDistinct,
@@ -4548,8 +3462,6 @@ function WorkspaceScreenContent({
       workspaceDirectory,
       workspaceHeaderSubtitle,
       workspaceHeaderTitle,
-      activeTabDescriptor,
-      headerMenuEntries,
     ],
   );
   const desktopSplitContent = useMemo(() => {
@@ -4574,14 +3486,8 @@ function WorkspaceScreenContent({
         onCloseTab={handleCloseTabById}
         onCopyResumeCommand={handleCopyResumeCommand}
         onCopyAgentId={handleCopyAgentId}
-        onCopyConversationMarkdown={handleCopyConversationMarkdown}
-        onCopyAgentAsNew={handleCopyAgentAsNew}
-        canCloneAgent={supportsCloneAgent}
-        onMoveAgentToWorkspace={onMoveAgentToWorkspace}
         onCopyTerminalId={handleCopyTerminalId}
         onCopyFilePath={handleCopyFilePath}
-        onOpenFileInEditor={handleOpenFileTabInEditor}
-        onRevealFile={handleRevealFileTab}
         onReloadAgent={handleReloadAgent}
         onRenameTab={handleRenameTab}
         onCloseTabsToLeft={handleCloseTabsToLeftInPane}
@@ -4615,10 +3521,6 @@ function WorkspaceScreenContent({
     handleCloseTabById,
     handleCopyResumeCommand,
     handleCopyAgentId,
-    handleCopyConversationMarkdown,
-    handleCopyAgentAsNew,
-    supportsCloneAgent,
-    onMoveAgentToWorkspace,
     handleCopyTerminalId,
     handleCopyFilePath,
     handleReloadAgent,
@@ -4635,8 +3537,6 @@ function WorkspaceScreenContent({
     selectTabInPane,
     handleResizePaneSplit,
     handleReorderTabsInPane,
-    handleOpenFileTabInEditor,
-    handleRevealFileTab,
   ]);
   const desktopContent = desktopSplitContent ?? content;
   const rendersDesktopSplitContent = !isMobile && desktopSplitContent !== null;
@@ -4678,35 +3578,6 @@ function WorkspaceScreenContent({
     <View style={styles.centerColumn}>
       {rendersDesktopSplitContent ? null : renderWorkspaceScreenHeader()}
 
-      {isMobile ? (
-        <MobileWorkspaceTabSwitcher
-          tabs={tabs}
-          activeTabKey={activeTabKey}
-          activeTab={activeTabDescriptor}
-          tabSwitcherOptions={tabSwitcherOptions}
-          tabByKey={tabByKey}
-          normalizedServerId={normalizedServerId}
-          normalizedWorkspaceId={normalizedWorkspaceId}
-          onSelectSwitcherTab={handleSelectSwitcherTab}
-          onCopyResumeCommand={handleCopyResumeCommand}
-          onCopyAgentId={handleCopyAgentId}
-          onCopyConversationMarkdown={handleCopyConversationMarkdown}
-          onCopyAgentAsNew={handleCopyAgentAsNew}
-          canCloneAgent={supportsCloneAgent}
-          onMoveAgentToWorkspace={onMoveAgentToWorkspace}
-          onCopyTerminalId={handleCopyTerminalId}
-          onCopyFilePath={handleCopyFilePath}
-          onOpenFileInEditorCb={handleOpenFileTabInEditor}
-          onRevealFileCb={handleRevealFileTab}
-          onReloadAgent={handleReloadAgent}
-          onRenameTab={handleRenameTab}
-          onCloseTab={handleCloseTabById}
-          onCloseTabsAbove={handleCloseTabsToLeft}
-          onCloseTabsBelow={handleCloseTabsToRight}
-          onCloseOtherTabs={handleCloseOtherTabs}
-        />
-      ) : null}
-
       {shouldRenderDesktopPaneFallback ? (
         <NewTabLauncherProvider value={newTabLauncher}>
           <WorkspaceDesktopTabsRow
@@ -4720,14 +3591,8 @@ function WorkspaceScreenContent({
             onCloseTab={handleCloseTabById}
             onCopyResumeCommand={handleCopyResumeCommand}
             onCopyAgentId={handleCopyAgentId}
-            onCopyConversationMarkdown={handleCopyConversationMarkdown}
-            onCopyAgentAsNew={handleCopyAgentAsNew}
-            canCloneAgent={supportsCloneAgent}
-            onMoveAgentToWorkspace={onMoveAgentToWorkspace}
             onCopyTerminalId={handleCopyTerminalId}
             onCopyFilePath={handleCopyFilePath}
-            onOpenFileInEditor={handleOpenFileTabInEditor}
-            onRevealFile={handleRevealFileTab}
             onReloadAgent={handleReloadAgent}
             onRenameTab={handleRenameTab}
             onCloseTabsToLeft={handleCloseTabsToLeft}
@@ -4911,7 +3776,6 @@ function WorkspaceScreenContent({
           onSubmit={handleRenameModalSubmit}
           onClose={handleRenameModalClose}
         />
-        {transferWorkspaceModal}
       </View>
     </RenderProfile>
   );
@@ -5046,42 +3910,6 @@ const styles = StyleSheet.create((theme) => ({
     gap: theme.spacing[2],
   },
   newTabTooltipShortcut: {},
-  mobileTabsRow: {
-    backgroundColor: theme.colors.surface0,
-    borderBottomWidth: theme.borderWidth[1],
-    borderBottomColor: theme.colors.border,
-  },
-  switcherTrigger: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.spacing[2],
-    paddingHorizontal: theme.spacing[2] + theme.spacing[3],
-    paddingVertical: theme.spacing[2],
-  },
-  switcherTriggerPressed: {
-    backgroundColor: theme.colors.surface1,
-  },
-  switcherTriggerCount: {
-    color: theme.colors.foregroundMuted,
-    fontSize: theme.fontSize.sm,
-    flexShrink: 0,
-  },
-  switcherTriggerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.spacing[1],
-    flex: 1,
-    minWidth: 0,
-  },
-  switcherTriggerIcon: {
-    flexShrink: 0,
-  },
-  switcherTriggerText: {
-    minWidth: 0,
-    flex: 1,
-    color: theme.colors.foreground,
-    fontSize: theme.fontSize.base,
-  },
   headerMenuProfileIconWrapper: {
     width: 16,
     height: 16,

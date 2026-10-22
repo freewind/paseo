@@ -50,7 +50,6 @@ export const ru: TranslationResources = {
       clear: "Очистить",
       edit: "Изменить",
       delete: "Удалить",
-      save: "Сохранить",
     },
     placeholders: {
       search: "Поиск...",
@@ -2388,10 +2387,8 @@ export const ru: TranslationResources = {
     },
     plugins: pluginSettings.ru,
     metadataGeneration: {
-      titlePrompt: "Подсказка для названия",
       titlePromptHint:
         "Инструкции, которые Paseo использует при генерации названий рабочих пространств. Пусто = стиль по умолчанию; paseo.json имеет приоритет.",
-      titlePromptPlaceholder: "напр. [Модуль] краткое описание задачи",
       titlePromptSave: "Сохранить",
       titlePromptSaving: "Сохранение...",
       title: "Генерация метаданных",

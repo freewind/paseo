@@ -161,6 +161,8 @@ import { HighlightedText } from "@/components/ui/highlighted-text";
 import type { MatchRange } from "@getpaseo/protocol/search/text-match";
 import { PullRequestStateIcon } from "@/git/pull-request-state-icon";
 
+const noop = () => {};
+
 const workspaceKeyExtractor = (workspace: SidebarWorkspacePlacement) => workspace.workspaceKey;
 
 const projectViewKeyExtractor = (project: SidebarProjectEntry) => project.viewKey;
@@ -229,7 +231,7 @@ interface SidebarWorkspaceListProps {
   /** Whether a project filter is actually being applied — the resolved list, not the stored one. */
   hasActiveProjectFilter: boolean;
   /** Name-search highlight data per project/workspace/agent; projects empty when search is off. */
-  nameSearchMatches: SidebarNameFilterResult;
+  nameSearchMatches?: SidebarNameFilterResult;
   workspaceEntriesByKey: ReadonlyMap<string, SidebarWorkspaceEntry>;
   collapsedProjectKeys: ReadonlySet<string>;
   onToggleProjectCollapsed: (projectViewKey: string) => void;
@@ -1099,7 +1101,6 @@ function WorkspaceRowInner({
   isPinned,
   onTogglePin,
   reserveIdleStatusIndicatorSpace = true,
-  nameHighlightRanges,
 }: WorkspaceRowInnerProps) {
   const isCompact = useIsCompactFormFactor();
   const [isPressed, setIsPressed] = useState(false);
@@ -1202,7 +1203,6 @@ function WorkspaceRowInner({
                   shortcutNumber={shortcutNumber}
                   showShortcutBadge={showShortcutBadge}
                   reserveIdleStatusIndicatorSpace={reserveIdleStatusIndicatorSpace}
-                  nameHighlightRanges={nameHighlightRanges}
                 >
                   <WorkspaceRowRightGroup
                     workspace={workspace}
@@ -1628,7 +1628,7 @@ function ProjectBlock({
   supportsPinningByServerId: ReadonlyMap<string, boolean>;
   onToggleWorkspacePin: ToggleSidebarWorkspacePin;
   /** Name-search highlight data; used for the project name and its workspace rows. */
-  nameSearchMatches: SidebarNameFilterResult;
+  nameSearchMatches?: SidebarNameFilterResult;
 }) {
   const visibilityPolicy = useMemo(
     () => ({
@@ -1646,10 +1646,10 @@ function ProjectBlock({
     () =>
       nameSearchActive
         ? project.workspaces.filter((workspace) =>
-            nameSearchMatches.workspaces.has(workspace.workspaceKey),
+            nameSearchMatches?.workspaces.has(workspace.workspaceKey),
           )
         : project.workspaces,
-    [nameSearchActive, nameSearchMatches.workspaces, project.workspaces],
+    [nameSearchActive, nameSearchMatches?.workspaces, project.workspaces],
   );
   const {
     visibleItems: limitedWorkspaces,
@@ -1703,10 +1703,7 @@ function ProjectBlock({
           selectionEnabled={selectionEnabled}
           activeWorkspaceSelection={activeWorkspaceSelection}
           onWorkspacePress={onWorkspacePress}
-          nameHighlight={nameSearchMatches.workspaces.get(item.workspaceKey)}
-          drag={input?.drag}
-          isDragging={input?.isDragging}
-          dragHandleProps={input?.dragHandleProps}
+          nameHighlight={nameSearchMatches?.workspaces.get(item.workspaceKey)}
         />
       );
     },
@@ -1840,7 +1837,7 @@ function ProjectBlock({
         onWorkspacePress={onWorkspacePress}
         onWorktreeCreated={onWorktreeCreated}
         nameHighlightRanges={
-          nameSearchMatches.projects.find((kept) => kept.projectViewKey === project.viewKey)
+          nameSearchMatches?.projects.find((kept) => kept.projectViewKey === project.viewKey)
             ?.matchedRanges ?? null
         }
         drag={drag}
@@ -2243,10 +2240,10 @@ function ProjectModeList({
     () =>
       hasNameSearch
         ? pinnedChats.filter((workspace) =>
-            nameSearchMatches.workspaces.has(workspace.workspaceKey),
+            nameSearchMatches?.workspaces.has(workspace.workspaceKey),
           )
         : pinnedChats,
-    [hasNameSearch, nameSearchMatches.workspaces, pinnedChats],
+    [hasNameSearch, nameSearchMatches?.workspaces, pinnedChats],
   );
   const {
     visibleItems: limitedPinnedChats,
@@ -2256,7 +2253,7 @@ function ProjectModeList({
   } = useLimitedSidebarGroup(searchPinnedChats);
   const visiblePinnedChats = hasNameSearch ? searchPinnedChats : limitedPinnedChats;
   const canTogglePinnedChats = hasNameSearch ? false : limitedCanTogglePinnedChats;
-  const effectivePinnedCollapsed = hasNameSearch ? false : pinnedCollapsed;
+  const _effectivePinnedCollapsed = hasNameSearch ? false : pinnedCollapsed;
   const nativeScrollGestureProps = useMemo(
     () =>
       parentGestureRef
@@ -2413,8 +2410,6 @@ function ProjectModeList({
       onToggleWorkspacePin,
       onWorkspacePress,
       onToggleProjectCollapsed,
-      parentGestureRef,
-      dragGestureHostActive,
       projectIconByProjectViewKey,
       selectionEnabled,
       shortcutIndexByWorkspaceKey,
@@ -2457,7 +2452,7 @@ function ProjectModeList({
           selectionEnabled={selectionEnabled}
           activeWorkspaceSelection={activeWorkspaceSelection}
           onWorkspacePress={onWorkspacePress}
-          nameHighlight={nameSearchMatches.workspaces.get(workspace.workspaceKey)}
+          nameHighlight={nameSearchMatches?.workspaces.get(workspace.workspaceKey)}
           drag={drag}
           isDragging={isActive}
           dragHandleProps={dragHandleProps}

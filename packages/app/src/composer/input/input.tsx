@@ -2125,6 +2125,7 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
             {rightContent}
             {sendButton}
           </View>
+        </View>
       ),
       [
         mode.showAttachments,

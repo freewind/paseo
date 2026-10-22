@@ -50,7 +50,6 @@ export const fr: TranslationResources = {
       clear: "Effacer",
       edit: "Modifier",
       delete: "Supprimer",
-      save: "Enregistrer",
     },
     placeholders: {
       search: "Rechercher…",
@@ -414,9 +413,6 @@ export const fr: TranslationResources = {
       forkMissingWorkspace: "Cet agent n’est dans aucun espace de travail.",
       forkFailed: "Impossible de forker la conversation",
       regenerate: "Régénérer à partir d'ici",
-      forkMenu: "Dupliquer le message",
-      forkInNewTab: "Dupliquer dans un nouvel onglet",
-      forkInNewWorkspace: "Dupliquer dans un nouvel espace de travail",
       forkSessionGroup: "Fork de session complète",
       forkSessionInNewTab: "Session complète dans un nouvel onglet",
       forkSessionInNewWorkspace: "Session complète dans un nouvel espace de travail",
@@ -744,23 +740,14 @@ export const fr: TranslationResources = {
         closeRight: "Fermer les onglets à droite",
         copyConversationMarkdown: "Copier la conversation en Markdown",
         copyAgentAsNewConversation: "Copier comme nouvelle conversation",
-        copyTerminalId: "Copier l'identifiant du terminal",
-        copyFilePath: "Copier le chemin du fichier",
-        rename: "Renommer",
-        closeAbove: "Fermer les onglets ci-dessus",
-        closeBelow: "Fermer les onglets ci-dessous",
-        closeLeft: "Fermer les onglets à gauche",
-        closeRight: "Fermer les onglets à droite",
         closeOthers: "Fermer les autres onglets",
         moveToMain: "Déplacer vers le panneau principal",
         reloadAgent: "Recharger l’agent",
         moveToWorkspace: "Déplacer vers l'espace de travail",
         openInEditor: "Ouvrir dans l’éditeur",
         revealFile: "Afficher dans le gestionnaire de fichiers",
-        reloadAgent: "Recharger l'agent",
         reloadAgentTooltip:
           "Rechargez l’agent pour mettre à jour les skills, les MCP ou l’état de connexion.",
-        hideAgent: "Masquer cet agent",
         markAsUnread: "Marquer comme non lu",
         deleteAgent: "Supprimer la session",
         deleteAgentTooltip:
@@ -825,7 +812,6 @@ export const fr: TranslationResources = {
         reloadedAgent: "Agent rechargé",
         failedToReloadAgent: "Impossible de recharger l’agent",
         failedToCloseAgent: "Impossible de fermer l’agent",
-        failedToHideAgent: "Échec du masquage de l'agent",
       },
       confirmations: {
         unsavedTitle: "Modifications non enregistrées",
@@ -1464,8 +1450,6 @@ export const fr: TranslationResources = {
         pending: "En attente : {{count}}",
       },
       actions: {
-        collapsedCount: "🌿 {{count}} collapsed",
-        collapsedRestore: "🌿 Restore {{name}} to the sidebar",
         menu: "Actions de l’espace de travail",
         newWorkspace: "Nouvel espace de travail",
         showMore: "Afficher plus",
@@ -2425,10 +2409,8 @@ export const fr: TranslationResources = {
     },
     plugins: pluginSettings.fr,
     metadataGeneration: {
-      titlePrompt: "Invite de titre",
       titlePromptHint:
         "Instructions suivies par Paseo pour générer les titres des espaces de travail. Vide = style par défaut ; paseo.json garde la priorité.",
-      titlePromptPlaceholder: "ex. [Module] brève tâche",
       titlePromptSave: "Enregistrer",
       titlePromptSaving: "Enregistrement...",
       title: "Génération de métadonnées",
@@ -3213,8 +3195,6 @@ export const fr: TranslationResources = {
       metadata: {
         title: "Génération des métadonnées",
         info: "Instructions propres au projet, injectées dans les prompts IA que Paseo utilise pour générer les métadonnées : servez-vous-en pour imposer les conventions de votre équipe (nommage des branches, style de commit, format des PR).",
-        titlePrompt: "🌿 Titres des espaces de travail",
-        titlePromptPlaceholder: "🌿 Décrivez le style de nommage des titres d’espaces de travail",
         branchName: "Noms de branches",
         branchNamePlaceholder:
           "Préfixez les branches par feat/ ou fix/, et par mb/ pour les branches personnelles",

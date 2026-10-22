@@ -50,7 +50,6 @@ export const ptBR: TranslationResources = {
       clear: "Limpar",
       edit: "Editar",
       delete: "Excluir",
-      save: "Salvar",
     },
     placeholders: {
       search: "Buscar...",
@@ -2390,10 +2389,8 @@ export const ptBR: TranslationResources = {
     },
     plugins: pluginSettings["pt-BR"],
     metadataGeneration: {
-      titlePrompt: "Prompt do título",
       titlePromptHint:
         "Instruções que o Paseo segue ao gerar títulos de workspaces. Vazio usa o estilo padrão; o paseo.json continua com prioridade.",
-      titlePromptPlaceholder: "ex.: [Módulo] breve resumo da tarefa",
       titlePromptSave: "Salvar",
       titlePromptSaving: "Salvando...",
       title: "Geração de metadados",

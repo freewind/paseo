@@ -1,12 +1,10 @@
-import { useCallback, memo, type ReactElement } from "react";
-import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
-import { List, ClipboardList, MessageSquareText } from "lucide-react-native";
+import type { AgentAddress } from "@getpaseo/protocol/addresses";
+import { memo, useCallback, type ReactElement } from "react";
 import { WorkspaceDiffStatPill } from "@/composer/diff-stat-pill";
 import { useWorkspaceHasDiffStat } from "@/composer/workspace-diff-stat";
 import { AgentTaskList } from "@/composer/task-list";
-import { ComposerTrackBar, ComposerTrackTools } from "@/composer/tracks";
-import { supportsDesktopPaneSplits, useIsCompactFormFactor } from "@/constants/layout";
+import { ComposerTrackBar } from "@/composer/tracks";
+import { useIsCompactFormFactor } from "@/constants/layout";
 import { usePaneContext } from "@/panels/pane-context";
 import { useSettings } from "@/hooks/use-settings";
 import { PluginComposerPills } from "@/plugins";
@@ -41,12 +39,6 @@ export const AgentTracks = memo(function AgentTracks({
   archiveFinishedStatus,
   onArchiveFinished,
   hasPluginComposerPills,
-  chatOutlineAvailable,
-  onOpenChatOutline,
-  hasQuickRepliesEntry,
-  onOpenQuickReplies,
-  hasMemosEntry,
-  onOpenAgentMemos,
 }: {
   serverId: string;
   workspaceId: string;
@@ -56,17 +48,8 @@ export const AgentTracks = memo(function AgentTracks({
   archiveFinishedStatus: ArchiveFinishedStatus;
   onArchiveFinished: () => void;
   hasPluginComposerPills: boolean;
-  chatOutlineAvailable: boolean;
-  onOpenChatOutline: () => void;
-  /** True when the composer cannot show its desktop gutter, so this row carries the entry. */
-  hasQuickRepliesEntry: boolean;
-  onOpenQuickReplies: () => void;
-  /** True when the composer cannot show its memo gutter, so this row carries the entry. */
-  hasMemosEntry: boolean;
-  onOpenAgentMemos: () => void;
 }): ReactElement | null {
-  const { t } = useTranslation();
-  const { tabId, openTab } = usePaneContext();
+  const { tabId } = usePaneContext();
   const hasWorkspaceDiffStat = useWorkspaceHasDiffStat(serverId, workspaceId);
   const isCompact = useIsCompactFormFactor();
   const openInSidePane = useSettings((settings) => settings.openInSidePane);
@@ -124,14 +107,11 @@ export const AgentTracks = memo(function AgentTracks({
 
   if (
     !hasWorkspaceDiffStat &&
-    !chatOutlineAvailable &&
     !hasAgentTracks({
       subagentRows,
       tasks,
       archiveFinishedStatus,
       hasPluginComposerPills,
-      hasQuickRepliesEntry,
-      hasMemosEntry,
     })
   ) {
     return null;
@@ -162,40 +142,6 @@ export const AgentTracks = memo(function AgentTracks({
         workspaceId={workspaceId}
         onPress={handleOpenChanges}
       />
-      <ComposerTrackTools>
-        {chatOutlineAvailable ? (
-          <Button
-            variant="ghost"
-            size="xs"
-            leftIcon={List}
-            accessibilityLabel={t("settings.appearance.chatOutline.title")}
-            onPress={onOpenChatOutline}
-            testID="composer-chat-outline-button"
-          >
-            {t("settings.appearance.chatOutline.title")}
-          </Button>
-        ) : null}
-        {hasQuickRepliesEntry ? (
-          <Button
-            variant="ghost"
-            size="xs"
-            leftIcon={MessageSquareText}
-            accessibilityLabel={t("composer.quickReplies.title")}
-            onPress={onOpenQuickReplies}
-            testID="composer-quick-replies-button"
-          />
-        ) : null}
-        {hasMemosEntry ? (
-          <Button
-            variant="ghost"
-            size="xs"
-            leftIcon={ClipboardList}
-            accessibilityLabel={t("agentMemos.toggle")}
-            onPress={onOpenAgentMemos}
-            testID="composer-agent-memos-button"
-          />
-        ) : null}
-      </ComposerTrackTools>
     </ComposerTrackBar>
   );
 });
@@ -205,22 +151,16 @@ export function hasAgentTracks({
   tasks,
   archiveFinishedStatus,
   hasPluginComposerPills = false,
-  hasQuickRepliesEntry = false,
-  hasMemosEntry = false,
 }: {
   subagentRows: readonly SubagentRow[];
   tasks: readonly TodoEntry[] | undefined;
   archiveFinishedStatus: ArchiveFinishedStatus;
   hasPluginComposerPills?: boolean;
-  hasQuickRepliesEntry?: boolean;
-  hasMemosEntry?: boolean;
 }): boolean {
   return (
     subagentRows.length > 0 ||
     Boolean(tasks?.length) ||
     archiveFinishedStatus.kind !== "idle" ||
-    hasPluginComposerPills ||
-    hasQuickRepliesEntry ||
-    hasMemosEntry
+    hasPluginComposerPills
   );
 }

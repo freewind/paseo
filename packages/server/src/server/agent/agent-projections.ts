@@ -207,6 +207,10 @@ function buildStoredPersistenceHandle(
   return toAgentPersistenceHandle(validProviders, record.persistence);
 }
 
+function restoreStateFields(record: StoredAgentRecord): { modelSelectionRequired?: true } {
+  return record.modelSelectionRequired === true ? { modelSelectionRequired: true } : {};
+}
+
 export function buildStoredAgentPayload(
   record: StoredAgentRecord,
   validProviders: Iterable<AgentProvider>,
@@ -262,7 +266,7 @@ export function buildStoredAgentPayload(
     ...(record.internal ? { internal: true } : {}),
     labels: normalizeLabels(record.labels),
     ...(typeof record.lastError === "string" ? { lastError: record.lastError } : {}),
-    ...(record.modelSelectionRequired ? { modelSelectionRequired: true } : {}),
+    ...restoreStateFields(record),
     ...(providerAvailable ? {} : { providerUnavailable: true }),
   };
 }

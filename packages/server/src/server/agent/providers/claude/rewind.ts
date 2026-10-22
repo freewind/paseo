@@ -10,18 +10,21 @@ import {
 export interface ClaudeRewindSdk {
   forkSession(
     sessionId: string,
-    options: { upToMessageId?: string; transcriptPath: string },
+    options: { upToMessageId?: string; transcriptPath?: string },
   ): Promise<{ sessionId: string }>;
 }
 
 // On its own, the SDK looks for the session under the daemon's CLAUDE_CONFIG_DIR, while a
 // provider can point Claude Code at another one. Forking through a store rooted at the
 // transcript's folder reads the session where Claude Code wrote it and writes the fork beside it.
+// Without a transcript path (whole-session clone) the SDK's own store is used.
 export const realClaudeRewindSdk: ClaudeRewindSdk = {
   forkSession: (sessionId, options) =>
     claudeForkSession(sessionId, {
       upToMessageId: options.upToMessageId,
-      sessionStore: projectFolderSessionStore(path.dirname(options.transcriptPath)),
+      ...(options.transcriptPath
+        ? { sessionStore: projectFolderSessionStore(path.dirname(options.transcriptPath)) }
+        : {}),
     }),
 };
 
