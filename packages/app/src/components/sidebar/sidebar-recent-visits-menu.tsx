@@ -197,7 +197,10 @@ function RecentVisitMenuItem({
     return session?.agents.get(visit.agentId) ?? session?.agentDetails.get(visit.agentId) ?? null;
   });
   const workspaceLabel = workspace ? workspace.title?.trim() || workspace.name : visit.workspaceId;
-  const description = hostLabel ? `${hostLabel} · ${workspaceLabel}` : workspaceLabel;
+  // The model is what tells two sessions of the same workspace apart at a glance.
+  const description = [hostLabel, workspaceLabel, agent?.model?.trim() ?? ""]
+    .filter((part): part is string => typeof part === "string" && part.length > 0)
+    .join(" · ");
   // An archived session cannot be entered. Missing metadata is not archived
   // metadata: an offline host must still resolve to a usable row.
   const disabled = agent?.archivedAt != null;
