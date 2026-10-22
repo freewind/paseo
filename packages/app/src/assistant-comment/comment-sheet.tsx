@@ -17,6 +17,8 @@ import { isImeComposingKeyboardEvent } from "@/utils/keyboard-ime";
 type CommentSheetKeyPressEvent = NativeSyntheticEvent<
   TextInputKeyPressEventData & {
     shiftKey?: boolean;
+    metaKey?: boolean;
+    ctrlKey?: boolean;
     isComposing?: boolean;
     keyCode?: number;
   }
@@ -46,19 +48,27 @@ interface AssistantAnnotationSheetProps {
 const SNAP_POINTS = ["55%", "85%"];
 
 /**
- * Desktop only: Enter submits, Shift+Enter keeps the newline. Mobile soft keyboards have no Enter
- * key, so they keep the submit button.
+ * Desktop only: Enter attaches (or saves the memo) and Shift+Enter keeps the newline, matching the
+ * footer buttons. Cmd/Ctrl+Enter sends the comment straight away — the send button's own action,
+ * which only the comment variant has; without it the modifier changes nothing.
+ *
+ * Mobile soft keyboards have no Enter key, so they keep the buttons.
  */
-function useEnterSubmit(onSubmit: () => void) {
+function useEnterSubmit(onSubmit: () => void, onSendNow?: () => void) {
   return useCallback(
     (event: CommentSheetKeyPressEvent) => {
       if (isImeComposingKeyboardEvent(event.nativeEvent)) return;
       if (event.nativeEvent.key !== "Enter") return;
+      if ((event.nativeEvent.metaKey || event.nativeEvent.ctrlKey) && onSendNow) {
+        event.preventDefault();
+        onSendNow();
+        return;
+      }
       if (event.nativeEvent.shiftKey) return;
       event.preventDefault();
       onSubmit();
     },
-    [onSubmit],
+    [onSendNow, onSubmit],
   );
 }
 
@@ -102,7 +112,7 @@ export function AssistantAnnotationSheet({
     onSendNow?.(trimmed);
   }, [onSendNow, trimmed]);
 
-  const handleKeyPress = useEnterSubmit(handleSubmit);
+  const handleKeyPress = useEnterSubmit(handleSubmit, isMemo ? undefined : handleSendNow);
 
   const { t } = useTranslation();
   const header = useMemo<SheetHeader>(

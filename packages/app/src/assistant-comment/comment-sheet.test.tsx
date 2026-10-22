@@ -121,6 +121,26 @@ describe("AssistantAnnotationSheet comment keyboard", () => {
   it("ignores non-Enter keys", () => {
     expect(pressKey({ key: "a" })).not.toHaveBeenCalled();
   });
+
+  it("sends the comment straight away on Cmd+Enter", () => {
+    const { input, onSubmit, onSendNow } = renderCommentSheet();
+    fireEvent.change(input, { target: { value: "looks right" } });
+
+    fireEvent.keyDown(input, { key: "Enter", metaKey: true });
+
+    expect(onSendNow).toHaveBeenCalledExactlyOnceWith("looks right");
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("sends the comment straight away on Ctrl+Enter", () => {
+    const { input, onSubmit, onSendNow } = renderCommentSheet();
+    fireEvent.change(input, { target: { value: "looks right" } });
+
+    fireEvent.keyDown(input, { key: "Enter", ctrlKey: true });
+
+    expect(onSendNow).toHaveBeenCalledExactlyOnceWith("looks right");
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
 });
 
 describe("AssistantAnnotationSheet memo", () => {
@@ -153,6 +173,15 @@ describe("AssistantAnnotationSheet memo", () => {
     fireEvent.change(input, { target: { value: "keep this" } });
 
     fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onSubmit).toHaveBeenCalledExactlyOnceWith("keep this");
+  });
+
+  it("treats Cmd+Enter as plain Enter, since a memo has nowhere to send to", () => {
+    const { input, onSubmit } = renderMemoSheet();
+    fireEvent.change(input, { target: { value: "keep this" } });
+
+    fireEvent.keyDown(input, { key: "Enter", metaKey: true });
 
     expect(onSubmit).toHaveBeenCalledExactlyOnceWith("keep this");
   });
