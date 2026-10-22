@@ -26,6 +26,7 @@ import {
   Maximize,
   Minimize,
   Plus,
+  Trash2,
   X,
 } from "lucide-react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
@@ -131,6 +132,7 @@ const ThemedCircle = withUnistyles(Circle);
 const ThemedCopyX = withUnistyles(CopyX);
 const ThemedPencil = withUnistyles(Pencil);
 const ThemedFolderInput = withUnistyles(FolderInput);
+const ThemedTrash2 = withUnistyles(Trash2);
 const ThemedPlus = withUnistyles(Plus);
 const ThemedColumns2 = withUnistyles(Columns2);
 const ThemedRows2 = withUnistyles(Rows2);
@@ -438,6 +440,8 @@ function TabContextMenuItem({
         return <ThemedPencil size={16} uniProps={mutedColorMapping} />;
       case "folder-input":
         return <ThemedFolderInput size={16} uniProps={mutedColorMapping} />;
+      case "trash-2":
+        return <ThemedTrash2 size={16} uniProps={mutedColorMapping} />;
       case "x":
         return <ThemedX size={16} uniProps={mutedColorMapping} />;
       default:
@@ -1143,6 +1147,8 @@ function ResolvedWorkspaceDesktopTabsRow({
       reloadAgentTooltip: t("workspace.tabs.menu.reloadAgentTooltip"),
       hideAgent: t("workspace.tabs.menu.hideAgent"),
       markAsUnread: t("workspace.tabs.menu.markAsUnread"),
+      deleteAgent: t("workspace.tabs.menu.deleteAgent"),
+      deleteAgentTooltip: t("workspace.tabs.menu.deleteAgentTooltip"),
       close: t("workspace.tabs.menu.close"),
     }),
     [t],

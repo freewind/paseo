@@ -122,6 +122,7 @@ export const SidebarWorkspaceAgentList = memo(function SidebarWorkspaceAgentList
         onCloseOtherTabs: actions.onCloseOtherTabs,
         onMarkAsUnread: actions.onMarkAsUnread,
         canMarkAsUnread: tab.target.kind === "agent" && actions.canMarkAsUnread(tab.target.agentId),
+        onDeleteAgent: actions.onDeleteAgent,
       }),
     [actions, descriptors.length],
   );

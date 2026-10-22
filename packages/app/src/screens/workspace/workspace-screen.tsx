@@ -646,6 +646,8 @@ function MobileWorkspaceTabOption({
       reloadAgentTooltip: t("workspace.tabs.menu.reloadAgentTooltip"),
       hideAgent: t("workspace.tabs.menu.hideAgent"),
       markAsUnread: t("workspace.tabs.menu.markAsUnread"),
+      deleteAgent: t("workspace.tabs.menu.deleteAgent"),
+      deleteAgentTooltip: t("workspace.tabs.menu.deleteAgentTooltip"),
       close: t("workspace.tabs.menu.close"),
     }),
     [t],

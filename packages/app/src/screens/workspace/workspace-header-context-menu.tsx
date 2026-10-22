@@ -9,6 +9,7 @@ import {
   FolderInput,
   Pencil,
   RotateCw,
+  Trash2,
   X,
   type LucideIcon,
 } from "lucide-react-native";
@@ -34,6 +35,7 @@ const ThemedEyeOff = withUnistyles(EyeOff, mutedColorMapping);
 const ThemedCircle = withUnistyles(Circle, mutedColorMapping);
 const ThemedPencil = withUnistyles(Pencil, mutedColorMapping);
 const ThemedFolderInput = withUnistyles(FolderInput, mutedColorMapping);
+const ThemedTrash2 = withUnistyles(Trash2, mutedColorMapping);
 const ThemedX = withUnistyles(X, mutedColorMapping);
 
 type EntryIcon = Extract<WorkspaceTabMenuEntry, { kind: "item" }>["icon"] & NonNullable<string>;
@@ -48,6 +50,7 @@ const ENTRY_ICONS: Partial<Record<EntryIcon, LucideIcon>> = {
   circle: ThemedCircle,
   pencil: ThemedPencil,
   "folder-input": ThemedFolderInput,
+  "trash-2": ThemedTrash2,
   x: ThemedX,
 };
 
