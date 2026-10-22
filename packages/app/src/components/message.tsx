@@ -1033,6 +1033,12 @@ const expandableBadgeStylesheet = StyleSheet.create((theme) => ({
     alignItems: "center",
     overflow: "hidden",
   },
+  pressTarget: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    minWidth: 0,
+  },
   iconBadge: {
     width: 22,
     height: 22,
@@ -1765,7 +1771,6 @@ interface ExpandableBadgeWebShimmerOverlayProps {
   secondaryLabelMaxLines?: number;
   shimmerLabelTextStyle: StyleProp<TextStyle>;
   shimmerSecondaryTextStyle: StyleProp<TextStyle>;
-  showOpenFileButton: boolean;
   multiline: boolean;
 }
 
@@ -1775,7 +1780,6 @@ function ExpandableBadgeWebShimmerOverlay({
   secondaryLabelMaxLines,
   shimmerLabelTextStyle,
   shimmerSecondaryTextStyle,
-  showOpenFileButton,
   multiline,
 }: ExpandableBadgeWebShimmerOverlayProps) {
   if (secondaryLabelMaxLines !== undefined) {
@@ -1801,14 +1805,7 @@ function ExpandableBadgeWebShimmerOverlay({
           {secondaryLabel}
         </Text>
       ) : null}
-      {showOpenFileButton ? (
-        <View style={expandableBadgeStylesheet.openFileButton}>
-          <View style={expandableBadgeStylesheet.openFileButtonPlaceholderIcon} />
-        </View>
-      ) : null}
-      {!secondaryLabel && !showOpenFileButton ? (
-        <View style={expandableBadgeStylesheet.spacer} />
-      ) : null}
+      {!secondaryLabel ? <View style={expandableBadgeStylesheet.spacer} /> : null}
     </View>
   );
 }
@@ -1837,11 +1834,6 @@ interface ExpandableBadgeLabelRowProps {
   onLabelRowLayout: (event: LayoutChangeEvent) => void;
   onLabelLayout: (event: LayoutChangeEvent) => void;
   onSecondaryLayout: (event: LayoutChangeEvent) => void;
-  showOpenFileButton: boolean;
-  isOpenFileHovered: boolean;
-  onOpenFilePress: (event: GestureResponderEvent) => void;
-  onOpenFileHoverIn: () => void;
-  onOpenFileHoverOut: () => void;
   multiline: boolean;
 }
 
@@ -1865,14 +1857,8 @@ function ExpandableBadgeLabelRow({
   onLabelRowLayout,
   onLabelLayout,
   onSecondaryLayout,
-  showOpenFileButton,
-  isOpenFileHovered,
-  onOpenFilePress,
-  onOpenFileHoverIn,
-  onOpenFileHoverOut,
   multiline,
 }: ExpandableBadgeLabelRowProps) {
-  const { t } = useTranslation();
   if (secondaryLabelMaxLines !== undefined) {
     return (
       <View
@@ -1887,23 +1873,6 @@ function ExpandableBadgeLabelRow({
           onLayout={shouldMeasureWebShimmer ? onLabelLayout : undefined}
           maxLines={secondaryLabelMaxLines}
         />
-        {showOpenFileButton ? (
-          <Pressable
-            onPress={onOpenFilePress}
-            onHoverIn={onOpenFileHoverIn}
-            onHoverOut={onOpenFileHoverOut}
-            accessibilityRole="button"
-            accessibilityLabel={t("message.actions.openFile")}
-            testID="tool-call-open-file"
-            style={expandableBadgeStylesheet.openFileButton}
-            hitSlop={6}
-          >
-            <ThemedFileSymlinkIcon
-              size={14}
-              uniProps={isOpenFileHovered ? foregroundColorMapping : foregroundMutedColorMapping}
-            />
-          </Pressable>
-        ) : null}
         {isWebShimmer ? (
           <ExpandableBadgeWebShimmerOverlay
             label={label}
@@ -1911,7 +1880,6 @@ function ExpandableBadgeLabelRow({
             secondaryLabelMaxLines={secondaryLabelMaxLines}
             shimmerLabelTextStyle={shimmerLabelTextStyle}
             shimmerSecondaryTextStyle={shimmerSecondaryTextStyle}
-            showOpenFileButton={showOpenFileButton}
             multiline={multiline}
           />
         ) : null}
@@ -1950,30 +1918,12 @@ function ExpandableBadgeLabelRow({
         onSecondaryLayout={onSecondaryLayout}
         multiline={multiline}
       />
-      {showOpenFileButton ? (
-        <Pressable
-          onPress={onOpenFilePress}
-          onHoverIn={onOpenFileHoverIn}
-          onHoverOut={onOpenFileHoverOut}
-          accessibilityRole="button"
-          accessibilityLabel={t("message.actions.openFile")}
-          testID="tool-call-open-file"
-          style={expandableBadgeStylesheet.openFileButton}
-          hitSlop={6}
-        >
-          <ThemedFileSymlinkIcon
-            size={14}
-            uniProps={isOpenFileHovered ? foregroundColorMapping : foregroundMutedColorMapping}
-          />
-        </Pressable>
-      ) : null}
       {isWebShimmer ? (
         <ExpandableBadgeWebShimmerOverlay
           label={label}
           secondaryLabel={secondaryLabel}
           shimmerLabelTextStyle={shimmerLabelTextStyle}
           shimmerSecondaryTextStyle={shimmerSecondaryTextStyle}
-          showOpenFileButton={showOpenFileButton}
           multiline={multiline}
         />
       ) : null}
@@ -2511,13 +2461,13 @@ export const ExpandableBadge = memo(function ExpandableBadge({
       onPointerEnter={isWeb ? handleHoverIn : undefined}
       onPointerLeave={isWeb ? handleHoverOut : undefined}
     >
-      <Pressable
-        {...pressHandlers}
-        disabled={!isInteractive}
-        accessibilityState={accessibilityState}
-        style={pressableStyle}
-      >
-        <View style={expandableBadgeStylesheet.headerRow}>
+      <View style={expandableBadgeStylesheet.headerRow}>
+        <Pressable
+          {...pressHandlers}
+          disabled={!isInteractive}
+          accessibilityState={accessibilityState}
+          style={[pressableStyle, expandableBadgeStylesheet.pressTarget]}
+        >
           <View style={expandableBadgeStylesheet.iconBadge}>{iconSlotNode}</View>
           <ExpandableBadgeLabelRow
             label={label}
@@ -2539,18 +2489,22 @@ export const ExpandableBadge = memo(function ExpandableBadge({
             onLabelRowLayout={handleLabelRowLayout}
             onLabelLayout={handleLabelLayout}
             onSecondaryLayout={handleSecondaryLayout}
-            showOpenFileButton={Boolean(onOpenFile && isHovered)}
-            isOpenFileHovered={isOpenFileHovered}
-            onOpenFilePress={handleOpenFilePress}
-            onOpenFileHoverIn={handleOpenFileHoverIn}
-            onOpenFileHoverOut={handleOpenFileHoverOut}
             multiline={settings.workspaceTitleMultiline}
           />
-          {isExpanded && trailingAction ? (
-            <View style={expandableBadgeStylesheet.trailingAction}>{trailingAction}</View>
-          ) : null}
-        </View>
-      </Pressable>
+        </Pressable>
+        {/* Web renders role="button" as a real <button>, and a button inside a button
+            is invalid HTML: the row's actions sit beside the press target, not in it. */}
+        <ExpandableBadgeOpenFileButton
+          visible={Boolean(onOpenFile && isHovered)}
+          isHovered={isOpenFileHovered}
+          onPress={handleOpenFilePress}
+          onHoverIn={handleOpenFileHoverIn}
+          onHoverOut={handleOpenFileHoverOut}
+        />
+        {isExpanded && trailingAction ? (
+          <View style={expandableBadgeStylesheet.trailingAction}>{trailingAction}</View>
+        ) : null}
+      </View>
       {detailContent ? (
         <Pressable
           ref={detailWrapperRef}
@@ -2854,4 +2808,44 @@ function areToolCallPropsEqual(previous: ToolCallProps, next: ToolCallProps) {
   if (previous.forceInline !== next.forceInline) return false;
   if (previous.maxDetailHeight !== next.maxDetailHeight) return false;
   return true;
+}
+
+/**
+ * The badge's "open file" action. It sits beside the press target, never inside it:
+ * web renders role="button" as a real <button>, and nested buttons are invalid HTML.
+ */
+function ExpandableBadgeOpenFileButton({
+  visible,
+  isHovered,
+  onPress,
+  onHoverIn,
+  onHoverOut,
+}: {
+  visible: boolean;
+  isHovered: boolean;
+  onPress: (event: GestureResponderEvent) => void;
+  onHoverIn: () => void;
+  onHoverOut: () => void;
+}): ReactElement | null {
+  const { t } = useTranslation();
+  if (!visible) {
+    return null;
+  }
+  return (
+    <Pressable
+      onPress={onPress}
+      onHoverIn={onHoverIn}
+      onHoverOut={onHoverOut}
+      accessibilityRole="button"
+      accessibilityLabel={t("message.actions.openFile")}
+      testID="tool-call-open-file"
+      style={expandableBadgeStylesheet.openFileButton}
+      hitSlop={6}
+    >
+      <ThemedFileSymlinkIcon
+        size={14}
+        uniProps={isHovered ? foregroundColorMapping : foregroundMutedColorMapping}
+      />
+    </Pressable>
+  );
 }
