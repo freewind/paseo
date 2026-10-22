@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-22 16:34
+最近一次保存：2026-10-22 16:39
 
 ---
 
@@ -168,3 +168,16 @@ Notes：
 Notes：
 
 - 2026-10-22 16:34：根因是 selector 不纯。workspace 尚无持久化 layout 时，下一层 `getWorkspaceLayout` 每次调用都会新建默认 layout，而默认 layout 的空白 tab 用随机 id（new-tab.ts 里 generateMessageId）。bridge 的 selector 把它算成 `activeTabKey`，每次结果都不同；zustand v5 把 selector 放进 useSyncExternalStore 的 getSnapshot，React 反复校验快照后不断重渲染直到抛出上限。修复：readActiveTab 在 layoutByWorkspace 缺失时直接返回 null；sidebar 的 useCurrentAgentId 同型位点一并加 guard。两个测试文件补上占位 layout，并新增 readActiveTab 在缺 layout 时稳定的用例。bridge 测试 13 项、sidebar 测试 7 项通过，lint 与 typecheck 通过。界面未复验。
+
+---
+
+### 修复切回会话后备忘录列表变空
+
+- 状态：已完成
+- 最近保存：2026-10-22 16:39
+
+写完备忘录后切到 settings 再回来，列表是空的；再加一条备忘录，旧的又全部出现。
+
+Notes：
+
+- 2026-10-22 16:39：数据一直都在，是本地缓存被误清。当前 daemon 是 Paseo.app 内置版本，不含今天新增的「打开会话时回填备忘录」，fetch_agent_response 因此不带 memos；而 daemon-client 把它兜底成 `payload.memos ?? []`，agent-panel 又无条件 setAgentMemos，空数组在 store 里走 delete 分支，缓存被清。add 的响应一直带全量列表，所以再加一条又把旧的全写回来。修复：FetchAgentResult.memos 改可选、去掉 ?? [] 兜底；agent-panel 只在字段存在时写回。client 新增两条用例锁定「缺字段为 undefined」与「显式空数组仍为 []」。测试 2 项通过，session-store 备忘录测试 3 项通过，lint 与 typecheck 通过。界面未复验。

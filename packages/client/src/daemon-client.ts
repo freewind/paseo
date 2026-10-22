@@ -970,8 +970,12 @@ type WorkspaceSetupStatusPayload = WorkspaceSetupStatusResponseMessage["payload"
 export interface FetchAgentResult {
   agent: AgentSnapshotPayload;
   project: ProjectPlacementPayload | null;
-  /** Stored memos for the agent; empty when the daemon predates memos on fetch. */
-  memos: AgentMemo[];
+  /**
+   * Stored memos for the agent. Absent when the daemon predates memos on fetch, and
+   * absent means "unchanged": a caller must not read it as an empty list and clear
+   * what it already cached.
+   */
+  memos?: AgentMemo[];
 }
 
 export interface WaitForFinishResult {
@@ -3144,7 +3148,9 @@ export class DaemonClient {
     return {
       agent: payload.agent,
       project: payload.project ?? null,
-      memos: payload.memos ?? [],
+      // COMPAT(agentMemosOnFetch): `memos` is optional for daemons that predate it. Keep it
+      // absent instead of defaulting to `[]` so callers can tell "not sent" from "empty".
+      ...(payload.memos ? { memos: payload.memos } : {}),
     };
   }
 

@@ -1640,6 +1640,130 @@ test("preserves legacy fetchAgent id overload", async () => {
   await expect(responsePromise).rejects.toThrow("legacy fetch sentinel");
 });
 
+test("keeps memos absent when a legacy daemon omits them on fetch", async () => {
+  const logger = createMockLogger();
+  const mock = createMockTransport();
+
+  const client = new DaemonClient({
+    url: "ws://test",
+    clientId: "clsk_unit_test",
+    logger,
+    reconnect: { enabled: false },
+    transportFactory: () => mock.transport,
+  });
+  clients.push(client);
+
+  const connectPromise = client.connect();
+  mock.triggerOpen();
+  await connectPromise;
+
+  const responsePromise = client.fetchAgent({
+    agentId: "agent-1",
+    requestId: "req-agent-memos-absent",
+  });
+
+  mock.triggerMessage(
+    wrapSessionMessage({
+      type: "fetch_agent_response",
+      payload: {
+        requestId: "req-agent-memos-absent",
+        agent: {
+          id: "agent-1",
+          provider: "custom-codex",
+          cwd: "/tmp/repo",
+          model: null,
+          createdAt: "2026-04-30T00:00:00.000Z",
+          updatedAt: "2026-04-30T00:00:00.000Z",
+          lastUserMessageAt: null,
+          status: "idle",
+          capabilities: {
+            supportsStreaming: false,
+            supportsSessionPersistence: false,
+            supportsDynamicModes: false,
+            supportsMcpServers: false,
+            supportsReasoningStream: false,
+            supportsToolInvocations: false,
+          },
+          currentModeId: null,
+          availableModes: [],
+          pendingPermissions: [],
+          persistence: null,
+          title: null,
+        },
+        project: null,
+        error: null,
+      },
+    }),
+  );
+
+  const result = await responsePromise;
+  // `undefined` is what tells the app "unchanged"; an empty array would clear the
+  // cached memos every time a session reopens against an older daemon.
+  expect(result?.memos).toBeUndefined();
+});
+
+test("keeps an explicit empty memo list from a daemon that sends it", async () => {
+  const logger = createMockLogger();
+  const mock = createMockTransport();
+
+  const client = new DaemonClient({
+    url: "ws://test",
+    clientId: "clsk_unit_test",
+    logger,
+    reconnect: { enabled: false },
+    transportFactory: () => mock.transport,
+  });
+  clients.push(client);
+
+  const connectPromise = client.connect();
+  mock.triggerOpen();
+  await connectPromise;
+
+  const responsePromise = client.fetchAgent({
+    agentId: "agent-1",
+    requestId: "req-agent-memos-empty",
+  });
+
+  mock.triggerMessage(
+    wrapSessionMessage({
+      type: "fetch_agent_response",
+      payload: {
+        requestId: "req-agent-memos-empty",
+        agent: {
+          id: "agent-1",
+          provider: "custom-codex",
+          cwd: "/tmp/repo",
+          model: null,
+          createdAt: "2026-04-30T00:00:00.000Z",
+          updatedAt: "2026-04-30T00:00:00.000Z",
+          lastUserMessageAt: null,
+          status: "idle",
+          capabilities: {
+            supportsStreaming: false,
+            supportsSessionPersistence: false,
+            supportsDynamicModes: false,
+            supportsMcpServers: false,
+            supportsReasoningStream: false,
+            supportsToolInvocations: false,
+          },
+          currentModeId: null,
+          availableModes: [],
+          pendingPermissions: [],
+          persistence: null,
+          title: null,
+        },
+        project: null,
+        memos: [],
+        error: null,
+      },
+    }),
+  );
+
+  const result = await responsePromise;
+  // A daemon that does send the field is authoritative, even when the list is empty.
+  expect(result?.memos).toEqual([]);
+});
+
 test("honors explicit fetchAgentTimeline timeout below the session RPC default", async () => {
   useHeartbeatClock();
   const logger = createMockLogger();

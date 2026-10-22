@@ -324,7 +324,11 @@ function storeFetchedAgentDetail(input: {
     });
   }
 
-  store.setAgentMemos(input.serverId, hydrated.id, input.result.memos);
+  // An omitted list means "unchanged", not "empty": a daemon that predates memos on
+  // fetch stays quiet, and clearing here would wipe what an add reply just wrote.
+  if (input.result.memos) {
+    store.setAgentMemos(input.serverId, hydrated.id, input.result.memos);
+  }
 
   store.setPendingPermissions(input.serverId, (previous) => {
     const next = new Map(previous);
