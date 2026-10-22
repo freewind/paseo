@@ -6,11 +6,15 @@ import type { Agent } from "@/stores/session-store";
 import { useSessionStore } from "@/stores/session-store";
 import { agentHistoryQueryKey, allAgentHistoryQueryKey } from "./agent-history-query-key";
 import {
+  ARCHIVE_AGENT_OPERATION_QUERY_KEY,
   applyArchivedAgentCloseResults,
   isAgentArchiving,
+  readArchiveAgentOperation,
   removeAgentFromListPayload,
+  selectArchiveAgentOperation,
   selectPendingArchiveAgentIds,
   setAgentArchiving,
+  setArchiveAgentOperation,
 } from "./use-archive-agent";
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
@@ -267,5 +271,66 @@ describe("useArchiveAgent", () => {
       ],
       pageParams: [null],
     });
+  });
+});
+
+describe("archive agent operation", () => {
+  it("tracks one operation per server and agent", () => {
+    const queryClient = new QueryClient();
+
+    expect(
+      readArchiveAgentOperation({ queryClient, serverId: "server-a", agentId: "agent-1" }),
+    ).toBeNull();
+
+    setArchiveAgentOperation({
+      queryClient,
+      serverId: "server-a",
+      agentId: "agent-1",
+      operation: "unarchiving",
+    });
+
+    expect(
+      readArchiveAgentOperation({ queryClient, serverId: "server-a", agentId: "agent-1" }),
+    ).toBe("unarchiving");
+    expect(
+      readArchiveAgentOperation({ queryClient, serverId: "server-a", agentId: "agent-2" }),
+    ).toBeNull();
+    expect(
+      readArchiveAgentOperation({ queryClient, serverId: "server-b", agentId: "agent-1" }),
+    ).toBeNull();
+
+    setArchiveAgentOperation({
+      queryClient,
+      serverId: "server-a",
+      agentId: "agent-1",
+      operation: null,
+    });
+
+    expect(
+      readArchiveAgentOperation({ queryClient, serverId: "server-a", agentId: "agent-1" }),
+    ).toBeNull();
+  });
+
+  it("selects an operation only for its own key", () => {
+    expect(selectArchiveAgentOperation({}, "server-a", "agent-1")).toBeNull();
+    expect(
+      selectArchiveAgentOperation({ "server-a:agent-1": "archiving" }, "server-a", "agent-1"),
+    ).toBe("archiving");
+    expect(
+      selectArchiveAgentOperation({ "server-a:agent-1": "archiving" }, "server-b", "agent-1"),
+    ).toBeNull();
+  });
+
+  it("ignores blank identifiers", () => {
+    const queryClient = new QueryClient();
+
+    setArchiveAgentOperation({
+      queryClient,
+      serverId: "  ",
+      agentId: "agent-1",
+      operation: "archiving",
+    });
+
+    expect(queryClient.getQueryData(ARCHIVE_AGENT_OPERATION_QUERY_KEY)).toBeUndefined();
   });
 });

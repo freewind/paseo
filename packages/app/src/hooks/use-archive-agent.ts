@@ -1,5 +1,5 @@
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import {
   useMutation,
   useQuery,
@@ -12,7 +12,9 @@ import { useSessionStore } from "@/stores/session-store";
 import { agentHistoryQueryKey, allAgentHistoryQueryRootKey } from "./agent-history-query-key";
 
 export const ARCHIVE_AGENT_PENDING_QUERY_KEY = ["archive-agent-pending"] as const;
+export const ARCHIVE_AGENT_OPERATION_QUERY_KEY = ["archive-agent-operation"] as const;
 const EMPTY_PENDING_ARCHIVE_AGENT_IDS = new Set<string>();
+const EMPTY_ARCHIVE_AGENT_OPERATION_STATE: ArchiveAgentOperationState = {};
 
 export interface ArchiveAgentInput {
   serverId: string;
@@ -20,6 +22,18 @@ export interface ArchiveAgentInput {
 }
 
 export type ArchiveAgentPendingState = Record<string, true>;
+
+/**
+ * What the row's own button is doing right now. Kept apart from `ArchiveAgentPendingState`: that
+ * one answers "is this agent leaving the lists", and the daemon's own archive snapshot clears it,
+ * which can happen before the request that started it has returned.
+ */
+export type ArchiveAgentOperation = "archiving" | "unarchiving";
+export type ArchiveAgentOperationState = Record<string, ArchiveAgentOperation>;
+
+interface ArchiveAgentOperationInput extends ArchiveAgentInput {
+  queryClient: QueryClient;
+}
 
 interface SetAgentArchivingInput extends ArchiveAgentInput {
   queryClient: QueryClient;
@@ -124,6 +138,60 @@ export function isAgentArchiving(input: IsAgentArchivingInput): boolean {
     return false;
   }
   return readPendingState(input.queryClient)[key] ?? false;
+}
+
+export function selectArchiveAgentOperation(
+  state: ArchiveAgentOperationState,
+  serverId: string,
+  agentId: string,
+): ArchiveAgentOperation | null {
+  const key = toArchiveKey({ serverId, agentId });
+  if (!key) {
+    return null;
+  }
+  return state[key] ?? null;
+}
+
+export function readArchiveAgentOperation(
+  input: ArchiveAgentOperationInput,
+): ArchiveAgentOperation | null {
+  return selectArchiveAgentOperation(
+    input.queryClient.getQueryData<ArchiveAgentOperationState>(ARCHIVE_AGENT_OPERATION_QUERY_KEY) ??
+      EMPTY_ARCHIVE_AGENT_OPERATION_STATE,
+    input.serverId,
+    input.agentId,
+  );
+}
+
+/** Pass `operation: null` to release the button. */
+export function setArchiveAgentOperation(
+  input: ArchiveAgentOperationInput & { operation: ArchiveAgentOperation | null },
+): void {
+  const key = toArchiveKey(input);
+  if (!key) {
+    return;
+  }
+
+  input.queryClient.setQueryData<ArchiveAgentOperationState>(
+    ARCHIVE_AGENT_OPERATION_QUERY_KEY,
+    (current) => {
+      const state = current ?? EMPTY_ARCHIVE_AGENT_OPERATION_STATE;
+      if (input.operation) {
+        if (state[key] === input.operation) {
+          return state;
+        }
+        return { ...state, [key]: input.operation };
+      }
+
+      if (!state[key]) {
+        return state;
+      }
+
+      const next = { ...state };
+      delete next[key];
+      return next;
+    },
+  );
 }
 
 export function removeAgentFromListPayload<T extends AgentsListQueryData | undefined>(
@@ -385,6 +453,16 @@ export function useArchiveAgent() {
   const { t } = useTranslation();
 
   const pendingQuery = useArchiveAgentPendingQuery();
+  const operationQuery = useQuery({
+    queryKey: ARCHIVE_AGENT_OPERATION_QUERY_KEY,
+    queryFn: async (): Promise<ArchiveAgentOperationState> => EMPTY_ARCHIVE_AGENT_OPERATION_STATE,
+    initialData: EMPTY_ARCHIVE_AGENT_OPERATION_STATE,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+  // A ref, not the cached state: two clicks in one tick both read the state before React
+  // re-renders, and only the synchronous guard stops the second request.
+  const inFlightKeysRef = useRef(new Set<string>());
 
   const archiveMutation = useMutation({
     mutationFn: async (input: ArchiveAgentInput): Promise<{ archivedAt: string }> => {
@@ -463,6 +541,55 @@ export function useArchiveAgent() {
     [archiveMutateAsync],
   );
 
+  /**
+   * The row's archive/unarchive control. Both requests are idempotent on the daemon, so the
+   * button is released even when the request fails: a stuck spinner hides the failure for good.
+   */
+  const toggleArchiveAgent = useCallback(
+    async (input: ArchiveAgentInput & { archived: boolean }): Promise<void> => {
+      const key = toArchiveKey(input);
+      if (!key || inFlightKeysRef.current.has(key)) {
+        return;
+      }
+      inFlightKeysRef.current.add(key);
+      setArchiveAgentOperation({
+        queryClient,
+        serverId: input.serverId,
+        agentId: input.agentId,
+        operation: input.archived ? "unarchiving" : "archiving",
+      });
+
+      try {
+        if (input.archived) {
+          const client = useSessionStore.getState().sessions[input.serverId]?.client ?? null;
+          if (!client) {
+            throw new Error(t("common.errors.daemonClientUnavailable"));
+          }
+          // Unarchive runs through the restore path: the daemon has no unarchive RPC, and a
+          // refresh commits `archivedAt: null` before the session becomes interactive again.
+          await client.refreshAgent(input.agentId);
+          return;
+        }
+        await archiveMutateAsync({ serverId: input.serverId, agentId: input.agentId });
+      } finally {
+        inFlightKeysRef.current.delete(key);
+        setArchiveAgentOperation({
+          queryClient,
+          serverId: input.serverId,
+          agentId: input.agentId,
+          operation: null,
+        });
+      }
+    },
+    [archiveMutateAsync, queryClient, t],
+  );
+
+  const readToggleOperation = useCallback(
+    (input: ArchiveAgentInput): ArchiveAgentOperation | null =>
+      selectArchiveAgentOperation(operationQuery.data ?? {}, input.serverId, input.agentId),
+    [operationQuery.data],
+  );
+
   const isArchivingAgent = useCallback(
     (input: ArchiveAgentInput): boolean => {
       const key = toArchiveKey(input);
@@ -477,5 +604,7 @@ export function useArchiveAgent() {
   return {
     archiveAgent,
     isArchivingAgent,
+    toggleArchiveAgent,
+    readArchiveAgentOperation: readToggleOperation,
   };
 }
