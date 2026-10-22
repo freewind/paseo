@@ -88,6 +88,42 @@ describe("buildWorkspaceTabMenuEntries", () => {
     expect(onDeleteAgent).toHaveBeenCalledWith("agent-123");
   });
 
+  it("keeps the move-to-workspace action right after the copy actions", () => {
+    const onMoveAgentToWorkspace = vi.fn();
+    const entries = buildWorkspaceTabMenuEntries({
+      surface: "desktop",
+      tab: createAgentTab(),
+      index: 0,
+      tabCount: 1,
+      menuTestIDBase: "workspace-tab-menu-agent_123",
+      onCopyResumeCommand: vi.fn(),
+      onCopyAgentId: vi.fn(),
+      onCopyConversationMarkdown: vi.fn(),
+      onCopyAgentAsNew: vi.fn(),
+      canCloneAgent: true,
+      onMoveAgentToWorkspace,
+      onCopyTerminalId: vi.fn(),
+      onCopyFilePath: vi.fn(),
+      onReloadAgent: vi.fn(),
+      onRenameTab: vi.fn(),
+      onCloseTab: vi.fn(),
+      onCloseTabsBefore: vi.fn(),
+      onCloseTabsAfter: vi.fn(),
+      onCloseOtherTabs: vi.fn(),
+    });
+
+    const keys = itemKeys(entries);
+    expect(keys.indexOf("move-to-workspace")).toBeGreaterThan(keys.indexOf("copy-agent-as-new"));
+    expect(keys.indexOf("move-to-workspace")).toBeLessThan(keys.indexOf("rename"));
+
+    const moveEntry = entries.find(
+      (entry) => entry.kind === "item" && entry.key === "move-to-workspace",
+    );
+    if (!moveEntry || moveEntry.kind !== "item") throw new Error("Move entry missing");
+    moveEntry.onSelect();
+    expect(onMoveAgentToWorkspace).toHaveBeenCalledWith("agent-123");
+  });
+
   it("adds the unread action only for eligible agent tabs and targets that agent", () => {
     const onMarkAsUnread = vi.fn();
     const entries = buildWorkspaceTabMenuEntries({

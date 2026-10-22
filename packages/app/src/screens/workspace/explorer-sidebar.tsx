@@ -77,6 +77,7 @@ export function ExplorerSidebarDock({
   onCopyConversationMarkdown,
   onCopyAgentAsNew,
   canCloneAgent,
+  onMoveAgentToWorkspace,
   onCopyTerminalId,
   onCopyFilePath,
   onOpenFileInEditor,
@@ -149,6 +150,7 @@ export function ExplorerSidebarDock({
                 onCopyConversationMarkdown={onCopyConversationMarkdown}
                 onCopyAgentAsNew={onCopyAgentAsNew}
                 canCloneAgent={canCloneAgent}
+                onMoveAgentToWorkspace={onMoveAgentToWorkspace}
                 onCopyTerminalId={onCopyTerminalId}
                 onCopyFilePath={onCopyFilePath}
                 onOpenFileInEditor={onOpenFileInEditor}
