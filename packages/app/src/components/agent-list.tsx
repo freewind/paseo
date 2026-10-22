@@ -21,12 +21,13 @@ import { useDeleteAgent } from "@/hooks/use-delete-agent";
 import { confirmDialog } from "@/utils/confirm-dialog";
 import { useToast } from "@/contexts/toast-context";
 import { useSessionStore } from "@/stores/session-store";
-import { Archive, ChevronRight } from "lucide-react-native";
+import { Archive, ArchiveRestore, ChevronRight, Trash2 } from "lucide-react-native";
 import { useProviderIcon } from "@/components/provider-icons";
 import { navigateToAgent } from "@/utils/navigate-to-agent";
 import { HighlightedText } from "@/components/ui/highlighted-text";
 import { StatusBadge, type StatusBadgeVariant } from "@/components/ui/status-badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { InlineConfirm } from "@/components/ui/inline-confirm";
 import { findHighlightRanges } from "@/components/ui/highlighted-text-segments";
 
 interface AgentListProps {
@@ -173,6 +174,8 @@ function SessionRow({
   showHostColumn,
   onPress,
   onLongPress,
+  onToggleArchive,
+  onDeleteAgent,
 }: {
   agent: AggregatedAgent;
   search?: string;
@@ -182,9 +185,12 @@ function SessionRow({
   showHostColumn: boolean;
   onPress: (agent: AggregatedAgent) => void;
   onLongPress: (agent: AggregatedAgent) => void;
+  onToggleArchive: (agent: AggregatedAgent) => void;
+  onDeleteAgent: (agent: AggregatedAgent) => void;
 }) {
   const { theme } = useUnistyles();
   const { t } = useTranslation();
+  const [isHovered, setIsHovered] = useState(false);
   const agentKey = `${agent.serverId}:${agent.id}`;
   const isSelected = selectedAgentId === agentKey;
   const projectName = agent.projectPlacement?.projectName ?? "";
@@ -214,6 +220,10 @@ function SessionRow({
 
   const handlePress = useCallback(() => onPress(agent), [onPress, agent]);
   const handleLongPress = useCallback(() => onLongPress(agent), [onLongPress, agent]);
+  const handleHoverIn = useCallback(() => setIsHovered(true), []);
+  const handleHoverOut = useCallback(() => setIsHovered(false), []);
+  const handleToggleArchive = useCallback(() => onToggleArchive(agent), [agent, onToggleArchive]);
+  const handleDeleteAgent = useCallback(() => onDeleteAgent(agent), [agent, onDeleteAgent]);
 
   const archivedIcon = useMemo(
     () => <Archive size={theme.fontSize.sm} color={theme.colors.foregroundMuted} />,
@@ -242,6 +252,8 @@ function SessionRow({
       style={pressableStyle}
       onPress={handlePress}
       onLongPress={handleLongPress}
+      onHoverIn={handleHoverIn}
+      onHoverOut={handleHoverOut}
       accessibilityRole="button"
       testID={`agent-row-${agent.serverId}-${agent.id}`}
     >
@@ -325,6 +337,13 @@ function SessionRow({
             testID={`agent-row-branch-${agent.serverId}-${agent.id}`}
           />
           <AgentActivityTime date={agent.lastActivityAt} isMobile={false} />
+          <AgentRowActions
+            archived={agent.archivedAt != null}
+            visible={isHovered}
+            testIDPrefix={`agent-row-${agent.serverId}-${agent.id}`}
+            onToggleArchive={handleToggleArchive}
+            onDeleteAgent={handleDeleteAgent}
+          />
         </View>
       ) : null}
       <SessionRowTrailingAttention
@@ -364,6 +383,60 @@ function SessionModelCell({
         <Text style={styles.tooltipText}>{model}</Text>
       </TooltipContent>
     </Tooltip>
+  );
+}
+
+/**
+ * The row's own actions, revealed on hover so the columns stay quiet at rest. Archiving flips
+ * with the row's archived state; deleting asks in place, because a session removed here is gone.
+ */
+function AgentRowActions({
+  archived,
+  visible,
+  testIDPrefix,
+  onToggleArchive,
+  onDeleteAgent,
+}: {
+  archived: boolean;
+  visible: boolean;
+  testIDPrefix: string;
+  onToggleArchive: () => void;
+  onDeleteAgent: () => void;
+}) {
+  const { theme } = useUnistyles();
+  const { t } = useTranslation();
+  return (
+    <View
+      style={[styles.rowActions, visible ? null : styles.rowActionsHidden]}
+      pointerEvents={visible ? "auto" : "none"}
+    >
+      <Pressable
+        onPress={onToggleArchive}
+        accessibilityRole="button"
+        accessibilityLabel={
+          archived ? t("agentPanel.archived.unarchive") : t("agentList.archiveSheet.archive")
+        }
+        testID={`${testIDPrefix}-${archived ? "unarchive" : "archive"}`}
+        style={styles.rowAction}
+        hitSlop={6}
+      >
+        {archived ? (
+          <ArchiveRestore size={theme.iconSize.sm} color={theme.colors.foregroundMuted} />
+        ) : (
+          <Archive size={theme.iconSize.sm} color={theme.colors.foregroundMuted} />
+        )}
+      </Pressable>
+      <InlineConfirm
+        triggerLabel={t("agentList.deleteSheet.delete")}
+        confirmLabel={t("agentList.deleteSheet.delete")}
+        cancelLabel={t("common.actions.cancel")}
+        onConfirm={onDeleteAgent}
+        destructive
+        testID={`${testIDPrefix}-delete`}
+      >
+        <Trash2 size={theme.iconSize.sm} color={theme.colors.foregroundMuted} />
+      </InlineConfirm>
+    </View>
   );
 }
 
@@ -464,6 +537,31 @@ export function AgentList({
     void handleDeleteAgent();
   }, [handleDeleteAgent]);
 
+  // The row's own archive action: no confirmation, because it is reversible and the next click
+  // restores. Restoring goes through refreshAgent — the daemon has no unarchive RPC, so the
+  // archived session is brought back the same way the agent panel's callout does it.
+  const handleToggleArchive = useCallback(
+    (agent: AggregatedAgent) => {
+      if (agent.archivedAt) {
+        const client = useSessionStore.getState().sessions[agent.serverId]?.client ?? null;
+        void client?.refreshAgent(agent.id).catch(() => undefined);
+        return;
+      }
+      void archiveAgent({ serverId: agent.serverId, agentId: agent.id }).catch(() => undefined);
+    },
+    [archiveAgent],
+  );
+
+  // Deleting is the one irreversible action here; the row asks in place before calling this.
+  const handleDeleteAgentFromRow = useCallback(
+    (agent: AggregatedAgent) => {
+      void deleteAgent({ serverId: agent.serverId, agentId: agent.id }).catch((error: unknown) => {
+        toast.error(error instanceof Error ? error.message : t("agentList.deleteSheet.failed"));
+      });
+    },
+    [deleteAgent, t, toast],
+  );
+
   const flatItems = useMemo((): FlatListItem[] => {
     const buckets = new Map<DateSectionKey, AggregatedAgent[]>();
     for (const agent of agents) {
@@ -506,12 +604,16 @@ export function AgentList({
           showHostColumn={showHostColumn}
           onPress={handleAgentPress}
           onLongPress={handleAgentLongPress}
+          onToggleArchive={handleToggleArchive}
+          onDeleteAgent={handleDeleteAgentFromRow}
         />
       );
     },
     [
       handleAgentLongPress,
       handleAgentPress,
+      handleDeleteAgentFromRow,
+      handleToggleArchive,
       isMobile,
       search,
       selectedAgentId,
@@ -751,11 +853,11 @@ const styles = StyleSheet.create((theme) => ({
     marginLeft: theme.spacing[4],
     textAlign: "right" as const,
   },
-  /** Model ids are long and uneven; the cell truncates and the tooltip carries the rest. */
-  columnModel: {
-    flexShrink: 0,
-    width: 160,
-  },
+  /** Model ids are long and uneven; the cell truncates and the tooltip carries the rest. */ columnModel:
+    {
+      flexShrink: 0,
+      width: 160,
+    },
   columnModelText: {
     fontSize: theme.fontSize.base,
     color: theme.colors.foregroundMuted,
@@ -763,6 +865,22 @@ const styles = StyleSheet.create((theme) => ({
   tooltipText: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.foreground,
+  },
+  /** The actions keep their footprint at rest so hovering never shifts the columns. */
+  rowActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: theme.spacing[1],
+    flexShrink: 0,
+    width: 64,
+  },
+  rowActionsHidden: {
+    opacity: 0,
+  },
+  rowAction: {
+    padding: theme.spacing[1],
+    borderRadius: theme.borderRadius.md,
   },
   sheetOverlay: {
     flex: 1,
