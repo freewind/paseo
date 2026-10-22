@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-23 03:55
+最近一次保存：2026-10-23 04:10
 
 ---
 
@@ -626,3 +626,19 @@ Notes：
 - 备忘输入为空时按钮可点：此时 `buildMemoText` 只返回引用块。评论仍禁用空输入。
 - 测试：`comment-sheet.test.tsx` 按 variant 重写（13 条），`format.test.ts` 加 `buildMemoText` 3 条，目录 38 passed。
 - 教训：先把两个 sheet 写成独立组件再回头合并，多了一轮；需求是“一样”时就该一开始用一个组件 + variant。
+
+---
+
+### 大纲跟随滚动：第二版（用户反馈上一版未修好）
+
+- 状态：已完成（待用户复验）
+- 最近保存：2026-10-23 04:10
+
+上一版只把跟随改成瞬时滚动，漏了更重要的一层：`isFollowing` 一旦被判为用户滚动就再无恢复入口（只有点某条 prompt 才会 `setIsFollowing(true)`）。web 上鼠标滚轮轻扫过大纲一次，之后滚对话就只剩高亮在动。
+
+本版：
+
+- `lastUserScrollAtRef` 记录用户滚动时间；`activeSeq` 变化且距上次用户滚动 > 1.5s → 恢复跟随，并把 `lastScrollTargetRef` 置 null 强制重滚一次。
+- `viewportHeight === 0` 不再直接返回，改为把该行顶部对齐 —— 若 onLayout 从未给出高度，至少还能滚。
+
+**未验证**：未在桌面客户端实机验证。若仍不跟随，下一步要确认回高亮前进时 `activeSeq` 是否真的变化，以及 rail 的 ScrollView 是否有非零高度（需要 devtools 或日志）。
