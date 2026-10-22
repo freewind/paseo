@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-23 06:45
+最近一次保存：2026-10-23 07:00
 
 ---
 
@@ -749,3 +749,18 @@ Notes：
 - 加 tooltip（文案 `agentMemos.clear`），与右侧「+」参数一致：`delayDuration={250}`、`enabledOnDesktop`、`side="top"`、`align="end"`。
 - **坑**：`TooltipTrigger asChild` 会把 ref 注入子元素，而 `InlineConfirm` 是函数组件接不了 ref → 外面套一层 `View`（`collapsable={false}`）当触发器，确认按钮在它里面。与 `memoButtonHost` 同一手法。
 - **坑**：直接内联写会让 JSX 嵌套到 7 层，超过 lint 上限 6。拆成 `MemoClearButton` 组件。
+
+---
+
+### History 行操作图标闪烁与 tooltip
+
+- 状态：已完成（`2768626ec`）
+- 最近保存：2026-10-23 07:00
+
+**闪烁根因**：`SessionRow` 的 hover 挂在整行 `Pressable` 的 `onHoverIn/onHoverOut` 上，而行内有归档、删除两个 Pressable —— 正是 `docs/hover.md` 的失败模式一。指针进入内层 Pressable → 外层 `onHoverOut` → 动作区隐藏 → 指针落回行上 → `onHoverIn` → 循环。
+
+**修法**：外层普通 `View` 用 `onPointerEnter/onPointerLeave` 跟踪 hover（非冒泡），内层 `Pressable` 只管按下；行高亮也改由 `isHovered` 驱动。
+
+**tooltip**：归档/删除各一个，文案与 `accessibilityLabel` 同源。删除按钮的 tooltip 外套一层 `View`（`InlineConfirm` 是函数组件接不了 ref）。抽了 `RowActionTooltip` 避免嵌套过深。
+
+验证：lint、typecheck（exit 0）、format 全过；`agent-list.tsx` 无既有测试文件。**待用户实机复验**闪烁是否消失。
