@@ -110,7 +110,9 @@ Five primitives. The pick is determined by option count, the need to search, and
 
 `confirmDialog` is for destructive yes/no and imperative confirmation. Promise-based: `await confirmDialog({ destructive: true, ... })`. Anything where a wrong click loses work.
 
-Three themes is `DropdownMenu`. Thirty hosts is `Combobox`. A label and a value is `AdaptiveModalSheet`. "Are you sure?" is `confirmDialog`.
+`InlineConfirm` is the same question asked where it happened: the trigger becomes a cancel and a confirm button on the spot, and a click elsewhere or Escape puts it back. Use it when the trigger already names what will happen and re-reaching the action costs nothing (`packages/app/src/agent-memos/agent-memos-rail.tsx`, `packages/app/src/components/context-window-meter.tsx`). It asks in place on every platform, which also keeps the web off `window.confirm`.
+
+Three themes is `DropdownMenu`. Thirty hosts is `Combobox`. A label and a value is `AdaptiveModalSheet`. "Are you sure?" about something that loses work is `confirmDialog`; "yes, this one" about the row under the pointer is `InlineConfirm`.
 
 ---
 
@@ -262,7 +264,7 @@ New status pills use `<StatusBadge>`. Identity, shortcut, and interactive link b
 - Raw DOM APIs without an `isWeb` guard.
 - Spacing values outside the scale. `padding: 20` and `gap: 10` are wrong.
 - Color changes for disabled state. Opacity only.
-- Destructive actions without `confirmDialog`. Restart, remove, and future destructive actions are confirmed. Archive workspace is confirmed only when its worktree backing reports uncommitted changes or unpushed commits; otherwise it archives immediately.
+- Destructive actions without a confirmation. `confirmDialog` when a wrong click loses work, `InlineConfirm` when the action is small and its trigger already says what it does. Restart, remove, and future destructive actions are confirmed. Archive workspace is confirmed only when its worktree backing reports uncommitted changes or unpushed commits; otherwise it archives immediately.
 - Bespoke status pills. `<StatusBadge>` is the pill primitive.
 - Raw `Modal` for a focused task. `<AdaptiveModalSheet>` is the modal primitive.
 - Importing `ActivityIndicator` directly. `<LoadingSpinner>` is the loading primitive.

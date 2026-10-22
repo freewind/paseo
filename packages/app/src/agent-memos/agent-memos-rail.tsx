@@ -12,9 +12,9 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { InlineConfirm } from "@/components/ui/inline-confirm";
 import { encodeAttachmentsForSend } from "@/attachments/service";
 import type { AttachmentMetadata } from "@/attachments/types";
-import { confirmDialog } from "@/utils/confirm-dialog";
 import { ICON_SIZE, type Theme } from "@/styles/theme";
 import { AgentMemoComposer } from "./agent-memo-composer";
 import { useAgentMemos } from "./use-agent-memos";
@@ -129,20 +129,12 @@ export const AgentMemosRail = memo(function AgentMemosRail({
     [onAppendToComposer],
   );
 
-  // Deleting is the one action that cannot be undone from the list, so it asks first.
+  // Deleting is the one action that cannot be undone from the list, so the row asks in place.
   const handleRequestDelete = useCallback(
-    async (entry: AgentMemo) => {
-      const confirmed = await confirmDialog({
-        title: t("agentMemos.delete"),
-        message: entry.text,
-        confirmLabel: t("agentMemos.delete"),
-        cancelLabel: t("common.actions.cancel"),
-        destructive: true,
-      });
-      if (!confirmed) return;
-      await deleteMemo(entry.id).catch(() => undefined);
+    (entry: AgentMemo) => {
+      void deleteMemo(entry.id).catch(() => undefined);
     },
-    [deleteMemo, t],
+    [deleteMemo],
   );
 
   if (!supported) {
@@ -360,16 +352,17 @@ function AgentMemoRow({
           ))}
         </View>
       ) : null}
-      <Pressable
-        onPress={handleDelete}
-        accessibilityRole="button"
-        accessibilityLabel={t("agentMemos.delete")}
+      <InlineConfirm
+        triggerLabel={t("agentMemos.delete")}
+        triggerStyle={styles.deleteButton}
+        cancelLabel={t("common.actions.cancel")}
+        confirmLabel={t("agentMemos.delete")}
+        onConfirm={handleDelete}
+        destructive
         testID={`agent-memo-delete-${entry.id}`}
-        style={styles.deleteButton}
-        hitSlop={6}
       >
         <ThemedTrash2 size={ICON_SIZE.sm} uniProps={mutedIconMapping} />
-      </Pressable>
+      </InlineConfirm>
     </View>
   );
 }
