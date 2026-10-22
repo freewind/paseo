@@ -316,7 +316,7 @@ Notes：
 Notes：
 
 - AgentDirectoryEntry 的 Pick 加 model，三处构造 entry 的映射同步补字段（session-store、use-agent-history、use-aggregated-agents）。
-- 桌面行在 branch 与时间之间加列，固定宽 160，单行截断；hover 用 Tooltip 显示完整 id。
+- 桌面行在 project 与 host 之间加列（初版放在 branch 之后，用户看后要求前移），固定宽 160，单行截断；hover 用 Tooltip 显示完整 id。
 - 单元格嵌在行的 Pressable 内，沿用行自己的 onPress/onLongPress，避免内层吞点击。
 - 空 model 不渲染该格；无表头，所以不需要 i18n。
 - sessions-screen.test.ts 与 use-agent-history.test.ts 共 23 passed。
