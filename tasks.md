@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-23 04:10
+最近一次保存：2026-10-23 04:30
 
 ---
 
@@ -642,3 +642,23 @@ Notes：
 - `viewportHeight === 0` 不再直接返回，改为把该行顶部对齐 —— 若 onLayout 从未给出高度，至少还能滚。
 
 **未验证**：未在桌面客户端实机验证。若仍不跟随，下一步要确认回高亮前进时 `activeSeq` 是否真的变化，以及 rail 的 ScrollView 是否有非零高度（需要 devtools 或日志）。
+
+---
+
+### 大纲提示卡片一直闪“加载中”
+
+- 状态：已完成
+- 最近保存：2026-10-23 04:30
+
+根因：`PromptDetailContent` 的读取 effect 依赖 `onRequestPromptText`，而这个函数是 `useChatOutline` 里 `useCallback` 依赖 `loadedItems` 产生的 —— 对话重渲染时它每帧都是新引用，effect 跟着重跑：`setFullText(null)` + `setIsLoading(true)` + 重读，卡片就在 loading 与正文间闪。
+
+修法：读取函数放 ref，effect 只锚定 `prompt.seq`。
+
+测试：新建 `prompt-detail.test.tsx`，断言连续 rerender 传入新读取函数时只读一次。
+
+两个坑：
+
+- 测这个文件必须写 `import ... from "./prompt-detail.tsx"`，否则 bare specifier 解析到 `prompt-detail.web.tsx`，里面 `require("./prompt-detail.tsx")` 交给 Node 执行 TS → `SyntaxError: Unexpected identifier 'ReactElement'`。这就是 `rail.web.test.tsx` 一直加载失败的原因。
+- 该扩展名导入 tsgo 不允许，需要 `@ts-expect-error TS5097`；测试里还要 `vi.stubGlobal("React", React)`。
+
+**遗留**：`rail.web.tsx` 的 `readPromptTexts` effect 同样依赖这个不稳定函数，会导致整列文案反复重读（有缓存，不影响闪烁但浪费请求），本次未动。
