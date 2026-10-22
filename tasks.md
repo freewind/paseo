@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-22 20:50
+最近一次保存：2026-10-22 21:15
 
 ---
 
@@ -353,3 +353,20 @@ Notes：
 - 彻底删除：InlineConfirm 就地确认 → deleteAgent，失败 toast。
 - 文案复用现有 key（agentList.archiveSheet.archive / agentPanel.archived.unarchive / agentList.deleteSheet.delete）。
 - 未归档判断用 `archivedAt != null`；未处理 host 不支持 agentRestoreState 时隐藏 unarchive 按钮（目前一律显示）。
+
+---
+
+### 导航历史在网页刷新后保留
+
+- 状态：已完成
+- 最近保存：2026-10-22 21:15
+
+侧栏返回/前进只读内存里的 navigation-history-store。历史页/文件/终端不算位置，刷新后落在历史页时一条位置也没有，按钮必然置灰——不是回归。
+
+Notes：
+
+- store 增加 `storage` 注入（getItem/setItem）；web 传 sessionStorage，native 与未注入时仍是内存。
+- 每次 emit 写 entries/cursor/recentAgentVisits；replay 不持久化（跳转中途状态）。
+- 读回时校验形状，读不懂的 payload 丢弃；cursor clamp 到 entries 范围。
+- 选 sessionStorage 而不是 localStorage：标签页级，刷新保留、新标签页不共享。
+- 另一个症状：历史页的“无法加载历史”是 host banner（sessions.hostLoadFailed），同一 host 的一条连接调用 fetchAgentHistory 失败，与返回按钮无关。
