@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-22 20:20
+最近一次保存：2026-10-22 20:50
 
 ---
 
@@ -337,3 +337,19 @@ Notes：
 - 边界：选项与过滤只覆盖已加载页；未加载页里的 model 不出现在选项里。
 - 选中的 model 消失时自动回到 All models；空结果时提供一次性清掉搜索与模型筛选的按钮。
 - 少于两个具体 model 时不显示该筛选。
+
+---
+
+### History 行增加操作列
+
+- 状态：已完成
+- 最近保存：2026-10-22 20:50
+
+列末加操作列，hover 显形，列宽固定不抽动。
+
+Notes：
+
+- 归档：未归档用 archiveAgent；已归档用 `client.refreshAgent(agentId)`——daemon 没有独立 unarchive RPC，agent 面板的 Unarchive 也是这么恢复的。
+- 彻底删除：InlineConfirm 就地确认 → deleteAgent，失败 toast。
+- 文案复用现有 key（agentList.archiveSheet.archive / agentPanel.archived.unarchive / agentList.deleteSheet.delete）。
+- 未归档判断用 `archivedAt != null`；未处理 host 不支持 agentRestoreState 时隐藏 unarchive 按钮（目前一律显示）。
