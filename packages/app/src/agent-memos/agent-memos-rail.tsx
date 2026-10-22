@@ -2,7 +2,7 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { Image, Pressable, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
-import { CheckCircle2, Circle, ClipboardList, ListX, Plus, Trash2 } from "lucide-react-native";
+import { CheckCircle2, Circle, ClipboardList, Plus, Trash2 } from "lucide-react-native";
 import type { AgentMemo, ImageAttachment } from "@getpaseo/protocol/messages";
 import { AttachmentLightbox, type ImageLightboxSource } from "@/components/attachment-lightbox";
 import {
@@ -26,7 +26,6 @@ const completedIconMapping = (theme: Theme) => ({ color: theme.colors.accent });
 const ThemedClipboardList = withUnistyles(ClipboardList, mutedIconMapping);
 const ThemedAddPlus = withUnistyles(Plus, mutedIconMapping);
 const ThemedTrash2 = withUnistyles(Trash2, mutedIconMapping);
-const ThemedListX = withUnistyles(ListX, mutedIconMapping);
 const ThemedCircle = withUnistyles(Circle, mutedIconMapping);
 const ThemedCheckCircle2 = withUnistyles(CheckCircle2, completedIconMapping);
 /** Small enough to sit inline, so a memo with images still occupies a single row. */
@@ -200,17 +199,11 @@ export const AgentMemosRail = memo(function AgentMemosRail({
         ) : null}
         <View style={styles.headerActions}>
           {memos.length > 0 ? (
-            <InlineConfirm
-              triggerLabel={t("agentMemos.clear")}
-              triggerStyle={styles.clearButton}
+            <MemoClearButton
+              label={t("agentMemos.clear")}
               cancelLabel={t("common.actions.cancel")}
-              confirmLabel={t("agentMemos.clear")}
-              onConfirm={handleClearMemos}
-              destructive
-              testID="agent-memo-clear"
-            >
-              <ThemedListX size={ICON_SIZE.lg} uniProps={mutedIconMapping} />
-            </InlineConfirm>
+              onClear={handleClearMemos}
+            />
           ) : null}
           <Tooltip delayDuration={250} enabledOnDesktop enabledOnMobile={false}>
             <TooltipTrigger asChild>
@@ -232,6 +225,44 @@ export const AgentMemosRail = memo(function AgentMemosRail({
       </View>
       <AttachmentLightbox source={lightboxSource} onClose={handleCloseLightbox} />
     </View>
+  );
+});
+
+/**
+ * The header's clear button: the row trash icon, asking in place first. The tooltip sits on a
+ * wrapper view because `InlineConfirm` is a function component and cannot receive the ref the
+ * tooltip needs; the wrapper is sized to the trigger and hover lands on it either way.
+ */
+const MemoClearButton = memo(function MemoClearButton({
+  label,
+  cancelLabel,
+  onClear,
+}: {
+  label: string;
+  cancelLabel: string;
+  onClear: () => void;
+}) {
+  return (
+    <Tooltip delayDuration={250} enabledOnDesktop enabledOnMobile={false}>
+      <TooltipTrigger asChild>
+        <View style={styles.clearButtonHost} collapsable={false}>
+          <InlineConfirm
+            triggerLabel={label}
+            triggerStyle={styles.clearButton}
+            cancelLabel={cancelLabel}
+            confirmLabel={label}
+            onConfirm={onClear}
+            destructive
+            testID="agent-memo-clear"
+          >
+            <ThemedTrash2 size={ICON_SIZE.lg} uniProps={mutedIconMapping} />
+          </InlineConfirm>
+        </View>
+      </TooltipTrigger>
+      <TooltipContent side="top" align="end" offset={8}>
+        <Text style={styles.tooltipText}>{label}</Text>
+      </TooltipContent>
+    </Tooltip>
   );
 });
 
@@ -544,6 +575,11 @@ const styles = StyleSheet.create((theme: Theme) => ({
   },
   clearButton: {
     padding: theme.spacing[1],
+  },
+  /** The tooltip's ref host; the trigger keeps its own padding. */
+  clearButtonHost: {
+    alignItems: "center",
+    justifyContent: "center",
   },
   tooltipText: {
     color: theme.colors.foreground,
