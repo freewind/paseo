@@ -189,7 +189,7 @@ describe("ChatOutlineRail in its text form", () => {
       sizeNode(panel, options?.panelWidth ?? PANEL_WIDTH);
       await deliverLayout(panel);
     }
-    return { onJumpToPrompt, panel };
+    return { onJumpToPrompt, panel, activePrompt };
   }
 
   it("shows the words beside the dots, never instead of them", async () => {
@@ -299,6 +299,33 @@ describe("ChatOutlineRail in its text form", () => {
     expect(document.body.textContent).toContain(fullText);
     // The text lives in the row now, so nothing floats over the transcript.
     expect(document.querySelector('[data-testid="chat-outline-text-preview"]')).toBeNull();
+  });
+
+  it("does not re-read prompts that already have their text when the list grows", async () => {
+    const onRequestPromptText = vi.fn(async (seq: number) => `full text ${seq}`);
+    const { activePrompt } = await renderRail([prompt(1, "First"), prompt(2, "Second")], {
+      onRequestPromptText,
+    });
+    await act(async () => undefined);
+    expect(onRequestPromptText).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      root?.render(
+        <ChatOutlineRail
+          prompts={[prompt(1, "First"), prompt(2, "Second"), prompt(3, "Third")]}
+          activePrompt={activePrompt}
+          onJumpToPrompt={vi.fn()}
+          variant="text"
+          contentMaxWidth={CONTENT_MAX_WIDTH}
+          agentId="agent-1"
+          onRequestPromptText={onRequestPromptText}
+        />,
+      );
+    });
+
+    // Only the row without text is read; the earlier ones keep what they already have.
+    expect(onRequestPromptText).toHaveBeenCalledTimes(3);
+    expect(onRequestPromptText).toHaveBeenLastCalledWith(3);
   });
 
   it("folds blank lines and hard wraps out of a prompt", async () => {
