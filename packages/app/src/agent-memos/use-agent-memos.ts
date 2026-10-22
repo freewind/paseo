@@ -24,6 +24,7 @@ export function useAgentMemos(input: {
   updateMemo: (memoId: string, text: string, images?: readonly ImageAttachment[]) => Promise<void>;
   setMemoCompleted: (memoId: string, completed: boolean) => Promise<void>;
   deleteMemo: (memoId: string) => Promise<void>;
+  clearMemos: () => Promise<void>;
 } {
   const serverId = input.serverId ?? "";
   const agentId = input.agentId ?? "";
@@ -121,7 +122,20 @@ export function useAgentMemos(input: {
     [agentId, serverId],
   );
 
-  return { memos, addMemo, updateMemo, setMemoCompleted, deleteMemo };
+  // One delete at a time, in list order: every reply carries the whole list, so parallel deletes
+  // would land out of order and the last reply to arrive would be the one that wins.
+  const clearMemos = useCallback(async () => {
+    if (!agentId) return;
+    const client = getHostRuntimeStore().getClient(serverId);
+    if (!client) return;
+    const current = useSessionStore.getState().sessions[serverId]?.agentMemos.get(agentId) ?? [];
+    for (const memo of current) {
+      const payload = await client.deleteAgentMemo(agentId, memo.id);
+      useSessionStore.getState().setAgentMemos(serverId, agentId, payload.memos);
+    }
+  }, [agentId, serverId]);
+
+  return { memos, addMemo, updateMemo, setMemoCompleted, deleteMemo, clearMemos };
 }
 
 const EMPTY_MEMOS: readonly AgentMemo[] = [];
