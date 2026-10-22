@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-22 17:01
+最近一次保存：2026-10-22 17:20
 
 ---
 
@@ -208,3 +208,19 @@ Notes：
 
 - 2026-10-22 17:01：RNW 0.21 的 propsToAccessibilityComponent 把 role=button 的 View / Pressable 渲染成真 <button>，不再是 div[role=button]。ExpandableBadge 外层 Pressable 包住整行，行内的 CopyTextButton 与 tool-call-open-file 也是 role=button，形成嵌套。改为 headerRow 做外层容器，Pressable 只包图标与标签；open-file 抽成 ExpandableBadgeOpenFileButton，与 trailingAction 一起作为兄弟节点。可见变化：hover 时出现的打开文件图标改为行尾对齐。用户运行时查到 3 条 button button，本次修掉两条（copy / open-file），剩余条数待刷新后重测。
 - 另记：`src/agent-stream/chat-outline` 两个测试文件在当前 main 上加载即报 `SyntaxError: Unexpected identifier 'ReactElement'`，已用 stash 验证与本次改动无关，未修。
+
+---
+
+### 备忘录支持编辑
+
+- 状态：已完成
+- 最近保存：2026-10-22 17:20
+
+列表里只能追加、勾选完成、删除；update 链路（协议、daemon、client、useAgentMemos）早就存在，缺 UI 入口。
+
+Notes：
+
+- 行右键菜单加「编辑」，该行换成备忘录输入框，预填文本与已存图片。
+- 已存图是跟备忘录存的 inline base64，不在附件库里（encodeAttachmentsForSend 读不到），所以按 data URL 直接预览、原 base64 原样回传；新增图片仍走附件流程。
+- 提交走 updateMemo：图片集合没变就省略 images 参数（daemon 保留原图），变了传完整数组，空数组就是把图清空。比的是 each image 的 data，长度相同但换了图也能识别。
+- 编辑态同样 autoFocus，目的是点了编辑就能直接改。
