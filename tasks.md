@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-22 21:15
+最近一次保存：2026-10-22 21:40
 
 ---
 
@@ -370,3 +370,20 @@ Notes：
 - 读回时校验形状，读不懂的 payload 丢弃；cursor clamp 到 entries 范围。
 - 选 sessionStorage 而不是 localStorage：标签页级，刷新保留、新标签页不共享。
 - 另一个症状：历史页的“无法加载历史”是 host banner（sessions.hostLoadFailed），同一 host 的一条连接调用 fetchAgentHistory 失败，与返回按钮无关。
+
+---
+
+### 备忘录按最近动作排序
+
+- 状态：已完成
+- 最近保存：2026-10-22 21:40
+
+之前：服务端按创建顺序追加，客户端 orderMemos 把已完成挪到后面，未完成组内保持旧→新，所以新建落在底部。
+
+Notes：
+
+- 协议 AgentMemoSchema 加可选 `updatedAt`；add/update/setCompleted 都写。
+- 客户端按 `updatedAt ?? createdAt` 降序，去掉完成分组。可见变化：完成不再沉底，勾选那刻升顶。
+- 旧记录没有 updatedAt，自然回退到创建时间倒序。
+- 改 protocol 后必须 `npm run build:client` 重建声明，否则 server/app 类型报 updatedAt 不存在。
+- `npm run test --workspace=@getpaseo/server` 会跑整套 unit（违反仓库规则）且出现无关失败；单文件用 `cd packages/server && npx vitest run <file>`。
