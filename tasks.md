@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-22 22:05
+最近一次保存：2026-10-22 23:10
 
 ---
 
@@ -403,3 +403,22 @@ Notes：
 - 文本按钮抽成 AgentMemoTextButton，兼带绕过 jsx-max-depth 上限。
 - 全仓只此一处这样嵌套（已用正则搜索确认）。
 - 教训：`asChild` 注入的 ref 会被子组件内部显式 ref 覆盖；给自定义组件当 tooltip 宿主时看它是否透传 ref。
+
+---
+
+### 导航历史改存到 daemon
+
+- 状态：已完成
+- 最近保存：2026-10-22 23:10
+
+上一版用 sessionStorage，用户改为存服务器。旧 sessionStorage 代码已删除（store 的 storage 注入与 4 条测试一并去掉）。
+
+Notes：
+
+- 协议：`navigation.state.get/set` 一对消息，target 走 canonical key 字符串；上限在 `packages/protocol/src/navigation-limits.ts`（访问 20、栈 100、设备 8）。
+- daemon：`$PASEO_HOME/navigation-state.json`，`recentVisits` 全局 + `stacksByDeviceKey` 按设备；`NavigationStateStore` 在 bootstrap 创建、注入 Session 与 WebSocket server。
+- 能力位 `features.navigationState`：旧 host 不参与同步，避免未知 RPC 报错。
+- app：`navigation/navigation-state-sync.ts`；deviceKey 在 localStorage；读回成功前不写（防空栈覆盖），失败 10 次重试后本会话只读。
+- 已知：用户当前 daemon（Paseo.app 内置 beta.3）没有这个 RPC，需 daemon 升级后生效；升级前返回按钮仍回归到“刷新即清空”。
+- 教训：Session 的 `dispatchInboundMessage` 是 `??` 链，每加一个 dispatch 就加一次复杂度，已到上限；新消息应合进 `dispatchMiscMessage`。
+- 教训：`edit` 的 oldText 不要拿“函数签名前几行”当锚点做插入，容易把签名删掉；改完必须看 git diff。
