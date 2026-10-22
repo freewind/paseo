@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-22 16:44
+最近一次保存：2026-10-22 17:01
 
 ---
 
@@ -194,3 +194,17 @@ Notes：
 Notes：
 
 - 2026-10-22 16:44：警告里的文本节点是一个空格（RNW 在 nodeValue 后自己接句点）。sidebar-workspace-list 给 SidebarWorkspaceRowContent 的第一个子节点写了 `{" "}`，而该组件把 children 直接放进 View（rowRight），空白文本节点就成了 View 的直接子节点。删掉该分隔空格。另两处 `{" "}`（command-center 文件名副标题、pull request 标题编号）都在 Text 内部，安全保留。侧栏测试 19 文件 147 项通过，lint 通过。
+
+---
+
+### 修 tool call 卡片的按钮嵌套警告
+
+- 状态：已完成
+- 最近保存：2026-10-22 17:01
+
+控制台报 `In HTML, <button> cannot be a descendant of <button>`，组件栈指向 ToolCallSlot。
+
+Notes：
+
+- 2026-10-22 17:01：RNW 0.21 的 propsToAccessibilityComponent 把 role=button 的 View / Pressable 渲染成真 <button>，不再是 div[role=button]。ExpandableBadge 外层 Pressable 包住整行，行内的 CopyTextButton 与 tool-call-open-file 也是 role=button，形成嵌套。改为 headerRow 做外层容器，Pressable 只包图标与标签；open-file 抽成 ExpandableBadgeOpenFileButton，与 trailingAction 一起作为兄弟节点。可见变化：hover 时出现的打开文件图标改为行尾对齐。用户运行时查到 3 条 button button，本次修掉两条（copy / open-file），剩余条数待刷新后重测。
+- 另记：`src/agent-stream/chat-outline` 两个测试文件在当前 main 上加载即报 `SyntaxError: Unexpected identifier 'ReactElement'`，已用 stash 验证与本次改动无关，未修。
