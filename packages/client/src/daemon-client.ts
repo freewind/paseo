@@ -970,6 +970,8 @@ type WorkspaceSetupStatusPayload = WorkspaceSetupStatusResponseMessage["payload"
 export interface FetchAgentResult {
   agent: AgentSnapshotPayload;
   project: ProjectPlacementPayload | null;
+  /** Stored memos for the agent; empty when the daemon predates memos on fetch. */
+  memos: AgentMemo[];
 }
 
 export interface WaitForFinishResult {
@@ -3139,7 +3141,11 @@ export class DaemonClient {
     if (!payload.agent) {
       return null;
     }
-    return { agent: payload.agent, project: payload.project ?? null };
+    return {
+      agent: payload.agent,
+      project: payload.project ?? null,
+      memos: payload.memos ?? [],
+    };
   }
 
   // ============================================================================

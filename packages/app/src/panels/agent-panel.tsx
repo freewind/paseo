@@ -324,6 +324,8 @@ function storeFetchedAgentDetail(input: {
     });
   }
 
+  store.setAgentMemos(input.serverId, hydrated.id, input.result.memos);
+
   store.setPendingPermissions(input.serverId, (previous) => {
     const next = new Map(previous);
     for (const [key, pending] of next.entries()) {
@@ -1329,7 +1331,13 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
       }
       client
         .addAgentMemo(agentId, blockText)
-        .then(() => toastApi.show(t("agentMemos.addedToTodo"), { variant: "success" }))
+        .then((payload) => {
+          // The add reply carries the authoritative list; without writing it back the memo
+          // exists on the daemon but never reaches this client's rail.
+          useSessionStore.getState().setAgentMemos(serverId, agentId, payload.memos);
+          toastApi.show(t("agentMemos.addedToTodo"), { variant: "success" });
+          return undefined;
+        })
         .catch(() => toastApi.error(t("agentMemos.failedToAdd")));
     },
     [agentId, serverId, t, toastApi],
