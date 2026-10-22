@@ -128,9 +128,71 @@ function buildCanonicalDetailDisplay(input: ToolCallDisplayInput): DetailDisplay
   }
 }
 
-function readUnknownInputFilePath(input: unknown): string | undefined {
-  if (!isRecord(input)) return undefined;
-  return readString(input.path);
+/**
+ * What an unmapped tool is asking for, in the order the fields read best. MCP tools arrive as
+ * unknown details carrying their raw arguments, so without this a search badge shows only its
+ * directory and reads as if the call were about the folder rather than the query.
+ *
+ * `command` is deliberately absent: raw arguments are not a shell tool's contract, and an
+ * unrelated field named `command` must not become the badge's summary.
+ */
+const UNKNOWN_INTENT_KEYS = [
+  "query",
+  "pattern",
+  "patterns",
+  "substring_pattern",
+  "name_path_pattern",
+  "name_path",
+  "title",
+  "url",
+  "prompt",
+] as const;
+
+/** Where the call points, in the order providers spell it. */
+const UNKNOWN_TARGET_KEYS = ["path", "relative_path", "projectPath", "cwd"] as const;
+
+function readSummaryValue(input: Record<string, unknown>, key: string): string | undefined {
+  const value = input[key];
+  if (Array.isArray(value)) {
+    const items = value.filter((item): item is string => typeof item === "string" && item !== "");
+    if (items.length === 0) {
+      return undefined;
+    }
+    // Two patterns already fill a badge line; the rest would only be cut off.
+    return items.length > 2 ? `${items[0]} | ${items[1]} | …` : items.join(" | ");
+  }
+  return readString(value);
+}
+
+function firstSummaryValue(
+  input: Record<string, unknown>,
+  keys: readonly string[],
+): string | undefined {
+  for (const key of keys) {
+    const value = readSummaryValue(input, key);
+    if (value) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+/** Keeps the badge to one line: a prompt with newlines would otherwise take it over. */
+function collapseWhitespace(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+function buildUnknownInputSummary(input: unknown, cwd: string | undefined): string | undefined {
+  if (!isRecord(input)) {
+    return undefined;
+  }
+  const intent = firstSummaryValue(input, UNKNOWN_INTENT_KEYS);
+  const target = firstSummaryValue(input, UNKNOWN_TARGET_KEYS);
+  const parts = [
+    intent ? collapseWhitespace(intent) : undefined,
+    target ? stripCwdPrefix(collapseWhitespace(target), cwd) : undefined,
+  ].filter((part): part is string => Boolean(part));
+  return parts.length > 0 ? parts.join(" · ") : undefined;
 }
 
 function buildUnknownDetailOverride(input: ToolCallDisplayInput): DetailDisplay {
@@ -152,12 +214,12 @@ function buildUnknownDetailOverride(input: ToolCallDisplayInput): DetailDisplay 
       summary: input.detail.type === "plain_text" ? readString(input.detail.label) : undefined,
     };
   }
-  // A tool the daemon could not map still names the file it works on, so its badge keeps the
-  // same path summary the canonical read/edit/write details get instead of showing nothing.
+  // A tool the daemon could not map still says what it asks for and where, so its badge gets a
+  // one-line summary instead of nothing.
   if (input.detail.type === "unknown") {
-    const filePath = readUnknownInputFilePath(input.detail.input);
-    if (filePath) {
-      return { summary: stripCwdPrefix(filePath, input.cwd) };
+    const summary = buildUnknownInputSummary(input.detail.input, input.cwd);
+    if (summary) {
+      return { summary };
     }
   }
   return {};
