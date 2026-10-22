@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-23 03:05
+最近一次保存：2026-10-23 03:25
 
 ---
 
@@ -579,3 +579,20 @@ Notes：
 - `quick-replies-bar.tsx` 的 `editChip` 是定制的（2px 内边距 + 透明度），不是项目默认。
 - 两处都换成 `iconButtonChromeStyle({ size: "large" })`，图标保持 `ICON_SIZE.lg`（20）。
 - 注意：别的文件里也有各自的 `styles.addButton`（如 `quick-replies-editor.tsx`、`git/pull-request-panel/checks-section.tsx`），与这两处无关，没动。
+
+---
+
+### 评论"立即发送"后输入框残留
+
+- 状态：已完成
+- 最近保存：2026-10-23 03:25
+
+根因：`handleCommentCommit` 先 `replaceText(nextText)`（写 store + 发布 textReplacement），随后提交路径在发送前就 `setUserInput("")` 同步清了输入框。等 React 提交，replacement 的 effect 才把文本写回 DOM —— 消息发出去了，输入框留着同样内容。
+
+修法：sendNow 不预写，改为 `onSubmitNow` 的注册回调返回 `Promise<AgentInputSubmitResult>`；只有 `noop` 才 `replaceText` 回填。`failed` 由 `submitAgentInput` 自己回填，`queued`/`submitted` 自己清空。
+
+连带：`sendMessageWithContent` 返回结果、`handleSubmit` 改 async、`onSubmitNow` 与 `AgentComposerSection` 两处 props 类型同步。
+
+关于“延迟 1 秒再发”：能绕开竞态，但需 setTimeout + 卸载/重复点击处理，且用户会看见文本闪现、失败判定被拖后，所以不用。
+
+要注意：web 端 `EditingTextInput` 丢弃 `value`，DOM 只由 `replaceText`/`reset` 命令改，所以“store 清空”不等于“输入框清空”，这类问题以后要查命令通道。
