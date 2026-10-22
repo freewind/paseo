@@ -256,6 +256,16 @@ interface ChatOutlineTextRailProps {
   onRequestPromptText: (seq: number) => Promise<string | null>;
 }
 
+/** A row's box inside the list's content, measured once it has laid out. */
+interface ChatOutlineRowLayout {
+  y: number;
+  height: number;
+}
+
+const NO_ROW_LAYOUTS: ReadonlyMap<number, ChatOutlineRowLayout> = new Map();
+/** How long a programmatic scroll keeps the next scroll events from reading as the reader's. */
+const PROGRAMMATIC_SCROLL_WINDOW_MS = 500;
+
 const NO_PROMPT_TEXTS: ReadonlyMap<number, string> = new Map();
 
 function mergePromptText(
@@ -298,6 +308,16 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
   // surfaced in settings. See ./collapsed-state.ts for why this outlives the component.
   const [isCollapsed, handleToggleCollapsed] = useChatOutlineCollapsed(agentId);
   const { t } = useTranslation();
+  const scrollRef = useRef<ScrollView>(null);
+  const [rowLayouts, setRowLayouts] =
+    useState<ReadonlyMap<number, ChatOutlineRowLayout>>(NO_ROW_LAYOUTS);
+  const [viewportHeight, setViewportHeight] = useState(0);
+  // The list follows the transcript until the reader scrolls it themselves; jumping to a prompt
+  // hands it back. Anything else would yank the list out from under someone reading it.
+  const [isFollowing, setIsFollowing] = useState(true);
+  const programmaticScrollUntilRef = useRef(0);
+  // Measuring a row re-runs the follow effect; an unchanged target must not restart the scroll.
+  const lastScrollTargetRef = useRef<number | null>(null);
   // The popover's anchor is measured in window space, so the row that opened it has to
   // stay addressable after the click. Only one popover exists at a time: a click on the
   // open row closes it, a click on another row moves it.
@@ -308,6 +328,43 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
   const handlePromptText = useCallback((seq: number, text: string) => {
     setPromptTexts((current) => mergePromptText(current, seq, text));
   }, []);
+
+  const handleRowMeasure = useCallback((seq: number, layout: ChatOutlineRowLayout) => {
+    setRowLayouts((current) => {
+      const previous = current.get(seq);
+      if (previous && previous.y === layout.y && previous.height === layout.height) return current;
+      const next = new Map(current);
+      next.set(seq, layout);
+      return next;
+    });
+  }, []);
+
+  const handleListLayout = useCallback((event: LayoutChangeEvent) => {
+    setViewportHeight(event.nativeEvent.layout.height);
+  }, []);
+
+  const handleListScroll = useCallback(() => {
+    if (Date.now() < programmaticScrollUntilRef.current) return;
+    setIsFollowing(false);
+  }, []);
+
+  const handleListScrollBeginDrag = useCallback(() => setIsFollowing(false), []);
+
+  // Row heights come from measured boxes, not `index * lineHeight`: rows clamp at two lines and
+  // the numbered dividers between them belong to the same content flow.
+  useEffect(() => {
+    if (!isFollowing || activeSeq === null || viewportHeight === 0) return;
+    const layout = rowLayouts.get(activeSeq);
+    if (!layout) return;
+    const target = Math.max(0, layout.y + layout.height / 2 - viewportHeight / 2);
+    if (lastScrollTargetRef.current === target) return;
+    lastScrollTargetRef.current = target;
+    programmaticScrollUntilRef.current = Date.now() + PROGRAMMATIC_SCROLL_WINDOW_MS;
+    scrollRef.current?.scrollTo({
+      y: target,
+      animated: true,
+    });
+  }, [activeSeq, isFollowing, rowLayouts, viewportHeight]);
 
   // The index carries only a truncated preview, so each row reads its own full text once.
   // The reader scans the rail instead of hovering it. Prompts already loaded in the
@@ -335,6 +392,15 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
   }, []);
 
   const handleClosePrompt = useCallback(() => setOpenPromptSeq(null), []);
+
+  // Jumping is the reader saying where they want to be, so the list resumes following them.
+  const handleJumpToPrompt = useCallback(
+    (seq: number) => {
+      setIsFollowing(true);
+      onJumpToPrompt(seq);
+    },
+    [onJumpToPrompt],
+  );
 
   const openIndex = openPromptSeq === null ? -1 : prompts.findIndex((p) => p.seq === openPromptSeq);
   const openPrompt = openIndex >= 0 ? prompts[openIndex] : null;
@@ -374,9 +440,14 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
         </View>
         {isCollapsed ? null : (
           <ScrollView
+            ref={scrollRef}
             style={styles.textRailScroll}
             contentContainerStyle={styles.textRailContent}
             showsVerticalScrollIndicator={false}
+            onLayout={handleListLayout}
+            onScroll={handleListScroll}
+            scrollEventThrottle={16}
+            onScrollBeginDrag={handleListScrollBeginDrag}
             testID="chat-outline-text-list"
           >
             {prompts.map((prompt, index) => (
@@ -389,6 +460,7 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
                 isActive={prompt.seq === activeSeq}
                 isOpen={prompt.seq === openPromptSeq}
                 rowRef={prompt.seq === openPromptSeq ? openRowRef : undefined}
+                onMeasure={handleRowMeasure}
                 onTogglePrompt={handleTogglePrompt}
               />
             ))}
@@ -404,7 +476,7 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
           onRequestPromptText={onRequestPromptText}
           rowRef={openRowRef}
           panelRef={panelRef}
-          onJumpToPrompt={onJumpToPrompt}
+          onJumpToPrompt={handleJumpToPrompt}
           onClose={handleClosePrompt}
         />
       ) : null}
@@ -420,6 +492,7 @@ interface ChatOutlineTextRowProps {
   isActive: boolean;
   isOpen: boolean;
   rowRef?: React.RefObject<View | null>;
+  onMeasure: (seq: number, layout: ChatOutlineRowLayout) => void;
   onTogglePrompt: (seq: number) => void;
 }
 
@@ -431,12 +504,20 @@ const ChatOutlineTextRow = memo(function ChatOutlineTextRow({
   isActive,
   isOpen,
   rowRef,
+  onMeasure,
   onTogglePrompt,
 }: ChatOutlineTextRowProps) {
   const accessibilityState = useMemo(() => ({ expanded: isOpen }), [isOpen]);
   const handlePress = useCallback(() => {
     onTogglePrompt(seq);
   }, [onTogglePrompt, seq]);
+  const handleLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      const { y, height } = event.nativeEvent.layout;
+      onMeasure(seq, { y, height });
+    },
+    [onMeasure, seq],
+  );
 
   return (
     <>
@@ -456,7 +537,7 @@ const ChatOutlineTextRow = memo(function ChatOutlineTextRow({
           <View style={styles.textRowDividerLine} />
         </View>
       ) : null}
-      <View style={styles.textRow} ref={rowRef}>
+      <View style={styles.textRow} ref={rowRef} onLayout={handleLayout}>
         {/* The row clamps its own lines instead of scrolling them: a scroller here is a
             wheel trap that eats the scroll before the list gets it, so the rail owns the
             only vertical scroller and a click opens the full text in a popover instead. */}
