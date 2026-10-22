@@ -48,6 +48,23 @@ describe("AgentMemoStore", () => {
     expect(store.list("agent-1")[0]?.text).toBe("one-edited");
   });
 
+  it("stamps every mutation so clients can order by the latest action", async () => {
+    const store = new AgentMemoStore(home, logger);
+    await store.initialize();
+    const activityTime = (memo: { updatedAt?: string; createdAt: string }) =>
+      Date.parse(memo.updatedAt ?? memo.createdAt);
+
+    const added = await store.add("agent-1", "one");
+    expect(added.updatedAt).toBe(added.createdAt);
+
+    const completed = await store.setCompleted("agent-1", added.id, true);
+    expect(completed.completed).toBe(true);
+    expect(activityTime(completed)).toBeGreaterThanOrEqual(activityTime(added));
+
+    const edited = await store.update("agent-1", added.id, "one-edited");
+    expect(activityTime(edited)).toBeGreaterThanOrEqual(activityTime(completed));
+  });
+
   it("rejects updating a missing memo without touching the list", async () => {
     const store = new AgentMemoStore(home, logger);
     await store.initialize();
