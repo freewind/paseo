@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-23 23:25
+最近一次保存：2026-10-23 23:40
 
 ---
 
@@ -820,3 +820,25 @@ Notes：
 **踩坑**：为降 `SessionRow` 复杂度（21 > 20）把 store 订阅抽成 `useAgentIsArchived`；嵌套三元被 lint 拦，改 `useMemo` + if/return；`accessibilityState` 新对象用 `useMemo`。
 
 验证：`use-archive-agent.test.ts` 8 条、`sessions-screen.test.ts` 3 条通过；lint、typecheck、format 均 exit 0。**待用户实机复验** loading 与图标翻转。
+
+---
+
+### History 行会话预览弹窗
+
+- 状态：已完成（`254efde3c`）
+- 最近保存：2026-10-23 23:40
+
+需求：行操作区加 preview 图标（归档左侧），带 tooltip，点开在 dialog 里看完整 Markdown 对话。
+
+**复用而非新写**：`agent.export_conversation`（daemon 合并磁盘与内存 timeline）+ `buildConversationMarkdown`（`timeline/conversation-markdown.ts`，Copy Markdown 的同一个函数）+ `AdaptiveModalSheet` + `MarkdownRenderer`。
+
+- 新增 `components/history-conversation-preview-sheet.tsx`：`useFetchQuery`，`key = ["history-conversation-preview", serverId, agentId]`，`dataShape: "value"`，`staleTimeMs: Infinity`；loading / 失败重试（`Refetch`）/ 空对话提示（`workspace.tabs.toasts.conversationMarkdownEmpty`）。
+- `agent-list.tsx`：`FileText` 按钮放归档前，feature gate 读 `features.conversationExport`；`AgentList` 顶层持 `previewAgent` + `isPreviewVisible`，关闭时不清 agent（避免消失动画中内容变空）；`rowActions` 宽度 64 → 88。
+- i18n `common.actions.preview`：中英正式，其余七种填 `Preview` 占位（类型 `TranslationResources` 要求键齐全）。
+- `sessions-screen.test.ts` 补 `@/components/markdown/renderer` mock：新 import 链把 `react-native-markdown-display`（.js 里带 JSX）拉进 Node。
+
+**踩坑**：`useQuery` 与 `useUnistyles` 被 lint 禁止 → 改用 `@/data/query` 的 `useFetchQuery` 与 `withUnistyles(LoadingSpinner)` + `uniProps`；嵌套三元被拦 → if/else 赋 `content`；内联 `onPress` 被 `jsx-no-new-function-as-prop` 拦 → `useCallback`。
+
+**已知代价**：预览会触发 `ensureAgentLoaded`，未加载的会话被拉起来后常驻内存（daemon 没有空闲回收）。用户已确认先接受，后续再考虑 daemon 侧只读导出。
+
+验证：`sessions-screen` 3 条、`conversation-markdown` 6 条通过；lint、typecheck、format 均 exit 0。**待用户实机复验**弹窗与图标。
