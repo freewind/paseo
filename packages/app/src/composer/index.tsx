@@ -121,7 +121,7 @@ import { resolveActiveSendBehavior } from "./input/state";
 import { useKeyboardActionHandler } from "@/hooks/use-keyboard-action-handler";
 import type { KeyboardActionDefinition } from "@/keyboard/keyboard-action-dispatcher";
 import type { MessageInputKeyboardActionKind } from "@/keyboard/actions";
-import { submitAgentInput } from "@/composer/submit";
+import { submitAgentInput, type AgentInputSubmitResult } from "@/composer/submit";
 import { createMessageSubmissionWriter } from "@/composer/submission/writer";
 import { ComposerKeyboardScopeProvider, useComposerKeyboardScope } from "@/composer/keyboard-scope";
 import { useAppSettings } from "@/hooks/use-settings";
@@ -1003,7 +1003,7 @@ interface ComposerProps {
    * Exposes an imperative submit for text the host built itself, such as a quoted comment.
    * It runs the normal send path, so attachments, queueing, and draft clearing match a keyboard send.
    */
-  onSubmitNow?: (submitNow: (text: string) => void) => void;
+  onSubmitNow?: (submitNow: (text: string) => Promise<AgentInputSubmitResult>) => void;
   /** Draft context for listing commands before an agent exists. Omitted for running agents. */
   commandDraft?: DraftCommandTarget;
   /** Called when a message is about to be sent (any path: keyboard, dictation, queued). */
@@ -1783,6 +1783,7 @@ function ComposerContentImpl({
         result,
         outgoingAttachments,
       });
+      return result;
     },
     [
       allowEmptySubmit,
@@ -1801,26 +1802,28 @@ function ComposerContentImpl({
   );
 
   const handleSubmit = useCallback(
-    (payload: MessagePayload) => {
+    async (payload: MessagePayload): Promise<AgentInputSubmitResult> => {
       const outgoingAttachments = buildOutgoingAttachments(attachments);
       const clientSlashCommand = resolveClientSlashCommand({
         text: payload.text,
         hasAttachments: outgoingAttachments.length > 0,
       });
       if (clientSlashCommand && runClientSlashCommand(clientSlashCommand)) {
-        return;
+        return "submitted";
       }
       const pluginSlashCommand = resolvePluginClientSlashCommand({
         text: payload.text,
         hasAttachments: outgoingAttachments.length > 0,
         commands: pluginClientSlashCommands,
       });
-      if (pluginSlashCommand && runPluginClientSlashCommand(pluginSlashCommand)) return;
+      if (pluginSlashCommand && runPluginClientSlashCommand(pluginSlashCommand)) {
+        return "submitted";
+      }
 
       if (blurOnSubmit) {
         messageInputRef.current?.blur();
       }
-      void sendMessageWithContent(payload.text, outgoingAttachments, payload.forceSend);
+      return sendMessageWithContent(payload.text, outgoingAttachments, payload.forceSend);
     },
     [
       attachments,
@@ -1847,15 +1850,13 @@ function ComposerContentImpl({
     (text: string) => {
       const draft = textSource.getSnapshot();
       const merged = draft.trim().length > 0 ? `${draft}\n${text}` : text;
-      handleSubmit({ text: merged, attachments: [], cwd });
+      void handleSubmit({ text: merged, attachments: [], cwd });
     },
     [cwd, handleSubmit, textSource],
   );
 
   const submitTextNow = useCallback(
-    (text: string) => {
-      handleSubmit({ text, attachments: [], cwd });
-    },
+    (text: string) => handleSubmit({ text, attachments: [], cwd }),
     [cwd, handleSubmit],
   );
 

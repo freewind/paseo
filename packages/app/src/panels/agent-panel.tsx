@@ -34,6 +34,7 @@ import {
   resolveComposerTrackTailClearance,
 } from "@/composer/pill-styles";
 import { getActiveMessageSubmissions } from "@/composer/submission/model";
+import type { AgentInputSubmitResult } from "@/composer/submit";
 import { RewindComposerRestoreProvider } from "@/components/rewind/composer-restore";
 import { AgentMemosRail } from "@/agent-memos/agent-memos-rail";
 import { useAgentMemos } from "@/agent-memos/use-agent-memos";
@@ -1291,10 +1292,15 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
       composerState,
     ],
   );
-  const composerSubmitNowRef = useRef<((text: string) => void) | null>(null);
-  const handleComposerSubmitNow = useCallback((submitNow: (text: string) => void) => {
-    composerSubmitNowRef.current = submitNow;
-  }, []);
+  const composerSubmitNowRef = useRef<((text: string) => Promise<AgentInputSubmitResult>) | null>(
+    null,
+  );
+  const handleComposerSubmitNow = useCallback(
+    (submitNow: (text: string) => Promise<AgentInputSubmitResult>) => {
+      composerSubmitNowRef.current = submitNow;
+    },
+    [],
+  );
   const handleCommentCommit = useCallback(
     ({ blockText, comment, sendNow }: { blockText: string; comment: string; sendNow: boolean }) => {
       const nextText = buildCommentDraftText({
@@ -1302,12 +1308,20 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
         blockText,
         comment,
       });
-      // Write the draft first: a send that cannot start (host offline) leaves the text in place
-      // instead of swallowing what the user typed.
-      replaceText(nextText);
-      if (sendNow) {
-        composerSubmitNowRef.current?.(nextText);
+      const submitNow = composerSubmitNowRef.current;
+      if (sendNow && submitNow) {
+        // Write nothing into the draft first: the submit clears the input, so a replacement queued
+        // here would be applied after that clear and put the text back. A submit that never starts
+        // (`noop`, e.g. host offline) is the one case where the text has to land in the composer.
+        void submitNow(nextText).then((result) => {
+          if (result === "noop") {
+            replaceText(nextText);
+          }
+          return undefined;
+        });
+        return;
       }
+      replaceText(nextText);
     },
     [replaceText, textSource],
   );
@@ -1650,7 +1664,7 @@ const AgentComposerSection = memo(function AgentComposerSection({
   isSubmitLoading: boolean;
   agentInputDraft: AgentInputDraft;
   onAttentionInputFocus: () => void;
-  onSubmitNow: (submitNow: (text: string) => void) => void;
+  onSubmitNow: (submitNow: (text: string) => Promise<AgentInputSubmitResult>) => void;
   onAttentionPromptSend: () => void;
   onComposerHeightChange: (height: number) => void;
   onMessageSent: () => void;
@@ -1717,7 +1731,7 @@ function ActiveAgentComposer({
   isSubmitLoading: boolean;
   agentInputDraft: AgentInputDraft;
   onAttentionInputFocus: () => void;
-  onSubmitNow: (submitNow: (text: string) => void) => void;
+  onSubmitNow: (submitNow: (text: string) => Promise<AgentInputSubmitResult>) => void;
   onAttentionPromptSend: () => void;
   onComposerHeightChange: (height: number) => void;
   onMessageSent: () => void;
