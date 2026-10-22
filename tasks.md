@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-23 01:10
+最近一次保存：2026-10-23 02:05
 
 ---
 
@@ -497,3 +497,22 @@ Notes：
 - 修法：`commitCached` 与 `commitCachedWorkspace` 两条缓存恢复路径都把 `archivingAt` 归零。
 - `commitSnapshot`（daemon 全量快照）不动，那份值可信。
 - 新增测试：缓存里带 archivingAt，恢复后两个入口都应为 null。
+
+---
+
+### Workspace 菜单增加解开最后归档的 Agent
+
+- 状态：已完成
+- 最近保存：2026-10-23 02:05
+
+需求澄清走过的弯路：先被理解为恢复最近归档的 workspace（甚至全局/按 project 找），用户纠正为“该 workspace 下最后归档的 Agent Session”。
+
+Notes：
+
+- 全客户端链路：归档 agent 仍在 session 的 agents map 里，按 `workspaceId` 筛 + `archivedAt` 取最新 → `client.refreshAgent` 解归档 → `navigateToWorkspace` 打开 agent tab。零协议改动，不用重建 daemon。
+- hook：`hooks/use-restore-last-archived-agent.ts`，只在调用时读 store，不订阅，避免每行 sidebar 一个订阅。
+- 菜单项接两处：`sidebar-workspace-menu.tsx` 与 `workspace-header-menu.tsx`（workspace-screen 里在 `WorkspaceHeaderTitleBar` 内调 hook）。
+- i18n：`sidebar.workspace.actions.restoreLastArchivedAgent` + toasts `noArchivedAgent`/`restoreArchivedAgentFailed`，9 语言。
+- 教训：`workspace-screen.tsx` 里 menu 的传参在 `WorkspaceHeaderTitleBar`，而 `useWorkspaceHeaderArchive` 在另一个组件，插错位置会编译不过；先确认作用域。
+
+**既有失败**：`workspace-header-menu.test.tsx` 断言 `workspace-menu-restore-hidden-agents-*`，但该入口已在 `dc176007e 移除显式隐藏 Agent 功能` 中删除，测试没同步。与本次改动无关，未动。
