@@ -12,6 +12,7 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { iconButtonChromeStyle } from "@/components/ui/icon-button-chrome";
 import { InlineConfirm } from "@/components/ui/inline-confirm";
 import { encodeAttachmentsForSend } from "@/attachments/service";
 import type { AttachmentMetadata } from "@/attachments/types";
@@ -76,6 +77,11 @@ export const AgentMemosRail = memo(function AgentMemosRail({
     setEditingMemoId(null);
     setIsAdding(true);
   }, []);
+  const addButtonStyle = useCallback(
+    ({ pressed, hovered = false }: { pressed: boolean; hovered?: boolean }) =>
+      iconButtonChromeStyle({ size: "large", state: { hovered: Boolean(hovered), pressed } }),
+    [],
+  );
   const handleCancelAdd = useCallback(() => setIsAdding(false), []);
   const handleStartEdit = useCallback((memoId: string) => {
     setIsAdding(false);
@@ -190,7 +196,7 @@ export const AgentMemosRail = memo(function AgentMemosRail({
         <Tooltip delayDuration={250} enabledOnDesktop enabledOnMobile={false}>
           <TooltipTrigger asChild>
             <Pressable
-              style={styles.addButton}
+              style={addButtonStyle}
               onPress={handleStartAdding}
               accessibilityRole="button"
               accessibilityLabel={t("agentMemos.add")}
@@ -509,15 +515,6 @@ const styles = StyleSheet.create((theme: Theme) => ({
   },
   deleteButton: {
     padding: theme.spacing[1],
-  },
-  addButton: {
-    flexShrink: 0,
-    borderRadius: theme.borderRadius.full,
-    borderWidth: theme.borderWidth[1],
-    borderColor: theme.colors.border,
-    paddingHorizontal: theme.spacing[3],
-    paddingVertical: theme.spacing[2],
-    backgroundColor: theme.colors.surface1,
   },
   tooltipText: {
     color: theme.colors.foreground,
