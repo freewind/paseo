@@ -49,6 +49,7 @@ import { ComboboxTrigger } from "@/components/ui/combobox-trigger";
 import { SidebarHeaderRow } from "@/components/sidebar/sidebar-header-row";
 import { SearchField } from "@/components/ui/search-field";
 import { searchSettingsSections } from "@/screens/settings/settings-search-index";
+import { useSettingsSearchStore } from "@/stores/settings-search-store";
 import { HostPicker as SharedHostPicker } from "@/components/hosts/host-picker";
 import { HostStatusDot } from "@/components/host-status-dot";
 import { SettingsSection } from "@/components/settings/headings/settings-section";
@@ -985,7 +986,10 @@ function SettingsSidebar({
 
   // Search narrows the app-section list to matching sections; an empty query is the normal
   // view. Host groups stay untouched — the complaint was app settings volume, not hosts.
-  const [searchQuery, setSearchQuery] = useState("");
+  // Held in a store rather than local state: selecting a result navigates, and a local
+  // query would reset with the remount, dumping the user back into the full list.
+  const searchQuery = useSettingsSearchStore((state) => state.query);
+  const setSearchQuery = useSettingsSearchStore((state) => state.setQuery);
   const isSearching = searchQuery.trim().length > 0;
   const availableSectionIds = useMemo(() => new Set<string>(items.map((item) => item.id)), [items]);
   const searchHits = useMemo(
