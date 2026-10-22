@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-22 23:25
+最近一次保存：2026-10-22 23:45
 
 ---
 
@@ -431,3 +431,18 @@ Notes：
 - 最近保存：2026-10-22 23:25
 
 副标题从“主机 · 项目”变成“主机 · 项目 · model”，model 取自 session store 的 agent，缺失时不留空段。副标题本来就 `numberOfLines={2}`，长 model id 不会被挤掉。
+
+---
+
+### 最近访问标记 Paseo 子代理
+
+- 状态：已完成
+- 最近保存：2026-10-22 23:45
+
+两类 sub agent 行为不同：provider 内部拉起的 target 是 `provider_subagent`，根本不进历史；Paseo 自己起的带 `parentAgentId`，是独立 agent、会进历史，之前与顶层无法区分。
+
+Notes：
+
+- 判断条件 `agent.parentAgentId != null`（由 label `paseo.parent-agent-id` 派生）。
+- 行尾徽标与“当前”并排，`subagent` 用 foregroundMuted，“当前”仍用 extraMuted。
+- 新 i18n key `sidebar.recentVisits.subagent`，9 语言已补（中文“子代理”）。
