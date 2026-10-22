@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-23 06:30
+最近一次保存：2026-10-23 06:45
 
 ---
 
@@ -737,3 +737,15 @@ Notes：
 - `comment-sheet.tsx`：keyPress 事件类型补 `metaKey`/`ctrlKey`；`useEnterSubmit(onSubmit, onSendNow?)` 分流：修饰键 Enter 走 `onSendNow`，没有该动作（memo 变体）退回 `onSubmit`；裸 Enter 附加；Shift+Enter 换行；IME 不触发。
 - 调用处：`useEnterSubmit(handleSubmit, isMemo ? undefined : handleSendNow)`。
 - 测试 +3：Cmd+Enter、Ctrl+Enter、memo 的 Cmd+Enter 等同提交。`src/assistant-comment` 5 个文件 41 passed。
+
+---
+
+### 备忘栏清空按钮：图标与 tooltip
+
+- 状态：已完成（`fa24f2b27`）
+- 最近保存：2026-10-23 06:45
+
+- 图标 `ListX` → `Trash2`，与行内删除同一套语言，省得用户多想一步。
+- 加 tooltip（文案 `agentMemos.clear`），与右侧「+」参数一致：`delayDuration={250}`、`enabledOnDesktop`、`side="top"`、`align="end"`。
+- **坑**：`TooltipTrigger asChild` 会把 ref 注入子元素，而 `InlineConfirm` 是函数组件接不了 ref → 外面套一层 `View`（`collapsable={false}`）当触发器，确认按钮在它里面。与 `memoButtonHost` 同一手法。
+- **坑**：直接内联写会让 JSX 嵌套到 7 层，超过 lint 上限 6。拆成 `MemoClearButton` 组件。
