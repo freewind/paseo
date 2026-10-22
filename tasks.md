@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-23 04:55
+最近一次保存：2026-10-23 05:10
 
 ---
 
@@ -676,3 +676,18 @@ Notes：
 - `rail.web.browser.test.tsx` 现在也能加载，但它属于 browser project，本地未装 Playwright 会报错；跑单元测试用 `--project unit`。
 
 第 2 件（`e18a14fe6`）：`rail.web.tsx` 读整列文案的 effect 把 `onRequestPromptText` 放进 ref，并用 `promptTextsRef` 跳过已有文本的 seq；列表新增一条时只读那一条。补测试：2 条→3 条只读第 3 条。`--project unit` 下 chat-outline 目录 60 passed。
+
+---
+
+### 备忘栏「清空」按钮
+
+- 状态：已完成（`f92a708d9`）
+- 最近保存：2026-10-23 05:10
+
+需求：备忘栏头部 `+` 左边加清空，必须先确认。
+
+- `use-agent-memos.ts` 新增 `clearMemos`：按当前列表顺序逐条调既有 `deleteAgentMemo`，每条回来的全量列表覆盖 store。不并行：reply 都带全量列表，并行会让后到的旧列表覆盖新列表。
+- `agent-memos-rail.tsx`：头部动作区（`headerActions`）里 `ListX` 图标 + `InlineConfirm`（testID `agent-memo-clear`），仅 `memos.length > 0` 时显示；失败静默。
+- i18n `agentMemos.clear` × 9。
+- **未新增协议 RPC**：新 RPC 要走 feature gate，用户当前 daemon 上按钮会被隐藏，得重建 host 才生效；逐条删除现有 daemon 立刻可用，备忘量是个位数。
+- 未新增测试：该目录本来没有测试文件，纯 UI 确认流程。验证：lint、typecheck、format 全过。
