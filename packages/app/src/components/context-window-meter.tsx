@@ -4,6 +4,7 @@ import Svg, { Circle } from "react-native-svg";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { InlineConfirm } from "@/components/ui/inline-confirm";
 import { useIsCompactFormFactor } from "@/constants/layout";
 import { useHostReportsUsage } from "@/usage";
 import { useCompactContext } from "@/hooks/use-compact-context";
@@ -117,16 +118,29 @@ export function ContextWindowMeter({
   // Compact screens open the details in a sheet, which can hold a pressable Refresh.
   const isCompact = useIsCompactFormFactor();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isSheetConfirmingCompact, setIsSheetConfirmingCompact] = useState(false);
   const openSheet = useCallback(() => setIsSheetOpen(true), []);
-  const closeSheet = useCallback(() => setIsSheetOpen(false), []);
-  const { canCompact, requestCompact } = useCompactContext({ serverId, agentId });
-  const handleDesktopPress = useCallback(() => {
-    void requestCompact();
-  }, [requestCompact]);
+  const closeSheet = useCallback(() => {
+    setIsSheetConfirmingCompact(false);
+    setIsSheetOpen(false);
+  }, []);
+  const { canCompact, sendCompact } = useCompactContext({ serverId, agentId });
+  const [isConfirmingCompact, setIsConfirmingCompact] = useState(false);
+  const handleStartCompact = useCallback(() => setIsConfirmingCompact(true), []);
+  const handleConfirmCompact = useCallback(() => {
+    setIsConfirmingCompact(false);
+    void sendCompact();
+  }, [sendCompact]);
+  const handleCompactOpenChange = useCallback((next: boolean) => {
+    if (!next) setIsConfirmingCompact(false);
+  }, []);
+  const handleSheetStartCompact = useCallback(() => setIsSheetConfirmingCompact(true), []);
+  const handleSheetCancelCompact = useCallback(() => setIsSheetConfirmingCompact(false), []);
   const handleSheetCompact = useCallback(() => {
+    setIsSheetConfirmingCompact(false);
     closeSheet();
-    void requestCompact();
-  }, [closeSheet, requestCompact]);
+    void sendCompact();
+  }, [closeSheet, sendCompact]);
   const percentage =
     maxTokens !== null && usedTokens !== null ? getUsagePercentage(maxTokens, usedTokens) : null;
   const geometry = getMeterGeometry(showPercentage, glyphSize);
@@ -206,6 +220,29 @@ export function ContextWindowMeter({
   const accessibilityLabel = t("contextWindow.accessibility", { percentage: roundedPercentage });
 
   if (isCompact) {
+    const compactAction = isSheetConfirmingCompact ? (
+      <View style={styles.confirmActions}>
+        <Button
+          variant="secondary"
+          style={styles.confirmAction}
+          onPress={handleSheetCancelCompact}
+          testID="context-window-compact-cancel"
+        >
+          {t("common.actions.cancel")}
+        </Button>
+        <Button
+          style={styles.confirmAction}
+          onPress={handleSheetCompact}
+          testID="context-window-compact-confirm"
+        >
+          {t("contextWindow.compactConfirm")}
+        </Button>
+      </View>
+    ) : (
+      <Button onPress={handleSheetStartCompact} testID="context-window-compact">
+        {t("contextWindow.compactConfirm")}
+      </Button>
+    );
     return (
       <>
         <Pressable
@@ -229,13 +266,28 @@ export function ContextWindowMeter({
             showTitle={false}
             refreshable
           />
-          {canCompact ? (
-            <Button onPress={handleSheetCompact} testID="context-window-compact">
-              {t("contextWindow.compactConfirm")}
-            </Button>
-          ) : null}
+          {canCompact ? compactAction : null}
         </ContextWindowSheet>
       </>
+    );
+  }
+
+  if (isConfirmingCompact) {
+    return (
+      <InlineConfirm
+        open
+        onOpenChange={handleCompactOpenChange}
+        triggerLabel={accessibilityLabel}
+        triggerStyle={containerStyle}
+        cancelLabel={t("common.actions.cancel")}
+        confirmLabel={t("contextWindow.compactConfirm")}
+        onConfirm={handleConfirmCompact}
+        accent
+        iconSize={16}
+        testID="context-window-compact"
+      >
+        {ring}
+      </InlineConfirm>
     );
   }
 
@@ -247,7 +299,7 @@ export function ContextWindowMeter({
           testID="context-window-meter"
           accessibilityRole="image"
           accessibilityLabel={accessibilityLabel}
-          onPress={canCompact ? handleDesktopPress : undefined}
+          onPress={canCompact ? handleStartCompact : undefined}
         >
           {ring}
           {percentageLabel}
@@ -304,4 +356,6 @@ const styles = StyleSheet.create((theme) => ({
     backgroundColor: theme.colors.surface3,
   },
   popover: { padding: theme.spacing[4], gap: theme.spacing[4] },
+  confirmActions: { flexDirection: "row", gap: theme.spacing[2] },
+  confirmAction: { flex: 1 },
 }));
