@@ -42,6 +42,7 @@ export const zhCN: TranslationResources = {
       search: "搜索",
       select: "选择",
       selectAll: "全选",
+      preview: "预览",
       manage: "管理",
       add: "添加",
       clear: "清空",

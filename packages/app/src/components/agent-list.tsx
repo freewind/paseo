@@ -21,7 +21,7 @@ import { useDeleteAgent } from "@/hooks/use-delete-agent";
 import { confirmDialog } from "@/utils/confirm-dialog";
 import { useToast } from "@/contexts/toast-context";
 import { useSessionStore } from "@/stores/session-store";
-import { Archive, ArchiveRestore, ChevronRight, Trash2 } from "lucide-react-native";
+import { Archive, ArchiveRestore, ChevronRight, FileText, Trash2 } from "lucide-react-native";
 import { useProviderIcon } from "@/components/provider-icons";
 import { navigateToAgent } from "@/utils/navigate-to-agent";
 import { HighlightedText } from "@/components/ui/highlighted-text";
@@ -29,6 +29,7 @@ import { StatusBadge, type StatusBadgeVariant } from "@/components/ui/status-bad
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { InlineConfirm } from "@/components/ui/inline-confirm";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { HistoryConversationPreviewSheet } from "@/components/history-conversation-preview-sheet";
 import { findHighlightRanges } from "@/components/ui/highlighted-text-segments";
 
 interface AgentListProps {
@@ -190,6 +191,7 @@ function SessionRow({
   showHostColumn,
   onPress,
   onLongPress,
+  onPreviewAgent,
   onDeleteAgent,
 }: {
   agent: AggregatedAgent;
@@ -200,6 +202,7 @@ function SessionRow({
   showHostColumn: boolean;
   onPress: (agent: AggregatedAgent) => void;
   onLongPress: (agent: AggregatedAgent) => void;
+  onPreviewAgent: (agent: AggregatedAgent) => void;
   onDeleteAgent: (agent: AggregatedAgent) => void;
 }) {
   const { theme } = useUnistyles();
@@ -238,6 +241,7 @@ function SessionRow({
   const handlePointerEnter = useCallback(() => setIsHovered(true), []);
   const handlePointerLeave = useCallback(() => setIsHovered(false), []);
   const handleDeleteAgent = useCallback(() => onDeleteAgent(agent), [agent, onDeleteAgent]);
+  const handlePreviewAgent = useCallback(() => onPreviewAgent(agent), [agent, onPreviewAgent]);
 
   const archivedIcon = useMemo(
     () => <Archive size={theme.fontSize.sm} color={theme.colors.foregroundMuted} />,
@@ -357,6 +361,7 @@ function SessionRow({
               agent={agent}
               isArchived={isArchived}
               testIDPrefix={`agent-row-${agent.serverId}-${agent.id}`}
+              onPreview={handlePreviewAgent}
               onDeleteAgent={handleDeleteAgent}
             />{" "}
           </View>
@@ -426,15 +431,22 @@ function AgentRowActions({
   agent,
   isArchived,
   testIDPrefix,
+  onPreview,
   onDeleteAgent,
 }: {
   agent: AggregatedAgent;
   isArchived: boolean;
   testIDPrefix: string;
+  onPreview: () => void;
   onDeleteAgent: () => void;
 }) {
   const { theme } = useUnistyles();
   const { t } = useTranslation();
+  // The preview needs a daemon that can export a whole conversation; the button is the feature
+  // gate, so an older host simply has no preview.
+  const supportsPreview = useSessionStore(
+    (state) => state.sessions[agent.serverId]?.serverInfo?.features?.conversationExport === true,
+  );
   const { toggleArchiveAgent, readArchiveAgentOperation } = useArchiveAgent();
   const operation = readArchiveAgentOperation({ serverId: agent.serverId, agentId: agent.id });
   const isBusy = operation !== null;
@@ -442,6 +454,7 @@ function AgentRowActions({
     ? t("agentPanel.archived.unarchive")
     : t("agentList.archiveSheet.archive");
   const deleteLabel = t("agentList.deleteSheet.delete");
+  const previewLabel = t("common.actions.preview");
   const archiveIcon = useMemo(() => {
     if (isBusy) {
       return <LoadingSpinner size="small" color={theme.colors.foregroundMuted} />;
@@ -462,6 +475,20 @@ function AgentRowActions({
 
   return (
     <View style={styles.rowActions}>
+      {supportsPreview ? (
+        <RowActionTooltip label={previewLabel}>
+          <Pressable
+            onPress={onPreview}
+            accessibilityRole="button"
+            accessibilityLabel={previewLabel}
+            testID={`${testIDPrefix}-preview`}
+            style={styles.rowAction}
+            hitSlop={6}
+          >
+            <FileText size={theme.iconSize.sm} color={theme.colors.foregroundMuted} />
+          </Pressable>
+        </RowActionTooltip>
+      ) : null}
       <RowActionTooltip label={archiveLabel}>
         <Pressable
           onPress={handleToggleArchive}
@@ -520,6 +547,8 @@ export function AgentList({
   const toast = useToast();
   const insets = useSafeAreaInsets();
   const [actionAgent, setActionAgent] = useState<AggregatedAgent | null>(null);
+  const [previewAgent, setPreviewAgent] = useState<AggregatedAgent | null>(null);
+  const [isPreviewVisible, setIsPreviewVisible] = useState(false);
   const isMobile = useIsCompactFormFactor();
   const { archiveAgent } = useArchiveAgent();
   const { deleteAgent, isDeletingAgent } = useDeleteAgent();
@@ -557,6 +586,17 @@ export function AgentList({
 
   const handleCloseActionSheet = useCallback(() => {
     setActionAgent(null);
+  }, []);
+
+  // The agent stays selected after close so the sheet keeps its content during the dismiss
+  // animation, and reopening the same row reuses the cached export.
+  const handlePreviewAgent = useCallback((agent: AggregatedAgent) => {
+    setPreviewAgent(agent);
+    setIsPreviewVisible(true);
+  }, []);
+
+  const handleClosePreview = useCallback(() => {
+    setIsPreviewVisible(false);
   }, []);
 
   const handleArchiveAgent = useCallback(() => {
@@ -644,6 +684,7 @@ export function AgentList({
           showHostColumn={showHostColumn}
           onPress={handleAgentPress}
           onLongPress={handleAgentLongPress}
+          onPreviewAgent={handlePreviewAgent}
           onDeleteAgent={handleDeleteAgentFromRow}
         />
       );
@@ -652,6 +693,7 @@ export function AgentList({
       handleAgentLongPress,
       handleAgentPress,
       handleDeleteAgentFromRow,
+      handlePreviewAgent,
       isMobile,
       search,
       selectedAgentId,
@@ -755,6 +797,14 @@ export function AgentList({
           </View>
         </View>
       </Modal>
+
+      <HistoryConversationPreviewSheet
+        serverId={previewAgent?.serverId ?? ""}
+        agentId={previewAgent?.id ?? null}
+        agentTitle={previewAgent?.title ?? null}
+        visible={isPreviewVisible}
+        onClose={handleClosePreview}
+      />
     </>
   );
 }
@@ -911,7 +961,7 @@ const styles = StyleSheet.create((theme) => ({
     justifyContent: "flex-end",
     gap: theme.spacing[1],
     flexShrink: 0,
-    width: 64,
+    width: 88,
   },
   rowAction: {
     padding: theme.spacing[1],
