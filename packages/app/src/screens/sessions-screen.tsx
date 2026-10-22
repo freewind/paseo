@@ -12,6 +12,11 @@ import { AgentList } from "@/components/agent-list";
 import { SearchField } from "@/components/ui/search-field";
 import { HostFilter } from "@/components/hosts/host-filter";
 import {
+  ALL_MODELS_OPTION_ID,
+  ModelFilter,
+  type ModelFilterOption,
+} from "@/components/hosts/model-filter";
+import {
   ALL_PROJECTS_OPTION_ID,
   ProjectFilter,
   type ProjectFilterOption,
@@ -114,6 +119,7 @@ function SessionsScreenContent() {
   const hosts = useHosts();
   const [selectedHost, setSelectedHost] = useState(ALL_HOSTS_OPTION_ID);
   const [selectedProject, setSelectedProject] = useState(ALL_PROJECTS_OPTION_ID);
+  const [selectedModel, setSelectedModel] = useState(ALL_MODELS_OPTION_ID);
   const [searchInput, setSearchInput] = useState("");
   const search = useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS).trim();
   const historyServerId = selectedHost === ALL_HOSTS_OPTION_ID ? null : selectedHost;
@@ -141,6 +147,28 @@ function SessionsScreenContent() {
   );
   const isSearching = isSearchSupported && search.length > 0;
 
+  // The model filter runs here, not on the daemon: history has no model filter, so the options
+  // are whatever the loaded pages contain and the filter narrows those same rows.
+  const modelOptions = useMemo((): ModelFilterOption[] => {
+    const seen = new Set<string>();
+    const options: ModelFilterOption[] = [{ id: ALL_MODELS_OPTION_ID, label: "All models" }];
+    for (const agent of agents) {
+      const model = agent.model;
+      if (!model || seen.has(model)) continue;
+      seen.add(model);
+      options.push({ id: model, label: model });
+    }
+    return options;
+  }, [agents]);
+  const visibleAgents = useMemo(
+    () =>
+      selectedModel === ALL_MODELS_OPTION_ID
+        ? agents
+        : agents.filter((agent) => agent.model === selectedModel),
+    [agents, selectedModel],
+  );
+  const isModelFiltered = selectedModel !== ALL_MODELS_OPTION_ID;
+
   useEffect(() => {
     if (
       selectedHost !== ALL_HOSTS_OPTION_ID &&
@@ -161,6 +189,17 @@ function SessionsScreenContent() {
     }
   }, [projectOptions, selectedProject]);
 
+  // A model option comes from the loaded rows, so a refresh can leave the selected one without
+  // any session; the filter then resolves back to all models instead of emptying the list.
+  useEffect(() => {
+    if (
+      selectedModel !== ALL_MODELS_OPTION_ID &&
+      !modelOptions.some((option) => option.id === selectedModel)
+    ) {
+      setSelectedModel(ALL_MODELS_OPTION_ID);
+    }
+  }, [modelOptions, selectedModel]);
+
   const [isManualRefresh, setIsManualRefresh] = useState(false);
 
   const handleRefresh = useCallback(() => {
@@ -171,18 +210,21 @@ function SessionsScreenContent() {
   // Searching filters the chronological history without changing its date buckets.
   const emptyText = resolveEmptyText({
     t,
-    isSearching,
+    isSearching: isSearching || isModelFiltered,
     isAllHosts: selectedHost === ALL_HOSTS_OPTION_ID,
   });
   const showHostFilter = hosts.length > 1;
   const showProjectFilter = projectOptions.length > 2;
-  const showFilterRow = showHostFilter || showProjectFilter || isSearchSupported;
+  const showModelFilter = modelOptions.length > 2;
+  const showFilterRow = showHostFilter || showProjectFilter || showModelFilter || isSearchSupported;
   const showLoadError = isError && agents.length === 0;
 
   const handleSelectProject = useCallback(
     (projectKey: string) => setSelectedProject(projectKey),
     [],
   );
+
+  const handleSelectModel = useCallback((modelId: string) => setSelectedModel(modelId), []);
   const sessionsProjectOptionTestID = useCallback(
     (projectKey: string) => `sessions-project-filter-item-${projectKey}`,
     [],
@@ -192,7 +234,11 @@ function SessionsScreenContent() {
     backToChat();
   }, []);
 
-  const handleClearSearch = useCallback(() => setSearchInput(""), []);
+  // An empty list under either filter has to lead somewhere: clearing both is the one way out.
+  const handleClearFilters = useCallback(() => {
+    setSearchInput("");
+    setSelectedModel(ALL_MODELS_OPTION_ID);
+  }, []);
 
   const listFooterComponent = useMemo(() => {
     // COMPAT(historyPagination): old daemons return a truncated relevance page.
@@ -237,6 +283,14 @@ function SessionsScreenContent() {
           optionTestID={sessionsProjectOptionTestID}
         />
       ) : null}
+      {showModelFilter ? (
+        <ModelFilter
+          options={modelOptions}
+          selectedModel={selectedModel}
+          onSelectModel={handleSelectModel}
+          triggerTestID="sessions-model-filter-trigger"
+        />
+      ) : null}
       {showHostFilter ? (
         <HostFilter
           hosts={hosts}
@@ -267,11 +321,11 @@ function SessionsScreenContent() {
           </Button>
         </View>
       ) : null}
-      {!isInitialLoad && !showLoadError && agents.length === 0 ? (
+      {!isInitialLoad && !showLoadError && visibleAgents.length === 0 ? (
         <View style={styles.emptyContainer} testID="sessions-empty">
           <Text style={styles.emptyText}>{emptyText}</Text>
-          {isSearching ? (
-            <Button variant="ghost" onPress={handleClearSearch}>
+          {isSearching || isModelFiltered ? (
+            <Button variant="ghost" onPress={handleClearFilters}>
               {t("sessions.actions.clearSearch")}
             </Button>
           ) : (
@@ -284,9 +338,9 @@ function SessionsScreenContent() {
           </Button>
         </View>
       ) : null}
-      {!isInitialLoad && !showLoadError && agents.length > 0 ? (
+      {!isInitialLoad && !showLoadError && visibleAgents.length > 0 ? (
         <AgentList
-          agents={agents}
+          agents={visibleAgents}
           showCheckoutInfo={false}
           isRefreshing={isManualRefresh}
           onRefresh={handleRefresh}
