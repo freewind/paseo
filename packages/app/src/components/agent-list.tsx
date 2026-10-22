@@ -213,19 +213,19 @@ function SessionRow({
   );
 
   const pressableStyle = useCallback(
-    ({ pressed, hovered = false }: PressableStateCallbackType & { hovered?: boolean }) => [
+    ({ pressed }: PressableStateCallbackType) => [
       styles.row,
       isSelected && styles.rowSelected,
-      Boolean(hovered) && styles.rowHovered,
+      isHovered && styles.rowHovered,
       pressed && styles.rowPressed,
     ],
-    [isSelected],
+    [isHovered, isSelected],
   );
 
   const handlePress = useCallback(() => onPress(agent), [onPress, agent]);
   const handleLongPress = useCallback(() => onLongPress(agent), [onLongPress, agent]);
-  const handleHoverIn = useCallback(() => setIsHovered(true), []);
-  const handleHoverOut = useCallback(() => setIsHovered(false), []);
+  const handlePointerEnter = useCallback(() => setIsHovered(true), []);
+  const handlePointerLeave = useCallback(() => setIsHovered(false), []);
   const handleToggleArchive = useCallback(() => onToggleArchive(agent), [agent, onToggleArchive]);
   const handleDeleteAgent = useCallback(() => onDeleteAgent(agent), [agent, onDeleteAgent]);
 
@@ -252,110 +252,112 @@ function SessionRow({
   );
 
   return (
-    <Pressable
-      style={pressableStyle}
-      onPress={handlePress}
-      onLongPress={handleLongPress}
-      onHoverIn={handleHoverIn}
-      onHoverOut={handleHoverOut}
-      accessibilityRole="button"
-      testID={`agent-row-${agent.serverId}-${agent.id}`}
-    >
-      <View style={styles.rowContent}>
-        <View style={styles.rowTitleRow}>
-          <HighlightedText
-            text={workspaceName || projectName}
-            ranges={workspaceName ? ranges.workspace : ranges.project}
-            style={styles.workspaceTitleText}
-            numberOfLines={1}
-            testID={`agent-row-workspace-${agent.serverId}-${agent.id}`}
-          />
-          {!isMobile ? (
-            <>
-              <ChevronRight size={theme.iconSize.xs} color={theme.colors.foregroundMuted} />
-              {agentTitle}
-            </>
+    // Hover lives on the plain view: the row's own actions are pressables, and a pressable that
+    // tracks hover loses it to them — which is what made the revealed icons flicker.
+    <View onPointerEnter={handlePointerEnter} onPointerLeave={handlePointerLeave}>
+      <Pressable
+        style={pressableStyle}
+        onPress={handlePress}
+        onLongPress={handleLongPress}
+        accessibilityRole="button"
+        testID={`agent-row-${agent.serverId}-${agent.id}`}
+      >
+        <View style={styles.rowContent}>
+          <View style={styles.rowTitleRow}>
+            <HighlightedText
+              text={workspaceName || projectName}
+              ranges={workspaceName ? ranges.workspace : ranges.project}
+              style={styles.workspaceTitleText}
+              numberOfLines={1}
+              testID={`agent-row-workspace-${agent.serverId}-${agent.id}`}
+            />
+            {!isMobile ? (
+              <>
+                <ChevronRight size={theme.iconSize.xs} color={theme.colors.foregroundMuted} />
+                {agentTitle}
+              </>
+            ) : null}
+            <SessionRowBadges
+              agent={agent}
+              archivedIcon={archivedIcon}
+              pendingPermissionCount={pendingPermissionCount}
+              showDesktopAttention={showDesktopAttention}
+            />
+          </View>
+          {isMobile ? agentTitle : null}
+          {isMobile ? (
+            <View style={styles.rowMetaRow}>
+              <HighlightedText
+                text={projectName}
+                ranges={ranges.project}
+                style={styles.sessionMetaText}
+                numberOfLines={1}
+                testID={`agent-row-project-${agent.serverId}-${agent.id}`}
+              />
+              <Text style={styles.sessionMetaSeparator}>·</Text>
+              <HighlightedText
+                text={branch}
+                ranges={ranges.branch}
+                style={styles.sessionMetaText}
+                numberOfLines={1}
+                testID={`agent-row-branch-${agent.serverId}-${agent.id}`}
+              />
+              <Text style={styles.sessionMetaSeparator}>·</Text>
+              <AgentActivityTime date={agent.lastActivityAt} isMobile />
+              {showHostColumn && agent.serverLabel ? (
+                <>
+                  <Text style={styles.sessionMetaSeparator}>·</Text>
+                  <Text style={styles.sessionMetaText} numberOfLines={1}>
+                    {agent.serverLabel}
+                  </Text>
+                </>
+              ) : null}
+            </View>
           ) : null}
-          <SessionRowBadges
-            agent={agent}
-            archivedIcon={archivedIcon}
-            pendingPermissionCount={pendingPermissionCount}
-            showDesktopAttention={showDesktopAttention}
-          />
         </View>
-        {isMobile ? agentTitle : null}
-        {isMobile ? (
-          <View style={styles.rowMetaRow}>
+        {!isMobile ? (
+          <View style={styles.rowColumns}>
             <HighlightedText
               text={projectName}
               ranges={ranges.project}
-              style={styles.sessionMetaText}
+              style={styles.columnMeta}
               numberOfLines={1}
               testID={`agent-row-project-${agent.serverId}-${agent.id}`}
             />
-            <Text style={styles.sessionMetaSeparator}>·</Text>
+            <SessionModelCell
+              model={agent.model}
+              onPress={handlePress}
+              onLongPress={handleLongPress}
+            />
+            {showHostColumn ? (
+              <Text style={styles.columnMetaHost} numberOfLines={1}>
+                {agent.serverLabel}
+              </Text>
+            ) : null}
             <HighlightedText
               text={branch}
               ranges={ranges.branch}
-              style={styles.sessionMetaText}
+              style={styles.columnMeta}
               numberOfLines={1}
               testID={`agent-row-branch-${agent.serverId}-${agent.id}`}
             />
-            <Text style={styles.sessionMetaSeparator}>·</Text>
-            <AgentActivityTime date={agent.lastActivityAt} isMobile />
-            {showHostColumn && agent.serverLabel ? (
-              <>
-                <Text style={styles.sessionMetaSeparator}>·</Text>
-                <Text style={styles.sessionMetaText} numberOfLines={1}>
-                  {agent.serverLabel}
-                </Text>
-              </>
-            ) : null}
+            <AgentActivityTime date={agent.lastActivityAt} isMobile={false} />
+            <AgentRowActions
+              archived={agent.archivedAt != null}
+              visible={isHovered}
+              testIDPrefix={`agent-row-${agent.serverId}-${agent.id}`}
+              onToggleArchive={handleToggleArchive}
+              onDeleteAgent={handleDeleteAgent}
+            />
           </View>
         ) : null}
-      </View>
-      {!isMobile ? (
-        <View style={styles.rowColumns}>
-          <HighlightedText
-            text={projectName}
-            ranges={ranges.project}
-            style={styles.columnMeta}
-            numberOfLines={1}
-            testID={`agent-row-project-${agent.serverId}-${agent.id}`}
-          />
-          <SessionModelCell
-            model={agent.model}
-            onPress={handlePress}
-            onLongPress={handleLongPress}
-          />
-          {showHostColumn ? (
-            <Text style={styles.columnMetaHost} numberOfLines={1}>
-              {agent.serverLabel}
-            </Text>
-          ) : null}
-          <HighlightedText
-            text={branch}
-            ranges={ranges.branch}
-            style={styles.columnMeta}
-            numberOfLines={1}
-            testID={`agent-row-branch-${agent.serverId}-${agent.id}`}
-          />
-          <AgentActivityTime date={agent.lastActivityAt} isMobile={false} />
-          <AgentRowActions
-            archived={agent.archivedAt != null}
-            visible={isHovered}
-            testIDPrefix={`agent-row-${agent.serverId}-${agent.id}`}
-            onToggleArchive={handleToggleArchive}
-            onDeleteAgent={handleDeleteAgent}
-          />
-        </View>
-      ) : null}
-      <SessionRowTrailingAttention
-        isMobile={isMobile}
-        showAttentionIndicator={showAttentionIndicator}
-        requiresAttention={agent.requiresAttention}
-      />
-    </Pressable>
+        <SessionRowTrailingAttention
+          isMobile={isMobile}
+          showAttentionIndicator={showAttentionIndicator}
+          requiresAttention={agent.requiresAttention}
+        />
+      </Pressable>
+    </View>
   );
 }
 
@@ -391,6 +393,21 @@ function SessionModelCell({
 }
 
 /**
+ * The revealed actions are icons only, so each says what it does on hover. The label doubles as
+ * the accessibility label, so the spoken and the hovered text cannot drift apart.
+ */
+function RowActionTooltip({ label, children }: { label: string; children: ReactElement }) {
+  return (
+    <Tooltip delayDuration={250} enabledOnDesktop enabledOnMobile={false}>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side="top" align="center" offset={8}>
+        <Text style={styles.tooltipText}>{label}</Text>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+/**
  * The row's own actions, revealed on hover so the columns stay quiet at rest. Archiving flips
  * with the row's archived state; deleting asks in place, because a session removed here is gone.
  */
@@ -409,37 +426,46 @@ function AgentRowActions({
 }) {
   const { theme } = useUnistyles();
   const { t } = useTranslation();
+  const archiveLabel = archived
+    ? t("agentPanel.archived.unarchive")
+    : t("agentList.archiveSheet.archive");
+  const deleteLabel = t("agentList.deleteSheet.delete");
   return (
     <View
       style={[styles.rowActions, visible ? null : styles.rowActionsHidden]}
       pointerEvents={visible ? "auto" : "none"}
     >
-      <Pressable
-        onPress={onToggleArchive}
-        accessibilityRole="button"
-        accessibilityLabel={
-          archived ? t("agentPanel.archived.unarchive") : t("agentList.archiveSheet.archive")
-        }
-        testID={`${testIDPrefix}-${archived ? "unarchive" : "archive"}`}
-        style={styles.rowAction}
-        hitSlop={6}
-      >
-        {archived ? (
-          <ArchiveRestore size={theme.iconSize.sm} color={theme.colors.foregroundMuted} />
-        ) : (
-          <Archive size={theme.iconSize.sm} color={theme.colors.foregroundMuted} />
-        )}
-      </Pressable>
-      <InlineConfirm
-        triggerLabel={t("agentList.deleteSheet.delete")}
-        confirmLabel={t("agentList.deleteSheet.delete")}
-        cancelLabel={t("common.actions.cancel")}
-        onConfirm={onDeleteAgent}
-        destructive
-        testID={`${testIDPrefix}-delete`}
-      >
-        <Trash2 size={theme.iconSize.sm} color={theme.colors.foregroundMuted} />
-      </InlineConfirm>
+      <RowActionTooltip label={archiveLabel}>
+        <Pressable
+          onPress={onToggleArchive}
+          accessibilityRole="button"
+          accessibilityLabel={archiveLabel}
+          testID={`${testIDPrefix}-${archived ? "unarchive" : "archive"}`}
+          style={styles.rowAction}
+          hitSlop={6}
+        >
+          {archived ? (
+            <ArchiveRestore size={theme.iconSize.sm} color={theme.colors.foregroundMuted} />
+          ) : (
+            <Archive size={theme.iconSize.sm} color={theme.colors.foregroundMuted} />
+          )}
+        </Pressable>
+      </RowActionTooltip>
+      <RowActionTooltip label={deleteLabel}>
+        {/* The tooltip needs a ref host; `InlineConfirm` is a function component. */}
+        <View style={styles.rowActionTooltipHost} collapsable={false}>
+          <InlineConfirm
+            triggerLabel={deleteLabel}
+            confirmLabel={deleteLabel}
+            cancelLabel={t("common.actions.cancel")}
+            onConfirm={onDeleteAgent}
+            destructive
+            testID={`${testIDPrefix}-delete`}
+          >
+            <Trash2 size={theme.iconSize.sm} color={theme.colors.foregroundMuted} />
+          </InlineConfirm>
+        </View>
+      </RowActionTooltip>
     </View>
   );
 }
@@ -885,6 +911,11 @@ const styles = StyleSheet.create((theme) => ({
   rowAction: {
     padding: theme.spacing[1],
     borderRadius: theme.borderRadius.md,
+  },
+  /** The delete tooltip's ref host; the confirm keeps its own padding. */
+  rowActionTooltipHost: {
+    alignItems: "center",
+    justifyContent: "center",
   },
   sheetOverlay: {
     flex: 1,
