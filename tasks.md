@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-22 23:10
+最近一次保存：2026-10-22 23:25
 
 ---
 
@@ -422,3 +422,12 @@ Notes：
 - 已知：用户当前 daemon（Paseo.app 内置 beta.3）没有这个 RPC，需 daemon 升级后生效；升级前返回按钮仍回归到“刷新即清空”。
 - 教训：Session 的 `dispatchInboundMessage` 是 `??` 链，每加一个 dispatch 就加一次复杂度，已到上限；新消息应合进 `dispatchMiscMessage`。
 - 教训：`edit` 的 oldText 不要拿“函数签名前几行”当锚点做插入，容易把签名删掉；改完必须看 git diff。
+
+---
+
+### 最近访问行显示 model
+
+- 状态：已完成
+- 最近保存：2026-10-22 23:25
+
+副标题从“主机 · 项目”变成“主机 · 项目 · model”，model 取自 session store 的 agent，缺失时不留空段。副标题本来就 `numberOfLines={2}`，长 model id 不会被挤掉。
