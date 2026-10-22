@@ -178,7 +178,6 @@ function QuickReplyEditorRow({
         initialValue={item.text}
         onChangeText={handleChange}
         style={styles.input}
-        multiline
         testID={`quick-replies-editor-input-${item.id}`}
       />
       <Pressable
@@ -336,7 +335,6 @@ const styles = StyleSheet.create((theme: Theme) => ({
     paddingHorizontal: theme.spacing[2],
     paddingVertical: theme.spacing[1.5],
     fontSize: theme.fontSize.base,
-    textAlignVertical: "top",
   },
   dragHandle: {
     alignItems: "center",
