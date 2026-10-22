@@ -204,13 +204,27 @@ function RecentVisitMenuItem({
   // An archived session cannot be entered. Missing metadata is not archived
   // metadata: an offline host must still resolve to a usable row.
   const disabled = agent?.archivedAt != null;
-  const currentBadge = useMemo(
-    () =>
-      isCurrent ? (
-        <Text style={styles.current}>{t("sidebar.recentVisits.current")}</Text>
-      ) : undefined,
-    [isCurrent, t],
-  );
+  // Only a Paseo-managed subagent carries a parent. Provider-internal subagents never reach this
+  // list (their target is not an agent chat), so a row without one is a top-level agent.
+  const isSubagent = agent?.parentAgentId != null;
+  const statusBadges = useMemo(() => {
+    if (!isCurrent && !isSubagent) {
+      return undefined;
+    }
+    return (
+      <View style={styles.badges}>
+        {isSubagent ? (
+          <Text
+            style={styles.subagentBadge}
+            testID={`sidebar-recent-visit-subagent-${visit.agentId}`}
+          >
+            {t("sidebar.recentVisits.subagent")}
+          </Text>
+        ) : null}
+        {isCurrent ? <Text style={styles.current}>{t("sidebar.recentVisits.current")}</Text> : null}
+      </View>
+    );
+  }, [isCurrent, isSubagent, t, visit.agentId]);
 
   const handleSelect = useCallback(() => {
     onBeforeNavigate?.();
@@ -226,7 +240,7 @@ function RecentVisitMenuItem({
       testID={`sidebar-recent-visit-${visit.agentId}`}
       description={description}
       disabled={disabled}
-      trailing={currentBadge}
+      trailing={statusBadges}
       onSelect={handleSelect}
     >
       {agent?.title?.trim() || visit.agentId}
@@ -270,5 +284,14 @@ const styles = StyleSheet.create((theme) => ({
   current: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.foregroundExtraMuted,
+  },
+  badges: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing[2],
+  },
+  subagentBadge: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.foregroundMuted,
   },
 }));

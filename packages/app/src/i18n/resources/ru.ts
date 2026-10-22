@@ -1360,6 +1360,7 @@ export const ru: TranslationResources = {
       trigger: "Недавние",
       empty: "Нет недавних сессий",
       current: "Текущая",
+      subagent: "Подагент",
     },
     help: {
       trigger: "Помощь и поддержка",

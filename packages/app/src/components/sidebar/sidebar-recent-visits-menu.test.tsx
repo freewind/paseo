@@ -26,7 +26,10 @@ const { theme, mocks } = vi.hoisted(() => ({
       workspaceId: string;
     } | null,
     workspaces: {} as Record<string, { title: string | null; name: string }>,
-    agents: {} as Record<string, { title: string | null; archivedAt: Date | null } | undefined>,
+    agents: {} as Record<
+      string,
+      { title: string | null; archivedAt: Date | null; parentAgentId?: string | null } | undefined
+    >,
     hosts: [] as { serverId: string; label: string }[],
     currentAgentId: null as string | null,
     layoutState: {
@@ -42,6 +45,7 @@ vi.mock("react-i18next", () => ({
       if (key === "sidebar.recentVisits.trigger") return "Recent";
       if (key === "sidebar.recentVisits.empty") return "No recent sessions yet";
       if (key === "sidebar.recentVisits.current") return "Current";
+      if (key === "sidebar.recentVisits.subagent") return "Subagent";
       return key;
     },
   }),
@@ -274,6 +278,23 @@ describe("SidebarRecentVisitsMenu", () => {
 
     expect(item("agent-a")?.textContent).not.toContain("Current");
     expect(item("agent-b")?.textContent).toContain("Current");
+  });
+
+  it("marks a subagent Paseo manages, and only that kind", () => {
+    mocks.workspaces["server-1:workspace-a"] = { title: null, name: "Workspace A" };
+    mocks.agents["server-1:agent-a"] = { title: "Parent", archivedAt: null, parentAgentId: null };
+    mocks.agents["server-1:agent-b"] = {
+      title: "Child",
+      archivedAt: null,
+      parentAgentId: "agent-a",
+    };
+    visit("server-1", "workspace-a", "agent-a");
+    visit("server-1", "workspace-a", "agent-b");
+
+    render();
+
+    expect(item("agent-a")?.textContent).not.toContain("Subagent");
+    expect(item("agent-b")?.textContent).toContain("Subagent");
   });
 
   it("shows the raw ids when the host has not sent any metadata", () => {

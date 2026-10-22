@@ -1349,6 +1349,7 @@ export const ko: TranslationResources = {
       trigger: "최근",
       empty: "최근 본 세션이 없습니다",
       current: "현재",
+      subagent: "하위 에이전트",
     },
     help: {
       trigger: "도움말 및 지원",

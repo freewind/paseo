@@ -1369,6 +1369,7 @@ export const ptBR: TranslationResources = {
       trigger: "Recentes",
       empty: "Nenhuma sessão recente ainda",
       current: "Atual",
+      subagent: "Subagente",
     },
     help: {
       trigger: "Ajuda e suporte",

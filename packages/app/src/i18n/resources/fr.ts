@@ -1391,6 +1391,7 @@ export const fr: TranslationResources = {
       trigger: "Récents",
       empty: "Aucune session récente",
       current: "Actuel",
+      subagent: "Sous-agent",
     },
     help: {
       trigger: "Aide et assistance",

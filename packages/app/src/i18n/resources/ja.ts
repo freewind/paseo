@@ -1356,6 +1356,7 @@ export const ja: TranslationResources = {
       trigger: "最近",
       empty: "最近見たセッションはありません",
       current: "現在",
+      subagent: "サブエージェント",
     },
     help: {
       trigger: "ヘルプとサポート",

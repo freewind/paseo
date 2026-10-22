@@ -1339,6 +1339,7 @@ export const ar: TranslationResources = {
       trigger: "الأخيرة",
       empty: "لا توجد جلسات حديثة",
       current: "الحالية",
+      subagent: "وكيل فرعي",
     },
     help: {
       trigger: "المساعدة والدعم",
