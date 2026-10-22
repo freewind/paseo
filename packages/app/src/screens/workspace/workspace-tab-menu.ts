@@ -456,6 +456,7 @@ export function buildWorkspaceDesktopTabActions(
       onCopyConversationMarkdown: input.onCopyConversationMarkdown,
       onCopyAgentAsNew: input.onCopyAgentAsNew,
       canCloneAgent: input.canCloneAgent,
+      onMoveAgentToWorkspace: input.onMoveAgentToWorkspace,
       onCopyTerminalId: input.onCopyTerminalId,
       onCopyFilePath: input.onCopyFilePath,
       onOpenFileInEditor: input.onOpenFileInEditor,

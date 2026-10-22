@@ -421,6 +421,38 @@ describe("buildWorkspaceTabMenuEntries", () => {
     expect(entries[1]).toEqual({ kind: "file-panel-open-with", key: "file-panel-open-with" });
   });
 
+  it("forwards the move-to-workspace handler through the desktop actions builder", () => {
+    const onMoveAgentToWorkspace = vi.fn();
+    const actions = buildWorkspaceDesktopTabActions({
+      tab: createAgentTab(),
+      index: 0,
+      tabCount: 2,
+      onCopyResumeCommand: vi.fn(),
+      onCopyAgentId: vi.fn(),
+      onCopyConversationMarkdown: vi.fn(),
+      onCopyAgentAsNew: vi.fn(),
+      canCloneAgent: true,
+      onMoveAgentToWorkspace,
+      onCopyTerminalId: vi.fn(),
+      onCopyFilePath: vi.fn(),
+      onReloadAgent: vi.fn(),
+      onRenameTab: vi.fn(),
+      onCloseTab: vi.fn(),
+      onCloseTabsToLeft: vi.fn(),
+      onCloseTabsToRight: vi.fn(),
+      onCloseOtherTabs: vi.fn(),
+    });
+
+    expect(itemKeys(actions.menuEntries)).toContain("move-to-workspace");
+
+    const moveEntry = actions.menuEntries.find(
+      (entry) => entry.kind === "item" && entry.key === "move-to-workspace",
+    );
+    if (!moveEntry || moveEntry.kind !== "item") throw new Error("Move entry missing");
+    moveEntry.onSelect();
+    expect(onMoveAgentToWorkspace).toHaveBeenCalledWith("agent-123");
+  });
+
   it("uses a Changes close id for the working diff tab", () => {
     const actions = buildWorkspaceDesktopTabActions({
       tab: {
