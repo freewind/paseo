@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-23 02:50
+最近一次保存：2026-10-23 03:05
 
 ---
 
@@ -565,3 +565,17 @@ Notes：
 - 行尾时间取 `agent.updatedAt`，用 `useCompactTimeAgo`（5m/2h）；抽成 `RecentVisitUpdatedAt` 小组件，tick 只重渲染那个 Text。
 - 时间与“当前/子代理”同在 `styles.badges` 这一行，时间排最右。
 - 测试 mock 的 `Text` 必须透传 `testID`，否则按 testid 拿不到时间标签。
+
+---
+
+### 纯图标按钮改用 iconButtonChromeStyle
+
+- 状态：已完成
+- 最近保存：2026-10-23 03:05
+
+Notes：
+
+- 项目统一的纯图标按钮样式是 `packages/app/src/components/ui/icon-button-chrome.ts` 的 `iconButtonChromeStyle`（6 处复用）：固定 32×32、无边框无底色、hover/pressed/open 给 `interactionHighlight`。
+- `quick-replies-bar.tsx` 的 `editChip` 是定制的（2px 内边距 + 透明度），不是项目默认。
+- 两处都换成 `iconButtonChromeStyle({ size: "large" })`，图标保持 `ICON_SIZE.lg`（20）。
+- 注意：别的文件里也有各自的 `styles.addButton`（如 `quick-replies-editor.tsx`、`git/pull-request-panel/checks-section.tsx`），与这两处无关，没动。
