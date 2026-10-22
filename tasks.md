@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-23 03:25
+最近一次保存：2026-10-23 03:40
 
 ---
 
@@ -596,3 +596,18 @@ Notes：
 关于“延迟 1 秒再发”：能绕开竞态，但需 setTimeout + 卸载/重复点击处理，且用户会看见文本闪现、失败判定被拖后，所以不用。
 
 要注意：web 端 `EditingTextInput` 丢弃 `value`，DOM 只由 `replaceText`/`reset` 命令改，所以“store 清空”不等于“输入框清空”，这类问题以后要查命令通道。
+
+---
+
+### 大纲跟随滚动在桌面客户端失效
+
+- 状态：已完成
+- 最近保存：2026-10-23 03:40
+
+根因：`rail.web.tsx` 跟随滚动用 `scrollTo({ animated: true })`，平滑动画期间的 `onScroll` 在 500ms 程序化窗口之后到达，`handleListScroll` 把它当用户滚动，`isFollowing` 被永久置 false —— 高亮照常变，列表不再跟随。
+
+修法：跟随改 `animated: false`（瞬时），点击 prompt 的跳转保留动画；`handleListScroll` 加容差：偏移在程序化目标 2px 内算列表自己的滚动。
+
+**未验证**：实际桌面客户端的滚动效果需用户复验；`rail.web.test.tsx` 在 main 上就有 `SyntaxError: Unexpected identifier 'ReactElement'`，与本次无关。
+
+遗留思考：`isFollowing` 一旦为 false 没有恢复入口（设计如此），若以后再出现“高亮不跟随”，先查是否被当成用户滚动关掉。
