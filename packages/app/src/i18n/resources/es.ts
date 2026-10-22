@@ -44,6 +44,7 @@ export const es: TranslationResources = {
       search: "Buscar",
       select: "Seleccionar",
       selectAll: "Seleccionar todo",
+      preview: "Preview",
       manage: "Gestionar",
       add: "Añadir",
       clear: "Borrar",

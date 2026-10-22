@@ -13,6 +13,11 @@ vi.mock("@/components/ui/combobox", () => ({
   Combobox: () => null,
   ComboboxItem: () => null,
 }));
+// The row action area imports the conversation preview sheet, and that pulls the markdown
+// renderer, whose react-native-markdown-display dependency ships JSX inside a .js file.
+vi.mock("@/components/markdown/renderer", () => ({
+  MarkdownRenderer: () => null,
+}));
 
 describe("buildHistoryProjectOptions", () => {
   test("leads with the all-projects option and keys the rest by server-side projectKey", () => {

@@ -39,6 +39,7 @@ export const en = {
       search: "Search",
       select: "Select",
       selectAll: "Select all",
+      preview: "Preview",
       manage: "Manage",
       add: "Add",
       clear: "Clear",

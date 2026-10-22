@@ -44,6 +44,7 @@ export const ja: TranslationResources = {
       search: "検索",
       select: "選択",
       selectAll: "すべて選択",
+      preview: "Preview",
       manage: "管理",
       add: "追加",
       clear: "クリア",

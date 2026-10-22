@@ -44,6 +44,7 @@ export const fr: TranslationResources = {
       search: "Rechercher",
       select: "Sélectionner",
       selectAll: "Tout sélectionner",
+      preview: "Preview",
       manage: "Gérer",
       add: "Ajouter",
       clear: "Effacer",

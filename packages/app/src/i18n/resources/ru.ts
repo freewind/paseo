@@ -44,6 +44,7 @@ export const ru: TranslationResources = {
       search: "Поиск",
       select: "Выбрать",
       selectAll: "Выбрать все",
+      preview: "Preview",
       manage: "Управление",
       add: "Добавить",
       clear: "Очистить",

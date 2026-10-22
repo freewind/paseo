@@ -43,6 +43,7 @@ export const ko: TranslationResources = {
       search: "검색",
       select: "선택",
       selectAll: "모두 선택",
+      preview: "Preview",
       manage: "관리",
       add: "추가",
       clear: "지우기",

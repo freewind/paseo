@@ -44,6 +44,7 @@ export const ptBR: TranslationResources = {
       search: "Buscar",
       select: "Selecionar",
       selectAll: "Selecionar tudo",
+      preview: "Preview",
       manage: "Gerenciar",
       add: "Adicionar",
       clear: "Limpar",

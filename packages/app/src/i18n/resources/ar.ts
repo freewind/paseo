@@ -43,6 +43,7 @@ export const ar: TranslationResources = {
       search: "يبحث",
       select: "يختار",
       selectAll: "تحديد الكل",
+      preview: "Preview",
       manage: "إدارة",
       add: "إضافة",
       clear: "مسح",
