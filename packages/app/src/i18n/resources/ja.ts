@@ -44,6 +44,12 @@ export const ja: TranslationResources = {
       search: "検索",
       select: "選択",
       selectAll: "すべて選択",
+      manage: "管理",
+      add: "追加",
+      clear: "クリア",
+      edit: "編集",
+      delete: "削除",
+      save: "保存",
     },
     placeholders: {
       search: "検索...",
@@ -138,7 +144,6 @@ export const ja: TranslationResources = {
   composer: {
     quickReplies: {
       title: "よく使う返信",
-      edit: "よく使う返信を管理",
       editTitle: "よく使う返信を管理",
       add: "追加",
       placeholder: "保存する返信を入力",
@@ -370,15 +375,10 @@ export const ja: TranslationResources = {
     },
   },
   agentMemos: {
-    edit: "メモを編集",
-    save: "メモを保存",
     toggle: "エージェントメモ",
-    add: "メモを追加",
     placeholder: "新しいメモ",
     empty: "メモはまだありません",
     useMemo: "メモを入力欄に追加",
-    delete: "メモを削除",
-    clear: "メモをすべて削除",
     markDone: "完了にする",
     markNotDone: "未完了に戻す",
     addedToTodo: "To-do に追加しました",

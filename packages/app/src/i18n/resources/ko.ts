@@ -43,6 +43,12 @@ export const ko: TranslationResources = {
       search: "검색",
       select: "선택",
       selectAll: "모두 선택",
+      manage: "관리",
+      add: "추가",
+      clear: "지우기",
+      edit: "편집",
+      delete: "삭제",
+      save: "저장",
     },
     placeholders: {
       search: "검색...",
@@ -137,7 +143,6 @@ export const ko: TranslationResources = {
   composer: {
     quickReplies: {
       title: "빠른 답변",
-      edit: "빠른 답변 관리",
       editTitle: "빠른 답변 관리",
       add: "추가",
       placeholder: "저장할 답변 입력",
@@ -366,15 +371,10 @@ export const ko: TranslationResources = {
     },
   },
   agentMemos: {
-    edit: "메모 편집",
-    save: "메모 저장",
     toggle: "에이전트 메모",
-    add: "메모 추가",
     placeholder: "새 메모",
     empty: "아직 메모가 없습니다",
     useMemo: "메모를 입력창에 추가",
-    delete: "메모 삭제",
-    clear: "메모 모두 지우기",
     markDone: "완료로 표시",
     markNotDone: "미완료로 표시",
     addedToTodo: "할 일에 추가했습니다",

@@ -44,6 +44,12 @@ export const ru: TranslationResources = {
       search: "Поиск",
       select: "Выбрать",
       selectAll: "Выбрать все",
+      manage: "Управление",
+      add: "Добавить",
+      clear: "Очистить",
+      edit: "Изменить",
+      delete: "Удалить",
+      save: "Сохранить",
     },
     placeholders: {
       search: "Поиск...",
@@ -138,7 +144,6 @@ export const ru: TranslationResources = {
   composer: {
     quickReplies: {
       title: "Быстрые ответы",
-      edit: "Управлять быстрыми ответами",
       editTitle: "Управлять быстрыми ответами",
       add: "Добавить",
       placeholder: "Введите ответ для сохранения",
@@ -370,15 +375,10 @@ export const ru: TranslationResources = {
     },
   },
   agentMemos: {
-    edit: "Изменить заметку",
-    save: "Сохранить заметку",
     toggle: "Заметки агента",
-    add: "Добавить заметку",
     placeholder: "Новая заметка",
     empty: "Заметок пока нет",
     useMemo: "Добавить заметку в поле ввода",
-    delete: "Удалить заметку",
-    clear: "Очистить заметки",
     markDone: "Отметить как выполненное",
     markNotDone: "Отметить как невыполненное",
     addedToTodo: "Добавлено в задачи",

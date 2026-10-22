@@ -39,6 +39,12 @@ export const en = {
       search: "Search",
       select: "Select",
       selectAll: "Select all",
+      manage: "Manage",
+      add: "Add",
+      clear: "Clear",
+      edit: "Edit",
+      delete: "Delete",
+      save: "Save",
     },
     placeholders: {
       search: "Search...",
@@ -133,7 +139,6 @@ export const en = {
   composer: {
     quickReplies: {
       title: "Quick replies",
-      edit: "Manage quick replies",
       editTitle: "Manage quick replies",
       add: "Add",
       placeholder: "Type a reply to save",
@@ -367,15 +372,10 @@ export const en = {
     },
   },
   agentMemos: {
-    edit: "Edit memo",
-    save: "Save memo",
     toggle: "Memos",
-    add: "Add memo",
     placeholder: "New memo",
     empty: "No memos yet",
     useMemo: "Append memo to composer",
-    delete: "Delete memo",
-    clear: "Clear memos",
     markDone: "Mark as done",
     markNotDone: "Mark as not done",
     addedToTodo: "Added to To-dos",

@@ -44,6 +44,12 @@ export const ptBR: TranslationResources = {
       search: "Buscar",
       select: "Selecionar",
       selectAll: "Selecionar tudo",
+      manage: "Gerenciar",
+      add: "Adicionar",
+      clear: "Limpar",
+      edit: "Editar",
+      delete: "Excluir",
+      save: "Salvar",
     },
     placeholders: {
       search: "Buscar...",
@@ -138,7 +144,6 @@ export const ptBR: TranslationResources = {
   composer: {
     quickReplies: {
       title: "Respostas rápidas",
-      edit: "Gerenciar respostas rápidas",
       editTitle: "Gerenciar respostas rápidas",
       add: "Adicionar",
       placeholder: "Digite uma resposta para salvar",
@@ -370,15 +375,10 @@ export const ptBR: TranslationResources = {
     },
   },
   agentMemos: {
-    edit: "Editar nota",
-    save: "Salvar nota",
     toggle: "Notas do agente",
-    add: "Adicionar nota",
     placeholder: "Nova nota",
     empty: "Ainda não há notas",
     useMemo: "Anexar nota ao composer",
-    delete: "Excluir nota",
-    clear: "Limpar notas",
     markDone: "Marcar como concluído",
     markNotDone: "Marcar como não concluído",
     addedToTodo: "Adicionado às tarefas",

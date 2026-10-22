@@ -43,6 +43,12 @@ export const ar: TranslationResources = {
       search: "يبحث",
       select: "يختار",
       selectAll: "تحديد الكل",
+      manage: "إدارة",
+      add: "إضافة",
+      clear: "مسح",
+      edit: "تعديل",
+      delete: "حذف",
+      save: "حفظ",
     },
     placeholders: {
       search: "يبحث...",
@@ -137,7 +143,6 @@ export const ar: TranslationResources = {
   composer: {
     quickReplies: {
       title: "الردود السريعة",
-      edit: "إدارة الردود السريعة",
       editTitle: "إدارة الردود السريعة",
       add: "إضافة",
       placeholder: "اكتب ردًا لحفظه",
@@ -365,15 +370,10 @@ export const ar: TranslationResources = {
     },
   },
   agentMemos: {
-    edit: "تحرير المذكرة",
-    save: "حفظ المذكرة",
     toggle: "مذكرات الوكيل",
-    add: "إضافة مذكرة",
     placeholder: "مذكرة جديدة",
     empty: "لا توجد مذكرات بعد",
     useMemo: "إلحاق المذكرة بحقل الإدخال",
-    delete: "حذف المذكرة",
-    clear: "مسح المذكرات",
     markDone: "تحديد كمنجز",
     markNotDone: "تحديد كغير منجز",
     addedToTodo: "تمت الإضافة إلى المهام",

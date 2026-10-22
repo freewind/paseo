@@ -43,6 +43,12 @@ export const zhCN: TranslationResources = {
       search: "搜索",
       select: "选择",
       selectAll: "全选",
+      manage: "管理",
+      add: "添加",
+      clear: "清空",
+      edit: "编辑",
+      delete: "删除",
+      save: "保存",
     },
     placeholders: {
       search: "搜索...",
@@ -137,7 +143,6 @@ export const zhCN: TranslationResources = {
   composer: {
     quickReplies: {
       title: "常用回复",
-      edit: "管理常用回复",
       editTitle: "管理常用回复",
       add: "新增",
       placeholder: "输入要保存的回复",
@@ -365,15 +370,10 @@ export const zhCN: TranslationResources = {
     },
   },
   agentMemos: {
-    edit: "编辑备忘录",
-    save: "保存备忘录",
     toggle: "备忘录",
-    add: "添加备忘",
     placeholder: "新备忘",
     empty: "还没有备忘",
     useMemo: "把备忘追加到输入框",
-    delete: "删除备忘",
-    clear: "清空备忘",
     markDone: "标记为完成",
     markNotDone: "标记为未完成",
     addedToTodo: "已加入 To-dos",
