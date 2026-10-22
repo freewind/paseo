@@ -5,13 +5,16 @@ import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { controllerRef, selectionRef, readSelection } = vi.hoisted(() => ({
+const { controllerRef, selectionRef, readSelection, setStringAsync } = vi.hoisted(() => ({
   controllerRef: {
     current: null as null | { requestComment: (blockText: string) => void },
   },
   selectionRef: { current: null as string | null },
   readSelection: vi.fn(),
+  setStringAsync: vi.fn(() => Promise.resolve(true)),
 }));
+
+vi.mock("expo-clipboard", () => ({ setStringAsync }));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -48,11 +51,13 @@ vi.mock("@/components/ui/context-menu", () => ({
   ContextMenuItem: ({
     children,
     onSelect,
+    testID,
   }: {
     children: React.ReactNode;
     onSelect?: () => void;
+    testID?: string;
   }) => (
-    <button type="button" data-testid="comment-item" onClick={onSelect}>
+    <button type="button" data-testid={testID ?? "comment-item"} onClick={onSelect}>
       {children}
     </button>
   ),
@@ -74,6 +79,7 @@ describe("MarkdownCommentableBlock", () => {
     controllerRef.current = null;
     selectionRef.current = null;
     readSelection.mockClear();
+    setStringAsync.mockClear();
   });
 
   afterEach(() => {
@@ -106,10 +112,48 @@ describe("MarkdownCommentableBlock", () => {
   }
 
   function chooseCommentItem(): void {
-    const item = container.querySelector<HTMLButtonElement>("[data-testid=comment-item]");
+    const item = container.querySelector<HTMLButtonElement>("[data-testid=markdown-comment-item]");
     expect(item).not.toBeNull();
     act(() => item?.click());
   }
+
+  function chooseCopyItem(): void {
+    const item = container.querySelector<HTMLButtonElement>("[data-testid=markdown-copy-item]");
+    expect(item).not.toBeNull();
+    act(() => item?.click());
+  }
+
+  it("copies the selected text", () => {
+    controllerRef.current = { requestComment: vi.fn() };
+    selectionRef.current = "copy these words";
+    render("some claim");
+
+    openMenuByLongPress();
+    chooseCopyItem();
+
+    expect(setStringAsync).toHaveBeenCalledWith("copy these words");
+  });
+
+  it("falls back to the block text when copying without a selection", () => {
+    controllerRef.current = { requestComment: vi.fn() };
+    render("some claim");
+
+    openMenuByRightClick();
+    chooseCopyItem();
+
+    expect(setStringAsync).toHaveBeenCalledWith("some claim");
+  });
+
+  it("renders the copy item above the comment item", () => {
+    controllerRef.current = { requestComment: vi.fn() };
+    render("some claim");
+
+    const ids = Array.from(container.querySelectorAll("[data-testid]")).map((element) =>
+      element.getAttribute("data-testid"),
+    );
+
+    expect(ids.indexOf("markdown-copy-item")).toBeLessThan(ids.indexOf("markdown-comment-item"));
+  });
 
   it("renders the block without a trigger outside a chat surface", () => {
     render("some claim");
@@ -127,7 +171,7 @@ describe("MarkdownCommentableBlock", () => {
     const requestComment = vi.fn();
     controllerRef.current = { requestComment };
     render("some claim");
-    const item = container.querySelector<HTMLButtonElement>("[data-testid=comment-item]");
+    const item = container.querySelector<HTMLButtonElement>("[data-testid=markdown-comment-item]");
     expect(item).not.toBeNull();
     act(() => item?.click());
     expect(requestComment).toHaveBeenCalledWith("some claim");
