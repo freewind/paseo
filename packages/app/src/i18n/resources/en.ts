@@ -376,6 +376,8 @@ export const en = {
     addedToTodo: "Added to To-dos",
     failedToAdd: "Failed to add to To-dos",
     attachImage: "Attach image",
+    sheetTitle: "Add to memos",
+    sheetPlaceholder: "Memo",
     pasteFailed: "Failed to paste image",
   },
   message: {

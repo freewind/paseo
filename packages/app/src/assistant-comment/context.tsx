@@ -9,13 +9,14 @@ import {
 } from "react";
 import {
   AssistantCommentSheet,
+  AssistantMemoSheet,
   type AssistantCommentRequest,
 } from "@/assistant-comment/comment-sheet";
 
 export interface AssistantCommentController {
   requestComment: (blockText: string) => void;
   /**
-   * Adds the selection (or whole block) to the agent's memos. Absent when the host does not
+   * Opens the memo sheet for the selection (or whole block). Absent when the host does not
    * support memos, and the menu hides the entry accordingly.
    */
   requestAddToTodo?: (blockText: string) => void;
@@ -44,6 +45,7 @@ export function AssistantCommentProvider({
   children,
 }: AssistantCommentProviderProps) {
   const [request, setRequest] = useState<AssistantCommentRequest | null>(null);
+  const [memoRequest, setMemoRequest] = useState<AssistantCommentRequest | null>(null);
   const nextId = useRef(1);
 
   const requestComment = useCallback((blockText: string) => {
@@ -54,6 +56,35 @@ export function AssistantCommentProvider({
     nextId.current += 1;
     setRequest({ id, blockText });
   }, []);
+
+  /** Opens the memo sheet; the memo is written only when the sheet is submitted. */
+  const requestAddToMemo = useCallback(
+    (blockText: string) => {
+      if (!onAddToTodo || blockText.trim().length === 0) {
+        return;
+      }
+      const id = nextId.current;
+      nextId.current += 1;
+      setMemoRequest({ id, blockText });
+    },
+    [onAddToTodo],
+  );
+
+  const cancelMemo = useCallback(() => {
+    setMemoRequest(null);
+  }, []);
+
+  const submitMemo = useCallback(
+    (memo: string) => {
+      setMemoRequest((current) => {
+        if (current) {
+          onAddToTodo?.(memo);
+        }
+        return null;
+      });
+    },
+    [onAddToTodo],
+  );
 
   const cancelComment = useCallback(() => {
     setRequest(null);
@@ -80,8 +111,11 @@ export function AssistantCommentProvider({
   );
 
   const controller = useMemo<AssistantCommentController>(
-    () => ({ requestComment, requestAddToTodo: onAddToTodo }),
-    [requestComment, onAddToTodo],
+    () => ({
+      requestComment,
+      requestAddToTodo: onAddToTodo ? requestAddToMemo : undefined,
+    }),
+    [requestComment, requestAddToMemo, onAddToTodo],
   );
 
   return (
@@ -93,6 +127,7 @@ export function AssistantCommentProvider({
         onAttach={handleAttach}
         onSend={handleSend}
       />
+      <AssistantMemoSheet request={memoRequest} onCancel={cancelMemo} onSubmit={submitMemo} />
     </AssistantCommentContext.Provider>
   );
 }

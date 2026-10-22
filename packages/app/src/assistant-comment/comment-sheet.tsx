@@ -34,7 +34,30 @@ interface AssistantCommentSheetProps {
   onSend: (comment: string) => void;
 }
 
+interface AssistantMemoSheetProps {
+  request: AssistantCommentRequest | null;
+  onCancel: () => void;
+  onSubmit: (memo: string) => void;
+}
+
 const SNAP_POINTS = ["55%", "85%"];
+
+/**
+ * Desktop only: Enter submits, Shift+Enter keeps the newline. Mobile soft keyboards have no Enter
+ * key, so they keep the submit button.
+ */
+function useEnterSubmit(onSubmit: () => void) {
+  return useCallback(
+    (event: CommentSheetKeyPressEvent) => {
+      if (isImeComposingKeyboardEvent(event.nativeEvent)) return;
+      if (event.nativeEvent.key !== "Enter") return;
+      if (event.nativeEvent.shiftKey) return;
+      event.preventDefault();
+      onSubmit();
+    },
+    [onSubmit],
+  );
+}
 
 export function AssistantCommentSheet({
   request,
@@ -71,18 +94,7 @@ export function AssistantCommentSheet({
     }
   }, [comment, onSend]);
 
-  // Desktop only: Enter attaches, Shift+Enter keeps the newline. Mobile soft
-  // keyboards have no Enter key, so they keep the attach button.
-  const handleKeyPress = useCallback(
-    (event: CommentSheetKeyPressEvent) => {
-      if (isImeComposingKeyboardEvent(event.nativeEvent)) return;
-      if (event.nativeEvent.key !== "Enter") return;
-      if (event.nativeEvent.shiftKey) return;
-      event.preventDefault();
-      handleAttach();
-    },
-    [handleAttach],
-  );
+  const handleKeyPress = useEnterSubmit(handleAttach);
 
   const { t } = useTranslation();
   const header = useMemo<SheetHeader>(() => ({ title: t("comment.sheet.title") }), [t]);
@@ -144,6 +156,86 @@ export function AssistantCommentSheet({
             autoFocus
             onKeyPress={isWeb ? handleKeyPress : undefined}
             testID="assistant-comment-input"
+          />
+        </View>
+      ) : null}
+    </AdaptiveModalSheet>
+  );
+}
+
+/**
+ * The memo entry point for a selection: one text box pre-filled with the quoted text, so the same
+ * tap that used to save the quote now also lets the user edit it before it lands in the rail.
+ */
+export function AssistantMemoSheet({ request, onCancel, onSubmit }: AssistantMemoSheetProps) {
+  const [retained, setRetained] = useState<AssistantCommentRequest | null>(request);
+  const [memo, setMemo] = useState("");
+
+  useEffect(() => {
+    if (request) {
+      setRetained(request);
+      setMemo(request.blockText);
+    }
+  }, [request]);
+
+  const close = useCallback(() => {
+    setRetained(null);
+    setMemo("");
+    onCancel();
+  }, [onCancel]);
+
+  const handleSubmit = useCallback(() => {
+    const trimmed = memo.trim();
+    if (trimmed.length > 0) {
+      onSubmit(trimmed);
+    }
+  }, [memo, onSubmit]);
+  const handleKeyPress = useEnterSubmit(handleSubmit);
+
+  const { t } = useTranslation();
+  const header = useMemo<SheetHeader>(() => ({ title: t("agentMemos.sheetTitle") }), [t]);
+  const footer = useMemo(
+    () =>
+      retained ? (
+        <View style={styles.actions}>
+          <Button variant="ghost" onPress={close} testID="assistant-memo-cancel">
+            {t("common.actions.cancel")}
+          </Button>
+          <Button
+            variant="default"
+            disabled={memo.trim().length === 0}
+            onPress={handleSubmit}
+            testID="assistant-memo-submit"
+          >
+            {t("agentMemos.add")}
+          </Button>
+        </View>
+      ) : null,
+    [close, handleSubmit, memo, retained, t],
+  );
+
+  return (
+    <AdaptiveModalSheet
+      header={header}
+      visible={request !== null}
+      onClose={close}
+      snapPoints={SNAP_POINTS}
+      desktopMaxWidth={480}
+      testID="assistant-memo-sheet"
+      footer={footer}
+    >
+      {retained ? (
+        <View style={styles.container}>
+          <SheetAwareTextInput
+            style={styles.input}
+            value={memo}
+            onChangeText={setMemo}
+            placeholder={t("agentMemos.sheetPlaceholder")}
+            placeholderTextColor={styles.placeholderText.color}
+            multiline
+            autoFocus
+            onKeyPress={isWeb ? handleKeyPress : undefined}
+            testID="assistant-memo-input"
           />
         </View>
       ) : null}
