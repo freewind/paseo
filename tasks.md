@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-22 21:40
+最近一次保存：2026-10-22 22:05
 
 ---
 
@@ -387,3 +387,19 @@ Notes：
 - 旧记录没有 updatedAt，自然回退到创建时间倒序。
 - 改 protocol 后必须 `npm run build:client` 重建声明，否则 server/app 类型报 updatedAt 不存在。
 - `npm run test --workspace=@getpaseo/server` 会跑整套 unit（违反仓库规则）且出现无关失败；单文件用 `cd packages/server && npx vitest run <file>`。
+
+---
+
+### 修复备忘录文本 tooltip 不显示
+
+- 状态：已完成
+- 最近保存：2026-10-22 22:05
+
+根本原因：`TooltipTrigger asChild` 包的是 `ContextMenuTrigger`，而它渲染 `<PressHighlight {...props} ref={handleRef}>`，后写的 ref 覆盖了 asChild 注入的 ref。Tooltip 的 `triggerRef.current` 恒为 null，`TooltipContent` 第一行就 return，所以既无 tooltip 也无报错。
+
+Notes：
+
+- 修法：TooltipTrigger 包一层普通 View（负责 hover 与测量），ContextMenuTrigger 放里面。
+- 文本按钮抽成 AgentMemoTextButton，兼带绕过 jsx-max-depth 上限。
+- 全仓只此一处这样嵌套（已用正则搜索确认）。
+- 教训：`asChild` 注入的 ref 会被子组件内部显式 ref 覆盖；给自定义组件当 tooltip 宿主时看它是否透传 ref。
