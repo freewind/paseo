@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-23 07:20
+最近一次保存：2026-10-23 07:35
 
 ---
 
@@ -780,3 +780,18 @@ Notes：
 - 保留：`composer.quickReplies.editTitle`（编辑面板标题）、`agentMemos.toggle`/`sheetTitle`/占位符（需要名词）。
 
 验证：lint、typecheck、format 均 exit 0；`agent-memos` + `assistant-comment` + `quick-replies` 5 个文件 41 passed。
+
+---
+
+### History 行操作图标常驻显示
+
+- 状态：已完成（`ee2e9feb2`）
+- 最近保存：2026-10-23 07:35
+
+需求：归档/删除图标一直显示，不要 hover 才出现。
+
+- `agent-list.tsx`：去掉 `AgentRowActions` 的 `visible` 参数与 `pointerEvents`/`rowActionsHidden`，删 `rowActionsHidden` 样式；调用处不再传 `isHovered`。
+- 行背景高亮仍由 `isHovered` 驱动（`onPointerEnter/Leave`）。
+- 列宽本就是固定 64，常驻不引起布局跳变。
+
+验证：lint、typecheck、format 均 exit 0。
