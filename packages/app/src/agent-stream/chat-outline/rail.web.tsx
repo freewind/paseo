@@ -337,9 +337,20 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
   const [openPromptSeq, setOpenPromptSeq] = useState<number | null>(null);
   const openRowRef = useRef<View>(null);
   const textRequestEpoch = useRef(0);
+  // The reader is a new closure on most renders; holding it in a ref keeps the bulk read tied to
+  // the prompt list instead of restarting for every render.
+  const readPromptTextRef = useRef(onRequestPromptText);
+  useEffect(() => {
+    readPromptTextRef.current = onRequestPromptText;
+  }, [onRequestPromptText]);
+  // Mirrors `promptTexts` so the read can skip what it already has without subscribing to it.
+  const promptTextsRef = useRef<ReadonlyMap<number, string>>(NO_PROMPT_TEXTS);
 
   const handlePromptText = useCallback((seq: number, text: string) => {
-    setPromptTexts((current) => mergePromptText(current, seq, text));
+    const next = mergePromptText(promptTextsRef.current, seq, text);
+    if (next === promptTextsRef.current) return;
+    promptTextsRef.current = next;
+    setPromptTexts(next);
   }, []);
 
   const handleRowMeasure = useCallback((seq: number, layout: ChatOutlineRowLayout) => {
@@ -414,16 +425,24 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
   // The reader scans the rail instead of hovering it. Prompts already loaded in the
   // transcript cost no request at all, and the reader's own cache dedupes the rest.
   useEffect(() => {
-    if (isCollapsed) return;
+    if (isCollapsed) return undefined;
+    // Only the prompts without text: a re-run after the list grows must not ask again for the
+    // rows that already have theirs.
+    const missing = prompts.filter((prompt) => !promptTextsRef.current.has(prompt.seq));
+    if (missing.length === 0) return undefined;
     const request = textRequestEpoch;
     const epoch = ++request.current;
-    void readPromptTexts(prompts, onRequestPromptText, (seq, text) => {
-      if (request.current === epoch) handlePromptText(seq, text);
-    });
+    void readPromptTexts(
+      missing,
+      (seq) => readPromptTextRef.current(seq),
+      (seq, text) => {
+        if (request.current === epoch) handlePromptText(seq, text);
+      },
+    );
     return () => {
       request.current++;
     };
-  }, [handlePromptText, isCollapsed, onRequestPromptText, prompts]);
+  }, [handlePromptText, isCollapsed, prompts]);
 
   // Collapse closes any open popover along with the rows, because the popover is a child
   // of the rail's layer and its anchor row is gone with them.
