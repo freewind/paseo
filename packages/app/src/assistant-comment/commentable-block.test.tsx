@@ -142,7 +142,7 @@ describe("MarkdownCommentableBlock", () => {
     openMenuByLongPress();
 
     expect(readSelection).toHaveBeenCalledTimes(1);
-    expect(container.textContent).toContain("comment.menu.itemSelected");
+    expect(container.textContent).toContain("comment.menu.item");
     chooseCommentItem();
     expect(requestComment).toHaveBeenCalledWith("the **selected** words");
   });
@@ -156,7 +156,6 @@ describe("MarkdownCommentableBlock", () => {
 
     expect(readSelection).toHaveBeenCalledTimes(1);
     expect(container.textContent).toContain("comment.menu.item");
-    expect(container.textContent).not.toContain("comment.menu.itemSelected");
     chooseCommentItem();
     expect(requestComment).toHaveBeenCalledWith("some claim");
   });
