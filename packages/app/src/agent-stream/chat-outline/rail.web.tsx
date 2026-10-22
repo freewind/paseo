@@ -13,6 +13,8 @@ import {
   Text,
   View,
   type LayoutChangeEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   type PointerEvent as RNPointerEvent,
 } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
@@ -266,6 +268,12 @@ const NO_ROW_LAYOUTS: ReadonlyMap<number, ChatOutlineRowLayout> = new Map();
 /** How long a programmatic scroll keeps the next scroll events from reading as the reader's. */
 const PROGRAMMATIC_SCROLL_WINDOW_MS = 500;
 
+/**
+ * A scroll that lands on the row the list asked for is the list's own. Without this the tail of a
+ * smooth scroll arrives after the window above and reads as the reader scrolling the rail.
+ */
+const PROGRAMMATIC_SCROLL_TOLERANCE_PX = 2;
+
 const NO_PROMPT_TEXTS: ReadonlyMap<number, string> = new Map();
 
 function mergePromptText(
@@ -343,7 +351,14 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
     setViewportHeight(event.nativeEvent.layout.height);
   }, []);
 
-  const handleListScroll = useCallback(() => {
+  const handleListScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const target = lastScrollTargetRef.current;
+    if (
+      target !== null &&
+      Math.abs(event.nativeEvent.contentOffset.y - target) <= PROGRAMMATIC_SCROLL_TOLERANCE_PX
+    ) {
+      return;
+    }
     if (Date.now() < programmaticScrollUntilRef.current) return;
     setIsFollowing(false);
   }, []);
@@ -360,9 +375,12 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
     if (lastScrollTargetRef.current === target) return;
     lastScrollTargetRef.current = target;
     programmaticScrollUntilRef.current = Date.now() + PROGRAMMATIC_SCROLL_WINDOW_MS;
+    // Instant: a smooth animation keeps emitting scroll events past the programmatic window, and
+    // the ones that arrive late read as the reader scrolling the rail, which stops the following
+    // for good. Jumping to a prompt stays animated.
     scrollRef.current?.scrollTo({
       y: target,
-      animated: true,
+      animated: false,
     });
   }, [activeSeq, isFollowing, rowLayouts, viewportHeight]);
 
