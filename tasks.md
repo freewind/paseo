@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-23 07:35
+最近一次保存：2026-10-23 23:25
 
 ---
 
@@ -795,3 +795,28 @@ Notes：
 - 列宽本就是固定 64，常驻不引起布局跳变。
 
 验证：lint、typecheck、format 均 exit 0。
+
+---
+
+### History 行的归档与解档显示进行中状态
+
+- 状态：已完成（`423c4b1b1`）
+- 最近保存：2026-10-23 23:25
+
+需求：点归档/解档后看不出正在发生，也不能防重复点击，完成后图标还不一定翻对。
+
+**两个卡点**：
+
+- 既有 `ARCHIVE_AGENT_PENDING_QUERY_KEY` 会在 daemon 快照到达时被清（`agent-store.ts` 的 `applyDelta`/`replaceFetched`），可能早于请求返回，不能当按钮状态。
+- 解档走 `client.refreshAgent`，只更新 session store，不动 history 的 react-query 缓存，所以图标永远不翻。
+
+**改动**：
+
+- `use-archive-agent.ts` 新增独立的 `ARCHIVE_AGENT_OPERATION_QUERY_KEY`（值与 pending 分开，避免影响 `usePendingArchiveAgentIds` 的子代理过滤与 agent 面板的“正在归档”文案），配 `selectArchiveAgentOperation` / `readArchiveAgentOperation` / `setArchiveAgentOperation`。
+- 新增 `toggleArchiveAgent({ serverId, agentId, archived })`：解档走 `refreshAgent`，归档走现有 `archiveAgent`；`useRef` 同步防重复。
+- 成败都在 `finally` 释放按钮：两个请求在 daemon 端幂等，卡死比误放开更糟（放弃“超时保持锁定”的想法）。
+- `agent-list.tsx`：`AgentRowActions` 自己读 operation 并触发，busy 时用 `LoadingSpinner` 顶替图标并 `disabled`；新增 `useAgentIsArchived`，行状态优先读 session store 实时值，拿不到回落缓存；`SessionRowBadges` 改接 `isArchived`；删掉 `AgentList` 的 `handleToggleArchive` 与 prop 传递。
+
+**踩坑**：为降 `SessionRow` 复杂度（21 > 20）把 store 订阅抽成 `useAgentIsArchived`；嵌套三元被 lint 拦，改 `useMemo` + if/return；`accessibilityState` 新对象用 `useMemo`。
+
+验证：`use-archive-agent.test.ts` 8 条、`sessions-screen.test.ts` 3 条通过；lint、typecheck、format 均 exit 0。**待用户实机复验** loading 与图标翻转。
