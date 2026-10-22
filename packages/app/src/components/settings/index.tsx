@@ -24,9 +24,29 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@/component
 import { DropdownTrigger } from "@/components/ui/dropdown-trigger";
 import { useIsCompactFormFactor } from "@/constants/layout";
 import { settingsStyles } from "@/styles/settings";
+import { HighlightedText } from "@/components/ui/highlighted-text";
+import { useSettingsSearchQuery } from "@/stores/settings-search-store";
 export { SettingsGroup } from "./headings/settings-group";
 export { SettingsSection } from "./headings/settings-section";
 export { SettingsCollapsibleRow } from "./collapsible-row";
+
+/**
+ * Ranges of every case-insensitive occurrence of `query` in `text`. The sidebar filters by the
+ * same substring rule, so what is marked here is exactly what matched there.
+ */
+function findMatchRanges(text: string, query: string): { start: number; length: number }[] {
+  if (!query) return [];
+  const haystack = text.toLowerCase();
+  const needle = query.toLowerCase();
+  const ranges: { start: number; length: number }[] = [];
+  let from = 0;
+  for (;;) {
+    const index = haystack.indexOf(needle, from);
+    if (index === -1) return ranges;
+    ranges.push({ start: index, length: needle.length });
+    from = index + needle.length;
+  }
+}
 
 interface AppSettingsRowProps extends Omit<SettingsRowProps, "hint"> {
   hint?: ReactNode;
@@ -57,17 +77,23 @@ export function SettingsRow({
   testID,
 }: AppSettingsRowProps) {
   const compact = useIsCompactFormFactor();
+  const searchQuery = useSettingsSearchQuery();
   const rowStyle = useMemo(() => [settingsStyles.row, compact && styles.compactRow], [compact]);
+  const labelRanges = useMemo(() => findMatchRanges(label, searchQuery), [label, searchQuery]);
   return (
     <View style={rowStyle} testID={testID}>
       <View style={styles.label}>
         {labelAccessory ? (
           <View style={styles.labelRow}>
-            <Text style={[settingsStyles.rowTitle, styles.accessoryLabel]}>{label}</Text>
+            <HighlightedText
+              text={label}
+              ranges={labelRanges}
+              style={[settingsStyles.rowTitle, styles.accessoryLabel]}
+            />
             {labelAccessory}
           </View>
         ) : (
-          <Text style={settingsStyles.rowTitle}>{label}</Text>
+          <HighlightedText text={label} ranges={labelRanges} style={settingsStyles.rowTitle} />
         )}
         {typeof hint === "string" ? <Text style={settingsStyles.rowHint}>{hint}</Text> : hint}
         {error ? (
