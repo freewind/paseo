@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-22 16:39
+最近一次保存：2026-10-22 16:44
 
 ---
 
@@ -181,3 +181,16 @@ Notes：
 Notes：
 
 - 2026-10-22 16:39：数据一直都在，是本地缓存被误清。当前 daemon 是 Paseo.app 内置版本，不含今天新增的「打开会话时回填备忘录」，fetch_agent_response 因此不带 memos；而 daemon-client 把它兜底成 `payload.memos ?? []`，agent-panel 又无条件 setAgentMemos，空数组在 store 里走 delete 分支，缓存被清。add 的响应一直带全量列表，所以再加一条又把旧的全写回来。修复：FetchAgentResult.memos 改可选、去掉 ?? [] 兜底；agent-panel 只在字段存在时写回。client 新增两条用例锁定「缺字段为 undefined」与「显式空数组仍为 []」。测试 2 项通过，session-store 备忘录测试 3 项通过，lint 与 typecheck 通过。界面未复验。
+
+---
+
+### 修侧栏 workspace 行的空白文本节点警告
+
+- 状态：已完成
+- 最近保存：2026-10-22 16:44
+
+网页控制台报 `Unexpected text node:  . A text node cannot be a child of a <View>`。
+
+Notes：
+
+- 2026-10-22 16:44：警告里的文本节点是一个空格（RNW 在 nodeValue 后自己接句点）。sidebar-workspace-list 给 SidebarWorkspaceRowContent 的第一个子节点写了 `{" "}`，而该组件把 children 直接放进 View（rowRight），空白文本节点就成了 View 的直接子节点。删掉该分隔空格。另两处 `{" "}`（command-center 文件名副标题、pull request 标题编号）都在 Text 内部，安全保留。侧栏测试 19 文件 147 项通过，lint 通过。
