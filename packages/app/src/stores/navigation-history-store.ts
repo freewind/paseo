@@ -1,4 +1,3 @@
-import { isWeb } from "@/constants/platform";
 import {
   normalizeWorkspaceTabTarget,
   workspaceTabPositionsEqual,
@@ -60,25 +59,21 @@ export interface NavigationHistoryStore {
   recordNavigation: (entry: NavigationHistoryEntry) => void;
   navigateBack: () => boolean;
   navigateForward: () => boolean;
+  /**
+   * Replaces the whole history with what the daemon stored. Used once at startup, before any
+   * arrival is recorded, so a reload continues the path instead of starting an empty one.
+   */
+  restore: (input: {
+    entries: readonly NavigationHistoryEntry[];
+    cursor: number;
+    recentAgentVisits: readonly RecentAgentVisit[];
+  }) => void;
   reset: () => void;
 }
 
 export interface NavigationHistoryStoreOptions {
   replayTimeoutMs?: number;
-  /**
-   * Where the positions survive a page reload. Without it the history is memory-only, and a
-   * reload leaves the sidebar with nothing to go back to.
-   */
-  storage?: NavigationHistoryStorage | null;
 }
-
-/** The slice of `Storage` the store needs; kept tiny so tests can pass a plain object. */
-export interface NavigationHistoryStorage {
-  getItem: (key: string) => string | null;
-  setItem: (key: string, value: string) => void;
-}
-
-const STORAGE_KEY = "paseo.navigation-history.v1";
 
 const MAX_ENTRIES = 100;
 const REPLAY_TIMEOUT_MS = 2000;
@@ -219,122 +214,14 @@ function withRecentAgentVisit(
   return [visit, ...rest].slice(0, MAX_RECENT_AGENT_VISITS);
 }
 
-/**
- * Restore the positions a reload would otherwise throw away. Anything that fails the shape
- * check is dropped: a stale or foreign payload must not seed the history with junk entries.
- */
-/**
- * Read a target out of stored JSON. The shape is only as good as the last version wrote it;
- * `normalizeWorkspaceTabTarget` drops anything it does not recognize.
- */
-function readPersistedTarget(value: unknown): WorkspaceTabTarget | null {
-  if (typeof value !== "object" || value === null) {
-    return null;
-  }
-  return normalizeWorkspaceTabTarget(value as WorkspaceTabTarget);
-}
-
-function readPersistedHistory(storage: NavigationHistoryStorage): NavigationHistorySnapshot | null {
-  let parsed: unknown;
-  try {
-    const raw = storage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return null;
-    }
-    parsed = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-  if (typeof parsed !== "object" || parsed === null) {
-    return null;
-  }
-  const record = parsed as Record<string, unknown>;
-  const rawEntries = Array.isArray(record.entries) ? record.entries : [];
-  const entries = rawEntries.flatMap((candidate) => {
-    if (typeof candidate !== "object" || candidate === null) {
-      return [];
-    }
-    const item = candidate as Record<string, unknown>;
-    if (typeof item.pathname !== "string" || !item.pathname) {
-      return [];
-    }
-    return [
-      {
-        pathname: item.pathname,
-        serverId: typeof item.serverId === "string" ? item.serverId : null,
-        workspaceId: typeof item.workspaceId === "string" ? item.workspaceId : null,
-        target: readPersistedTarget(item.target),
-        tabId: trimNonEmpty(typeof item.tabId === "string" ? item.tabId : null),
-      },
-    ];
-  });
-  if (entries.length === 0) {
-    return null;
-  }
-  const rawVisits = Array.isArray(record.recentAgentVisits) ? record.recentAgentVisits : [];
-  const recentAgentVisits = rawVisits.flatMap((candidate) => {
-    if (typeof candidate !== "object" || candidate === null) {
-      return [];
-    }
-    const item = candidate as Record<string, unknown>;
-    if (
-      typeof item.serverId !== "string" ||
-      typeof item.workspaceId !== "string" ||
-      typeof item.agentId !== "string"
-    ) {
-      return [];
-    }
-    return [
-      {
-        serverId: item.serverId,
-        workspaceId: item.workspaceId,
-        agentId: item.agentId,
-      },
-    ];
-  });
-  const clampedCursor =
-    typeof record.cursor === "number"
-      ? Math.min(Math.max(record.cursor, 0), entries.length - 1)
-      : 0;
-  return {
-    entries,
-    cursor: clampedCursor,
-    replay: null,
-    recentAgentVisits: recentAgentVisits.slice(0, MAX_RECENT_AGENT_VISITS),
-    version: 0,
-  };
-}
-
-/**
- * Keyboard-free platforms have a `sessionStorage`; native does not. A tab reload keeps it,
- * which is exactly the lifetime the navigation history wants.
- */
-function createSessionNavigationHistoryStorage(): NavigationHistoryStorage | null {
-  if (!isWeb || typeof sessionStorage === "undefined") {
-    return null;
-  }
-  try {
-    return {
-      getItem: (key) => sessionStorage.getItem(key),
-      setItem: (key, value) => {
-        sessionStorage.setItem(key, value);
-      },
-    };
-  } catch {
-    // Storage can be blocked (private mode, embedded webview); memory-only is still correct.
-    return null;
-  }
-}
-
 export function createNavigationHistoryStore(
   options: NavigationHistoryStoreOptions = {},
 ): NavigationHistoryStore {
   const replayTimeoutMs = options.replayTimeoutMs ?? REPLAY_TIMEOUT_MS;
-  const storage = options.storage ?? null;
   const listeners = new Set<() => void>();
   let replayTimer: ReturnType<typeof setTimeout> | null = null;
   let nextToken = 1;
-  let snapshot: NavigationHistorySnapshot = (storage ? readPersistedHistory(storage) : null) ?? {
+  let snapshot: NavigationHistorySnapshot = {
     entries: [],
     cursor: -1,
     replay: null,
@@ -342,27 +229,8 @@ export function createNavigationHistoryStore(
     version: 0,
   };
 
-  function persist(next: NavigationHistorySnapshot): void {
-    if (!storage) {
-      return;
-    }
-    try {
-      storage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          entries: next.entries,
-          cursor: next.cursor,
-          recentAgentVisits: next.recentAgentVisits,
-        }),
-      );
-    } catch {
-      // A full or blocked storage must not break navigation.
-    }
-  }
-
   function emit(next: NavigationHistorySnapshot): void {
     snapshot = next;
-    persist(next);
     for (const listener of listeners) {
       listener();
     }
@@ -469,6 +337,19 @@ export function createNavigationHistoryStore(
     recordNavigation,
     navigateBack: () => jump(-1),
     navigateForward: () => jump(1),
+    restore(input) {
+      clearReplayTimer();
+      const entries = input.entries.slice(-MAX_ENTRIES);
+      const cursor =
+        entries.length === 0 ? -1 : Math.min(Math.max(input.cursor, 0), entries.length - 1);
+      emit({
+        entries,
+        cursor,
+        replay: null,
+        recentAgentVisits: input.recentAgentVisits.slice(0, MAX_RECENT_AGENT_VISITS),
+        version: snapshot.version + 1,
+      });
+    },
     reset() {
       clearReplayTimer();
       emit({
@@ -482,6 +363,4 @@ export function createNavigationHistoryStore(
   };
 }
 
-export const navigationHistoryStore = createNavigationHistoryStore({
-  storage: createSessionNavigationHistoryStorage(),
-});
+export const navigationHistoryStore = createNavigationHistoryStore();

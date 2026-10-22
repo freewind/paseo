@@ -1,5 +1,6 @@
 import { router, usePathname, type Href } from "expo-router";
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { startNavigationStateSync } from "@/navigation/navigation-state-sync";
 import { deriveWorkspacePaneState } from "@/screens/workspace/workspace-pane-state";
 import { navigateToWorkspace } from "@/stores/navigation-active-workspace-store";
 import {
@@ -87,6 +88,9 @@ function applyEntry(entry: NavigationHistoryEntry): void {
  */
 export function NavigationHistoryBridge() {
   const pathname = usePathname();
+
+  // The history outlives the tab: it is stored on the daemon, restored once at startup.
+  useEffect(() => startNavigationStateSync(), []);
   const selection = useMemo(() => parseHostWorkspaceRouteFromPathname(pathname), [pathname]);
   const workspaceKey = useMemo(
     () => (selection ? buildWorkspaceTabPersistenceKey(selection) : null),

@@ -24,6 +24,7 @@ import { monitorEventLoopDelay } from "node:perf_hooks";
 import type { AgentManager, AgentMetricsSnapshot } from "./agent/agent-manager.js";
 import type { AgentStorage } from "./agent/agent-storage.js";
 import type { AgentMemoStore } from "./agent/agent-memo-store.js";
+import type { NavigationStateStore } from "./navigation/navigation-state-store.js";
 import type { DownloadTokenStore } from "./file-download/token-store.js";
 import type { TerminalManager } from "../terminal/terminal-manager.js";
 import type pino from "pino";
@@ -560,6 +561,7 @@ export class VoiceAssistantWebSocketServer {
   private readonly agentManager: AgentManager;
   private readonly agentStorage: AgentStorage;
   private readonly agentMemoStore: AgentMemoStore;
+  private readonly navigationStateStore: NavigationStateStore;
   private readonly messageReceipts: MessageReceipts;
   readonly agentMessages: AgentMessageDelivery;
   private readonly creationService: CreationService;
@@ -650,6 +652,7 @@ export class VoiceAssistantWebSocketServer {
     agentManager: AgentManager,
     agentStorage: AgentStorage,
     agentMemoStore: AgentMemoStore,
+    navigationStateStore: NavigationStateStore,
     downloadTokenStore: DownloadTokenStore,
     paseoHome: string,
     daemonConfigStore: DaemonConfigStore,
@@ -736,6 +739,7 @@ export class VoiceAssistantWebSocketServer {
         ),
     });
     this.agentMemoStore = agentMemoStore;
+    this.navigationStateStore = navigationStateStore;
     this.messageReceipts = new MessageReceipts(join(paseoHome, "agent-requests"));
     this.creationService = new CreationService(
       join(paseoHome, "creations"),
@@ -1605,6 +1609,7 @@ export class VoiceAssistantWebSocketServer {
       agentManager: this.agentManager,
       agentStorage: this.agentStorage,
       agentMemoStore: this.agentMemoStore,
+      navigationStateStore: this.navigationStateStore,
       messageReceipts: this.messageReceipts,
       agentMessages: this.agentMessages,
       creationService: this.creationService,
@@ -2021,6 +2026,8 @@ export class VoiceAssistantWebSocketServer {
         agentMemos: true,
         // COMPAT(agentMemoCompletion): added in v0.11.0, remove gate after 2027-05-05.
         agentMemoCompletion: true,
+        // COMPAT(navigationState): added in v0.11.0, remove gate after 2027-05-05.
+        navigationState: true,
         // COMPAT(agentMemoImages): added in v0.11.0, remove gate after 2027-05-05.
         agentMemoImages: true,
         // COMPAT(agentTransferWorkspace): added in v0.11.0, remove gate after 2027-05-05.
