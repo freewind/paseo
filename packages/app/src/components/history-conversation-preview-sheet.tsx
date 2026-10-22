@@ -58,8 +58,9 @@ export function HistoryConversationPreviewSheet({
     },
     enabled: visible && agentId !== null && client !== null,
     dataShape: "value",
-    // The dialog is a snapshot: reopening the same session shows what was read last time.
-    staleTimeMs: Number.POSITIVE_INFINITY,
+    // A snapshot is good for a while; `useFetchQuery` rejects an infinite stale time, and five
+    // minutes is long enough that reopening the same session reads the cache.
+    staleTimeMs: 5 * 60_000,
   });
   const { refetch } = previewQuery;
 
