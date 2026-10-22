@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-23 02:05
+最近一次保存：2026-10-23 02:20
 
 ---
 
@@ -516,3 +516,18 @@ Notes：
 - 教训：`workspace-screen.tsx` 里 menu 的传参在 `WorkspaceHeaderTitleBar`，而 `useWorkspaceHeaderArchive` 在另一个组件，插错位置会编译不过；先确认作用域。
 
 **既有失败**：`workspace-header-menu.test.tsx` 断言 `workspace-menu-restore-hidden-agents-*`，但该入口已在 `dc176007e 移除显式隐藏 Agent 功能` 中删除，测试没同步。与本次改动无关，未动。
+
+---
+
+### 添加到备忘改为对话框填写
+
+- 状态：已完成
+- 最近保存：2026-10-23 02:20
+
+Notes：
+
+- 菜单项 `comment.menu.addToTodo` 过去直连 `onAddToTodo(blockText)`；现在 `requestAddToTodo` 只打开 `AssistantMemoSheet`，提交时才写 memo。
+- 输入框**预填选中文本**，不是留空。备忘在 rail 是 `numberOfLines={1}`，拼“引用 + 备注”会把备注折叠掉。
+- 评论 sheet 的 Enter 处理抽成 `useEnterSubmit` 共用；memo 走 trim、空则禁用，取消不写。
+- 测试：`comment-sheet.test.tsx` 加 memo 5 条（预填、编辑、Enter、空白、取消），assistant-comment 目录 31 passed。
+- 教训：edit 的 `oldText` 若只取 describe 头行，会把头部行删掉、后面的用例变成顶层裸 `it`；插入新 describe 时要保留原头行。
