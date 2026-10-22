@@ -28,6 +28,7 @@ import { HighlightedText } from "@/components/ui/highlighted-text";
 import { StatusBadge, type StatusBadgeVariant } from "@/components/ui/status-badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { InlineConfirm } from "@/components/ui/inline-confirm";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { findHighlightRanges } from "@/components/ui/highlighted-text-segments";
 
 interface AgentListProps {
@@ -115,13 +116,27 @@ function SessionBadge({
   return <StatusBadge label={label} variant={variant} leading={icon} />;
 }
 
+/**
+ * A live snapshot wins over the cached history row: unarchive changes no history cache, so the
+ * store is what turns the icon back once the restore commits.
+ */
+function useAgentIsArchived(agent: AggregatedAgent): boolean {
+  const liveAgent = useSessionStore((state) => {
+    const session = state.sessions[agent.serverId];
+    return session?.agents.get(agent.id) ?? session?.agentDetails.get(agent.id) ?? null;
+  });
+  return liveAgent ? liveAgent.archivedAt != null : agent.archivedAt != null;
+}
+
 function SessionRowBadges({
   agent,
+  isArchived,
   archivedIcon,
   pendingPermissionCount,
   showDesktopAttention,
 }: {
   agent: AggregatedAgent;
+  isArchived: boolean;
   archivedIcon: ReactElement;
   pendingPermissionCount: number;
   showDesktopAttention: boolean;
@@ -130,7 +145,7 @@ function SessionRowBadges({
   return (
     <>
       {agent.parentAgentId ? <SessionBadge label={t("agentList.badges.subagent")} /> : null}
-      {agent.archivedAt ? (
+      {isArchived ? (
         <SessionBadge label={t("agentList.badges.archived")} icon={archivedIcon} />
       ) : null}
       {pendingPermissionCount > 0 ? (
@@ -175,7 +190,6 @@ function SessionRow({
   showHostColumn,
   onPress,
   onLongPress,
-  onToggleArchive,
   onDeleteAgent,
 }: {
   agent: AggregatedAgent;
@@ -186,7 +200,6 @@ function SessionRow({
   showHostColumn: boolean;
   onPress: (agent: AggregatedAgent) => void;
   onLongPress: (agent: AggregatedAgent) => void;
-  onToggleArchive: (agent: AggregatedAgent) => void;
   onDeleteAgent: (agent: AggregatedAgent) => void;
 }) {
   const { theme } = useUnistyles();
@@ -198,6 +211,7 @@ function SessionRow({
   const branch = agent.projectPlacement?.checkout.currentBranch ?? "";
   const workspaceName = agent.projectPlacement?.workspaceName ?? "";
   const ProviderIcon = useProviderIcon(agent.provider, agent.serverId);
+  const isArchived = useAgentIsArchived(agent);
   const pendingPermissionCount = agent.pendingPermissionCount ?? 0;
   const ranges = useMemo(
     () => ({
@@ -223,7 +237,6 @@ function SessionRow({
   const handleLongPress = useCallback(() => onLongPress(agent), [onLongPress, agent]);
   const handlePointerEnter = useCallback(() => setIsHovered(true), []);
   const handlePointerLeave = useCallback(() => setIsHovered(false), []);
-  const handleToggleArchive = useCallback(() => onToggleArchive(agent), [agent, onToggleArchive]);
   const handleDeleteAgent = useCallback(() => onDeleteAgent(agent), [agent, onDeleteAgent]);
 
   const archivedIcon = useMemo(
@@ -276,6 +289,7 @@ function SessionRow({
             ) : null}
             <SessionRowBadges
               agent={agent}
+              isArchived={isArchived}
               archivedIcon={archivedIcon}
               pendingPermissionCount={pendingPermissionCount}
               showDesktopAttention={showDesktopAttention}
@@ -340,9 +354,9 @@ function SessionRow({
             />
             <AgentActivityTime date={agent.lastActivityAt} isMobile={false} />
             <AgentRowActions
-              archived={agent.archivedAt != null}
+              agent={agent}
+              isArchived={isArchived}
               testIDPrefix={`agent-row-${agent.serverId}-${agent.id}`}
-              onToggleArchive={handleToggleArchive}
               onDeleteAgent={handleDeleteAgent}
             />{" "}
           </View>
@@ -405,42 +419,61 @@ function RowActionTooltip({ label, children }: { label: string; children: ReactE
 
 /**
  * The row's own actions, always in view so the columns keep one shape whether or not the pointer
- * is over them. Archiving flips with the row's archived state; deleting asks in place, because a
+ * is over them. Archiving flips with the live archived state; deleting asks in place, because a
  * session removed here is gone.
  */
 function AgentRowActions({
-  archived,
+  agent,
+  isArchived,
   testIDPrefix,
-  onToggleArchive,
   onDeleteAgent,
 }: {
-  archived: boolean;
+  agent: AggregatedAgent;
+  isArchived: boolean;
   testIDPrefix: string;
-  onToggleArchive: () => void;
   onDeleteAgent: () => void;
 }) {
   const { theme } = useUnistyles();
   const { t } = useTranslation();
-  const archiveLabel = archived
+  const { toggleArchiveAgent, readArchiveAgentOperation } = useArchiveAgent();
+  const operation = readArchiveAgentOperation({ serverId: agent.serverId, agentId: agent.id });
+  const isBusy = operation !== null;
+  const archiveLabel = isArchived
     ? t("agentPanel.archived.unarchive")
     : t("agentList.archiveSheet.archive");
   const deleteLabel = t("agentList.deleteSheet.delete");
+  const archiveIcon = useMemo(() => {
+    if (isBusy) {
+      return <LoadingSpinner size="small" color={theme.colors.foregroundMuted} />;
+    }
+    if (isArchived) {
+      return <ArchiveRestore size={theme.iconSize.sm} color={theme.colors.foregroundMuted} />;
+    }
+    return <Archive size={theme.iconSize.sm} color={theme.colors.foregroundMuted} />;
+  }, [isBusy, isArchived, theme.colors.foregroundMuted, theme.iconSize.sm]);
+  const archiveButtonState = useMemo(() => ({ disabled: isBusy }), [isBusy]);
+  const handleToggleArchive = useCallback(() => {
+    void toggleArchiveAgent({
+      serverId: agent.serverId,
+      agentId: agent.id,
+      archived: isArchived,
+    }).catch(() => undefined);
+  }, [agent.serverId, agent.id, isArchived, toggleArchiveAgent]);
+
   return (
     <View style={styles.rowActions}>
       <RowActionTooltip label={archiveLabel}>
         <Pressable
-          onPress={onToggleArchive}
+          onPress={handleToggleArchive}
+          disabled={isBusy}
           accessibilityRole="button"
           accessibilityLabel={archiveLabel}
-          testID={`${testIDPrefix}-${archived ? "unarchive" : "archive"}`}
+          accessibilityState={archiveButtonState}
+          testID={`${testIDPrefix}-${isArchived ? "unarchive" : "archive"}`}
           style={styles.rowAction}
           hitSlop={6}
         >
-          {archived ? (
-            <ArchiveRestore size={theme.iconSize.sm} color={theme.colors.foregroundMuted} />
-          ) : (
-            <Archive size={theme.iconSize.sm} color={theme.colors.foregroundMuted} />
-          )}
+          {archiveIcon}
         </Pressable>
       </RowActionTooltip>
       <RowActionTooltip label={deleteLabel}>
@@ -559,21 +592,6 @@ export function AgentList({
     void handleDeleteAgent();
   }, [handleDeleteAgent]);
 
-  // The row's own archive action: no confirmation, because it is reversible and the next click
-  // restores. Restoring goes through refreshAgent — the daemon has no unarchive RPC, so the
-  // archived session is brought back the same way the agent panel's callout does it.
-  const handleToggleArchive = useCallback(
-    (agent: AggregatedAgent) => {
-      if (agent.archivedAt) {
-        const client = useSessionStore.getState().sessions[agent.serverId]?.client ?? null;
-        void client?.refreshAgent(agent.id).catch(() => undefined);
-        return;
-      }
-      void archiveAgent({ serverId: agent.serverId, agentId: agent.id }).catch(() => undefined);
-    },
-    [archiveAgent],
-  );
-
   // Deleting is the one irreversible action here; the row asks in place before calling this.
   const handleDeleteAgentFromRow = useCallback(
     (agent: AggregatedAgent) => {
@@ -626,7 +644,6 @@ export function AgentList({
           showHostColumn={showHostColumn}
           onPress={handleAgentPress}
           onLongPress={handleAgentLongPress}
-          onToggleArchive={handleToggleArchive}
           onDeleteAgent={handleDeleteAgentFromRow}
         />
       );
@@ -635,7 +652,6 @@ export function AgentList({
       handleAgentLongPress,
       handleAgentPress,
       handleDeleteAgentFromRow,
-      handleToggleArchive,
       isMobile,
       search,
       selectedAgentId,
