@@ -344,11 +344,10 @@ function SessionRow({
             <AgentActivityTime date={agent.lastActivityAt} isMobile={false} />
             <AgentRowActions
               archived={agent.archivedAt != null}
-              visible={isHovered}
               testIDPrefix={`agent-row-${agent.serverId}-${agent.id}`}
               onToggleArchive={handleToggleArchive}
               onDeleteAgent={handleDeleteAgent}
-            />
+            />{" "}
           </View>
         ) : null}
         <SessionRowTrailingAttention
@@ -408,18 +407,17 @@ function RowActionTooltip({ label, children }: { label: string; children: ReactE
 }
 
 /**
- * The row's own actions, revealed on hover so the columns stay quiet at rest. Archiving flips
- * with the row's archived state; deleting asks in place, because a session removed here is gone.
+ * The row's own actions, always in view so the columns keep one shape whether or not the pointer
+ * is over them. Archiving flips with the row's archived state; deleting asks in place, because a
+ * session removed here is gone.
  */
 function AgentRowActions({
   archived,
-  visible,
   testIDPrefix,
   onToggleArchive,
   onDeleteAgent,
 }: {
   archived: boolean;
-  visible: boolean;
   testIDPrefix: string;
   onToggleArchive: () => void;
   onDeleteAgent: () => void;
@@ -431,10 +429,7 @@ function AgentRowActions({
     : t("agentList.archiveSheet.archive");
   const deleteLabel = t("agentList.deleteSheet.delete");
   return (
-    <View
-      style={[styles.rowActions, visible ? null : styles.rowActionsHidden]}
-      pointerEvents={visible ? "auto" : "none"}
-    >
+    <View style={styles.rowActions}>
       <RowActionTooltip label={archiveLabel}>
         <Pressable
           onPress={onToggleArchive}
@@ -904,9 +899,6 @@ const styles = StyleSheet.create((theme) => ({
     gap: theme.spacing[1],
     flexShrink: 0,
     width: 64,
-  },
-  rowActionsHidden: {
-    opacity: 0,
   },
   rowAction: {
     padding: theme.spacing[1],
