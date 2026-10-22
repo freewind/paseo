@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-23 00:05
+最近一次保存：2026-10-23 00:40
 
 ---
 
@@ -461,3 +461,22 @@ Notes：
 - UI：`SessionRowBadges` 在“已归档”前加同样样式的“子代理”，仅 `parentAgentId` 非空时显示。
 - i18n：新 key `agentList.badges.subagent`，9 语言已补。
 - 与最近访问那份用的是两个 key（sidebar.recentVisits.subagent / agentList.badges.subagent），没有合并。
+
+---
+
+### 打开会话时补拉一次备忘录
+
+- 状态：已完成
+- 最近保存：2026-10-23 00:40
+
+现象：重启 daemon 后当前会话的备忘录不自动显示，必顶手动新增一条才完整。
+
+真正原因：memo 列表只随 `fetch_agent` 下发，而打开目录里已有的 agent 时 `agent-panel` 只在 `!currentAgent` 时才发 fetch；add 的回复带完整列表，所以手动新增能补全。
+
+Notes：
+
+- 修法：`useAgentMemos` 挂载时若本地没有该 agent 的列表，主动 fetch 一次。
+- 门控用 `features.agentMemos`（protocol 里没有单独的 `agentMemosOnFetch` 能力位，后者只是 COMPAT 注释里的名字）。
+- 按 `serverId:agentId` 去重；返回不带 `memos` 也保留键，失败则清键重试。
+
+**更正**：上一轮说“要等 daemon 升级”是错的。`/Applications/Paseo.app` 的 asar 里已有 `agentMemosOnFetch`、`navigationState`、`navigation-state.json`，且 `~/.paseo/navigation-state.json` 已生成——新 daemon 早就在跑。`build-mac.sh` 本身也包含新 daemon（`build:desktop` 会先 `build:server:clean`）。
