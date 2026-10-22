@@ -362,6 +362,8 @@ export const en = {
     },
   },
   agentMemos: {
+    edit: "Edit memo",
+    save: "Save memo",
     toggle: "Memos",
     add: "Add memo",
     placeholder: "New memo",

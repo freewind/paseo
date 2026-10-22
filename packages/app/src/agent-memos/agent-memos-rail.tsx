@@ -62,14 +62,26 @@ export const AgentMemosRail = memo(function AgentMemosRail({
   const supported = useHostFeature(serverId, "agentMemos");
   const supportsCompletion = useHostFeature(serverId, "agentMemoCompletion");
   const supportsImages = useHostFeature(serverId, "agentMemoImages");
-  const { memos, addMemo, setMemoCompleted, deleteMemo } = useAgentMemos({ serverId, agentId });
+  const { memos, addMemo, updateMemo, setMemoCompleted, deleteMemo } = useAgentMemos({
+    serverId,
+    agentId,
+  });
   const [isAdding, setIsAdding] = useState(false);
+  const [editingMemoId, setEditingMemoId] = useState<string | null>(null);
   const [lightboxSource, setLightboxSource] = useState<ImageLightboxSource | null>(null);
 
   const orderedMemos = useMemo(() => orderMemos(memos), [memos]);
 
-  const handleStartAdding = useCallback(() => setIsAdding(true), []);
+  const handleStartAdding = useCallback(() => {
+    setEditingMemoId(null);
+    setIsAdding(true);
+  }, []);
   const handleCancelAdd = useCallback(() => setIsAdding(false), []);
+  const handleStartEdit = useCallback((memoId: string) => {
+    setIsAdding(false);
+    setEditingMemoId(memoId);
+  }, []);
+  const handleCancelEdit = useCallback(() => setEditingMemoId(null), []);
   const handleCloseLightbox = useCallback(() => setLightboxSource(null), []);
   const handleOpenMemoImage = useCallback(
     (image: ImageAttachment) => setLightboxSource({ type: "uri", uri: memoImageUri(image) }),
@@ -87,6 +99,26 @@ export const AgentMemosRail = memo(function AgentMemosRail({
     (memoId: string, completed: boolean) =>
       void setMemoCompleted(memoId, completed).catch(() => undefined),
     [setMemoCompleted],
+  );
+  const handleUpdateMemo = useCallback(
+    async (
+      entry: AgentMemo,
+      text: string,
+      images: readonly AttachmentMetadata[],
+      keptImages: readonly ImageAttachment[],
+    ) => {
+      const encoded = await encodeAttachmentsForSend(images);
+      const nextImages = [...keptImages, ...(encoded ?? [])];
+      const initialImages = entry.images ?? [];
+      const imagesChanged =
+        nextImages.length !== initialImages.length ||
+        nextImages.some((image, index) => image.data !== initialImages[index]?.data);
+      // Omitting `images` leaves the stored ones alone; an explicit array replaces them, and an
+      // empty one is how removing the last image reaches the daemon.
+      await updateMemo(entry.id, text, imagesChanged ? nextImages : undefined);
+      setEditingMemoId(null);
+    },
+    [updateMemo],
   );
 
   // Pressing the text only appends it; the memo stays until the trash button removes it.
@@ -123,17 +155,29 @@ export const AgentMemosRail = memo(function AgentMemosRail({
       testID="agent-memos-rail"
     >
       <View style={styles.list}>
-        {orderedMemos.map((entry) => (
-          <AgentMemoRow
-            key={entry.id}
-            entry={entry}
-            supportsCompletion={supportsCompletion}
-            onUse={handleMemoPress}
-            onCompletedChange={handleMemoCompletedChange}
-            onRequestDelete={handleRequestDelete}
-            onOpenImage={handleOpenMemoImage}
-          />
-        ))}
+        {orderedMemos.map((entry) =>
+          entry.id === editingMemoId ? (
+            <AgentMemoEditor
+              key={entry.id}
+              entry={entry}
+              submitLabel={t("agentMemos.save")}
+              onSubmit={handleUpdateMemo}
+              onCancel={handleCancelEdit}
+              canAttachImages={supportsImages}
+            />
+          ) : (
+            <AgentMemoRow
+              key={entry.id}
+              entry={entry}
+              supportsCompletion={supportsCompletion}
+              onUse={handleMemoPress}
+              onCompletedChange={handleMemoCompletedChange}
+              onRequestDelete={handleRequestDelete}
+              onRequestEdit={handleStartEdit}
+              onOpenImage={handleOpenMemoImage}
+            />
+          ),
+        )}
         {isAdding ? (
           <AgentMemoComposer
             onSubmit={handleAddMemo}
@@ -174,6 +218,45 @@ export const AgentMemosRail = memo(function AgentMemosRail({
 });
 
 /**
+ * One memo being edited. Binding the entry here keeps the composer's submit callback stable, so
+ * the row mapping stays free of per-render closures.
+ */
+const AgentMemoEditor = memo(function AgentMemoEditor({
+  entry,
+  submitLabel,
+  onSubmit,
+  onCancel,
+  canAttachImages,
+}: {
+  entry: AgentMemo;
+  submitLabel: string;
+  onSubmit: (
+    entry: AgentMemo,
+    text: string,
+    images: readonly AttachmentMetadata[],
+    keptImages: readonly ImageAttachment[],
+  ) => Promise<void>;
+  onCancel: () => void;
+  canAttachImages: boolean;
+}) {
+  const handleSubmit = useCallback(
+    (text: string, images: readonly AttachmentMetadata[], keptImages: readonly ImageAttachment[]) =>
+      onSubmit(entry, text, images, keptImages),
+    [entry, onSubmit],
+  );
+  return (
+    <AgentMemoComposer
+      initialText={entry.text}
+      initialImages={entry.images}
+      submitLabel={submitLabel}
+      onSubmit={handleSubmit}
+      onCancel={onCancel}
+      canAttachImages={canAttachImages}
+    />
+  );
+});
+
+/**
  * Open memos first, completed ones last. Both groups keep the daemon's order, so ticking a memo
  * moves it down without reshuffling the rest.
  */
@@ -196,6 +279,7 @@ function AgentMemoRow({
   onUse,
   onCompletedChange,
   onRequestDelete,
+  onRequestEdit,
   onOpenImage,
 }: {
   entry: AgentMemo;
@@ -203,6 +287,7 @@ function AgentMemoRow({
   onUse: (memo: AgentMemo) => void;
   onCompletedChange: (memoId: string, completed: boolean) => void;
   onRequestDelete: (entry: AgentMemo) => void;
+  onRequestEdit: (memoId: string) => void;
   onOpenImage: (image: ImageAttachment) => void;
 }) {
   const { t } = useTranslation();
@@ -213,6 +298,7 @@ function AgentMemoRow({
     [entry.id, isCompleted, onCompletedChange],
   );
   const handleDelete = useCallback(() => onRequestDelete(entry), [entry, onRequestDelete]);
+  const handleEdit = useCallback(() => onRequestEdit(entry.id), [entry.id, onRequestEdit]);
   const accessibilityState = useMemo(() => ({ checked: isCompleted }), [isCompleted]);
   const memoImageEntries = useMemo(
     () =>
@@ -263,6 +349,7 @@ function AgentMemoRow({
           </Tooltip>
           <ContextMenuContent align="start" width={200} testID={`agent-memo-menu-${entry.id}`}>
             <ContextMenuItem onSelect={handleUse}>{t("composer.input.send")}</ContextMenuItem>
+            <ContextMenuItem onSelect={handleEdit}>{t("agentMemos.edit")}</ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
       </View>

@@ -360,6 +360,8 @@ export const zhCN: TranslationResources = {
     },
   },
   agentMemos: {
+    edit: "编辑备忘录",
+    save: "保存备忘录",
     toggle: "备忘录",
     add: "添加备忘",
     placeholder: "新备忘",
