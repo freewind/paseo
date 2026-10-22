@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-22 18:30
+最近一次保存：2026-10-22 18:50
 
 ---
 
@@ -271,3 +271,20 @@ Notes：
 - 按测量出的行框算，不用 index × 行高：行最多两行，中间还有带序号的分隔线。
 - 程序滚动开 500ms 窗口，窗口外的 onScroll / onScrollBeginDrag 视为用户手动滚动，暂停跟随；从 popover 跳转后恢复。
 - 左侧 dots 不动：它按屏幕高度比例排布，不滚动。
+
+---
+
+### 项目与主机筛选支持搜索
+
+- 状态：已完成
+- 最近保存：2026-10-22 18:50
+
+两个筛选下拉都是 Combobox（searchable 默认 true），但 ProjectFilter、HostFilter 显式传了 false；HostPicker 还有 10 个主机的阈值。
+
+Notes：
+
+- ProjectFilter / HostFilter 删掉 searchable={false}。
+- HostPicker 的 searchable 默认改 true，删掉 SEARCHABLE_THRESHOLD；settings 的 Switch host 仍显式关闭。
+- 删掉硬编码的 "Search hosts" 占位符，改用 Combobox 默认的 common.placeholders.search。
+- title 未改（用户说不需要加 title）。
+- host-picker.test.tsx 6 passed。
