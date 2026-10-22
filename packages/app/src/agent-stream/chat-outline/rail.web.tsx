@@ -166,9 +166,6 @@ export const ChatOutlineRail = memo(function ChatOutlineRail({
           width={textRailWidth}
           panelRef={panelRef}
           agentId={agentId}
-          onHover={handlePointerEnterTick}
-          onLeave={handlePointerLeaveRail}
-          onFocusChange={handleFocusChange}
           onJumpToPrompt={onJumpToPrompt}
           onRequestPromptText={onRequestPromptText}
         />
@@ -255,9 +252,6 @@ interface ChatOutlineTextRailProps {
   width: number;
   panelRef: React.RefObject<View | null>;
   agentId: string;
-  onHover: (index: number) => void;
-  onLeave: () => void;
-  onFocusChange: (index: number, focused: boolean) => void;
   onJumpToPrompt: (seq: number) => void;
   onRequestPromptText: (seq: number) => Promise<string | null>;
 }
@@ -296,9 +290,6 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
   width,
   panelRef,
   agentId,
-  onHover,
-  onLeave,
-  onFocusChange,
   onJumpToPrompt,
   onRequestPromptText,
 }: ChatOutlineTextRailProps) {
@@ -313,10 +304,6 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
   const [openPromptSeq, setOpenPromptSeq] = useState<number | null>(null);
   const openRowRef = useRef<View>(null);
   const textRequestEpoch = useRef(0);
-
-  useEffect(() => {
-    if (isCollapsed) onLeave();
-  }, [isCollapsed, onLeave]);
 
   const handlePromptText = useCallback((seq: number, text: string) => {
     setPromptTexts((current) => mergePromptText(current, seq, text));
@@ -402,8 +389,6 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
                 isActive={prompt.seq === activeSeq}
                 isOpen={prompt.seq === openPromptSeq}
                 rowRef={prompt.seq === openPromptSeq ? openRowRef : undefined}
-                onHover={onHover}
-                onFocusChange={onFocusChange}
                 onTogglePrompt={handleTogglePrompt}
               />
             ))}
@@ -435,8 +420,6 @@ interface ChatOutlineTextRowProps {
   isActive: boolean;
   isOpen: boolean;
   rowRef?: React.RefObject<View | null>;
-  onHover: (index: number) => void;
-  onFocusChange: (index: number, focused: boolean) => void;
   onTogglePrompt: (seq: number) => void;
 }
 
@@ -448,18 +431,12 @@ const ChatOutlineTextRow = memo(function ChatOutlineTextRow({
   isActive,
   isOpen,
   rowRef,
-  onHover,
-  onFocusChange,
   onTogglePrompt,
 }: ChatOutlineTextRowProps) {
   const accessibilityState = useMemo(() => ({ expanded: isOpen }), [isOpen]);
   const handlePress = useCallback(() => {
     onTogglePrompt(seq);
-    onFocusChange(index, false);
-  }, [index, onFocusChange, onTogglePrompt, seq]);
-  const handlePointerEnter = useCallback(() => onHover(index), [index, onHover]);
-  const handleFocus = useCallback(() => onFocusChange(index, true), [index, onFocusChange]);
-  const handleBlur = useCallback(() => onFocusChange(index, false), [index, onFocusChange]);
+  }, [onTogglePrompt, seq]);
 
   return (
     <>
@@ -479,15 +456,13 @@ const ChatOutlineTextRow = memo(function ChatOutlineTextRow({
           <View style={styles.textRowDividerLine} />
         </View>
       ) : null}
-      <View style={styles.textRow} onPointerEnter={handlePointerEnter} ref={rowRef}>
+      <View style={styles.textRow} ref={rowRef}>
         {/* The row clamps its own lines instead of scrolling them: a scroller here is a
             wheel trap that eats the scroll before the list gets it, so the rail owns the
             only vertical scroller and a click opens the full text in a popover instead. */}
         <Pressable
           style={[styles.textRowTarget, isOpen && styles.textRowTargetOpen]}
           onPress={handlePress}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
           accessibilityRole="tab"
           aria-selected={isActive}
           accessibilityLabel={label}
