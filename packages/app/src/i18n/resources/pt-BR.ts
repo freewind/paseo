@@ -382,6 +382,8 @@ export const ptBR: TranslationResources = {
     addedToTodo: "Adicionado às tarefas",
     failedToAdd: "Falha ao adicionar às tarefas",
     attachImage: "Anexar imagem",
+    sheetTitle: "Adicionar a memorandos",
+    sheetPlaceholder: "Conteúdo do memorando",
     pasteFailed: "Falha ao colar a imagem",
   },
   message: {

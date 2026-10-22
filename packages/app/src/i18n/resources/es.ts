@@ -386,6 +386,8 @@ export const es: TranslationResources = {
     addedToTodo: "Añadido a tareas",
     failedToAdd: "Error al añadir a tareas",
     attachImage: "Adjuntar imagen",
+    sheetTitle: "Añadir a memorandos",
+    sheetPlaceholder: "Contenido del memorando",
     pasteFailed: "Error al pegar la imagen",
   },
   message: {

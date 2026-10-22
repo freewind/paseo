@@ -382,6 +382,8 @@ export const ja: TranslationResources = {
     addedToTodo: "To-do に追加しました",
     failedToAdd: "To-do への追加に失敗しました",
     attachImage: "画像を添付",
+    sheetTitle: "メモに追加",
+    sheetPlaceholder: "メモの内容",
     pasteFailed: "画像の貼り付けに失敗しました",
   },
   message: {

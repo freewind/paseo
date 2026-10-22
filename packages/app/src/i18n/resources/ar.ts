@@ -377,6 +377,8 @@ export const ar: TranslationResources = {
     addedToTodo: "تمت الإضافة إلى المهام",
     failedToAdd: "فشل الإضافة إلى المهام",
     attachImage: "إرفاق صورة",
+    sheetTitle: "إضافة إلى المذكرات",
+    sheetPlaceholder: "نص المذكرة",
     pasteFailed: "فشل لصق الصورة",
   },
   message: {

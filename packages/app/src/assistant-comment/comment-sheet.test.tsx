@@ -29,7 +29,11 @@ vi.mock("@/components/adaptive-modal-sheet", () => ({
     ) : null,
 }));
 
-import { AssistantCommentSheet, type AssistantCommentRequest } from "./comment-sheet";
+import {
+  AssistantCommentSheet,
+  AssistantMemoSheet,
+  type AssistantCommentRequest,
+} from "./comment-sheet";
 
 afterEach(cleanup);
 
@@ -67,6 +71,56 @@ describe("AssistantCommentSheet send now", () => {
 
     expect(onAttach).toHaveBeenCalledExactlyOnceWith("looks right");
     expect(onSend).not.toHaveBeenCalled();
+  });
+});
+
+describe("AssistantMemoSheet", () => {
+  function renderMemoSheet(onSubmit = vi.fn(), onCancel = vi.fn()) {
+    render(<AssistantMemoSheet request={request} onCancel={onCancel} onSubmit={onSubmit} />);
+    return { input: screen.getByTestId("assistant-memo-input"), onSubmit, onCancel };
+  }
+
+  it("keeps the quoted text as the initial memo", () => {
+    const { onSubmit } = renderMemoSheet();
+
+    fireEvent.click(screen.getByTestId("assistant-memo-submit"));
+
+    expect(onSubmit).toHaveBeenCalledExactlyOnceWith("some claim");
+  });
+
+  it("submits the edited memo trimmed", () => {
+    const { input, onSubmit } = renderMemoSheet();
+    fireEvent.change(input, { target: { value: "  edited memo  " } });
+
+    fireEvent.click(screen.getByTestId("assistant-memo-submit"));
+
+    expect(onSubmit).toHaveBeenCalledExactlyOnceWith("edited memo");
+  });
+
+  it("submits on Enter", () => {
+    const { input, onSubmit } = renderMemoSheet();
+
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onSubmit).toHaveBeenCalledExactlyOnceWith("some claim");
+  });
+
+  it("does not submit a blank memo", () => {
+    const { input, onSubmit } = renderMemoSheet();
+    fireEvent.change(input, { target: { value: "   " } });
+
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("closes without submitting when cancelled", () => {
+    const { onCancel, onSubmit } = renderMemoSheet();
+
+    fireEvent.click(screen.getByTestId("assistant-memo-cancel"));
+
+    expect(onCancel).toHaveBeenCalledOnce();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });
 

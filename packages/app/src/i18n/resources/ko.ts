@@ -378,6 +378,8 @@ export const ko: TranslationResources = {
     addedToTodo: "할 일에 추가했습니다",
     failedToAdd: "할 일에 추가하지 못했습니다",
     attachImage: "이미지 첨부",
+    sheetTitle: "메모에 추가",
+    sheetPlaceholder: "메모 내용",
     pasteFailed: "이미지 붙여넣기 실패",
   },
   message: {
