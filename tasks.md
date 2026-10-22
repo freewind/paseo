@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-22 23:45
+最近一次保存：2026-10-23 00:05
 
 ---
 
@@ -446,3 +446,18 @@ Notes：
 - 判断条件 `agent.parentAgentId != null`（由 label `paseo.parent-agent-id` 派生）。
 - 行尾徽标与“当前”并排，`subagent` 用 foregroundMuted，“当前”仍用 extraMuted。
 - 新 i18n key `sidebar.recentVisits.subagent`，9 语言已补（中文“子代理”）。
+
+---
+
+### 历史列表标记子代理
+
+- 状态：已完成
+- 最近保存：2026-10-23 00:05
+
+`AgentDirectoryEntry` 之前没带 `parentAgentId`，所以历史行拿不到。这次补上 Pick 并同步三处映射：session store 的 getAgentDirectory、useAgentHistory、useAggregatedAgents。
+
+Notes：
+
+- UI：`SessionRowBadges` 在“已归档”前加同样样式的“子代理”，仅 `parentAgentId` 非空时显示。
+- i18n：新 key `agentList.badges.subagent`，9 语言已补。
+- 与最近访问那份用的是两个 key（sidebar.recentVisits.subagent / agentList.badges.subagent），没有合并。
