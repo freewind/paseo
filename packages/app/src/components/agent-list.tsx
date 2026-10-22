@@ -129,6 +129,7 @@ function SessionRowBadges({
   const { t } = useTranslation();
   return (
     <>
+      {agent.parentAgentId ? <SessionBadge label={t("agentList.badges.subagent")} /> : null}
       {agent.archivedAt ? (
         <SessionBadge label={t("agentList.badges.archived")} icon={archivedIcon} />
       ) : null}

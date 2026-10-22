@@ -343,6 +343,7 @@ export const zhCN: TranslationResources = {
     },
     badges: {
       archived: "已归档",
+      subagent: "子代理",
       pending: "{{count}} 个待处理",
       attention: "需要注意",
     },

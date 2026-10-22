@@ -1910,6 +1910,7 @@ export const useSessionStore = create<SessionStore>()(
             cwd: agent.cwd,
             provider: agent.provider,
             model: agent.model,
+            parentAgentId: agent.parentAgentId,
             pendingPermissionCount: agent.pendingPermissions.length,
             requiresAttention: agent.requiresAttention ?? false,
             attentionReason: agent.attentionReason ?? null,
