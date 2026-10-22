@@ -94,7 +94,7 @@ export function AssistantCommentSheet({
             {t("common.actions.cancel")}
           </Button>
           <Button
-            variant="secondary"
+            variant="default"
             disabled={comment.trim().length === 0}
             onPress={handleAttach}
             testID="assistant-comment-attach"
@@ -102,7 +102,7 @@ export function AssistantCommentSheet({
             {t("comment.sheet.attach")}
           </Button>
           <Button
-            variant="default"
+            variant="secondary"
             disabled={comment.trim().length === 0}
             onPress={handleSend}
             testID="assistant-comment-send"
