@@ -266,3 +266,29 @@ it("setup metadata from directory snapshots and transitions resets failure surfa
   expect(store.claimFailedSetupSurface({ ...identity, status: "failed" })).toBe(false);
   expect(useWorkspaceSetupStore.getState().snapshots).toEqual({});
 });
+
+it("drops an archiving marker that came from a cache, not from the daemon", () => {
+  const serverId = "cached-archiving-marker";
+  const workspaceId = "stale-archiving";
+  const store = useSessionStore.getState();
+  store.initializeSession(serverId, null as unknown as DaemonClient);
+  const replica = new WorkspaceDirectoryReplica(serverId);
+  const stale = normalizeWorkspaceDescriptor({
+    ...workspace(workspaceId),
+    archivingAt: "2026-04-30T20:45:00.000Z",
+  });
+
+  try {
+    replica.commitCachedWorkspace(stale, undefined);
+    replica.commitCached({
+      workspaces: new Map([[`${workspaceId}-2`, { ...stale, id: `${workspaceId}-2` }]]),
+      projects: new Map(),
+    });
+
+    const workspaces = useSessionStore.getState().sessions[serverId]?.workspaces;
+    expect(workspaces?.get(workspaceId)?.archivingAt).toBeNull();
+    expect(workspaces?.get(`${workspaceId}-2`)?.archivingAt).toBeNull();
+  } finally {
+    store.clearSession(serverId);
+  }
+});

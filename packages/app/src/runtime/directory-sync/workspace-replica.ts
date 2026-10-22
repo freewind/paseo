@@ -52,7 +52,18 @@ export class WorkspaceDirectoryReplica {
     projects: Map<string, ProjectDescriptor>;
   }): void {
     this.replace({
-      workspaces: new Map([...input.workspaces, ...this.workspaces]),
+      // A cached `archivingAt` belongs to a daemon process that is gone; keeping it would pin
+      // every restored row at "Archiving…" until that daemon happens to re-send the workspace.
+      workspaces: new Map([
+        ...[...input.workspaces].map(
+          ([id, workspace]) =>
+            [
+              id,
+              workspace.archivingAt === null ? workspace : { ...workspace, archivingAt: null },
+            ] as const,
+        ),
+        ...this.workspaces,
+      ]),
       projects: new Map([...input.projects, ...this.projects]),
     });
     useSessionStore.getState().setHasWorkspaceDirectorySnapshot(this.serverId, true);
@@ -64,7 +75,10 @@ export class WorkspaceDirectoryReplica {
   ): void {
     if (shouldSuppressWorkspaceForLocalArchive({ serverId: this.serverId, workspace })) return;
     if (project) this.setProject(project);
-    this.setWorkspace(workspace);
+    // `archivingAt` is a marker the daemon keeps in memory for the length of one archive, and a
+    // checkpoint can outlive it (the daemon restarts mid-flight, or the archive failed). A cached
+    // value would otherwise pin the row at "Archiving…" until the daemon happens to re-send it.
+    this.setWorkspace({ ...workspace, archivingAt: null });
   }
 
   commitSnapshot(
