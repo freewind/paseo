@@ -53,6 +53,41 @@ describe("buildWorkspaceTabMenuEntries", () => {
     expect(entries.some((entry) => entry.kind === "separator")).toBe(false);
   });
 
+  it("shows the delete action only when the caller wires it up", () => {
+    const onDeleteAgent = vi.fn();
+    const sharedInput = {
+      surface: "mobile" as const,
+      tab: createAgentTab(),
+      index: 0,
+      tabCount: 1,
+      menuTestIDBase: "workspace-tab-menu-agent_123",
+      onCopyResumeCommand: vi.fn(),
+      onCopyAgentId: vi.fn(),
+      onCopyConversationMarkdown: vi.fn(),
+      onCopyTerminalId: vi.fn(),
+      onCopyFilePath: vi.fn(),
+      onReloadAgent: vi.fn(),
+      onRenameTab: vi.fn(),
+      onCloseTab: vi.fn(),
+      onCloseTabsBefore: vi.fn(),
+      onCloseTabsAfter: vi.fn(),
+      onCloseOtherTabs: vi.fn(),
+    };
+
+    expect(itemKeys(buildWorkspaceTabMenuEntries(sharedInput))).not.toContain("delete-agent");
+
+    const entries = buildWorkspaceTabMenuEntries({ ...sharedInput, onDeleteAgent });
+    const deleteEntry = entries.find(
+      (entry) => entry.kind === "item" && entry.key === "delete-agent",
+    );
+    if (!deleteEntry || deleteEntry.kind !== "item") throw new Error("Delete entry missing");
+
+    const keys = itemKeys(entries);
+    expect(keys.indexOf("delete-agent")).toBeLessThan(keys.indexOf("close"));
+    deleteEntry.onSelect();
+    expect(onDeleteAgent).toHaveBeenCalledWith("agent-123");
+  });
+
   it("adds the unread action only for eligible agent tabs and targets that agent", () => {
     const onMarkAsUnread = vi.fn();
     const entries = buildWorkspaceTabMenuEntries({

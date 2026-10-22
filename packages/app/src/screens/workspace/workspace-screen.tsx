@@ -134,6 +134,7 @@ import { useWorkspaceReadState } from "@/hooks/use-workspace-read-state";
 import type { WorkspaceLabelTarget } from "@/workspace-labels/picker";
 import { useWorkspaceTerminalSessionRetention } from "@/terminal/hooks/use-workspace-terminal-session-retention";
 import type { CheckoutStatusPayload } from "@/git/use-status-query";
+import { useDeleteAgentWithConfirm } from "@/hooks/use-delete-agent";
 import { confirmDialog } from "@/utils/confirm-dialog";
 import { useArchiveAgent } from "@/hooks/use-archive-agent";
 import { useStableEvent } from "@/hooks/use-stable-event";
@@ -607,6 +608,7 @@ function MobileWorkspaceTabOption({
   onCloseTabsAbove,
   onCloseTabsBelow,
   onCloseOtherTabs,
+  onDeleteAgent,
 }: {
   tab: WorkspaceTabDescriptor;
   tabIndex: number;
@@ -632,6 +634,7 @@ function MobileWorkspaceTabOption({
   onCloseTabsAbove: (tabId: string) => Promise<void> | void;
   onCloseTabsBelow: (tabId: string) => Promise<void> | void;
   onCloseOtherTabs: (tabId: string) => Promise<void> | void;
+  onDeleteAgent: (agentId: string) => void;
 }) {
   const { t } = useTranslation();
   const agentId = tab.target.kind === "agent" ? tab.target.agentId : "";
@@ -692,6 +695,7 @@ function MobileWorkspaceTabOption({
     onCloseOtherTabs,
     onMarkAsUnread: unreadState.markUnread,
     canMarkAsUnread: unreadState.canMarkUnread,
+    onDeleteAgent,
     labels: tabMenuLabels,
   });
 
@@ -772,6 +776,7 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
   onCloseOtherTabs,
 }: MobileWorkspaceTabSwitcherProps) {
   const { t } = useTranslation();
+  const onDeleteAgent = useDeleteAgentWithConfirm({ serverId: normalizedServerId });
   const [isOpen, setIsOpen] = useState(false);
   const anchorRef = useRef<View>(null);
   const previousTabCountRef = useRef(tabs.length);
@@ -841,6 +846,7 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
           onCloseTabsAbove={onCloseTabsAbove}
           onCloseTabsBelow={onCloseTabsBelow}
           onCloseOtherTabs={onCloseOtherTabs}
+          onDeleteAgent={onDeleteAgent}
         />
       );
     },
@@ -866,6 +872,7 @@ const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitcher({
       onCloseTabsAbove,
       onCloseTabsBelow,
       onCloseOtherTabs,
+      onDeleteAgent,
     ],
   );
 

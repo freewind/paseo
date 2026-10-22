@@ -1,4 +1,5 @@
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { useDeleteAgentWithConfirm } from "@/hooks/use-delete-agent";
 import React, {
   Fragment,
   useCallback,
@@ -1161,6 +1162,7 @@ function ResolvedWorkspaceDesktopTabsRow({
     }),
     [t],
   );
+  const onDeleteAgent = useDeleteAgentWithConfirm({ serverId: normalizedServerId });
   const tabLabels = useMemo(
     () =>
       tabs.map((tab) => {
@@ -1346,6 +1348,7 @@ function ResolvedWorkspaceDesktopTabsRow({
           onCopyFilePath={onCopyFilePath}
           onOpenFileInEditor={onOpenFileInEditor}
           onRevealFile={onRevealFile}
+          onDeleteAgent={onDeleteAgent}
           onReloadAgent={onReloadAgent}
           onRenameTab={onRenameTab}
           onCloseTabsToLeft={onCloseTabsToLeft}
@@ -1386,6 +1389,7 @@ function ResolvedWorkspaceDesktopTabsRow({
       onOpenFileInEditor,
       onRevealFile,
       onCopyResumeCommand,
+      onDeleteAgent,
       onNavigateTab,
       onReloadAgent,
       onRenameTab,
@@ -1507,6 +1511,7 @@ function ResolvedDesktopTabChip({
   isDragging,
   index,
   tabCount,
+  onDeleteAgent,
   onCopyResumeCommand,
   onCopyAgentId,
   onCopyConversationMarkdown,
@@ -1551,6 +1556,7 @@ function ResolvedDesktopTabChip({
   onCopyFilePath: (path: string) => Promise<void> | void;
   onOpenFileInEditor?: (path: string) => void;
   onRevealFile?: (path: string) => void;
+  onDeleteAgent?: (agentId: string) => void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
   onRenameTab: (tab: WorkspaceTabDescriptor) => void;
   onCloseTabsToLeft: (tabId: string) => Promise<void> | void;
@@ -1592,6 +1598,7 @@ function ResolvedDesktopTabChip({
         onCopyFilePath,
         onOpenFileInEditor,
         onRevealFile,
+        onDeleteAgent,
         onReloadAgent,
         onRenameTab,
         onCloseTab,
@@ -1618,6 +1625,7 @@ function ResolvedDesktopTabChip({
       onCopyFilePath,
       onOpenFileInEditor,
       onRevealFile,
+      onDeleteAgent,
       onCopyResumeCommand,
       labels,
       onReloadAgent,

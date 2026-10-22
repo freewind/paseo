@@ -9,7 +9,7 @@ import { resolveCloseAgentTabPolicy } from "@/subagents/close-tab-policy";
 import { buildConversationMarkdown } from "@/timeline/conversation-markdown";
 import type { AgentTaskSnapshotItem, AgentTimelineItem } from "@getpaseo/protocol/agent-types";
 import { useArchiveAgent } from "@/hooks/use-archive-agent";
-import { useDeleteAgent } from "@/hooks/use-delete-agent";
+import { useDeleteAgentWithConfirm } from "@/hooks/use-delete-agent";
 import { useSessionStore } from "@/stores/session-store";
 import { useWorkspaceLayoutStore } from "@/stores/workspace-layout-store";
 import { getPanelInstanceAttributes } from "@/panels/panel-instance-attributes";
@@ -206,7 +206,7 @@ export function useWorkspaceAgentTabActions({
   const queryClient = useQueryClient();
   const isConnected = useHostRuntimeIsConnected(serverId);
   const { archiveAgent } = useArchiveAgent();
-  const { deleteAgent } = useDeleteAgent();
+  const onDeleteAgent = useDeleteAgentWithConfirm({ serverId });
   const { closeTab } = useCloseTabs();
   const client = useSessionStore((state) => state.sessions[serverId]?.client ?? null);
   const closeWorkspaceTab = useWorkspaceLayoutStore((state) => state.closeTab);
@@ -473,31 +473,6 @@ export function useWorkspaceAgentTabActions({
       t,
       toast,
     ],
-  );
-
-  const onDeleteAgent = useCallback(
-    (agentId: string) => {
-      void (async () => {
-        const session = useSessionStore.getState().sessions[serverId];
-        const agent = session?.agents.get(agentId) ?? session?.agentDetails.get(agentId) ?? null;
-        const confirmed = await confirmDialog({
-          title: t("agentList.deleteSheet.confirmTitle"),
-          message: t("agentList.deleteSheet.confirmMessage", {
-            agent: agent?.title ?? agentId,
-          }),
-          confirmLabel: t("agentList.deleteSheet.delete"),
-          cancelLabel: t("common.actions.cancel"),
-          destructive: true,
-        });
-        if (!confirmed) return;
-        try {
-          await deleteAgent({ serverId, agentId });
-        } catch (error) {
-          toast.error(error instanceof Error ? error.message : t("agentList.deleteSheet.failed"));
-        }
-      })();
-    },
-    [deleteAgent, serverId, t, toast],
   );
 
   const confirmDiscardModifiedTab = useCallback(
