@@ -378,6 +378,7 @@ export const ja: TranslationResources = {
     empty: "メモはまだありません",
     useMemo: "メモを入力欄に追加",
     delete: "メモを削除",
+    clear: "メモをすべて削除",
     markDone: "完了にする",
     markNotDone: "未完了に戻す",
     addedToTodo: "To-do に追加しました",

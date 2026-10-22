@@ -373,6 +373,7 @@ export const zhCN: TranslationResources = {
     empty: "还没有备忘",
     useMemo: "把备忘追加到输入框",
     delete: "删除备忘",
+    clear: "清空备忘",
     markDone: "标记为完成",
     markNotDone: "标记为未完成",
     addedToTodo: "已加入 To-dos",

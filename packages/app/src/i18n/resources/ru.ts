@@ -378,6 +378,7 @@ export const ru: TranslationResources = {
     empty: "Заметок пока нет",
     useMemo: "Добавить заметку в поле ввода",
     delete: "Удалить заметку",
+    clear: "Очистить заметки",
     markDone: "Отметить как выполненное",
     markNotDone: "Отметить как невыполненное",
     addedToTodo: "Добавлено в задачи",

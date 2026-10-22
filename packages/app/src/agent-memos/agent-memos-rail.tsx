@@ -2,7 +2,7 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { Image, Pressable, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
-import { CheckCircle2, Circle, ClipboardList, Plus, Trash2 } from "lucide-react-native";
+import { CheckCircle2, Circle, ClipboardList, ListX, Plus, Trash2 } from "lucide-react-native";
 import type { AgentMemo, ImageAttachment } from "@getpaseo/protocol/messages";
 import { AttachmentLightbox, type ImageLightboxSource } from "@/components/attachment-lightbox";
 import {
@@ -26,6 +26,7 @@ const completedIconMapping = (theme: Theme) => ({ color: theme.colors.accent });
 const ThemedClipboardList = withUnistyles(ClipboardList, mutedIconMapping);
 const ThemedAddPlus = withUnistyles(Plus, mutedIconMapping);
 const ThemedTrash2 = withUnistyles(Trash2, mutedIconMapping);
+const ThemedListX = withUnistyles(ListX, mutedIconMapping);
 const ThemedCircle = withUnistyles(Circle, mutedIconMapping);
 const ThemedCheckCircle2 = withUnistyles(CheckCircle2, completedIconMapping);
 /** Small enough to sit inline, so a memo with images still occupies a single row. */
@@ -40,8 +41,9 @@ const MEMO_IMAGE_SIZE = 24;
  * group keeping the daemon's creation order. Every memo is one line, ellipsized at the tail, with
  * the full text in a hover tooltip. Pressing the text appends it to the composer and leaves the
  * memo in place; the context menu sends it, the checkbox toggles completion, and the trash button
- * asks before deleting. The header carries the add button, matching the quick replies bar on the
- * opposite gutter. Completion lives on the daemon with the memo, so every client sees it.
+ * asks before deleting. The header carries clear and add, matching the quick replies bar on the
+ * opposite gutter: clearing the whole list asks in place first, like the row trash button does.
+ * Completion lives on the daemon with the memo, so every client sees it.
  */
 export const AgentMemosRail = memo(function AgentMemosRail({
   serverId,
@@ -63,7 +65,7 @@ export const AgentMemosRail = memo(function AgentMemosRail({
   const supported = useHostFeature(serverId, "agentMemos");
   const supportsCompletion = useHostFeature(serverId, "agentMemoCompletion");
   const supportsImages = useHostFeature(serverId, "agentMemoImages");
-  const { memos, addMemo, updateMemo, setMemoCompleted, deleteMemo } = useAgentMemos({
+  const { memos, addMemo, updateMemo, setMemoCompleted, deleteMemo, clearMemos } = useAgentMemos({
     serverId,
     agentId,
   });
@@ -82,6 +84,9 @@ export const AgentMemosRail = memo(function AgentMemosRail({
       iconButtonChromeStyle({ size: "large", state: { hovered: Boolean(hovered), pressed } }),
     [],
   );
+  const handleClearMemos = useCallback(() => {
+    void clearMemos().catch(() => undefined);
+  }, [clearMemos]);
   const handleCancelAdd = useCallback(() => setIsAdding(false), []);
   const handleStartEdit = useCallback((memoId: string) => {
     setIsAdding(false);
@@ -193,22 +198,37 @@ export const AgentMemosRail = memo(function AgentMemosRail({
             </Text>
           </View>
         ) : null}
-        <Tooltip delayDuration={250} enabledOnDesktop enabledOnMobile={false}>
-          <TooltipTrigger asChild>
-            <Pressable
-              style={addButtonStyle}
-              onPress={handleStartAdding}
-              accessibilityRole="button"
-              accessibilityLabel={t("agentMemos.add")}
-              testID="agent-memo-add"
+        <View style={styles.headerActions}>
+          {memos.length > 0 ? (
+            <InlineConfirm
+              triggerLabel={t("agentMemos.clear")}
+              triggerStyle={styles.clearButton}
+              cancelLabel={t("common.actions.cancel")}
+              confirmLabel={t("agentMemos.clear")}
+              onConfirm={handleClearMemos}
+              destructive
+              testID="agent-memo-clear"
             >
-              <ThemedAddPlus size={ICON_SIZE.lg} uniProps={mutedIconMapping} />
-            </Pressable>
-          </TooltipTrigger>
-          <TooltipContent side="top" align="end" offset={8}>
-            <Text style={styles.tooltipText}>{t("agentMemos.add")}</Text>
-          </TooltipContent>
-        </Tooltip>
+              <ThemedListX size={ICON_SIZE.lg} uniProps={mutedIconMapping} />
+            </InlineConfirm>
+          ) : null}
+          <Tooltip delayDuration={250} enabledOnDesktop enabledOnMobile={false}>
+            <TooltipTrigger asChild>
+              <Pressable
+                style={addButtonStyle}
+                onPress={handleStartAdding}
+                accessibilityRole="button"
+                accessibilityLabel={t("agentMemos.add")}
+                testID="agent-memo-add"
+              >
+                <ThemedAddPlus size={ICON_SIZE.lg} uniProps={mutedIconMapping} />
+              </Pressable>
+            </TooltipTrigger>
+            <TooltipContent side="top" align="end" offset={8}>
+              <Text style={styles.tooltipText}>{t("agentMemos.add")}</Text>
+            </TooltipContent>
+          </Tooltip>
+        </View>
       </View>
       <AttachmentLightbox source={lightboxSource} onClose={handleCloseLightbox} />
     </View>
@@ -452,6 +472,12 @@ const styles = StyleSheet.create((theme: Theme) => ({
   headerTrailing: {
     justifyContent: "flex-end",
   },
+  /** Clear and add sit together at the trailing edge. */
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing[1],
+  },
   titleGroup: {
     flexDirection: "row",
     alignItems: "center",
@@ -514,6 +540,9 @@ const styles = StyleSheet.create((theme: Theme) => ({
     padding: theme.spacing[1],
   },
   deleteButton: {
+    padding: theme.spacing[1],
+  },
+  clearButton: {
     padding: theme.spacing[1],
   },
   tooltipText: {

@@ -374,6 +374,7 @@ export const ko: TranslationResources = {
     empty: "아직 메모가 없습니다",
     useMemo: "메모를 입력창에 추가",
     delete: "메모 삭제",
+    clear: "메모 모두 지우기",
     markDone: "완료로 표시",
     markNotDone: "미완료로 표시",
     addedToTodo: "할 일에 추가했습니다",

@@ -382,6 +382,7 @@ export const fr: TranslationResources = {
     empty: "Aucun mémo pour l'instant",
     useMemo: "Ajouter le mémo au composer",
     delete: "Supprimer le mémo",
+    clear: "Effacer les mémos",
     markDone: "Marquer comme fait",
     markNotDone: "Marquer comme non fait",
     addedToTodo: "Ajouté aux tâches",

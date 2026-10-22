@@ -378,6 +378,7 @@ export const ptBR: TranslationResources = {
     empty: "Ainda não há notas",
     useMemo: "Anexar nota ao composer",
     delete: "Excluir nota",
+    clear: "Limpar notas",
     markDone: "Marcar como concluído",
     markNotDone: "Marcar como não concluído",
     addedToTodo: "Adicionado às tarefas",

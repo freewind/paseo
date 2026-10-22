@@ -375,6 +375,7 @@ export const en = {
     empty: "No memos yet",
     useMemo: "Append memo to composer",
     delete: "Delete memo",
+    clear: "Clear memos",
     markDone: "Mark as done",
     markNotDone: "Mark as not done",
     addedToTodo: "Added to To-dos",

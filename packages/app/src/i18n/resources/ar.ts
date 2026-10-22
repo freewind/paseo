@@ -373,6 +373,7 @@ export const ar: TranslationResources = {
     empty: "لا توجد مذكرات بعد",
     useMemo: "إلحاق المذكرة بحقل الإدخال",
     delete: "حذف المذكرة",
+    clear: "مسح المذكرات",
     markDone: "تحديد كمنجز",
     markNotDone: "تحديد كغير منجز",
     addedToTodo: "تمت الإضافة إلى المهام",

@@ -382,6 +382,7 @@ export const es: TranslationResources = {
     empty: "Aún no hay notas",
     useMemo: "Añadir nota al composer",
     delete: "Eliminar nota",
+    clear: "Borrar todas las notas",
     markDone: "Marcar como hecho",
     markNotDone: "Marcar como pendiente",
     addedToTodo: "Añadido a tareas",
