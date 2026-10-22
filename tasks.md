@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-22 19:45
+最近一次保存：2026-10-22 20:20
 
 ---
 
@@ -320,3 +320,20 @@ Notes：
 - 单元格嵌在行的 Pressable 内，沿用行自己的 onPress/onLongPress，避免内层吞点击。
 - 空 model 不渲染该格；无表头，所以不需要 i18n。
 - sessions-screen.test.ts 与 use-agent-history.test.ts 共 23 passed。
+
+---
+
+### History 增加按模型筛选
+
+- 状态：已完成
+- 最近保存：2026-10-22 20:20
+
+host 筛选保留（用户一度想改成只查当前 host，后来确认同一 daemon 的多条 URL 属于同一个 host，于是不改）。
+
+Notes：
+
+- 新增 components/hosts/model-filter.tsx，与 ProjectFilter 同构的 pill + Combobox，pill 上 model 截到 180。
+- 选项来自已加载历史行的 model 去重，过滤是本地 filter；history RPC 的 filter 只支持 projectKeys，不动协议。
+- 边界：选项与过滤只覆盖已加载页；未加载页里的 model 不出现在选项里。
+- 选中的 model 消失时自动回到 All models；空结果时提供一次性清掉搜索与模型筛选的按钮。
+- 少于两个具体 model 时不显示该筛选。
