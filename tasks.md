@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-22 16:27
+最近一次保存：2026-10-22 16:34
 
 ---
 
@@ -155,3 +155,16 @@ Notes：
 Notes：
 
 - 2026-10-22 16:27：根因是 use-agent-transfer-workspace 拿 workspaceKeys 里的 `serverId:workspaceId` 拼接串当 session.workspaces 的 Map key 查，永远查不到。改为先用 parseWorkspaceStructureKey 解出身份，再按 key 里的 serverId 取 session，用 resolveWorkspaceMapKeyByIdentity 拿到真正的 Map key。同时当前工作区不再剔除，改为 isCurrent 标记，弹窗里渲染成 disabled 并在名称后追加「当前」文案。i18n 九个语言文件均补 currentWorkspace。测试 7 项通过，lint 与 typecheck 通过。界面未验证。
+
+---
+
+### 修复 NavigationHistoryBridge 在首屏报无限更新
+
+- 状态：已完成
+- 最近保存：2026-10-22 16:34
+
+新打开或刷新页面时经常抛 `Maximum update depth exceeded`，报错组件指向 NavigationHistoryBridge。
+
+Notes：
+
+- 2026-10-22 16:34：根因是 selector 不纯。workspace 尚无持久化 layout 时，下一层 `getWorkspaceLayout` 每次调用都会新建默认 layout，而默认 layout 的空白 tab 用随机 id（new-tab.ts 里 generateMessageId）。bridge 的 selector 把它算成 `activeTabKey`，每次结果都不同；zustand v5 把 selector 放进 useSyncExternalStore 的 getSnapshot，React 反复校验快照后不断重渲染直到抛出上限。修复：readActiveTab 在 layoutByWorkspace 缺失时直接返回 null；sidebar 的 useCurrentAgentId 同型位点一并加 guard。两个测试文件补上占位 layout，并新增 readActiveTab 在缺 layout 时稳定的用例。bridge 测试 13 项、sidebar 测试 7 项通过，lint 与 typecheck 通过。界面未复验。

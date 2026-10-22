@@ -25,11 +25,18 @@ interface ActiveWorkspaceTab {
  * snapshot: tab descriptors are rebuilt on every layout update even when the tab
  * itself did not change.
  */
-function readActiveTab(
+export function readActiveTab(
   state: WorkspaceLayoutStore,
   workspaceKey: string,
 ): ActiveWorkspaceTab | null {
   const layout = state.layoutByWorkspace[workspaceKey] ?? null;
+  // A missing layout is the common case at launch: hydration is async and a workspace the
+  // user never laid out has none. `getWorkspaceTabs` would mint a default layout here, and
+  // its blank tab carries a fresh random id on every call — an unstable selector result,
+  // which makes React re-render until it throws "Maximum update depth exceeded".
+  if (!layout) {
+    return null;
+  }
   const tabs = state.getWorkspaceTabs(workspaceKey);
   const derived = deriveWorkspacePaneState({
     layout,

@@ -192,6 +192,9 @@ describe("SidebarRecentVisitsMenu", () => {
     mocks.agents = {};
     mocks.hosts = [];
     mocks.currentAgentId = null;
+    // `useCurrentAgentId` reads the focused tab of a stored layout, so the workspace
+    // needs one; the tab content still comes from the mocked `deriveWorkspacePaneState`.
+    mocks.layoutState.layoutByWorkspace = { "server-1:workspace-a": {} };
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
