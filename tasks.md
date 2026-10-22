@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-23 04:30
+最近一次保存：2026-10-23 04:55
 
 ---
 
@@ -662,3 +662,17 @@ Notes：
 - 该扩展名导入 tsgo 不允许，需要 `@ts-expect-error TS5097`；测试里还要 `vi.stubGlobal("React", React)`。
 
 **遗留**：`rail.web.tsx` 的 `readPromptTexts` effect 同样依赖这个不稳定函数，会导致整列文案反复重读（有缓存，不影响闪烁但浪费请求），本次未动。
+
+---
+
+### 拆出 prompt-detail-content + 大纲只读缺的提示
+
+- 状态：已完成
+- 最近保存：2026-10-23 04:55
+
+第 1 件（`20ddcd425`）：`prompt-detail.tsx` 改名 `prompt-detail-content.tsx`，`sheet.tsx` 与 `prompt-detail.web.tsx` 的 `require("./prompt-detail.tsx")` 改成普通 import，并给它补 `import React`（测试环境 classic JSX 需要）。
+
+- 副产物：`rail.web.test.tsx`（24 条）与 `sheet.test.tsx`（3 条）从此可以运行；sheet 测试要补主题键（`borderWidth`/`fontWeight`/`iconSize` 等）并 mock `@/contexts/toast-context`，否则会把 toast-host 整套样式拖进来。
+- `rail.web.browser.test.tsx` 现在也能加载，但它属于 browser project，本地未装 Playwright 会报错；跑单元测试用 `--project unit`。
+
+第 2 件（`e18a14fe6`）：`rail.web.tsx` 读整列文案的 effect 把 `onRequestPromptText` 放进 ref，并用 `promptTextsRef` 跳过已有文本的 seq；列表新增一条时只读那一条。补测试：2 条→3 条只读第 3 条。`--project unit` 下 chat-outline 目录 60 passed。
