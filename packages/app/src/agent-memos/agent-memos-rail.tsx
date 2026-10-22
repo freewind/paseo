@@ -317,21 +317,18 @@ function AgentMemoRow({
         <ContextMenu>
           <Tooltip delayDuration={300} enabledOnDesktop enabledOnMobile={false}>
             <TooltipTrigger asChild>
-              <ContextMenuTrigger
-                style={styles.memoButton}
-                onPress={handleUse}
-                accessibilityRole="button"
-                accessibilityLabel={t("agentMemos.useMemo")}
-                testID={`agent-memo-item-${entry.id}`}
-              >
-                <Text
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                  style={isCompleted ? styles.memoTextCompleted : styles.memoText}
-                >
-                  {entry.text}
-                </Text>
-              </ContextMenuTrigger>
+              {/* The tooltip needs a plain view to hover and measure. `ContextMenuTrigger`
+                  would work too, except it renders `<PressHighlight {...props} ref={handleRef}>`
+                  and that later `ref` drops the one the tooltip injects through `asChild`,
+                  leaving its `triggerRef` null — which silently renders no tooltip at all. */}
+              <View style={styles.memoButtonHost}>
+                <AgentMemoTextButton
+                  text={entry.text}
+                  completed={isCompleted}
+                  onPress={handleUse}
+                  testID={`agent-memo-item-${entry.id}`}
+                />
+              </View>
             </TooltipTrigger>
             <TooltipContent side="bottom" align="start" offset={6} maxWidth={420}>
               <Text style={styles.tooltipText}>{entry.text}</Text>
@@ -362,6 +359,38 @@ function AgentMemoRow({
         <ThemedTrash2 size={ICON_SIZE.sm} uniProps={mutedIconMapping} />
       </InlineConfirm>
     </View>
+  );
+}
+
+/** One truncated line: a press appends it to the composer, a right click opens the menu. */
+function AgentMemoTextButton({
+  text,
+  completed,
+  onPress,
+  testID,
+}: {
+  text: string;
+  completed: boolean;
+  onPress: () => void;
+  testID: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <ContextMenuTrigger
+      style={styles.memoButton}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={t("agentMemos.useMemo")}
+      testID={testID}
+    >
+      <Text
+        numberOfLines={1}
+        ellipsizeMode="tail"
+        style={completed ? styles.memoTextCompleted : styles.memoText}
+      >
+        {text}
+      </Text>
+    </ContextMenuTrigger>
   );
 }
 
@@ -457,9 +486,11 @@ const styles = StyleSheet.create((theme: Theme) => ({
     borderColor: theme.colors.foreground,
     backgroundColor: theme.colors.surface2,
   },
-  memoButton: {
+  memoButtonHost: {
     flex: 1,
     minWidth: 0,
+  },
+  memoButton: {
     paddingVertical: theme.spacing[1],
     paddingHorizontal: theme.spacing[2],
     borderRadius: theme.borderRadius.md,
