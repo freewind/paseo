@@ -453,6 +453,10 @@ const styles = StyleSheet.create((theme: Theme) => ({
     width: MEMO_IMAGE_SIZE,
     height: MEMO_IMAGE_SIZE,
     borderRadius: theme.borderRadius.sm,
+    // The border is the background's opposite, so it shows exactly when the image itself does
+    // not: a dark screenshot on a dark surface still reads as a picture.
+    borderWidth: theme.borderWidth[1],
+    borderColor: theme.colors.foreground,
     backgroundColor: theme.colors.surface2,
   },
   memoButton: {
