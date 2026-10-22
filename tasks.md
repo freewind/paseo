@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-23 06:05
+最近一次保存：2026-10-23 06:30
 
 ---
 
@@ -724,3 +724,16 @@ Notes：
 - `8eb79c9e9`：意图列表补 `symbol`、`symbolName`、`symbol_name`、`memory_name`、`uri`、`initialPrompt`、`message`；目标列表补 `filePath`、`file_path`、`file`、`projectPath`、`project_path`、`directory`、`dir`。同一资源被两段重复写时只显示一次。
 
 **踩坑**：改 `packages/protocol` 后不跑 `npm run build:client`，app 侧测试会跑旧的编译产物，新字段全部返回 undefined。先 build 再跑测试。
+
+---
+
+### 评论弹窗 Cmd/Ctrl+Enter 直接发送
+
+- 状态：已完成（`825d00fc9`）
+- 最近保存：2026-10-23 06:30
+
+需求：评论输入框按 Cmd+Enter 等同点「直接发送」。
+
+- `comment-sheet.tsx`：keyPress 事件类型补 `metaKey`/`ctrlKey`；`useEnterSubmit(onSubmit, onSendNow?)` 分流：修饰键 Enter 走 `onSendNow`，没有该动作（memo 变体）退回 `onSubmit`；裸 Enter 附加；Shift+Enter 换行；IME 不触发。
+- 调用处：`useEnterSubmit(handleSubmit, isMemo ? undefined : handleSendNow)`。
+- 测试 +3：Cmd+Enter、Ctrl+Enter、memo 的 Cmd+Enter 等同提交。`src/assistant-comment` 5 个文件 41 passed。
