@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-23 02:20
+最近一次保存：2026-10-23 02:40
 
 ---
 
@@ -531,3 +531,23 @@ Notes：
 - 评论 sheet 的 Enter 处理抽成 `useEnterSubmit` 共用；memo 走 trim、空则禁用，取消不写。
 - 测试：`comment-sheet.test.tsx` 加 memo 5 条（预填、编辑、Enter、空白、取消），assistant-comment 目录 31 passed。
 - 教训：edit 的 `oldText` 若只取 describe 头行，会把头部行删掉、后面的用例变成顶层裸 `it`；插入新 describe 时要保留原头行。
+
+---
+
+### 选中文本菜单增加复制项
+
+- 状态：已完成
+- 最近保存：2026-10-23 02:40
+
+Notes：
+
+- 菜单项顺序：复制 → 评论 → 添加到备忘。复制取选区，无选区取整块。
+- 剪贴板失败静默：`MarkdownCommentableBlock` 被 message.tsx 里每个 markdown 块使用，引入 `useToast` 会让所有渲染 markdown 的测试都要带 provider。
+- 测试 mock 的 `ContextMenuItem` 需要透传 `testID`，否则新项会插在第一位、现有“点第一个 item 是评论”的用例全碎。
+
+移动端 memo 链路核查（无需改动）：
+
+- 添加：长按 markdown 块 → ContextMenu（compactMode=popover）→ “添加到备忘”，门控是 `useHostFeature(serverId, "agentMemos")`，与平台无关。
+- 列表：紧凑布局下 `hasMemosEntry = memosSupported && isCompactFormFactor`，composer tracks row 的 `composer-agent-memos-button` 打开 `AgentMemosSheet`（内含 `AgentMemosRail`）。
+- 填写对话框：`AssistantMemoSheet` 用 `AdaptiveModalSheet`，native 下就是 sheet；Enter 只在 web 绑定，native 用按钮。
+- 复制：同一菜单，expo-clipboard 在 native 可用。
