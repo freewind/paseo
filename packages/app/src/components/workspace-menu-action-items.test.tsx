@@ -19,6 +19,7 @@ vi.mock("lucide-react-native", () => {
   const StubIcon = () => null;
   return {
     Archive: StubIcon,
+    ArchiveRestore: StubIcon,
     Circle: StubIcon,
     CircleCheck: StubIcon,
     Copy: StubIcon,

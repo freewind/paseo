@@ -1332,6 +1332,7 @@ export const zhCN: TranslationResources = {
         archiveWorkspace: "归档工作区",
         hideFromSidebar: "从侧边栏隐藏",
         archiving: "正在归档...",
+        restoreLastArchivedAgent: "解开最后归档的 Agent",
         hiding: "正在隐藏...",
       },
       confirmations: {
@@ -1352,6 +1353,8 @@ export const zhCN: TranslationResources = {
         hostDisconnected: "Host 未连接",
         hideFailed: "隐藏 workspace 失败",
         archiveFailed: "归档工作区失败",
+        noArchivedAgent: "这个 workspace 里没有已归档的 Agent",
+        restoreArchivedAgentFailed: "无法解开已归档的 Agent",
       },
     },
   },
