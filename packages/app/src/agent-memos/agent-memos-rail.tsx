@@ -162,7 +162,7 @@ export const AgentMemosRail = memo(function AgentMemosRail({
             <AgentMemoEditor
               key={entry.id}
               entry={entry}
-              submitLabel={t("agentMemos.save")}
+              submitLabel={t("common.actions.save")}
               onSubmit={handleUpdateMemo}
               onCancel={handleCancelEdit}
               canAttachImages={supportsImages}
@@ -200,7 +200,7 @@ export const AgentMemosRail = memo(function AgentMemosRail({
         <View style={styles.headerActions}>
           {memos.length > 0 ? (
             <MemoClearButton
-              label={t("agentMemos.clear")}
+              label={t("common.actions.clear")}
               cancelLabel={t("common.actions.cancel")}
               onClear={handleClearMemos}
             />
@@ -211,14 +211,14 @@ export const AgentMemosRail = memo(function AgentMemosRail({
                 style={addButtonStyle}
                 onPress={handleStartAdding}
                 accessibilityRole="button"
-                accessibilityLabel={t("agentMemos.add")}
+                accessibilityLabel={t("common.actions.add")}
                 testID="agent-memo-add"
               >
                 <ThemedAddPlus size={ICON_SIZE.lg} uniProps={mutedIconMapping} />
               </Pressable>
             </TooltipTrigger>
             <TooltipContent side="top" align="end" offset={8}>
-              <Text style={styles.tooltipText}>{t("agentMemos.add")}</Text>
+              <Text style={styles.tooltipText}>{t("common.actions.add")}</Text>
             </TooltipContent>
           </Tooltip>
         </View>
@@ -393,7 +393,7 @@ function AgentMemoRow({
           </Tooltip>
           <ContextMenuContent align="start" width={200} testID={`agent-memo-menu-${entry.id}`}>
             <ContextMenuItem onSelect={handleUse}>{t("composer.input.send")}</ContextMenuItem>
-            <ContextMenuItem onSelect={handleEdit}>{t("agentMemos.edit")}</ContextMenuItem>
+            <ContextMenuItem onSelect={handleEdit}>{t("common.actions.edit")}</ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
       </View>
@@ -405,10 +405,10 @@ function AgentMemoRow({
         </View>
       ) : null}
       <InlineConfirm
-        triggerLabel={t("agentMemos.delete")}
+        triggerLabel={t("common.actions.delete")}
         triggerStyle={styles.deleteButton}
         cancelLabel={t("common.actions.cancel")}
-        confirmLabel={t("agentMemos.delete")}
+        confirmLabel={t("common.actions.delete")}
         onConfirm={handleDelete}
         destructive
         testID={`agent-memo-delete-${entry.id}`}

@@ -134,7 +134,7 @@ export function AssistantAnnotationSheet({
             onPress={handleSubmit}
             testID={isMemo ? "assistant-memo-submit" : "assistant-comment-attach"}
           >
-            {isMemo ? t("agentMemos.add") : t("comment.sheet.attach")}
+            {isMemo ? t("common.actions.add") : t("comment.sheet.attach")}
           </Button>
           {isMemo ? null : (
             <Button

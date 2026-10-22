@@ -290,7 +290,7 @@ export function AgentMemoComposer({
           onPress={submit}
           disabled={!canSubmit}
           accessibilityRole="button"
-          accessibilityLabel={submitLabel ?? t("agentMemos.add")}
+          accessibilityLabel={submitLabel ?? t("common.actions.add")}
           testID="agent-memo-submit"
           style={styles.iconButton}
           hitSlop={6}

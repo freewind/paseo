@@ -50,7 +50,7 @@ export function QuickRepliesBar({
       <TooltipTrigger asChild>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={t("composer.quickReplies.edit")}
+          accessibilityLabel={t("common.actions.manage")}
           testID="quick-replies-edit"
           onPress={onEdit}
           style={editChipStyle}
@@ -59,7 +59,7 @@ export function QuickRepliesBar({
         </Pressable>
       </TooltipTrigger>
       <TooltipContent side="top" align="end" offset={8}>
-        <Text style={styles.tooltipText}>{t("composer.quickReplies.edit")}</Text>
+        <Text style={styles.tooltipText}>{t("common.actions.manage")}</Text>
       </TooltipContent>
     </Tooltip>
   );
