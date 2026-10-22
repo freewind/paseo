@@ -133,6 +133,10 @@ function buildCanonicalDetailDisplay(input: ToolCallDisplayInput): DetailDisplay
  * unknown details carrying their raw arguments, so without this a search badge shows only its
  * directory and reads as if the call were about the folder rather than the query.
  *
+ * Order is the whole policy: no branch here knows any tool's name. A field that names the subject
+ * most directly (`query`, `pattern`) wins over the symbol forms, which win over a title, which
+ * wins over a prompt — so a tool we have never seen still gets its best two parts.
+ *
  * `command` is deliberately absent: raw arguments are not a shell tool's contract, and an
  * unrelated field named `command` must not become the badge's summary.
  */
@@ -143,13 +147,31 @@ const UNKNOWN_INTENT_KEYS = [
   "substring_pattern",
   "name_path_pattern",
   "name_path",
+  "symbol",
+  "symbolName",
+  "symbol_name",
+  "memory_name",
   "title",
   "url",
+  "uri",
   "prompt",
+  "initialPrompt",
+  "message",
 ] as const;
 
 /** Where the call points, in the order providers spell it. */
-const UNKNOWN_TARGET_KEYS = ["path", "relative_path", "projectPath", "cwd"] as const;
+const UNKNOWN_TARGET_KEYS = [
+  "path",
+  "relative_path",
+  "filePath",
+  "file_path",
+  "file",
+  "projectPath",
+  "project_path",
+  "cwd",
+  "directory",
+  "dir",
+] as const;
 
 function readSummaryValue(input: Record<string, unknown>, key: string): string | undefined {
   const value = input[key];
@@ -192,10 +214,13 @@ function buildUnknownInputSummary(input: unknown, cwd: string | undefined): stri
   }
   const intent = firstSummaryValue(input, UNKNOWN_INTENT_KEYS);
   const target = firstSummaryValue(input, UNKNOWN_TARGET_KEYS);
-  const parts = [
-    intent ? collapseWhitespace(intent) : undefined,
-    target ? stripCwdPrefix(collapseWhitespace(target), cwd) : undefined,
-  ].filter((part): part is string => Boolean(part));
+  const intentText = intent ? collapseWhitespace(intent) : undefined;
+  const targetText = target ? stripCwdPrefix(collapseWhitespace(target), cwd) : undefined;
+  // A tool that names its subject once must not show it twice, e.g. `uri` beside the same `path`.
+  if (intentText && targetText && intentText === targetText) {
+    return intentText;
+  }
+  const parts = [intentText, targetText].filter((part): part is string => Boolean(part));
   return parts.length > 0 ? parts.join(" · ") : undefined;
 }
 

@@ -240,6 +240,47 @@ describe("tool-call-display", () => {
     expect(prompt.summary).toBe("fix the badge then run the tests");
   });
 
+  it("reads symbolName and filePath spellings", () => {
+    const display = buildToolCallDisplayModel({
+      name: "mcp__other__find_symbol",
+      status: "completed",
+      error: null,
+      detail: {
+        type: "unknown",
+        input: { symbolName: "resolveProject", filePath: "src/project.ts" },
+        output: null,
+      },
+    });
+
+    expect(display.summary).toBe("resolveProject · src/project.ts");
+  });
+
+  it("shows a resource uri once when no path repeats it", () => {
+    const display = buildToolCallDisplayModel({
+      name: "mcp__other__read_resource",
+      status: "completed",
+      error: null,
+      detail: {
+        type: "unknown",
+        input: { uri: "file:///tmp/repo/src/index.ts" },
+        output: null,
+      },
+    });
+    const repeated = buildToolCallDisplayModel({
+      name: "mcp__other__stat",
+      status: "completed",
+      error: null,
+      detail: {
+        type: "unknown",
+        input: { uri: "src/index.ts", path: "src/index.ts" },
+        output: null,
+      },
+    });
+
+    expect(display.summary).toBe("file:///tmp/repo/src/index.ts");
+    expect(repeated.summary).toBe("src/index.ts");
+  });
+
   it("keeps the summary to two parts when many candidate keys match", () => {
     const display = buildToolCallDisplayModel({
       name: "mcp__serena__replace_symbol_body",
