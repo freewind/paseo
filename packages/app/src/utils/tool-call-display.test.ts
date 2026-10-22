@@ -168,4 +168,91 @@ describe("tool-call-display", () => {
       summary: "npm run test",
     });
   });
+
+  it("summarizes an unmapped MCP search with its query and its path", () => {
+    const display = buildToolCallDisplayModel({
+      name: "mcp__fsearch__grep",
+      status: "completed",
+      error: null,
+      detail: {
+        type: "unknown",
+        input: { query: "agentMemos.", regex: true, path: "packages/protocol" },
+        output: null,
+      },
+    });
+
+    expect(display.summary).toBe("agentMemos. · packages/protocol");
+  });
+
+  it("keeps the query alone when the call names no path", () => {
+    const display = buildToolCallDisplayModel({
+      name: "mcp__codegraph__codegraph_explore",
+      status: "completed",
+      error: null,
+      detail: {
+        type: "unknown",
+        input: { query: "tool call header" },
+        output: null,
+      },
+    });
+
+    expect(display.summary).toBe("tool call header");
+  });
+
+  it("reads the symbol and file fields of an unmapped code tool", () => {
+    const display = buildToolCallDisplayModel({
+      name: "mcp__serena__find_symbol",
+      status: "completed",
+      error: null,
+      detail: {
+        type: "unknown",
+        input: { name_path_pattern: "Foo/bar", relative_path: "src/x.ts" },
+        output: null,
+      },
+    });
+
+    expect(display.summary).toBe("Foo/bar · src/x.ts");
+  });
+
+  it("joins a pattern list and folds a multi-line prompt onto one line", () => {
+    const patterns = buildToolCallDisplayModel({
+      name: "mcp__fsearch__multi_grep",
+      status: "completed",
+      error: null,
+      detail: {
+        type: "unknown",
+        input: { patterns: ["PrepareUpload", "prepare_upload", "uploadPrepare"] },
+        output: null,
+      },
+    });
+    const prompt = buildToolCallDisplayModel({
+      name: "mcp__paseo__send_agent_prompt",
+      status: "completed",
+      error: null,
+      detail: {
+        type: "unknown",
+        input: { agentId: "a-1", prompt: "fix the badge\n\nthen run the tests" },
+        output: null,
+      },
+    });
+
+    expect(patterns.summary).toBe("PrepareUpload | prepare_upload | …");
+    expect(prompt.summary).toBe("fix the badge then run the tests");
+  });
+
+  it("keeps a path summary for an unmapped tool that names only a file", () => {
+    const display = buildToolCallDisplayModel({
+      name: "mcp__other__stat",
+      status: "completed",
+      error: null,
+      detail: {
+        type: "unknown",
+        input: { path: "/tmp/repo/src/index.ts", limit: 5 },
+        output: null,
+      },
+      cwd: "/tmp/repo",
+    });
+
+    expect(display.summary).toBe("src/index.ts");
+  });
 });
