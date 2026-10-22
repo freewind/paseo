@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-23 02:40
+最近一次保存：2026-10-23 02:50
 
 ---
 
@@ -551,3 +551,17 @@ Notes：
 - 列表：紧凑布局下 `hasMemosEntry = memosSupported && isCompactFormFactor`，composer tracks row 的 `composer-agent-memos-button` 打开 `AgentMemosSheet`（内含 `AgentMemosRail`）。
 - 填写对话框：`AssistantMemoSheet` 用 `AdaptiveModalSheet`，native 下就是 sheet；Enter 只在 web 绑定，native 用按钮。
 - 复制：同一菜单，expo-clipboard 在 native 可用。
+
+---
+
+### 最近访问下拉加宽并显示更新时间
+
+- 状态：已完成
+- 最近保存：2026-10-23 02:50
+
+Notes：
+
+- `sidebar-recent-visits-menu.tsx` 的 `width` 280 → 360。
+- 行尾时间取 `agent.updatedAt`，用 `useCompactTimeAgo`（5m/2h）；抽成 `RecentVisitUpdatedAt` 小组件，tick 只重渲染那个 Text。
+- 时间与“当前/子代理”同在 `styles.badges` 这一行，时间排最右。
+- 测试 mock 的 `Text` 必须透传 `testID`，否则按 testid 拿不到时间标签。
