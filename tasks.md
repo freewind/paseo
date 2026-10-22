@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-23 00:40
+最近一次保存：2026-10-23 01:10
 
 ---
 
@@ -480,3 +480,20 @@ Notes：
 - 按 `serverId:agentId` 去重；返回不带 `memos` 也保留键，失败则清键重试。
 
 **更正**：上一轮说“要等 daemon 升级”是错的。`/Applications/Paseo.app` 的 asar 里已有 `agentMemosOnFetch`、`navigationState`、`navigation-state.json`，且 `~/.paseo/navigation-state.json` 已生成——新 daemon 早就在跑。`build-mac.sh` 本身也包含新 daemon（`build:desktop` 会先 `build:server:clean`）。
+
+---
+
+### 修复缓存把工作区永久卡在“正在归档”
+
+- 状态：已完成
+- 最近保存：2026-10-23 01:10
+
+现象：没做归档操作，workspace 菜单却一直显示“正在归档…”。
+
+链路：菜单的 pending 来自 `isArchiving = workspace.archivingAt !== null || isHidingWorkspace`。`archivingAt` 是 daemon 内存里的瞬时标记（`WorkspaceDirectory.archivingByWorkspaceId`，`archiveByScopeWithPriority` 的 finally 里 clear 并再发一次更新），磁盘上不存（`describeWorkspaceRecord` 硬编码 null）。但客户端把带 archivingAt 的描述写进了 workspace checkpoint，恢复缓存时原样灌回来；daemon 重启后内存清零，永远不会再发一份来纠正它。
+
+Notes：
+
+- 修法：`commitCached` 与 `commitCachedWorkspace` 两条缓存恢复路径都把 `archivingAt` 归零。
+- `commitSnapshot`（daemon 全量快照）不动，那份值可信。
+- 新增测试：缓存里带 archivingAt，恢复后两个入口都应为 null。
