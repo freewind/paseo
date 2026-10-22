@@ -23,6 +23,21 @@ export interface CommentDraftInput {
   comment: string;
 }
 
+export interface MemoTextInput {
+  blockText: string;
+  comment: string;
+}
+
+/**
+ * What "add to memos" stores: the same quoted block and comment the composer would get, minus the
+ * trailing blank line that exists only to keep the next typed line separate.
+ */
+export function buildMemoText(input: MemoTextInput): string {
+  const quoted = formatQuotedBlock(input.blockText);
+  const comment = input.comment.trim();
+  return [quoted, comment].filter((part) => part.length > 0).join("\n\n");
+}
+
 /**
  * Trailing blank line left behind the appended content, so the next thing the user types
  * starts on its own line instead of continuing the comment.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCommentDraftText, formatQuotedBlock } from "./format";
+import { buildCommentDraftText, buildMemoText, formatQuotedBlock } from "./format";
 
 describe("formatQuotedBlock", () => {
   it("prefixes every line", () => {
@@ -39,5 +39,21 @@ describe("buildCommentDraftText", () => {
     expect(buildCommentDraftText({ existingText: "draft", blockText: "  ", comment: "  " })).toBe(
       "draft",
     );
+  });
+});
+
+describe("buildMemoText", () => {
+  it("quotes the block, a blank line, then the comment", () => {
+    expect(buildMemoText({ blockText: "some claim", comment: "not true" })).toBe(
+      "> some claim\n\nnot true",
+    );
+  });
+
+  it("keeps only the quote when nothing was typed", () => {
+    expect(buildMemoText({ blockText: "some claim", comment: "   " })).toBe("> some claim");
+  });
+
+  it("leaves out the trailing blank line the composer needs", () => {
+    expect(buildMemoText({ blockText: "some claim", comment: "not true" })).not.toMatch(/\n$/);
   });
 });

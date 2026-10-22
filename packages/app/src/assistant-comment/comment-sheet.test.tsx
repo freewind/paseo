@@ -29,66 +29,117 @@ vi.mock("@/components/adaptive-modal-sheet", () => ({
     ) : null,
 }));
 
-import {
-  AssistantCommentSheet,
-  AssistantMemoSheet,
-  type AssistantCommentRequest,
-} from "./comment-sheet";
+import { AssistantAnnotationSheet, type AssistantCommentRequest } from "./comment-sheet";
 
 afterEach(cleanup);
 
 const request: AssistantCommentRequest = { id: 1, blockText: "some claim" };
 
-function renderSheet(onAttach = vi.fn(), onSend = vi.fn()) {
+function renderCommentSheet(onSubmit = vi.fn(), onSendNow = vi.fn()) {
   render(
-    <AssistantCommentSheet
+    <AssistantAnnotationSheet
+      variant="comment"
       request={request}
       onCancel={vi.fn()}
-      onAttach={onAttach}
-      onSend={onSend}
+      onSubmit={onSubmit}
+      onSendNow={onSendNow}
     />,
   );
   const input = screen.getByTestId("assistant-comment-input");
-  return { input, onAttach, onSend };
+  return { input, onSubmit, onSendNow };
 }
 
-describe("AssistantCommentSheet send now", () => {
+function renderMemoSheet(onSubmit = vi.fn(), onCancel = vi.fn()) {
+  render(
+    <AssistantAnnotationSheet
+      variant="memo"
+      request={request}
+      onCancel={onCancel}
+      onSubmit={onSubmit}
+    />,
+  );
+  const input = screen.getByTestId("assistant-memo-input");
+  return { input, onSubmit, onCancel };
+}
+
+describe("AssistantAnnotationSheet comment", () => {
   it("sends the comment instead of attaching it", () => {
-    const { input, onAttach, onSend } = renderSheet();
+    const { input, onSubmit, onSendNow } = renderCommentSheet();
     fireEvent.change(input, { target: { value: "looks right" } });
 
     fireEvent.click(screen.getByTestId("assistant-comment-send"));
 
-    expect(onSend).toHaveBeenCalledExactlyOnceWith("looks right");
-    expect(onAttach).not.toHaveBeenCalled();
+    expect(onSendNow).toHaveBeenCalledExactlyOnceWith("looks right");
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("attaches the comment when the attach button is pressed", () => {
-    const { input, onAttach, onSend } = renderSheet();
+    const { input, onSubmit, onSendNow } = renderCommentSheet();
     fireEvent.change(input, { target: { value: "looks right" } });
 
     fireEvent.click(screen.getByTestId("assistant-comment-attach"));
 
-    expect(onAttach).toHaveBeenCalledExactlyOnceWith("looks right");
-    expect(onSend).not.toHaveBeenCalled();
+    expect(onSubmit).toHaveBeenCalledExactlyOnceWith("looks right");
+    expect(onSendNow).not.toHaveBeenCalled();
+  });
+
+  it("shows the quoted block", () => {
+    renderCommentSheet();
+
+    expect(screen.getByText("some claim")).toBeTruthy();
   });
 });
 
-describe("AssistantMemoSheet", () => {
-  function renderMemoSheet(onSubmit = vi.fn(), onCancel = vi.fn()) {
-    render(<AssistantMemoSheet request={request} onCancel={onCancel} onSubmit={onSubmit} />);
-    return { input: screen.getByTestId("assistant-memo-input"), onSubmit, onCancel };
+describe("AssistantAnnotationSheet comment keyboard", () => {
+  function pressKey(init: Record<string, unknown>, value = "looks right") {
+    const { input, onSubmit } = renderCommentSheet();
+    fireEvent.change(input, { target: { value } });
+    fireEvent.keyDown(input, init);
+    return onSubmit;
   }
 
-  it("keeps the quoted text as the initial memo", () => {
+  it("attaches the comment when Enter is pressed with text", () => {
+    expect(pressKey({ key: "Enter" })).toHaveBeenCalledExactlyOnceWith("looks right");
+  });
+
+  it("keeps the newline when Shift+Enter is pressed", () => {
+    expect(pressKey({ key: "Enter", shiftKey: true })).not.toHaveBeenCalled();
+  });
+
+  it("ignores Enter during IME composition (isComposing)", () => {
+    expect(pressKey({ key: "Enter", isComposing: true }, "正在输入")).not.toHaveBeenCalled();
+  });
+
+  it("ignores Enter with the IME keyCode 229", () => {
+    expect(pressKey({ key: "Enter", keyCode: 229 }, "正在输入")).not.toHaveBeenCalled();
+  });
+
+  it("ignores Enter when the comment is blank", () => {
+    expect(pressKey({ key: "Enter" }, "   ")).not.toHaveBeenCalled();
+  });
+
+  it("ignores non-Enter keys", () => {
+    expect(pressKey({ key: "a" })).not.toHaveBeenCalled();
+  });
+});
+
+describe("AssistantAnnotationSheet memo", () => {
+  it("shows the quoted block in the same place the comment sheet does", () => {
+    renderMemoSheet();
+
+    expect(screen.getByText("some claim")).toBeTruthy();
+    expect(screen.getByTestId("assistant-memo-input")).toBeTruthy();
+  });
+
+  it("submits an empty comment so the quote alone can be saved", () => {
     const { onSubmit } = renderMemoSheet();
 
     fireEvent.click(screen.getByTestId("assistant-memo-submit"));
 
-    expect(onSubmit).toHaveBeenCalledExactlyOnceWith("some claim");
+    expect(onSubmit).toHaveBeenCalledExactlyOnceWith("");
   });
 
-  it("submits the edited memo trimmed", () => {
+  it("submits the typed comment trimmed", () => {
     const { input, onSubmit } = renderMemoSheet();
     fireEvent.change(input, { target: { value: "  edited memo  " } });
 
@@ -99,19 +150,11 @@ describe("AssistantMemoSheet", () => {
 
   it("submits on Enter", () => {
     const { input, onSubmit } = renderMemoSheet();
+    fireEvent.change(input, { target: { value: "keep this" } });
 
     fireEvent.keyDown(input, { key: "Enter" });
 
-    expect(onSubmit).toHaveBeenCalledExactlyOnceWith("some claim");
-  });
-
-  it("does not submit a blank memo", () => {
-    const { input, onSubmit } = renderMemoSheet();
-    fireEvent.change(input, { target: { value: "   " } });
-
-    fireEvent.keyDown(input, { key: "Enter" });
-
-    expect(onSubmit).not.toHaveBeenCalled();
+    expect(onSubmit).toHaveBeenCalledExactlyOnceWith("keep this");
   });
 
   it("closes without submitting when cancelled", () => {
@@ -121,61 +164,5 @@ describe("AssistantMemoSheet", () => {
 
     expect(onCancel).toHaveBeenCalledOnce();
     expect(onSubmit).not.toHaveBeenCalled();
-  });
-});
-
-describe("AssistantCommentSheet keyboard submit", () => {
-  it("attaches the comment when Enter is pressed with text", () => {
-    const { input, onAttach } = renderSheet();
-    fireEvent.change(input, { target: { value: "looks right" } });
-
-    fireEvent.keyDown(input, { key: "Enter" });
-
-    expect(onAttach).toHaveBeenCalledExactlyOnceWith("looks right");
-  });
-
-  it("keeps the newline when Shift+Enter is pressed", () => {
-    const { input, onAttach } = renderSheet();
-    fireEvent.change(input, { target: { value: "line one" } });
-
-    fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
-
-    expect(onAttach).not.toHaveBeenCalled();
-  });
-
-  it("ignores Enter during IME composition (isComposing)", () => {
-    const { input, onAttach } = renderSheet();
-    fireEvent.change(input, { target: { value: "正在输入" } });
-
-    fireEvent.keyDown(input, { key: "Enter", isComposing: true });
-
-    expect(onAttach).not.toHaveBeenCalled();
-  });
-
-  it("ignores Enter with the IME keyCode 229", () => {
-    const { input, onAttach } = renderSheet();
-    fireEvent.change(input, { target: { value: "正在输入" } });
-
-    fireEvent.keyDown(input, { key: "Enter", keyCode: 229 });
-
-    expect(onAttach).not.toHaveBeenCalled();
-  });
-
-  it("ignores Enter when the comment is blank", () => {
-    const { input, onAttach } = renderSheet();
-    fireEvent.change(input, { target: { value: "   " } });
-
-    fireEvent.keyDown(input, { key: "Enter" });
-
-    expect(onAttach).not.toHaveBeenCalled();
-  });
-
-  it("ignores non-Enter keys", () => {
-    const { input, onAttach } = renderSheet();
-    fireEvent.change(input, { target: { value: "abc" } });
-
-    fireEvent.keyDown(input, { key: "a" });
-
-    expect(onAttach).not.toHaveBeenCalled();
   });
 });

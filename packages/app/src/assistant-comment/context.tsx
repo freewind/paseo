@@ -8,10 +8,10 @@ import {
   type ReactNode,
 } from "react";
 import {
-  AssistantCommentSheet,
-  AssistantMemoSheet,
+  AssistantAnnotationSheet,
   type AssistantCommentRequest,
 } from "@/assistant-comment/comment-sheet";
+import { buildMemoText } from "@/assistant-comment/format";
 
 export interface AssistantCommentController {
   requestComment: (blockText: string) => void;
@@ -75,10 +75,10 @@ export function AssistantCommentProvider({
   }, []);
 
   const submitMemo = useCallback(
-    (memo: string) => {
+    (comment: string) => {
       setMemoRequest((current) => {
         if (current) {
-          onAddToTodo?.(memo);
+          onAddToTodo?.(buildMemoText({ blockText: current.blockText, comment }));
         }
         return null;
       });
@@ -121,13 +121,19 @@ export function AssistantCommentProvider({
   return (
     <AssistantCommentContext.Provider value={controller}>
       {children}
-      <AssistantCommentSheet
+      <AssistantAnnotationSheet
+        variant="comment"
         request={request}
         onCancel={cancelComment}
-        onAttach={handleAttach}
-        onSend={handleSend}
+        onSubmit={handleAttach}
+        onSendNow={handleSend}
       />
-      <AssistantMemoSheet request={memoRequest} onCancel={cancelMemo} onSubmit={submitMemo} />
+      <AssistantAnnotationSheet
+        variant="memo"
+        request={memoRequest}
+        onCancel={cancelMemo}
+        onSubmit={submitMemo}
+      />
     </AssistantCommentContext.Provider>
   );
 }

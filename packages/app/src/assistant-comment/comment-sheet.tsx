@@ -27,17 +27,20 @@ export interface AssistantCommentRequest {
   blockText: string;
 }
 
-interface AssistantCommentSheetProps {
-  request: AssistantCommentRequest | null;
-  onCancel: () => void;
-  onAttach: (comment: string) => void;
-  onSend: (comment: string) => void;
-}
+/**
+ * Both entry points on the selection menu open the same sheet: `comment` attaches the quote plus
+ * what you type to the composer, `memo` stores the same text as a memo instead of sending it.
+ */
+export type AssistantAnnotationVariant = "comment" | "memo";
 
-interface AssistantMemoSheetProps {
+interface AssistantAnnotationSheetProps {
+  variant: AssistantAnnotationVariant;
   request: AssistantCommentRequest | null;
   onCancel: () => void;
-  onSubmit: (memo: string) => void;
+  /** Where the typed text lands. The quote itself is added by the caller. */
+  onSubmit: (text: string) => void;
+  /** Comment only: attach and send in one go. */
+  onSendNow?: (text: string) => void;
 }
 
 const SNAP_POINTS = ["55%", "85%"];
@@ -59,71 +62,83 @@ function useEnterSubmit(onSubmit: () => void) {
   );
 }
 
-export function AssistantCommentSheet({
+export function AssistantAnnotationSheet({
+  variant,
   request,
   onCancel,
-  onAttach,
-  onSend,
-}: AssistantCommentSheetProps) {
+  onSubmit,
+  onSendNow,
+}: AssistantAnnotationSheetProps) {
+  const isMemo = variant === "memo";
   const [retained, setRetained] = useState<AssistantCommentRequest | null>(request);
-  const [comment, setComment] = useState("");
+  const [text, setText] = useState("");
 
   useEffect(() => {
     if (request) {
       setRetained(request);
-      setComment("");
+      setText("");
     }
   }, [request]);
 
   const close = useCallback(() => {
     setRetained(null);
-    setComment("");
+    setText("");
     onCancel();
   }, [onCancel]);
 
-  const handleAttach = useCallback(() => {
-    if (comment.trim().length > 0) {
-      onAttach(comment);
-    }
-  }, [comment, onAttach]);
+  const trimmed = text.trim();
+  // A memo can be the quote alone: saving a passage is the point. A comment with no words has
+  // nothing to attach, so it stays disabled.
+  const canSubmit = isMemo || trimmed.length > 0;
 
-  /** Same commit as attach, then the composer sends it instead of waiting for the user. */
-  const handleSend = useCallback(() => {
-    if (comment.trim().length > 0) {
-      onSend(comment);
-    }
-  }, [comment, onSend]);
+  const handleSubmit = useCallback(() => {
+    if (!canSubmit) return;
+    onSubmit(trimmed);
+  }, [canSubmit, onSubmit, trimmed]);
 
-  const handleKeyPress = useEnterSubmit(handleAttach);
+  /** Same commit as submit, then the composer sends it instead of waiting for the user. */
+  const handleSendNow = useCallback(() => {
+    if (trimmed.length === 0) return;
+    onSendNow?.(trimmed);
+  }, [onSendNow, trimmed]);
+
+  const handleKeyPress = useEnterSubmit(handleSubmit);
 
   const { t } = useTranslation();
-  const header = useMemo<SheetHeader>(() => ({ title: t("comment.sheet.title") }), [t]);
+  const header = useMemo<SheetHeader>(
+    () => ({ title: isMemo ? t("agentMemos.sheetTitle") : t("comment.sheet.title") }),
+    [isMemo, t],
+  );
+  const placeholder = isMemo ? t("agentMemos.sheetPlaceholder") : t("comment.sheet.placeholder");
+
   const footer = useMemo(
     () =>
       retained ? (
         <View style={styles.actions}>
-          <Button variant="ghost" onPress={close} testID="assistant-comment-cancel">
+          <Button variant="ghost" onPress={close} testID={`assistant-${variant}-cancel`}>
             {t("common.actions.cancel")}
           </Button>
           <Button
             variant="default"
-            disabled={comment.trim().length === 0}
-            onPress={handleAttach}
-            testID="assistant-comment-attach"
+            disabled={!canSubmit}
+            onPress={handleSubmit}
+            testID={isMemo ? "assistant-memo-submit" : "assistant-comment-attach"}
           >
-            {t("comment.sheet.attach")}
+            {isMemo ? t("agentMemos.add") : t("comment.sheet.attach")}
           </Button>
-          <Button
-            variant="secondary"
-            disabled={comment.trim().length === 0}
-            onPress={handleSend}
-            testID="assistant-comment-send"
-          >
-            {t("comment.sheet.sendNow")}
-          </Button>
+          {isMemo ? null : (
+            <Button
+              variant="secondary"
+              disabled={trimmed.length === 0}
+              onPress={handleSendNow}
+              testID="assistant-comment-send"
+            >
+              {t("comment.sheet.sendNow")}
+            </Button>
+          )}
         </View>
       ) : null,
-    [close, comment, handleAttach, handleSend, retained, t],
+    [canSubmit, close, handleSendNow, handleSubmit, isMemo, retained, t, trimmed, variant],
   );
 
   return (
@@ -133,7 +148,7 @@ export function AssistantCommentSheet({
       onClose={close}
       snapPoints={SNAP_POINTS}
       desktopMaxWidth={480}
-      testID="assistant-comment-sheet"
+      testID={`assistant-${variant}-sheet`}
       footer={footer}
     >
       {retained ? (
@@ -148,94 +163,14 @@ export function AssistantCommentSheet({
           </View>
           <SheetAwareTextInput
             style={styles.input}
-            value={comment}
-            onChangeText={setComment}
-            placeholder={t("comment.sheet.placeholder")}
+            value={text}
+            onChangeText={setText}
+            placeholder={placeholder}
             placeholderTextColor={styles.placeholderText.color}
             multiline
             autoFocus
             onKeyPress={isWeb ? handleKeyPress : undefined}
-            testID="assistant-comment-input"
-          />
-        </View>
-      ) : null}
-    </AdaptiveModalSheet>
-  );
-}
-
-/**
- * The memo entry point for a selection: one text box pre-filled with the quoted text, so the same
- * tap that used to save the quote now also lets the user edit it before it lands in the rail.
- */
-export function AssistantMemoSheet({ request, onCancel, onSubmit }: AssistantMemoSheetProps) {
-  const [retained, setRetained] = useState<AssistantCommentRequest | null>(request);
-  const [memo, setMemo] = useState("");
-
-  useEffect(() => {
-    if (request) {
-      setRetained(request);
-      setMemo(request.blockText);
-    }
-  }, [request]);
-
-  const close = useCallback(() => {
-    setRetained(null);
-    setMemo("");
-    onCancel();
-  }, [onCancel]);
-
-  const handleSubmit = useCallback(() => {
-    const trimmed = memo.trim();
-    if (trimmed.length > 0) {
-      onSubmit(trimmed);
-    }
-  }, [memo, onSubmit]);
-  const handleKeyPress = useEnterSubmit(handleSubmit);
-
-  const { t } = useTranslation();
-  const header = useMemo<SheetHeader>(() => ({ title: t("agentMemos.sheetTitle") }), [t]);
-  const footer = useMemo(
-    () =>
-      retained ? (
-        <View style={styles.actions}>
-          <Button variant="ghost" onPress={close} testID="assistant-memo-cancel">
-            {t("common.actions.cancel")}
-          </Button>
-          <Button
-            variant="default"
-            disabled={memo.trim().length === 0}
-            onPress={handleSubmit}
-            testID="assistant-memo-submit"
-          >
-            {t("agentMemos.add")}
-          </Button>
-        </View>
-      ) : null,
-    [close, handleSubmit, memo, retained, t],
-  );
-
-  return (
-    <AdaptiveModalSheet
-      header={header}
-      visible={request !== null}
-      onClose={close}
-      snapPoints={SNAP_POINTS}
-      desktopMaxWidth={480}
-      testID="assistant-memo-sheet"
-      footer={footer}
-    >
-      {retained ? (
-        <View style={styles.container}>
-          <SheetAwareTextInput
-            style={styles.input}
-            value={memo}
-            onChangeText={setMemo}
-            placeholder={t("agentMemos.sheetPlaceholder")}
-            placeholderTextColor={styles.placeholderText.color}
-            multiline
-            autoFocus
-            onKeyPress={isWeb ? handleKeyPress : undefined}
-            testID="assistant-memo-input"
+            testID={`assistant-${variant}-input`}
           />
         </View>
       ) : null}
