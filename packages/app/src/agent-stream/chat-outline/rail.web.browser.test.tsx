@@ -157,8 +157,8 @@ describe("ChatOutlineRail text rows in a real browser", () => {
 
     expect(document.querySelector('[data-testid="chat-outline-text-preview"]')).toBeNull();
     expect(document.querySelector('[data-testid="chat-outline-prompt-detail-1"]')).toBeNull();
-    // The dots keep their own hover card; only the text form stopped opening one on hover.
-    expect(document.querySelector('[data-testid="chat-outline-preview"]')).not.toBeNull();
+    // Hovering the text outline never lights the dots: the left rail answers its own pointer only.
+    expect(document.querySelector('[data-testid="chat-outline-preview"]')).toBeNull();
   });
 
   it("separates the rows with a numbered hairline and marks the current one with the theme foreground", async () => {
