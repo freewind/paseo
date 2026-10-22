@@ -5,12 +5,16 @@ import { useWorkspaceStructure } from "@/stores/session-store-hooks";
 import { useSessionStore } from "@/stores/session-store";
 import { navigateToWorkspace } from "@/stores/navigation-active-workspace-store";
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
+import { parseWorkspaceStructureKey } from "@/projects/workspace-structure";
+import { resolveWorkspaceMapKeyByIdentity } from "@/utils/workspace-identity";
 import { useToast } from "@/contexts/toast-context";
 import { AgentTransferWorkspaceModal } from "./agent-transfer-workspace-modal";
 
 export interface TransferWorkspaceEntry {
   workspaceId: string;
   label: string;
+  /** The agent already lives here, so the picker lists it disabled instead of hiding it. */
+  isCurrent: boolean;
 }
 
 export interface TransferWorkspaceProject {
@@ -62,18 +66,25 @@ export function useAgentTransferWorkspace(
 
   const transferProjects = useMemo<readonly TransferWorkspaceProject[]>(() => {
     if (!enabled) return [];
+    const sessions = useSessionStore.getState().sessions;
+    const currentWorkspaceId = pending?.currentWorkspaceId ?? null;
     const projects: TransferWorkspaceProject[] = [];
     for (const project of structure.projects) {
       const workspaces: TransferWorkspaceEntry[] = [];
       for (const workspaceKey of project.workspaceKeys) {
-        const workspace = useSessionStore
-          .getState()
-          .sessions[serverId]?.workspaces.get(workspaceKey);
+        const identity = parseWorkspaceStructureKey(workspaceKey);
+        if (!identity) continue;
+        const session = sessions[identity.serverId];
+        const mapKey = resolveWorkspaceMapKeyByIdentity({
+          workspaces: session?.workspaces,
+          workspaceId: identity.workspaceId,
+        });
+        const workspace = mapKey ? session?.workspaces.get(mapKey) : null;
         if (!workspace || workspace.archivingAt) continue;
-        if (workspace.id && workspace.id === pending?.currentWorkspaceId) continue;
         workspaces.push({
           workspaceId: workspace.id,
           label: workspace.title ?? workspace.name,
+          isCurrent: workspace.id === currentWorkspaceId,
         });
       }
       projects.push({
@@ -83,7 +94,7 @@ export function useAgentTransferWorkspace(
       });
     }
     return projects;
-  }, [enabled, pending?.currentWorkspaceId, serverId, structure.projects]);
+  }, [enabled, pending?.currentWorkspaceId, structure.projects]);
 
   const onMoveAgentToWorkspace = useCallback(
     (agentId: string) => {

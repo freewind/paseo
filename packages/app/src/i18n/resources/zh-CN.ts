@@ -739,6 +739,7 @@ export const zhCN: TranslationResources = {
         title: "把 Agent session “{{agent}}” 移动到工作区",
         confirm: "移动 Agent",
         createNew: "新建工作区",
+        currentWorkspace: "（当前）",
         projectLabel: "项目",
         projectPlaceholder: "选择项目",
         projectEmpty: "没有匹配的项目",

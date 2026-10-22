@@ -747,6 +747,7 @@ export const ja: TranslationResources = {
         title: "エージェントセッション「{{agent}}」をワークスペースへ移動",
         confirm: "エージェントを移動",
         createNew: "新しいワークスペースを作成",
+        currentWorkspace: "（現在）",
         projectLabel: "プロジェクト",
         projectPlaceholder: "プロジェクトを選択",
         projectEmpty: "一致するプロジェクトがありません",

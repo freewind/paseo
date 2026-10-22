@@ -737,6 +737,7 @@ export const ar: TranslationResources = {
         title: 'نقل جلسة الوكيل "{{agent}}" إلى مساحة عمل',
         confirm: "نقل الوكيل",
         createNew: "إنشاء مساحة عمل جديدة",
+        currentWorkspace: "(الحالية)",
         projectLabel: "المشروع",
         projectPlaceholder: "اختر مشروعًا",
         projectEmpty: "لا يوجد مشروع مطابق",

@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-22 16:11
+最近一次保存：2026-10-22 16:27
 
 ---
 
@@ -142,3 +142,16 @@ Notes：
 - 2026-10-22 16:00：开始实施，范围仅「彻底删除会话」一项，「移动到工作区」的差异不纳入。
 - 2026-10-22 16:05：已提交 a6f142897 并 push。新增 useDeleteAgentWithConfirm，桌面 tab 行与移动端 tab 选项各取一次后透传，列表同步改用同一 hook；测试 10 项通过，lint/typecheck 均通过。浏览器实际点击未验证。
 - 2026-10-22 16:11：「移动到工作区」在 tab 菜单缺失的根因找到：tab 行有三条渲染路径，explorer 侧栏那条没透传 onMoveAgentToWorkspace，其余两条都传了。已补透传并加 builder 测试锁定位置与回调，11 项测试通过。曾试把该 prop 改为必填防复发，会连锁到 split-container 的可选 prop，已回退。
+
+---
+
+### 修移动到工作区弹窗的工作区列表
+
+- 状态：已完成
+- 最近保存：2026-10-22 16:27
+
+移动到工作区弹窗里，选完项目后工作区列表是空的，只剩搜索与新建。
+
+Notes：
+
+- 2026-10-22 16:27：根因是 use-agent-transfer-workspace 拿 workspaceKeys 里的 `serverId:workspaceId` 拼接串当 session.workspaces 的 Map key 查，永远查不到。改为先用 parseWorkspaceStructureKey 解出身份，再按 key 里的 serverId 取 session，用 resolveWorkspaceMapKeyByIdentity 拿到真正的 Map key。同时当前工作区不再剔除，改为 isCurrent 标记，弹窗里渲染成 disabled 并在名称后追加「当前」文案。i18n 九个语言文件均补 currentWorkspace。测试 7 项通过，lint 与 typecheck 通过。界面未验证。

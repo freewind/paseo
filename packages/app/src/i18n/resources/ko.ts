@@ -742,6 +742,7 @@ export const ko: TranslationResources = {
         title: '에이전트 세션 "{{agent}}"을(를) 워크스페이스로 이동',
         confirm: "에이전트 이동",
         createNew: "새 워크스페이스 만들기",
+        currentWorkspace: "（현재）",
         projectLabel: "프로젝트",
         projectPlaceholder: "프로젝트 선택",
         projectEmpty: "일치하는 프로젝트 없음",

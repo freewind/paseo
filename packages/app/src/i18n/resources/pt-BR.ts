@@ -746,6 +746,7 @@ export const ptBR: TranslationResources = {
         title: 'Mover sessão de agente "{{agent}}" para um espaço de trabalho',
         confirm: "Mover agente",
         createNew: "Criar novo espaço de trabalho",
+        currentWorkspace: "(Atual)",
         projectLabel: "Projeto",
         projectPlaceholder: "Selecione um projeto",
         projectEmpty: "Nenhum projeto correspondente",

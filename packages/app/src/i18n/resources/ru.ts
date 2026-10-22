@@ -747,6 +747,7 @@ export const ru: TranslationResources = {
         title: "Переместить сессию агента «{{agent}}» в рабочее пространство",
         confirm: "Переместить агента",
         createNew: "Создать новое рабочее пространство",
+        currentWorkspace: "(Текущее)",
         projectLabel: "Проект",
         projectPlaceholder: "Выберите проект",
         projectEmpty: "Нет подходящего проекта",

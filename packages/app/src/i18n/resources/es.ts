@@ -753,6 +753,7 @@ export const es: TranslationResources = {
         title: 'Mover sesión de agente "{{agent}}" a un espacio de trabajo',
         confirm: "Mover agente",
         createNew: "Crear nuevo espacio de trabajo",
+        currentWorkspace: "(Actual)",
         projectLabel: "Proyecto",
         projectPlaceholder: "Selecciona un proyecto",
         projectEmpty: "Sin proyectos coincidentes",
