@@ -8,25 +8,45 @@ import { ChatOutlineSheet, useChatOutlineSheetController } from "./sheet";
 
 vi.mock("react-native-unistyles", () => {
   const testTheme = {
-    spacing: { 2: 8, 3: 12 },
-    borderRadius: { lg: 8 },
+    spacing: { 0: 0, 0.5: 2, 1: 4, 2: 8, 3: 12, 4: 16 },
+    borderRadius: { sm: 4, md: 6, lg: 8, full: 999 },
+    borderWidth: { 1: 1, 2: 2 },
     colors: {
       surface2: "#222",
       surface3: "#333",
       foregroundMuted: "#aaa",
       foreground: "#fff",
+      border: "#444",
+      borderAccent: "#555",
+      accent: "#08f",
+      accentForeground: "#fff",
+      interactionHighlight: "#2a2a2a",
     },
-    fontSize: { sm: 12, base: 14 },
+    fontSize: { xs: 11, sm: 12, base: 14, lg: 16 },
+    fontWeight: { normal: "400", medium: "500", semibold: "600", bold: "700" },
+    iconSize: { xs: 12, sm: 14, md: 16, lg: 20, xl: 24 },
+    opacity: { 50: 0.5 },
   };
   return {
     StyleSheet: {
       create: (factory: (theme: typeof testTheme) => unknown) => factory(testTheme),
     },
+    // The shared button kit themes its icons; the sheet tests only care about what renders.
+    withUnistyles:
+      (Component: React.ComponentType<Record<string, unknown>>) =>
+      (props: Record<string, unknown>) =>
+        React.createElement(Component, props),
   };
 });
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
+}));
+
+// The detail content only copies to the clipboard through the toast api; loading the real toaster
+// drags its whole style sheet into this test's minimal theme.
+vi.mock("@/contexts/toast-context", () => ({
+  useToast: () => ({ copied: vi.fn(), error: vi.fn() }),
 }));
 
 vi.mock("@/components/adaptive-modal-sheet", () => ({

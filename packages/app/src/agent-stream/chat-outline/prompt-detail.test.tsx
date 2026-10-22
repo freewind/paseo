@@ -17,10 +17,7 @@ vi.mock("@/contexts/toast-context", () => ({
 
 vi.mock("@/utils/copy-to-clipboard", () => ({ copyToClipboard: vi.fn() }));
 
-// Extension-qualified: the bare specifier resolves to `prompt-detail.web.tsx`, which `require`s
-// this file and hands the .tsx load to Node. tsgo rejects the extension, hence the suppression.
-// @ts-expect-error TS5097 the runtime resolver needs the extension here
-import { PromptDetailContent } from "./prompt-detail.tsx";
+import { PromptDetailContent } from "./prompt-detail-content";
 
 afterEach(cleanup);
 

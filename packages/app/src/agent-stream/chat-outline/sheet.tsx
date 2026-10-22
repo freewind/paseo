@@ -5,8 +5,7 @@ import { StyleSheet } from "react-native-unistyles";
 import { AdaptiveModalSheet, type SheetHeader } from "@/components/adaptive-modal-sheet";
 import { collapsePromptWhitespace, type ActivePromptSource, type ChatOutlinePrompt } from "./model";
 
-// Exact extension keeps compact web from resolving the platform-specific popover file.
-const { PromptDetailContent } = require("./prompt-detail.tsx") as typeof import("./prompt-detail");
+import { PromptDetailContent } from "./prompt-detail-content";
 
 export interface ChatOutlineSheetControllerInput {
   isCompact: boolean;
