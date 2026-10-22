@@ -11,6 +11,8 @@ import { useTranslation } from "react-i18next";
 import { useSessionStore } from "@/stores/session-store";
 import { agentHistoryQueryKey, allAgentHistoryQueryRootKey } from "./agent-history-query-key";
 import { removeAgentFromCachedLists } from "./use-archive-agent";
+import { useToast } from "@/contexts/toast-context";
+import { confirmDialog } from "@/utils/confirm-dialog";
 
 export const DELETE_AGENT_PENDING_QUERY_KEY = ["delete-agent-pending"] as const;
 const EMPTY_PENDING_DELETE_AGENT_IDS = new Set<string>();
@@ -342,4 +344,43 @@ export function useDeleteAgent() {
     deleteAgent,
     isDeletingAgent,
   };
+}
+export interface DeleteAgentWithConfirmInput {
+  serverId: string;
+}
+
+/**
+ * Confirms and then deletes an agent session. The caller only decides where the action lives;
+ * the confirmation copy and the failure toast live here so the list menu and the tab menus
+ * cannot drift apart.
+ */
+export function useDeleteAgentWithConfirm({ serverId }: DeleteAgentWithConfirmInput) {
+  const { deleteAgent } = useDeleteAgent();
+  const { t } = useTranslation();
+  const toast = useToast();
+
+  return useCallback(
+    (agentId: string) => {
+      void (async () => {
+        const session = useSessionStore.getState().sessions[serverId];
+        const agent = session?.agents.get(agentId) ?? session?.agentDetails.get(agentId) ?? null;
+        const confirmed = await confirmDialog({
+          title: t("agentList.deleteSheet.confirmTitle"),
+          message: t("agentList.deleteSheet.confirmMessage", {
+            agent: agent?.title ?? agentId,
+          }),
+          confirmLabel: t("agentList.deleteSheet.delete"),
+          cancelLabel: t("common.actions.cancel"),
+          destructive: true,
+        });
+        if (!confirmed) return;
+        try {
+          await deleteAgent({ serverId, agentId });
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : t("agentList.deleteSheet.failed"));
+        }
+      })();
+    },
+    [deleteAgent, serverId, t, toast],
+  );
 }

@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-21 23:31
+最近一次保存：2026-10-22 16:05
 
 ---
 
@@ -119,3 +119,25 @@ navigation-history-store 回放时，目标 agent tab 已关闭则回退/前进�
 - 最近保存：2026-10-21 23:36
 
 侧栏「返回 / 前进」的历史只允许包含主 agent chat（target.kind === "agent"），忽略其它类型页面：provider_subagent、draft、new_tab、terminal、browser、files、changes_tree、working_diff、commit_diff、pull_request、plugin、setup，以及所有非 workspace 页面路由（/settings 等）。过滤放在 navigation-history-store 的 recordNavigation 入口，与最近访问共用同一条判定。
+
+---
+
+### 统一 tab 菜单与列表菜单的彻底删除会话项
+
+- 状态：已完成
+- 最近保存：2026-10-22 16:05
+
+左侧列表下拉菜单有「彻底删除会话」，tab 右键菜单没有。两边共用 buildWorkspaceTabMenuEntries，但该项依赖可选参数 onDeleteAgent，tab 的桌面行与移动端两处调用方都没传。
+
+工作项：
+
+- 新增 useDeleteAgentWithConfirm({ serverId }) 封装确认弹窗与删除
+- use-workspace-agent-tab-actions 改为复用该 hook
+- workspace-desktop-tabs-row 上层取 onDeleteAgent 并透传
+- workspace-screen 移动端 tab 菜单接入
+- 补测试断言并跑 typecheck/lint/unit
+
+Notes：
+
+- 2026-10-22 16:00：开始实施，范围仅「彻底删除会话」一项，「移动到工作区」的差异不纳入。
+- 2026-10-22 16:05：已提交 a6f142897 并 push。新增 useDeleteAgentWithConfirm，桌面 tab 行与移动端 tab 选项各取一次后透传，列表同步改用同一 hook；测试 10 项通过，lint/typecheck 均通过。浏览器实际点击未验证。
