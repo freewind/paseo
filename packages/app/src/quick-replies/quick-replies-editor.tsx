@@ -1,4 +1,4 @@
-import { useCallback, useState, type Ref } from "react";
+import { useCallback, useMemo, useState, type Ref } from "react";
 import { KeyboardAvoidingView, Modal, Platform, Pressable, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
@@ -90,6 +90,11 @@ export function QuickRepliesEditor({
     [updateReply, removeReply],
   );
 
+  const saveButtonStyle = useMemo(
+    () => [styles.saveButton, isAdding && styles.saveButtonDisabled],
+    [isAdding],
+  );
+
   const save = useCallback(() => {
     const cleaned = items
       .map((item) => ({ ...item, text: item.text.trim() }))
@@ -137,9 +142,10 @@ export function QuickRepliesEditor({
             )}
             <Pressable
               accessibilityRole="button"
+              disabled={isAdding}
               testID="quick-replies-editor-save"
               onPress={save}
-              style={styles.saveButton}
+              style={saveButtonStyle}
             >
               <Text style={styles.saveText}>{t("composer.quickReplies.save")}</Text>
             </Pressable>
@@ -369,6 +375,11 @@ const styles = StyleSheet.create((theme: Theme) => ({
     backgroundColor: theme.colors.surface2,
     paddingHorizontal: theme.spacing[4],
     paddingVertical: theme.spacing[2],
+  },
+  // The add row's draft is not part of `items` yet, so saving would silently drop it; the
+  // button stays disabled until the row is committed or dismissed.
+  saveButtonDisabled: {
+    opacity: 0.5,
   },
   saveText: {
     color: theme.colors.foreground,
