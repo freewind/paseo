@@ -1,6 +1,6 @@
 # 任务记录
 
-最近一次保存：2026-10-22 19:15
+最近一次保存：2026-10-22 19:45
 
 ---
 
@@ -303,3 +303,20 @@ Notes：
 - 边框色用 `theme.colors.foreground`：它本来就是背景的反色（深色主题近白、浅色主题近黑），需要它的时候一定和图片本身不同色，不新增 token。
 - 彩色边框方案被否决：项目里没有 `borderColor: palette.*` 的先例，且彩色可能在某个主题里与图撞色。
 - 两处样式：agent-memos-rail 的 memoImage、agent-memo-composer 的 thumbnail（后者覆盖已存图、新加图、粘贴占位）。
+
+---
+
+### History 列表增加模型列
+
+- 状态：已完成
+- 最近保存：2026-10-22 19:45
+
+数据本来就有（AgentSnapshotPayload.model 必填），缺在 app 侧收窄成列表行时丢了 model。
+
+Notes：
+
+- AgentDirectoryEntry 的 Pick 加 model，三处构造 entry 的映射同步补字段（session-store、use-agent-history、use-aggregated-agents）。
+- 桌面行在 branch 与时间之间加列，固定宽 160，单行截断；hover 用 Tooltip 显示完整 id。
+- 单元格嵌在行的 Pressable 内，沿用行自己的 onPress/onLongPress，避免内层吞点击。
+- 空 model 不渲染该格；无表头，所以不需要 i18n。
+- sessions-screen.test.ts 与 use-agent-history.test.ts 共 23 passed。
