@@ -157,10 +157,17 @@ function useCurrentAgentId(
       return null;
     }
     const layout = state.layoutByWorkspace[workspaceKey] ?? null;
+    // Same trap as the navigation-history selector: without a stored layout,
+    // `getWorkspaceTabs` synthesizes one whose blank tab has a fresh random id on
+    // every call. The answer below happens to stay `null` today, but the selector
+    // must not depend on that accident.
+    if (!layout) {
+      return null;
+    }
     const derived = deriveWorkspacePaneState({
       layout,
       tabs: state.getWorkspaceTabs(workspaceKey),
-      paneId: layout?.focusedPaneId ?? null,
+      paneId: layout.focusedPaneId,
     });
     const target = derived.activeTab?.descriptor.target;
     return target?.kind === "agent" ? target.agentId : null;

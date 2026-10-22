@@ -44,7 +44,7 @@ vi.mock("@/screens/workspace/workspace-pane-state", () => ({
 vi.stubGlobal("React", React);
 vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
 
-import { NavigationHistoryBridge } from "./navigation-history-bridge";
+import { NavigationHistoryBridge, readActiveTab } from "./navigation-history-bridge";
 import { navigationHistoryStore } from "@/stores/navigation-history-store";
 
 const WORKSPACE_PATH = "/h/server-1/workspace/workspace-a";
@@ -56,6 +56,9 @@ describe("NavigationHistoryBridge", () => {
   beforeEach(() => {
     navigationHistoryStore.reset();
     mocks.pathname = WORKSPACE_PATH;
+    // A stored layout is what makes `readActiveTab` read tabs at all; the
+    // workspace-specific content comes from the mocked `deriveWorkspacePaneState`.
+    mocks.layoutState.layoutByWorkspace = { "server-1:workspace-a": {} };
     mocks.activeTarget = { kind: "agent", agentId: "agent-1" };
     mocks.activeTabId = "agent_agent-1";
     mocks.navigateToWorkspace.mockReset();
@@ -285,5 +288,22 @@ describe("NavigationHistoryBridge", () => {
     expect(snapshot.replay).toBeNull();
     expect(snapshot.entries).toHaveLength(2);
     expect(snapshot.entries[0].tabId).toBe("tab_9");
+  });
+});
+
+describe("readActiveTab", () => {
+  it("stays null while the workspace has no stored layout", () => {
+    // `getWorkspaceTabs` synthesizes a default layout for a missing key, and that
+    // layout's blank tab carries a new random id per call. An unstable selector
+    // result is what made React throw "Maximum update depth exceeded" at launch.
+    const state = {
+      layoutByWorkspace: {},
+      getWorkspaceTabs: () => [
+        { tabId: `tab_${Math.random().toString(36).slice(2)}`, target: { kind: "new_tab" } },
+      ],
+    } as unknown as Parameters<typeof readActiveTab>[0];
+
+    expect(readActiveTab(state, "server-1:workspace-a")).toBeNull();
+    expect(readActiveTab(state, "server-1:workspace-a")).toBeNull();
   });
 });
