@@ -123,9 +123,7 @@ export const es: TranslationResources = {
   comment: {
     menu: {
       item: "Comentar",
-      itemSelected: "Comentar la selección",
-      addToTodo: "Añadir a tareas",
-      addToTodoSelected: "Añadir selección a tareas",
+      addToTodo: "Añadir a memorandos",
       title: "Comentario",
     },
     sheet: {
@@ -643,10 +641,6 @@ export const es: TranslationResources = {
       empty: {
         noCommands: "No se ejecutó ningún comando de configuración para este espacio de trabajo.",
       },
-      compactTitle: "¿Compactar contexto?",
-      compactMessage:
-        "Se pedirá al agente que compacte el contexto de la conversación actual; la sesión continúa después.",
-      compactConfirm: "Compactar contexto",
       accessibility: {
         noCommands: "No se ejecutó ningún comando de configuración para este espacio de trabajo",
         log: "Registro de configuración deWorkspace",
@@ -1175,12 +1169,6 @@ export const es: TranslationResources = {
           passedAccessible: "Comprobaciones superadas",
           failedAccessible: "Comprobaciones fallidas",
           runningAccessible: "Comprobaciones en curso",
-        },
-        search: {
-          placeholder: "Buscar en ajustes",
-          results: "Resultados",
-          noResults: "No hay ajustes coincidentes",
-          clear: "Borrar búsqueda",
         },
         sections: {
           checks: "cheques",
@@ -2221,6 +2209,10 @@ export const es: TranslationResources = {
   contextWindow: {
     noData: "No hay datos de contexto",
     accessibilityNoData: "Ventana de contexto: No hay datos de contexto",
+    compactTitle: "¿Compactar contexto?",
+    compactMessage:
+      "Se pedirá al agente que compacte el contexto de la conversación actual; la sesión continúa después.",
+    compactConfirm: "Compactar contexto",
     title: "ventana contextual",
     used: "{{percentage}}% utilizado",
     tokens: "Fichas{{used}}/{{max}}",
@@ -2316,6 +2308,12 @@ export const es: TranslationResources = {
     },
   },
   settings: {
+    search: {
+      placeholder: "Buscar en ajustes",
+      results: "Resultados",
+      noResults: "No hay ajustes coincidentes",
+      clear: "Borrar búsqueda",
+    },
     title: "Ajustes",
     loading: "Cargando configuración...",
     groups: {

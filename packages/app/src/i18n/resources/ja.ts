@@ -123,9 +123,7 @@ export const ja: TranslationResources = {
   comment: {
     menu: {
       item: "コメント",
-      itemSelected: "選択範囲にコメント",
-      addToTodo: "To-do に追加",
-      addToTodoSelected: "選択範囲を To-do に追加",
+      addToTodo: "メモに追加",
       title: "コメント",
     },
     sheet: {
@@ -637,10 +635,6 @@ export const ja: TranslationResources = {
       empty: {
         noCommands: "このワークスペースでセットアップコマンドは実行されませんでした。",
       },
-      compactTitle: "コンテキストを圧縮しますか？",
-      compactMessage:
-        "エージェントに現在の会話コンテキストの圧縮を依頼します。その後もセッションは続きます。",
-      compactConfirm: "コンテキストを圧縮",
       accessibility: {
         noCommands: "このワークスペースでセットアップコマンドは実行されませんでした",
         log: "ワークスペースセットアップログ",
@@ -1149,12 +1143,6 @@ export const ja: TranslationResources = {
           passedAccessible: "チェック成功",
           failedAccessible: "チェック失敗",
           runningAccessible: "チェック実行中",
-        },
-        search: {
-          placeholder: "設定を検索",
-          results: "結果",
-          noResults: "一致する設定がありません",
-          clear: "検索をクリア",
         },
         sections: {
           checks: "チェック",
@@ -2187,6 +2175,10 @@ export const ja: TranslationResources = {
   contextWindow: {
     noData: "コンテキストデータがありません",
     accessibilityNoData: "コンテキストウィンドウ：コンテキストデータがありません",
+    compactTitle: "コンテキストを圧縮しますか？",
+    compactMessage:
+      "エージェントに現在の会話コンテキストの圧縮を依頼します。その後もセッションは続きます。",
+    compactConfirm: "コンテキストを圧縮",
     title: "コンテキストウィンドウ",
     used: "{{percentage}}%使用",
     tokens: "{{used}} / {{max}}トークン",
@@ -2283,6 +2275,12 @@ export const ja: TranslationResources = {
     },
   },
   settings: {
+    search: {
+      placeholder: "設定を検索",
+      results: "結果",
+      noResults: "一致する設定がありません",
+      clear: "検索をクリア",
+    },
     title: "設定",
     loading: "設定を読み込み中...",
     groups: {

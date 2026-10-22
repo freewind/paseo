@@ -122,9 +122,7 @@ export const ar: TranslationResources = {
   comment: {
     menu: {
       item: "تعليق",
-      itemSelected: "التعليق على المحدد",
-      addToTodo: "إضافة إلى المهام",
-      addToTodoSelected: "إضافة التحديد إلى المهام",
+      addToTodo: "إضافة إلى المذكرات",
       title: "تعليق",
     },
     sheet: {
@@ -631,9 +629,6 @@ export const ar: TranslationResources = {
       empty: {
         noCommands: "لم يتم تشغيل أي أوامر إعداد لمساحة العمل هذه.",
       },
-      compactTitle: "ضغط السياق؟",
-      compactMessage: "سيُطلب من الوكيل ضغط سياق المحادثة الحالي، وتستمر الجلسة بعد ذلك.",
-      compactConfirm: "ضغط السياق",
       accessibility: {
         noCommands: "لم يتم تشغيل أي أوامر إعداد لمساحة العمل هذه",
         log: "سجل إعداد Workspace",
@@ -1133,12 +1128,6 @@ export const ar: TranslationResources = {
           passedAccessible: "نجحت الفحوصات",
           failedAccessible: "فشلت الفحوصات",
           runningAccessible: "الفحوصات قيد التشغيل",
-        },
-        search: {
-          placeholder: "بحث في الإعدادات",
-          results: "النتائج",
-          noResults: "لا توجد إعدادات مطابقة",
-          clear: "مسح البحث",
         },
         sections: {
           checks: "الشيكات",
@@ -2164,6 +2153,9 @@ export const ar: TranslationResources = {
   contextWindow: {
     noData: "لا توجد بيانات للسياق",
     accessibilityNoData: "نافذة السياق: لا توجد بيانات للسياق",
+    compactTitle: "ضغط السياق؟",
+    compactMessage: "سيُطلب من الوكيل ضغط سياق المحادثة الحالي، وتستمر الجلسة بعد ذلك.",
+    compactConfirm: "ضغط السياق",
     title: "نافذة السياق",
     used: "تم استخدام{{percentage}}%",
     tokens: "رموز{{used}}/{{max}}",
@@ -2295,6 +2287,12 @@ export const ar: TranslationResources = {
     },
   },
   settings: {
+    search: {
+      placeholder: "بحث في الإعدادات",
+      results: "النتائج",
+      noResults: "لا توجد إعدادات مطابقة",
+      clear: "مسح البحث",
+    },
     title: "إعدادات",
     loading: "جارٍ تحميل الإعدادات...",
     groups: {

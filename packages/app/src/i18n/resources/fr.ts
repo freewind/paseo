@@ -124,9 +124,7 @@ export const fr: TranslationResources = {
   comment: {
     menu: {
       item: "Commenter",
-      itemSelected: "Commenter la sélection",
-      addToTodo: "Ajouter aux tâches",
-      addToTodoSelected: "Ajouter la sélection aux tâches",
+      addToTodo: "Ajouter aux mémos",
       title: "Commentaire",
     },
     sheet: {
@@ -646,10 +644,6 @@ export const fr: TranslationResources = {
       empty: {
         noCommands: "Aucune commande de configuration n’a été exécutée pour cet espace de travail.",
       },
-      compactTitle: "Compacter le contexte ?",
-      compactMessage:
-        "L’agent sera invité à compacter le contexte de la conversation ; la session continue ensuite.",
-      compactConfirm: "Compacter le contexte",
       accessibility: {
         noCommands: "Aucune commande de configuration n’a été exécutée pour cet espace de travail",
         log: "Journal de configuration de l’espace de travail",
@@ -1181,12 +1175,6 @@ export const fr: TranslationResources = {
           passedAccessible: "Vérifications réussies",
           failedAccessible: "Vérifications en échec",
           runningAccessible: "Vérifications en cours",
-        },
-        search: {
-          placeholder: "Rechercher dans les réglages",
-          results: "Résultats",
-          noResults: "Aucun réglage correspondant",
-          clear: "Effacer la recherche",
         },
         sections: {
           checks: "Vérifications",
@@ -2240,6 +2228,10 @@ export const fr: TranslationResources = {
     tokens: "{{used}} / {{max}} tokens",
     sessionCost: "Coût de la session : {{cost}}",
     accessibility: "Fenêtre de contexte : {{percentage}} % utilisés",
+    compactTitle: "Compacter le contexte ?",
+    compactMessage:
+      "L’agent sera invité à compacter le contexte de la conversation ; la session continue ensuite.",
+    compactConfirm: "Compacter le contexte",
   },
   review: {
     feedback: {
@@ -2331,6 +2323,12 @@ export const fr: TranslationResources = {
     },
   },
   settings: {
+    search: {
+      placeholder: "Rechercher dans les réglages",
+      results: "Résultats",
+      noResults: "Aucun réglage correspondant",
+      clear: "Effacer la recherche",
+    },
     title: "Paramètres",
     loading: "Chargement des paramètres…",
     groups: {

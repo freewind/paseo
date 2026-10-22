@@ -123,9 +123,7 @@ export const ptBR: TranslationResources = {
   comment: {
     menu: {
       item: "Comentar",
-      itemSelected: "Comentar seleção",
-      addToTodo: "Adicionar a tarefas",
-      addToTodoSelected: "Adicionar seleção a tarefas",
+      addToTodo: "Adicionar a memorandos",
       title: "Comentário",
     },
     sheet: {
@@ -637,10 +635,6 @@ export const ptBR: TranslationResources = {
       empty: {
         noCommands: "Nenhum comando de configuração foi executado para este workspace.",
       },
-      compactTitle: "Compactar contexto?",
-      compactMessage:
-        "O agente será solicitado a compactar o contexto da conversa atual; a sessão continua depois.",
-      compactConfirm: "Compactar contexto",
       accessibility: {
         noCommands: "Nenhum comando de configuração foi executado para este workspace",
         log: "Log de configuração do workspace",
@@ -1160,12 +1154,6 @@ export const ptBR: TranslationResources = {
           passedAccessible: "Verificações aprovadas",
           failedAccessible: "Verificações com falha",
           runningAccessible: "Verificações em andamento",
-        },
-        search: {
-          placeholder: "Pesquisar nas configurações",
-          results: "Resultados",
-          noResults: "Nenhuma configuração correspondente",
-          clear: "Limpar pesquisa",
         },
         sections: {
           checks: "Verificações",
@@ -2201,6 +2189,10 @@ export const ptBR: TranslationResources = {
   contextWindow: {
     noData: "Sem dados de contexto",
     accessibilityNoData: "Janela de contexto: sem dados de contexto",
+    compactTitle: "Compactar contexto?",
+    compactMessage:
+      "O agente será solicitado a compactar o contexto da conversa atual; a sessão continua depois.",
+    compactConfirm: "Compactar contexto",
     title: "Janela de contexto",
     used: "{{percentage}}% usado",
     tokens: "{{used}} / {{max}} tokens",
@@ -2296,6 +2288,12 @@ export const ptBR: TranslationResources = {
     },
   },
   settings: {
+    search: {
+      placeholder: "Pesquisar nas configurações",
+      results: "Resultados",
+      noResults: "Nenhuma configuração correspondente",
+      clear: "Limpar pesquisa",
+    },
     title: "Configurações",
     loading: "Carregando configurações...",
     groups: {

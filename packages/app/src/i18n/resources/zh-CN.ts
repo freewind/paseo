@@ -122,9 +122,7 @@ export const zhCN: TranslationResources = {
   comment: {
     menu: {
       item: "评论",
-      itemSelected: "评论所选文字",
-      addToTodo: "加入 To-dos",
-      addToTodoSelected: "将选中内容加入 To-dos",
+      addToTodo: "添加到备忘",
       title: "评论",
     },
     sheet: {
@@ -631,9 +629,6 @@ export const zhCN: TranslationResources = {
       empty: {
         noCommands: "此 workspace 没有运行 setup 命令。",
       },
-      compactTitle: "压缩上下文？",
-      compactMessage: "这将让 agent 压缩当前会话的上下文，之后会话继续。",
-      compactConfirm: "压缩上下文",
       accessibility: {
         noCommands: "此 workspace 没有运行 setup 命令",
         log: "Workspace setup 日志",
@@ -1127,12 +1122,6 @@ export const zhCN: TranslationResources = {
           passedAccessible: "检查通过",
           failedAccessible: "检查失败",
           runningAccessible: "检查运行中",
-        },
-        search: {
-          placeholder: "搜索设置",
-          results: "结果",
-          noResults: "没有匹配的设置",
-          clear: "清除搜索",
         },
         sections: {
           checks: "检查",
@@ -2157,6 +2146,9 @@ export const zhCN: TranslationResources = {
     dismiss: "关闭",
   },
   contextWindow: {
+    compactTitle: "压缩上下文？",
+    compactMessage: "这将让 agent 压缩当前会话的上下文，之后会话继续。",
+    compactConfirm: "压缩上下文",
     noData: "暂无上下文数据",
     accessibilityNoData: "上下文窗口：暂无上下文数据",
     title: "上下文窗口",
@@ -2254,6 +2246,12 @@ export const zhCN: TranslationResources = {
     },
   },
   settings: {
+    search: {
+      placeholder: "搜索设置",
+      results: "结果",
+      noResults: "没有匹配的设置",
+      clear: "清除搜索",
+    },
     title: "设置",
     loading: "正在加载设置...",
     groups: {

@@ -118,9 +118,7 @@ export const en = {
   comment: {
     menu: {
       item: "Comment",
-      itemSelected: "Comment on selection",
-      addToTodo: "Add to To-dos",
-      addToTodoSelected: "Add selection to To-dos",
+      addToTodo: "Add to memos",
       title: "Comment",
     },
     sheet: {
@@ -635,10 +633,6 @@ export const en = {
       empty: {
         noCommands: "No setup commands ran for this workspace.",
       },
-      compactTitle: "Compact context?",
-      compactMessage:
-        "This asks the agent to compact its conversation context. The session continues afterwards.",
-      compactConfirm: "Compact context",
       accessibility: {
         noCommands: "No setup commands ran for this workspace",
         log: "Workspace setup log",
@@ -1151,12 +1145,6 @@ export const en = {
           passedAccessible: "Checks passed",
           failedAccessible: "Checks failed",
           runningAccessible: "Checks running",
-        },
-        search: {
-          placeholder: "Search settings",
-          results: "Results",
-          noResults: "No matching settings",
-          clear: "Clear search",
         },
         sections: {
           checks: "Checks",
@@ -2199,6 +2187,10 @@ export const en = {
   contextWindow: {
     noData: "No context data",
     accessibilityNoData: "Context window: No context data",
+    compactTitle: "Compact context?",
+    compactMessage:
+      "This asks the agent to compact its conversation context. The session continues afterwards.",
+    compactConfirm: "Compact context",
     title: "Context window",
     used: "{{percentage}}% used",
     tokens: "{{used}} / {{max}} tokens",
@@ -2294,6 +2286,12 @@ export const en = {
     },
   },
   settings: {
+    search: {
+      placeholder: "Search settings",
+      results: "Results",
+      noResults: "No matching settings",
+      clear: "Clear search",
+    },
     title: "Settings",
     loading: "Loading settings...",
     groups: {

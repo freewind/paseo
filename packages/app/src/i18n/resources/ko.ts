@@ -122,9 +122,7 @@ export const ko: TranslationResources = {
   comment: {
     menu: {
       item: "댓글",
-      itemSelected: "선택한 텍스트에 댓글",
-      addToTodo: "할 일에 추가",
-      addToTodoSelected: "선택 항목을 할 일에 추가",
+      addToTodo: "메모에 추가",
       title: "댓글",
     },
     sheet: {
@@ -632,10 +630,6 @@ export const ko: TranslationResources = {
       empty: {
         noCommands: "이 워크스페이스에서 실행된 설정 명령이 없습니다.",
       },
-      compactTitle: "컨텍스트를 압축할까요?",
-      compactMessage:
-        "에이전트에 현재 대화 컨텍스트 압축을 요청합니다. 이후에도 세션은 계속됩니다.",
-      compactConfirm: "컨텍스트 압축",
       accessibility: {
         noCommands: "이 워크스페이스에서 실행된 설정 명령이 없습니다",
         log: "워크스페이스 설정 로그",
@@ -1143,12 +1137,6 @@ export const ko: TranslationResources = {
           passedAccessible: "검사 통과",
           failedAccessible: "검사 실패",
           runningAccessible: "검사 진행 중",
-        },
-        search: {
-          placeholder: "설정 검색",
-          results: "결과",
-          noResults: "일치하는 설정이 없습니다",
-          clear: "검색 지우기",
         },
         sections: {
           checks: "검사",
@@ -2177,6 +2165,9 @@ export const ko: TranslationResources = {
   contextWindow: {
     noData: "컨텍스트 데이터 없음",
     accessibilityNoData: "컨텍스트 창: 컨텍스트 데이터 없음",
+    compactTitle: "컨텍스트를 압축할까요?",
+    compactMessage: "에이전트에 현재 대화 컨텍스트 압축을 요청합니다. 이후에도 세션은 계속됩니다.",
+    compactConfirm: "컨텍스트 압축",
     title: "컨텍스트 윈도우",
     used: "{{percentage}}% 사용됨",
     tokens: "{{used}} / {{max}} 토큰",
@@ -2272,6 +2263,12 @@ export const ko: TranslationResources = {
     },
   },
   settings: {
+    search: {
+      placeholder: "설정 검색",
+      results: "결과",
+      noResults: "일치하는 설정이 없습니다",
+      clear: "검색 지우기",
+    },
     title: "설정",
     loading: "설정 불러오는 중...",
     groups: {

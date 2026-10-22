@@ -122,10 +122,8 @@ export const ru: TranslationResources = {
   },
   comment: {
     menu: {
-      item: "Комментарий",
-      itemSelected: "Комментировать выделенное",
-      addToTodo: "Добавить в задачи",
-      addToTodoSelected: "Добавить выделенное в задачи",
+      item: "Комментировать",
+      addToTodo: "Добавить в заметки",
       title: "Комментарий",
     },
     sheet: {
@@ -637,10 +635,6 @@ export const ru: TranslationResources = {
       empty: {
         noCommands: "Для этого рабочего пространства не выполнялись команды настройки.",
       },
-      compactTitle: "Сжать контекст?",
-      compactMessage:
-        "Агент попросит сжать контекст текущей беседы; сессия продолжится после этого.",
-      compactConfirm: "Сжать контекст",
       accessibility: {
         noCommands: "Для этого рабочего пространства не выполнялись команды настройки.",
         log: "Журнал настройки рабочего пространства",
@@ -1154,12 +1148,6 @@ export const ru: TranslationResources = {
           passedAccessible: "Проверки пройдены",
           failedAccessible: "Проверки не пройдены",
           runningAccessible: "Проверки выполняются",
-        },
-        search: {
-          placeholder: "Поиск в настройках",
-          results: "Результаты",
-          noResults: "Подходящих настроек нет",
-          clear: "Очистить поиск",
         },
         sections: {
           checks: "Проверки",
@@ -2201,6 +2189,9 @@ export const ru: TranslationResources = {
   contextWindow: {
     noData: "Нет данных о контексте",
     accessibilityNoData: "Контекстное окно: нет данных о контексте",
+    compactTitle: "Сжать контекст?",
+    compactMessage: "Агент попросит сжать контекст текущей беседы; сессия продолжится после этого.",
+    compactConfirm: "Сжать контекст",
     title: "Контекстное окно",
     used: "Использовано: {{percentage}}%",
     tokens: "Токены: {{used}} / {{max}}",
@@ -2296,6 +2287,12 @@ export const ru: TranslationResources = {
     },
   },
   settings: {
+    search: {
+      placeholder: "Поиск в настройках",
+      results: "Результаты",
+      noResults: "Подходящих настроек нет",
+      clear: "Очистить поиск",
+    },
     title: "Настройки",
     loading: "Загрузка настроек...",
     groups: {

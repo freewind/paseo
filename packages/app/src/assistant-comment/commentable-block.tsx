@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { View, type StyleProp, type ViewStyle } from "react-native";
 import { useTranslation } from "react-i18next";
 import { withUnistyles } from "react-native-unistyles";
-import { MessageSquarePlus } from "lucide-react-native";
+import { ClipboardList, MessageSquarePlus } from "lucide-react-native";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -15,6 +15,7 @@ import { readAssistantCommentSelection } from "@/assistant-comment/selection";
 
 const mutedColorMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
 const ThemedCommentIcon = withUnistyles(MessageSquarePlus, mutedColorMapping);
+const ThemedMemoIcon = withUnistyles(ClipboardList, mutedColorMapping);
 
 interface MarkdownCommentableBlockProps {
   blockText: string;
@@ -53,7 +54,8 @@ export function MarkdownCommentableBlock({
   const handleAddToTodo = useCallback(() => {
     comment?.requestAddToTodo?.(selectedText ?? blockText);
   }, [comment, blockText, selectedText]);
-  const leading = useMemo(() => <ThemedCommentIcon size={ICON_SIZE.sm} />, []);
+  const commentLeading = useMemo(() => <ThemedCommentIcon size={ICON_SIZE.sm} />, []);
+  const memoLeading = useMemo(() => <ThemedMemoIcon size={ICON_SIZE.sm} />, []);
 
   // A block with nothing to quote, or with no composer to attach to, still renders the box it
   // was handed: a table cell that drops its `flex: 1` and padding stops filling its row.
@@ -78,16 +80,20 @@ export function MarkdownCommentableBlock({
         horizontalPadding={4}
         testID="assistant-comment-menu"
       >
-        <ContextMenuItem leading={leading} onSelect={handleSelect} testID="markdown-comment-item">
-          {selectedText ? t("comment.menu.itemSelected") : t("comment.menu.item")}
+        <ContextMenuItem
+          leading={commentLeading}
+          onSelect={handleSelect}
+          testID="markdown-comment-item"
+        >
+          {t("comment.menu.item")}
         </ContextMenuItem>
         {comment.requestAddToTodo ? (
           <ContextMenuItem
-            leading={leading}
+            leading={memoLeading}
             onSelect={handleAddToTodo}
             testID="markdown-add-to-todo-item"
           >
-            {selectedText ? t("comment.menu.addToTodoSelected") : t("comment.menu.addToTodo")}
+            {t("comment.menu.addToTodo")}
           </ContextMenuItem>
         ) : null}
       </ContextMenuContent>
