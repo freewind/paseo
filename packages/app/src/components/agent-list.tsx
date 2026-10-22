@@ -26,6 +26,7 @@ import { useProviderIcon } from "@/components/provider-icons";
 import { navigateToAgent } from "@/utils/navigate-to-agent";
 import { HighlightedText } from "@/components/ui/highlighted-text";
 import { StatusBadge, type StatusBadgeVariant } from "@/components/ui/status-badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { findHighlightRanges } from "@/components/ui/highlighted-text-segments";
 
 interface AgentListProps {
@@ -318,6 +319,11 @@ function SessionRow({
             numberOfLines={1}
             testID={`agent-row-branch-${agent.serverId}-${agent.id}`}
           />
+          <SessionModelCell
+            model={agent.model}
+            onPress={handlePress}
+            onLongPress={handleLongPress}
+          />
           <AgentActivityTime date={agent.lastActivityAt} isMobile={false} />
         </View>
       ) : null}
@@ -327,6 +333,37 @@ function SessionRow({
         requiresAttention={agent.requiresAttention}
       />
     </Pressable>
+  );
+}
+
+/**
+ * The model column. It sits inside the row's Pressable, so it takes the row's press handlers:
+ * a nested control that swallowed the tap would leave a dead patch in the row that opens the
+ * session. Only the hover is this cell's own, and an empty model renders nothing at all.
+ */
+function SessionModelCell({
+  model,
+  onPress,
+  onLongPress,
+}: {
+  model: string | null;
+  onPress: () => void;
+  onLongPress: () => void;
+}): ReactElement | null {
+  if (!model) return null;
+  return (
+    <Tooltip delayDuration={300} enabledOnDesktop enabledOnMobile={false}>
+      <TooltipTrigger asChild>
+        <Pressable style={styles.columnModel} onPress={onPress} onLongPress={onLongPress}>
+          <Text style={styles.columnModelText} numberOfLines={1} ellipsizeMode="tail">
+            {model}
+          </Text>
+        </Pressable>
+      </TooltipTrigger>
+      <TooltipContent side="top" align="start" offset={6} maxWidth={420}>
+        <Text style={styles.tooltipText}>{model}</Text>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -713,6 +750,19 @@ const styles = StyleSheet.create((theme) => ({
     width: 120,
     marginLeft: theme.spacing[4],
     textAlign: "right" as const,
+  },
+  /** Model ids are long and uneven; the cell truncates and the tooltip carries the rest. */
+  columnModel: {
+    flexShrink: 0,
+    width: 160,
+  },
+  columnModelText: {
+    fontSize: theme.fontSize.base,
+    color: theme.colors.foregroundMuted,
+  },
+  tooltipText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.foreground,
   },
   sheetOverlay: {
     flex: 1,

@@ -106,6 +106,7 @@ export async function fetchAgentHistoryPage(input: {
       cwd: agent.cwd,
       workspaceId: agent.workspaceId,
       provider: agent.provider,
+      model: agent.model,
       pendingPermissionCount: agent.pendingPermissions.length,
       requiresAttention: agent.requiresAttention,
       attentionReason: agent.attentionReason,
