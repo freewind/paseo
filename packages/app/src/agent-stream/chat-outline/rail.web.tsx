@@ -274,6 +274,9 @@ const PROGRAMMATIC_SCROLL_WINDOW_MS = 500;
  */
 const PROGRAMMATIC_SCROLL_TOLERANCE_PX = 2;
 
+/** How long the rail stays parked after the reader scrolls it before following the chat again. */
+const FOLLOW_RESUME_DELAY_MS = 1500;
+
 const NO_PROMPT_TEXTS: ReadonlyMap<number, string> = new Map();
 
 function mergePromptText(
@@ -324,6 +327,8 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
   // hands it back. Anything else would yank the list out from under someone reading it.
   const [isFollowing, setIsFollowing] = useState(true);
   const programmaticScrollUntilRef = useRef(0);
+  /** When the reader last scrolled the list themselves; the follow resumes after a pause. */
+  const lastUserScrollAtRef = useRef(0);
   // Measuring a row re-runs the follow effect; an unchanged target must not restart the scroll.
   const lastScrollTargetRef = useRef<number | null>(null);
   // The popover's anchor is measured in window space, so the row that opened it has to
@@ -360,18 +365,39 @@ const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
       return;
     }
     if (Date.now() < programmaticScrollUntilRef.current) return;
+    lastUserScrollAtRef.current = Date.now();
     setIsFollowing(false);
   }, []);
 
-  const handleListScrollBeginDrag = useCallback(() => setIsFollowing(false), []);
+  const handleListScrollBeginDrag = useCallback(() => {
+    lastUserScrollAtRef.current = Date.now();
+    setIsFollowing(false);
+  }, []);
+
+  // Following comes back once the reader is in the chat again. Without this a single wheel nudge
+  // over the list stopped the rail for the rest of the session, and the highlight kept moving
+  // while the list stayed put.
+  useEffect(() => {
+    if (isFollowing || activeSeq === null) return;
+    if (Date.now() - lastUserScrollAtRef.current < FOLLOW_RESUME_DELAY_MS) return;
+    // Forget the last target: the row the chat is on now may share a scroll offset with the one
+    // the rail stopped at, and that must not count as already scrolled there.
+    lastScrollTargetRef.current = null;
+    setIsFollowing(true);
+  }, [activeSeq, isFollowing]);
 
   // Row heights come from measured boxes, not `index * lineHeight`: rows clamp at two lines and
   // the numbered dividers between them belong to the same content flow.
   useEffect(() => {
-    if (!isFollowing || activeSeq === null || viewportHeight === 0) return;
+    if (!isFollowing || activeSeq === null) return;
     const layout = rowLayouts.get(activeSeq);
     if (!layout) return;
-    const target = Math.max(0, layout.y + layout.height / 2 - viewportHeight / 2);
+    // A viewport that has not been measured yet still scrolls: aligning the row's top is better
+    // than leaving the highlight off screen.
+    const target = Math.max(
+      0,
+      viewportHeight === 0 ? layout.y : layout.y + layout.height / 2 - viewportHeight / 2,
+    );
     if (lastScrollTargetRef.current === target) return;
     lastScrollTargetRef.current = target;
     programmaticScrollUntilRef.current = Date.now() + PROGRAMMATIC_SCROLL_WINDOW_MS;
