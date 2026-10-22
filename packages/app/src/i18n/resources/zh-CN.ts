@@ -1250,6 +1250,7 @@ export const zhCN: TranslationResources = {
       trigger: "最近访问",
       empty: "还没有最近访问的会话",
       current: "当前",
+      subagent: "子代理",
     },
     help: {
       trigger: "帮助与支持",

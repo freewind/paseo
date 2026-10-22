@@ -1274,6 +1274,7 @@ export const en = {
       trigger: "Recent",
       empty: "No recent sessions yet",
       current: "Current",
+      subagent: "Subagent",
     },
     help: {
       trigger: "Help and support",
