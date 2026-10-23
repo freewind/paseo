@@ -32,17 +32,17 @@ const ThemedCheckCircle2 = withUnistyles(CheckCircle2, completedIconMapping);
 const MEMO_IMAGE_SIZE = 24;
 
 /**
- * The agent's memos as a standing todo list: the composer's left gutter on a wide layout, and the
+ * The agent's memos as a standing todo list: the pane's right gutter on a wide layout, and the
  * body of the compact sheet. The rail owns its header everywhere except inside that sheet, whose
  * header already carries the same title.
  *
- * Open memos come first and completed ones sink to the bottom, struck through and dimmed, each
- * group keeping the daemon's creation order. Every memo shows its whole text, wrapped to the
- * gutter's width, and the same text is repeated in a hover tooltip. Pressing the text appends it
- * to the composer and leaves the memo in place; the context menu sends it, the checkbox toggles
- * completion, and the trash button asks before deleting. The header carries clear and add, and it
- * shares the pane's right gutter with the quick replies below it: clearing the whole list asks in
- * place first, like the row trash button does. Completion lives on the daemon with the memo, so
+ * The header sits above the list, so the block reads title first and entries downward. Open memos
+ * come first and completed ones sink to the bottom, struck through and dimmed, each group keeping
+ * the daemon's creation order. Every memo shows its whole text, wrapped to the gutter's width, and
+ * the same text is repeated in a hover tooltip. Pressing the text appends it to the composer and
+ * leaves the memo in place; the context menu sends it, the checkbox toggles completion, and the
+ * trash button asks before deleting. The header carries clear and add; clearing the whole list asks
+ * in place first, like the row trash button does. Completion lives on the daemon with the memo, so
  * every client sees it.
  */
 export const AgentMemosRail = memo(function AgentMemosRail({
@@ -157,38 +157,6 @@ export const AgentMemosRail = memo(function AgentMemosRail({
       style={[styles.container, compact ? styles.containerCompact : styles.containerGutter]}
       testID="agent-memos-rail"
     >
-      <View style={styles.list}>
-        {orderedMemos.map((entry) =>
-          entry.id === editingMemoId ? (
-            <AgentMemoEditor
-              key={entry.id}
-              entry={entry}
-              submitLabel={t("common.actions.save")}
-              onSubmit={handleUpdateMemo}
-              onCancel={handleCancelEdit}
-              canAttachImages={supportsImages}
-            />
-          ) : (
-            <AgentMemoRow
-              key={entry.id}
-              entry={entry}
-              supportsCompletion={supportsCompletion}
-              onUse={handleMemoPress}
-              onCompletedChange={handleMemoCompletedChange}
-              onRequestDelete={handleRequestDelete}
-              onRequestEdit={handleStartEdit}
-              onOpenImage={handleOpenMemoImage}
-            />
-          ),
-        )}
-        {isAdding ? (
-          <AgentMemoComposer
-            onSubmit={handleAddMemo}
-            onCancel={handleCancelAdd}
-            canAttachImages={supportsImages}
-          />
-        ) : null}
-      </View>
       <View style={[styles.header, showTitle ? null : styles.headerTrailing]}>
         {showTitle ? (
           <View style={styles.titleGroup}>
@@ -223,6 +191,38 @@ export const AgentMemosRail = memo(function AgentMemosRail({
             </TooltipContent>
           </Tooltip>
         </View>
+      </View>
+      <View style={styles.list}>
+        {orderedMemos.map((entry) =>
+          entry.id === editingMemoId ? (
+            <AgentMemoEditor
+              key={entry.id}
+              entry={entry}
+              submitLabel={t("common.actions.save")}
+              onSubmit={handleUpdateMemo}
+              onCancel={handleCancelEdit}
+              canAttachImages={supportsImages}
+            />
+          ) : (
+            <AgentMemoRow
+              key={entry.id}
+              entry={entry}
+              supportsCompletion={supportsCompletion}
+              onUse={handleMemoPress}
+              onCompletedChange={handleMemoCompletedChange}
+              onRequestDelete={handleRequestDelete}
+              onRequestEdit={handleStartEdit}
+              onOpenImage={handleOpenMemoImage}
+            />
+          ),
+        )}
+        {isAdding ? (
+          <AgentMemoComposer
+            onSubmit={handleAddMemo}
+            onCancel={handleCancelAdd}
+            canAttachImages={supportsImages}
+          />
+        ) : null}
       </View>
       <AttachmentLightbox source={lightboxSource} onClose={handleCloseLightbox} />
     </View>
