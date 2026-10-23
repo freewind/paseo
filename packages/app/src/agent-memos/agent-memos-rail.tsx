@@ -37,12 +37,13 @@ const MEMO_IMAGE_SIZE = 24;
  * header already carries the same title.
  *
  * Open memos come first and completed ones sink to the bottom, struck through and dimmed, each
- * group keeping the daemon's creation order. Every memo is one line, ellipsized at the tail, with
- * the full text in a hover tooltip. Pressing the text appends it to the composer and leaves the
- * memo in place; the context menu sends it, the checkbox toggles completion, and the trash button
- * asks before deleting. The header carries clear and add, and it shares the pane's right gutter
- * with the quick replies below it: clearing the whole list asks in place first, like the row trash
- * button does. Completion lives on the daemon with the memo, so every client sees it.
+ * group keeping the daemon's creation order. Every memo shows its whole text, wrapped to the
+ * gutter's width, and the same text is repeated in a hover tooltip. Pressing the text appends it
+ * to the composer and leaves the memo in place; the context menu sends it, the checkbox toggles
+ * completion, and the trash button asks before deleting. The header carries clear and add, and it
+ * shares the pane's right gutter with the quick replies below it: clearing the whole list asks in
+ * place first, like the row trash button does. Completion lives on the daemon with the memo, so
+ * every client sees it.
  */
 export const AgentMemosRail = memo(function AgentMemosRail({
   serverId,
@@ -424,7 +425,7 @@ function AgentMemoRow({
   );
 }
 
-/** One truncated line: a press appends it to the composer, a right click opens the menu. */
+/** Full text, wrapped to the gutter: a press appends it to the composer, a right click opens the menu. */
 function AgentMemoTextButton({
   text,
   completed,
@@ -445,13 +446,7 @@ function AgentMemoTextButton({
       accessibilityLabel={t("agentMemos.useMemo")}
       testID={testID}
     >
-      <Text
-        numberOfLines={1}
-        ellipsizeMode="tail"
-        style={completed ? styles.memoTextCompleted : styles.memoText}
-      >
-        {text}
-      </Text>
+      <Text style={completed ? styles.memoTextCompleted : styles.memoText}>{text}</Text>
     </ContextMenuTrigger>
   );
 }
@@ -566,17 +561,25 @@ const styles = StyleSheet.create((theme: Theme) => ({
   memoText: {
     color: theme.colors.foreground,
     fontSize: theme.fontSize.sm,
+    // A memo wraps to as many lines as its text needs, so the line box has to stay readable: 1.4×
+    // the font size keeps consecutive wrapped lines from reading as one block of colour.
+    lineHeight: Math.round(theme.fontSize.sm * 1.4),
   },
   memoTextCompleted: {
     color: theme.colors.foregroundMuted,
     fontSize: theme.fontSize.sm,
+    lineHeight: Math.round(theme.fontSize.sm * 1.4),
     textDecorationLine: "line-through",
   },
   checkButton: {
     padding: theme.spacing[1],
+    // The row centres its children, and this one keeps its own size however tall the wrapped
+    // text gets instead of being squeezed by it.
+    flexShrink: 0,
   },
   deleteButton: {
     padding: theme.spacing[1],
+    flexShrink: 0,
   },
   clearButton: {
     padding: theme.spacing[1],
