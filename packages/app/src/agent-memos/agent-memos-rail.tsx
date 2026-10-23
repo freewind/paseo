@@ -41,9 +41,9 @@ const MEMO_IMAGE_SIZE = 24;
  * the daemon's creation order. Every memo shows its whole text, wrapped to the gutter's width, and
  * the same text is repeated in a hover tooltip. Pressing the text appends it to the composer and
  * leaves the memo in place; the context menu sends it, the checkbox toggles completion, and the
- * trash button asks before deleting. The header carries clear and add; clearing the whole list asks
- * in place first, like the row trash button does. Completion lives on the daemon with the memo, so
- * every client sees it.
+ * trash button asks before deleting. The header carries the title and add; clearing the whole list
+ * sits at the end of that list and asks in place first, like the row trash button does. Completion
+ * lives on the daemon with the memo, so every client sees it.
  */
 export const AgentMemosRail = memo(function AgentMemosRail({
   serverId,
@@ -167,13 +167,6 @@ export const AgentMemosRail = memo(function AgentMemosRail({
           </View>
         ) : null}
         <View style={styles.headerActions}>
-          {memos.length > 0 ? (
-            <MemoClearButton
-              label={t("common.actions.clear")}
-              cancelLabel={t("common.actions.cancel")}
-              onClear={handleClearMemos}
-            />
-          ) : null}
           <Tooltip delayDuration={250} enabledOnDesktop enabledOnMobile={false}>
             <TooltipTrigger asChild>
               <Pressable
@@ -223,6 +216,15 @@ export const AgentMemosRail = memo(function AgentMemosRail({
             canAttachImages={supportsImages}
           />
         ) : null}
+        {orderedMemos.length > 0 ? (
+          <View style={styles.clearFooter}>
+            <MemoClearButton
+              label={t("common.actions.clear")}
+              cancelLabel={t("common.actions.cancel")}
+              onClear={handleClearMemos}
+            />
+          </View>
+        ) : null}
       </View>
       <AttachmentLightbox source={lightboxSource} onClose={handleCloseLightbox} />
     </View>
@@ -230,9 +232,10 @@ export const AgentMemosRail = memo(function AgentMemosRail({
 });
 
 /**
- * The header's clear button: the row trash icon, asking in place first. The tooltip sits on a
- * wrapper view because `InlineConfirm` is a function component and cannot receive the ref the
- * tooltip needs; the wrapper is sized to the trigger and hover lands on it either way.
+ * The list's clear button: the row trash icon, asking in place first, sitting at the end of the
+ * list so the destructive action travels with the rows it clears. The tooltip sits on a wrapper
+ * view because `InlineConfirm` is a function component and cannot receive the ref the tooltip
+ * needs; the wrapper is sized to the trigger and hover lands on it either way.
  */
 const MemoClearButton = memo(function MemoClearButton({
   label,
@@ -523,6 +526,12 @@ const styles = StyleSheet.create((theme: Theme) => ({
   list: {
     gap: theme.spacing[1],
     minWidth: 0,
+  },
+  // The clear button closes the list on the same right edge as the rows' own trash buttons: the
+  // button carries that inset itself, so the footer only has to push it to the end.
+  clearFooter: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
   },
   row: {
     flexDirection: "row",
