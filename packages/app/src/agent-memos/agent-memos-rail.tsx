@@ -30,6 +30,17 @@ const ThemedCircle = withUnistyles(Circle, mutedIconMapping);
 const ThemedCheckCircle2 = withUnistyles(CheckCircle2, completedIconMapping);
 /** Small enough to sit inline, so a memo with images still occupies a single row. */
 const MEMO_IMAGE_SIZE = 24;
+/** Gutter read length: past this a memo stops being scannable and starts eating the pane. */
+const MEMO_TEXT_MAX_CHARS = 80;
+
+/** Counts characters, not UTF-16 units, so an emoji is never split in half. */
+function ellipsizeMemoText(text: string): string {
+  const characters = Array.from(text);
+  if (characters.length <= MEMO_TEXT_MAX_CHARS) {
+    return text;
+  }
+  return `${characters.slice(0, MEMO_TEXT_MAX_CHARS).join("")}…`;
+}
 
 /**
  * The agent's memos as a standing todo list: the pane's right gutter on a wide layout, and the
@@ -428,7 +439,7 @@ function AgentMemoRow({
   );
 }
 
-/** Full text, wrapped to the gutter: a press appends it to the composer, a right click opens the menu. */
+/** Gutter read length, wrapped to the gutter: a press appends it to the composer, a right click opens the menu. The tooltip carries the full text. */
 function AgentMemoTextButton({
   text,
   completed,
@@ -449,7 +460,9 @@ function AgentMemoTextButton({
       accessibilityLabel={t("agentMemos.useMemo")}
       testID={testID}
     >
-      <Text style={completed ? styles.memoTextCompleted : styles.memoText}>{text}</Text>
+      <Text style={completed ? styles.memoTextCompleted : styles.memoText}>
+        {ellipsizeMemoText(text)}
+      </Text>
     </ContextMenuTrigger>
   );
 }
