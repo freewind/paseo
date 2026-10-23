@@ -3,7 +3,6 @@ import { createStore, type StoreApi } from "zustand/vanilla";
 import { useStore } from "zustand";
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { ScrollView } from "@/components/ui/scroll-view";
 import {
   View,
   Pressable,
@@ -85,15 +84,8 @@ import {
   type QueuedComposerMessage,
 } from "@/composer/actions";
 import { useVoiceOptional } from "@/contexts/voice-context";
-import { useContainerWidthBelow } from "@/hooks/use-container-width";
 import { useToast } from "@/contexts/toast-context";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useQuickReplies } from "@/quick-replies/use-quick-replies";
-import { QuickRepliesBar } from "@/quick-replies/quick-replies-bar";
-import { QuickRepliesEditor } from "@/quick-replies/quick-replies-editor";
-import { QuickRepliesSheet } from "@/quick-replies/quick-replies-sheet";
-import { QUICK_REPLIES_GUTTER_BREAKPOINT } from "@/quick-replies/layout";
-import type { QuickReply } from "@getpaseo/protocol/messages";
 import { Shortcut } from "@/components/ui/shortcut";
 import { useShortcutKeys } from "@/hooks/use-shortcut-keys";
 import { AutocompletePopover } from "@/components/ui/autocomplete-popover";
@@ -1018,20 +1010,6 @@ interface ComposerProps {
   /** Optional panel/container layout breakpoint. Defaults to the screen breakpoint. */
   isCompactLayout?: boolean;
   /**
-   * Whether the host wants the desktop gutter to carry quick replies. Omit it to let the
-   * composer decide from its own measured width — the agent pane passes its pane-level decision
-   * so the gutter and the pane's track entry can never both appear.
-   */
-  quickRepliesGutterVisible?: boolean;
-  /**
-   * The agent's memo list, placed by the composer: the left gutter on a wide layout, a row above
-   * the input on a compact one. Omit it and the composer renders no memo mount point at all.
-   */
-  memosRail?: ReactNode;
-  /** Compact entry state, owned by the pane that renders the entry. */
-  quickRepliesSheetVisible?: boolean;
-  onQuickRepliesSheetVisibleChange?: (visible: boolean) => void;
-  /**
    * What this composer is for. Terminal drops the chat-agent affordances and
    * uses the terminal font; see `@/composer/input-mode`. Callers set the mode
    * and nothing else — never branch on it at the call site.
@@ -1330,10 +1308,6 @@ function ComposerContentImpl({
   agentControls,
   inputWrapperStyle,
   isCompactLayout: isCompactLayoutOverride,
-  quickRepliesGutterVisible,
-  memosRail,
-  quickRepliesSheetVisible = false,
-  onQuickRepliesSheetVisibleChange,
   inputMode = "chat",
   readOnly = false,
   submitLabel,
@@ -1370,34 +1344,8 @@ function ComposerContentImpl({
 
   const isCompactFormFactor = useIsCompactFormFactor();
   const isCompactLayout = resolveCompactLayout(isCompactLayoutOverride, isCompactFormFactor);
-  const quickReplies = useQuickReplies(serverId);
-  const [isQuickRepliesEditorOpen, setIsQuickRepliesEditorOpen] = useState(false);
-
-  const openQuickRepliesEditor = useCallback(() => {
-    setIsQuickRepliesEditorOpen(true);
-  }, []);
-  const closeQuickRepliesEditor = useCallback(() => {
-    setIsQuickRepliesEditorOpen(false);
-  }, []);
-  const closeQuickRepliesSheet = useCallback(() => {
-    onQuickRepliesSheetVisibleChange?.(false);
-  }, [onQuickRepliesSheetVisibleChange]);
-  const saveQuickRepliesFromEditor = useCallback(
-    (next: QuickReply[]) => {
-      setIsQuickRepliesEditorOpen(false);
-      void quickReplies.saveReplies(next);
-    },
-    [quickReplies],
-  );
-  const { onLayout: onInputAreaLayout, isBelow: isInputAreaTooNarrowForQuickReplies } =
-    useContainerWidthBelow(QUICK_REPLIES_GUTTER_BREAKPOINT, { initialIsBelow: true });
-  // Both gutters share a row with the centered input column, so their height is capped by the
-  // input's own measured height: a taller gutter stretches the row and leaves an empty band above
-  // the input. The cap is the live measurement, so it follows the input as the draft grows.
-  const [inputHeight, setInputHeight] = useState<number | null>(null);
   const handleInputHeightChange = useCallback(
     (height: number) => {
-      setInputHeight(height);
       onComposerHeightChange?.(height);
     },
     [onComposerHeightChange],
@@ -1844,16 +1792,6 @@ function ComposerContentImpl({
     if (newImages.length === 0) return;
     addImages(newImages);
   }, [addImages, pickImages]);
-
-  /** Quick replies append to the latest draft (newline-separated) and submit immediately. */
-  const handleQuickReplySelect = useCallback(
-    (text: string) => {
-      const draft = textSource.getSnapshot();
-      const merged = draft.trim().length > 0 ? `${draft}\n${text}` : text;
-      void handleSubmit({ text: merged, attachments: [], cwd });
-    },
-    [cwd, handleSubmit, textSource],
-  );
 
   const submitTextNow = useCallback(
     (text: string) => handleSubmit({ text, attachments: [], cwd }),
@@ -2513,54 +2451,6 @@ function ComposerContentImpl({
     ? t("composer.github.searching")
     : t("composer.github.noResults");
 
-  const gutterHeightCap = useMemo(
-    () => (inputHeight != null ? { maxHeight: inputHeight } : undefined),
-    [inputHeight],
-  );
-
-  // The gutter is a sibling of the centered input column, so it only earns its place once the
-  // container has room for both. A host that owns the compact entry passes the decision in, which
-  // keeps the gutter and that entry mutually exclusive by construction.
-  const showsQuickRepliesGutter =
-    quickReplies.isSupported &&
-    !isCompactLayout &&
-    (quickRepliesGutterVisible ?? !isInputAreaTooNarrowForQuickReplies);
-  // Memos sit on the opposite side of the same row, so the two gutters stay symmetric: neither
-  // earns a gutter the row cannot give width to. A gutter that cannot be shown puts the list
-  // above the input instead of squeezing it to zero width, where it would still contribute height.
-  const showsMemosGutter =
-    memosRail != null && !isCompactLayout && !isInputAreaTooNarrowForQuickReplies;
-  const showsGutterRow = showsQuickRepliesGutter || showsMemosGutter;
-  const memosAbove =
-    memosRail != null && !showsMemosGutter ? (
-      <View style={styles.memosAbove}>{memosRail}</View>
-    ) : null;
-  const leftGutter = showsMemosGutter ? (
-    <View style={[styles.memosGutter, gutterHeightCap]}>
-      <ScrollView style={styles.gutterScroll} showsVerticalScrollIndicator>
-        {memosRail}
-      </ScrollView>
-    </View>
-  ) : (
-    <View style={styles.inputAreaSpacer} />
-  );
-  const quickRepliesGutter = (
-    <View style={[styles.quickRepliesGutter, gutterHeightCap]}>
-      <ScrollView style={styles.gutterScroll} showsVerticalScrollIndicator>
-        <QuickRepliesBar
-          replies={quickReplies.replies}
-          onSelect={handleQuickReplySelect}
-          onEdit={openQuickRepliesEditor}
-        />
-      </ScrollView>
-    </View>
-  );
-  const rightGutter = showsQuickRepliesGutter ? (
-    quickRepliesGutter
-  ) : (
-    <View style={styles.inputAreaSpacer} />
-  );
-
   const messageInputNode = (
     <View ref={messageInputContainerRef} style={styles.messageInputContainer}>
       <ComposerAutocompleteBinding
@@ -2653,22 +2543,6 @@ function ComposerContentImpl({
 
   return (
     <>
-      <QuickRepliesEditor
-        visible={isQuickRepliesEditorOpen}
-        mountKey={isQuickRepliesEditorOpen ? "open" : "closed"}
-        replies={quickReplies.replies}
-        onSave={saveQuickRepliesFromEditor}
-        onClose={closeQuickRepliesEditor}
-      />
-      {quickReplies.isSupported ? (
-        <QuickRepliesSheet
-          visible={quickRepliesSheetVisible}
-          replies={quickReplies.replies}
-          onSelect={handleQuickReplySelect}
-          onEdit={openQuickRepliesEditor}
-          onClose={closeQuickRepliesSheet}
-        />
-      ) : null}
       <ComposerKeyboardRegistration
         handlerId={keyboardHandlerIdRef.current}
         messageInputRef={messageInputRef}
@@ -2681,26 +2555,14 @@ function ComposerContentImpl({
       />
       <View style={animatedStaticStyles.container}>
         <AttachmentLightbox source={lightboxSource} onClose={handleLightboxClose} />
-        {memosAbove}
         {/* Input area */}
-        <View
-          style={[inputAreaContainerStyle, showsGutterRow && styles.inputAreaRow]}
-          onLayout={onInputAreaLayout}
-        >
-          {showsGutterRow ? leftGutter : null}
-          <View
-            style={
-              showsGutterRow
-                ? [styles.inputAreaContent, styles.inputAreaContentBesideQuickReplies]
-                : styles.inputAreaContent
-            }
-          >
+        <View style={inputAreaContainerStyle}>
+          <View style={styles.inputAreaContent}>
             {queueList}
             {sendErrorNode}
 
             {messageInputNode}
           </View>
-          {showsGutterRow ? rightGutter : null}
         </View>
       </View>
     </>
@@ -2740,63 +2602,6 @@ const styles = StyleSheet.create((theme: Theme) => ({
     width: "100%",
     maxWidth: theme.contentMaxWidth,
     gap: theme.spacing[3],
-  },
-  // The row host: a centered input column with one empty spacer on each side and the quick
-  // replies gutter on the right. Equal spacers keep the column exactly where it sits today.
-  inputAreaRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: theme.spacing[3],
-  },
-  inputAreaSpacer: {
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: 0,
-  },
-  // The column stops at its max width, so the leftover splits between the spacers instead of
-  // stretching the input past the transcript above it.
-  inputAreaContentBesideQuickReplies: {
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: theme.contentMaxWidth,
-    width: "auto",
-    minWidth: 0,
-  },
-  quickRepliesGutter: {
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: 0,
-    minWidth: 0,
-    alignItems: "stretch",
-    justifyContent: "flex-end",
-  },
-  // Grows with its rows up to the cap the gutter sets, then scrolls. `flexBasis: "auto"` cancels
-  // the flex-basis the web scroll wrapper applies, so a short list stays short instead of
-  // stretching to the cap.
-  gutterScroll: {
-    flexGrow: 0,
-    flexShrink: 1,
-    flexBasis: "auto",
-    minHeight: 0,
-  },
-  // The left gutter mirrors the quick replies one so the input column stays centered whichever
-  // of the two is showing.
-  memosGutter: {
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: 0,
-    minWidth: 0,
-    alignItems: "stretch",
-    justifyContent: "flex-end",
-  },
-  // Compact hosts have no side gutters: the memo list sits above the input, inside the same
-  // centered column.
-  memosAbove: {
-    width: "100%",
-    maxWidth: theme.contentMaxWidth,
-    marginHorizontal: "auto",
-    paddingHorizontal: theme.spacing[4],
-    paddingBottom: theme.spacing[2],
   },
   messageInputContainer: {
     flexShrink: 1,

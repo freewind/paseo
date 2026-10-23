@@ -8,7 +8,7 @@
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createActivePromptPublisher, resolveTextRailWidth } from "./model";
+import { createActivePromptPublisher, resolveSideRailWidth } from "./model";
 import { ChatOutlineRail } from "./rail.web";
 
 const { setStringAsyncMock, toastCopiedMock, toastErrorMock } = vi.hoisted(() => ({
@@ -204,7 +204,7 @@ describe("ChatOutlineRail in its text form", () => {
     await renderRail([prompt(1, "First"), prompt(2, "Second")], { panelWidth: PANEL_WIDTH });
 
     const rail = document.querySelector('[data-testid="chat-outline-text-rail"]');
-    const expected = resolveTextRailWidth(PANEL_WIDTH, CONTENT_MAX_WIDTH);
+    const expected = resolveSideRailWidth(PANEL_WIDTH, CONTENT_MAX_WIDTH);
     expect(expected).not.toBeNull();
     expect(rail?.getAttribute("style") ?? "").toContain(String(expected));
     // The gutter comes from the space beside the transcript, never from the

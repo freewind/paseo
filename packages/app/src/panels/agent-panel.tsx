@@ -39,8 +39,13 @@ import { RewindComposerRestoreProvider } from "@/components/rewind/composer-rest
 import { AgentMemosRail } from "@/agent-memos/agent-memos-rail";
 import { useAgentMemos } from "@/agent-memos/use-agent-memos";
 import { appendMemoText, memoImagesToAttachments } from "@/agent-memos/memo-append";
-import type { AgentMemo } from "@getpaseo/protocol/messages";
+import type { AgentMemo, QuickReply } from "@getpaseo/protocol/messages";
 import { AgentMemosSheet } from "@/agent-memos/agent-memos-sheet";
+import { QuickRepliesBar } from "@/quick-replies/quick-replies-bar";
+import { ScrollView } from "@/components/ui/scroll-view";
+import { QuickRepliesEditor } from "@/quick-replies/quick-replies-editor";
+import { QuickRepliesSheet } from "@/quick-replies/quick-replies-sheet";
+import { useIsQuickRepliesSupported, useQuickReplies } from "@/quick-replies/use-quick-replies";
 import { useHostFeature } from "@/runtime/host-features";
 import {
   regenerateUserMessage,
@@ -64,7 +69,6 @@ import {
 } from "@/hooks/use-agent-screen-state-machine";
 import { useArchiveAgent } from "@/hooks/use-archive-agent";
 import { useContainerWidthBelow } from "@/hooks/use-container-width";
-import { useIsQuickRepliesSupported } from "@/quick-replies/use-quick-replies";
 import { QUICK_REPLIES_GUTTER_BREAKPOINT } from "@/quick-replies/layout";
 import { reconcileMissingAgentStateWithPresentAgent } from "@/panels/agent-panel-load-state";
 import { TimelineSyncStatus } from "@/timeline/sync-status";
@@ -1212,7 +1216,6 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     { initialIsBelow: true },
   );
   const hasQuickRepliesEntry = quickRepliesAvailable && isQuickRepliesGutterNarrow;
-  const showsQuickRepliesGutter = quickRepliesAvailable && !isQuickRepliesGutterNarrow;
   const openQuickRepliesSheet = useCallback(() => {
     setIsQuickRepliesSheetOpen(true);
   }, []);
@@ -1301,6 +1304,52 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     },
     [],
   );
+  // The pane's own gutter carries both panels, so the quick replies data and its editor live
+  // here rather than in the composer: the list is a sibling of the transcript, not of the input.
+  const quickReplies = useQuickReplies(serverId);
+  const [isQuickRepliesEditorOpen, setIsQuickRepliesEditorOpen] = useState(false);
+  const openQuickRepliesEditor = useCallback(() => setIsQuickRepliesEditorOpen(true), []);
+  const closeQuickRepliesEditor = useCallback(() => setIsQuickRepliesEditorOpen(false), []);
+  const saveQuickReplies = useCallback(
+    (next: QuickReply[]) => {
+      setIsQuickRepliesEditorOpen(false);
+      void quickReplies.saveReplies(next);
+    },
+    [quickReplies],
+  );
+  // Same contract the composer's own gutter had: append to the latest draft and send at once.
+  const submitQuickReply = useCallback(
+    (text: string) => {
+      const submitNow = composerSubmitNowRef.current;
+      if (!submitNow) return;
+      const draft = agentInputDraft.textSource.getSnapshot();
+      void submitNow(draft.trim().length > 0 ? `${draft}\n${text}` : text);
+    },
+    [agentInputDraft],
+  );
+  const { setMemoCompleted } = useAgentMemos({ serverId, agentId });
+  const markMemoCompleted = useCallback(
+    (memoId: string) => setMemoCompleted(memoId, true),
+    [setMemoCompleted],
+  );
+  const handleMemoAppendToComposer = useCallback(
+    async (entry: AgentMemo) => {
+      const draftText = agentInputDraft.textSource.getSnapshot();
+      agentInputDraft.replaceText(appendMemoText(draftText, entry.text));
+      const metadata = await memoImagesToAttachments(entry.images).catch(() => []);
+      if (metadata.length > 0) {
+        const imageAttachments = metadata.map((item) => ({
+          kind: "image" as const,
+          metadata: item,
+        }));
+        agentInputDraft.setAttachments((previous) => [...previous, ...imageAttachments]);
+      }
+      if (entry.completed !== true) {
+        void markMemoCompleted(entry.id).catch(() => undefined);
+      }
+    },
+    [agentInputDraft, markMemoCompleted],
+  );
   const handleCommentCommit = useCallback(
     ({ blockText, comment, sendNow }: { blockText: string; comment: string; sendNow: boolean }) => {
       const nextText = buildCommentDraftText({
@@ -1347,6 +1396,51 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     },
     [agentId, serverId, t, toastApi],
   );
+  const closeQuickRepliesSheet = useCallback(() => {
+    setIsQuickRepliesSheetOpen(false);
+  }, []);
+
+  // Memos on top, quick replies pinned below: both panels take the gutter right of the
+  // transcript, so neither reads as a one-line strip beside the input any more.
+  const rightGutter = useMemo(() => {
+    if (isCompactFormFactor) return null;
+    const memos = memosSupported ? (
+      <AgentMemosRail
+        serverId={serverId}
+        agentId={agentId}
+        onAppendToComposer={handleMemoAppendToComposer}
+      />
+    ) : null;
+    const replies = quickRepliesAvailable ? (
+      <QuickRepliesBar
+        replies={quickReplies.replies}
+        onSelect={submitQuickReply}
+        onEdit={openQuickRepliesEditor}
+      />
+    ) : null;
+    if (memos === null && replies === null) return null;
+    return (
+      <View style={styles.panelRightGutter}>
+        {memos === null ? null : (
+          <ScrollView style={styles.panelRightGutterGrow} showsVerticalScrollIndicator>
+            {memos}
+          </ScrollView>
+        )}
+        {replies === null ? null : <View style={styles.panelRightGutterPinned}>{replies}</View>}
+      </View>
+    );
+  }, [
+    agentId,
+    handleMemoAppendToComposer,
+    isCompactFormFactor,
+    memosSupported,
+    openQuickRepliesEditor,
+    quickReplies.replies,
+    quickRepliesAvailable,
+    serverId,
+    submitQuickReply,
+  ]);
+
   const composerSection = (
     <RenderProfile id={`AgentComposerSection:${agentId}`}>
       <AgentComposerSection
@@ -1363,11 +1457,9 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
         onAttentionPromptSend={onAttentionPromptSend}
         onComposerHeightChange={handleComposerHeightChange}
         onMessageSent={handleMessageSent}
-        quickRepliesGutterVisible={showsQuickRepliesGutter}
-        quickRepliesSheetVisible={isQuickRepliesSheetOpen}
-        onQuickRepliesSheetVisibleChange={setIsQuickRepliesSheetOpen}
         memosSheetVisible={isMemosSheetOpen}
         onMemosSheetVisibleChange={setIsMemosSheetOpen}
+        onMemoAppendToComposer={handleMemoAppendToComposer}
       />
     </RenderProfile>
   );
@@ -1388,6 +1480,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
           hasVisibleAgentTracks={hasVisibleAgentTracks}
           chatOutlineAvailable={chatOutlineAvailable}
           onChatOutlineAvailabilityChange={onChatOutlineAvailabilityChange}
+          rightGutter={rightGutter}
           toast={toastApi}
           onOpenWorkspaceFile={onOpenWorkspaceFile}
           onRegenerateUserMessage={onRegenerateUserMessage}
@@ -1434,6 +1527,23 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
       ) : null}
 
       <TimelineSyncStatus sync={timelineSync} toast={toast} onDismiss={dismiss} />
+
+      <QuickRepliesEditor
+        visible={isQuickRepliesEditorOpen}
+        mountKey={isQuickRepliesEditorOpen ? "open" : "closed"}
+        replies={quickReplies.replies}
+        onSave={saveQuickReplies}
+        onClose={closeQuickRepliesEditor}
+      />
+      {quickRepliesAvailable ? (
+        <QuickRepliesSheet
+          visible={isQuickRepliesSheetOpen}
+          replies={quickReplies.replies}
+          onSelect={submitQuickReply}
+          onEdit={openQuickRepliesEditor}
+          onClose={closeQuickRepliesSheet}
+        />
+      ) : null}
     </>
   );
 
@@ -1538,6 +1648,7 @@ const AgentStreamSection = memo(function AgentStreamSection({
   hasActiveComposer,
   hasVisibleAgentTracks,
   chatOutlineAvailable,
+  rightGutter,
   onChatOutlineAvailabilityChange,
   toast,
   onOpenWorkspaceFile,
@@ -1554,6 +1665,7 @@ const AgentStreamSection = memo(function AgentStreamSection({
   hasVisibleAgentTracks: boolean;
   chatOutlineAvailable: boolean;
   onChatOutlineAvailabilityChange: (available: boolean) => void;
+  rightGutter?: ReactNode;
   toast: ReturnType<typeof useToastHost>["api"];
   onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
   onRegenerateUserMessage?: (input: RegenerateUserMessageInput) => Promise<void>;
@@ -1629,6 +1741,7 @@ const AgentStreamSection = memo(function AgentStreamSection({
       pendingMessageSubmissions={pendingMessageSubmissions}
       turnPresentation={turnPresentation}
       onOpenWorkspaceFile={onOpenWorkspaceFile}
+      rightGutter={rightGutter}
       onChatOutlineAvailabilityChange={onChatOutlineAvailabilityChange}
       onRegenerateUserMessage={onRegenerateUserMessage}
     />
@@ -1649,11 +1762,9 @@ const AgentComposerSection = memo(function AgentComposerSection({
   onAttentionPromptSend,
   onComposerHeightChange,
   onMessageSent,
-  quickRepliesGutterVisible,
-  quickRepliesSheetVisible,
-  onQuickRepliesSheetVisibleChange,
   memosSheetVisible,
   onMemosSheetVisibleChange,
+  onMemoAppendToComposer,
 }: {
   agentId?: string;
   serverId: string;
@@ -1668,11 +1779,9 @@ const AgentComposerSection = memo(function AgentComposerSection({
   onAttentionPromptSend: () => void;
   onComposerHeightChange: (height: number) => void;
   onMessageSent: () => void;
-  quickRepliesGutterVisible: boolean;
-  quickRepliesSheetVisible: boolean;
-  onQuickRepliesSheetVisibleChange: (visible: boolean) => void;
   memosSheetVisible: boolean;
   onMemosSheetVisibleChange: (visible: boolean) => void;
+  onMemoAppendToComposer: (memo: AgentMemo) => void;
 }) {
   if (!agentId) {
     return null;
@@ -1697,11 +1806,9 @@ const AgentComposerSection = memo(function AgentComposerSection({
       onAttentionPromptSend={onAttentionPromptSend}
       onComposerHeightChange={onComposerHeightChange}
       onMessageSent={onMessageSent}
-      quickRepliesGutterVisible={quickRepliesGutterVisible}
-      quickRepliesSheetVisible={quickRepliesSheetVisible}
-      onQuickRepliesSheetVisibleChange={onQuickRepliesSheetVisibleChange}
       memosSheetVisible={memosSheetVisible}
       onMemosSheetVisibleChange={onMemosSheetVisibleChange}
+      onMemoAppendToComposer={onMemoAppendToComposer}
     />
   );
 });
@@ -1718,11 +1825,9 @@ function ActiveAgentComposer({
   onAttentionPromptSend,
   onComposerHeightChange,
   onMessageSent,
-  quickRepliesGutterVisible,
-  quickRepliesSheetVisible,
-  onQuickRepliesSheetVisibleChange,
   memosSheetVisible,
   onMemosSheetVisibleChange,
+  onMemoAppendToComposer,
 }: {
   agentId: string;
   serverId: string;
@@ -1735,11 +1840,9 @@ function ActiveAgentComposer({
   onAttentionPromptSend: () => void;
   onComposerHeightChange: (height: number) => void;
   onMessageSent: () => void;
-  quickRepliesGutterVisible: boolean;
-  quickRepliesSheetVisible: boolean;
-  onQuickRepliesSheetVisibleChange: (visible: boolean) => void;
   memosSheetVisible: boolean;
   onMemosSheetVisibleChange: (visible: boolean) => void;
+  onMemoAppendToComposer: (memo: AgentMemo) => void;
 }) {
   const isCompactFormFactor = useIsCompactFormFactor();
   const { onLayout: onInputAreaLayout, isBelow: isCompactComposerLayout } = useContainerWidthBelow(
@@ -1816,58 +1919,11 @@ function ActiveAgentComposer({
   );
 
   // The rail hides itself when the host has no memo support; gating here as well keeps the
-  // composer from reserving a gutter for a rail that would render nothing.
+  // sheet from mounting for a host that would render nothing.
   const memosSupported = useHostFeature(serverId, "agentMemos");
-  const { setMemoCompleted } = useAgentMemos({ serverId, agentId });
-  const markMemoCompleted = useCallback(
-    (memoId: string) => setMemoCompleted(memoId, true),
-    [setMemoCompleted],
-  );
-  const handleMemoAppendToComposer = useCallback(
-    async (entry: AgentMemo) => {
-      const current = agentInputDraft.textSource.getSnapshot();
-      agentInputDraft.replaceText(appendMemoText(current, entry.text));
-      const metadata = await memoImagesToAttachments(entry.images).catch(() => []);
-      if (metadata.length > 0) {
-        const imageAttachments = metadata.map((item) => ({
-          kind: "image" as const,
-          metadata: item,
-        }));
-        agentInputDraft.setAttachments((attachments) => [...attachments, ...imageAttachments]);
-      }
-      if (entry.completed !== true) {
-        void markMemoCompleted(entry.id).catch(() => undefined);
-      }
-    },
-    [agentInputDraft, markMemoCompleted],
-  );
   const closeMemosSheet = useCallback(
     () => onMemosSheetVisibleChange(false),
     [onMemosSheetVisibleChange],
-  );
-
-  // Built here rather than inline in JSX: the composer places it in whichever slot the layout
-  // has room for, and a stable element keeps that placement from re-rendering the rail. A compact
-  // layout has no slot for it at all: the tracks row opens the sheet instead, so the input keeps
-  // its height.
-  const memosRail = useMemo(
-    () =>
-      memosSupported && !isCompactFormFactor ? (
-        <AgentMemosRail
-          serverId={serverId}
-          agentId={agentId}
-          compact={isCompactComposerLayout}
-          onAppendToComposer={handleMemoAppendToComposer}
-        />
-      ) : null,
-    [
-      agentId,
-      handleMemoAppendToComposer,
-      isCompactComposerLayout,
-      isCompactFormFactor,
-      memosSupported,
-      serverId,
-    ],
   );
 
   return (
@@ -1897,17 +1953,13 @@ function ActiveAgentComposer({
         onMessageSent={onMessageSent}
         onClientSlashCommand={handleClientSlashCommand}
         isCompactLayout={isCompactComposerLayout}
-        memosRail={memosRail}
-        quickRepliesGutterVisible={quickRepliesGutterVisible}
-        quickRepliesSheetVisible={quickRepliesSheetVisible}
-        onQuickRepliesSheetVisibleChange={onQuickRepliesSheetVisibleChange}
       />
       {memosSupported ? (
         <AgentMemosSheet
           visible={memosSheetVisible}
           serverId={serverId}
           agentId={agentId}
-          onAppendToComposer={handleMemoAppendToComposer}
+          onAppendToComposer={onMemoAppendToComposer}
           onClose={closeMemosSheet}
         />
       ) : null}
@@ -1997,6 +2049,20 @@ const animatedStaticStyles = RNStyleSheet.create({
 });
 
 const styles = StyleSheet.create((theme) => ({
+  // The gutter right of the transcript: memos on top taking whatever height is left, quick
+  // replies pinned under them so the entry point never scrolls away.
+  panelRightGutter: {
+    flex: 1,
+    minHeight: 0,
+    gap: theme.spacing[3],
+  },
+  panelRightGutterGrow: {
+    flex: 1,
+    minHeight: 0,
+  },
+  panelRightGutterPinned: {
+    flexShrink: 0,
+  },
   root: {
     flex: 1,
     backgroundColor: theme.colors.surface0,

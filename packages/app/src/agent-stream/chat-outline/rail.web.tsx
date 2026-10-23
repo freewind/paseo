@@ -25,7 +25,8 @@ import { Button } from "@/components/ui/button";
 import { useChatOutlineCollapsed } from "./collapsed-state";
 import {
   collapsePromptWhitespace,
-  resolveTextRailWidth,
+  resolveSideRailWidth,
+  SIDE_RAIL_MIN_PANEL_WIDTH,
   TEXT_ROW_LINE_HEIGHT,
   TEXT_ROW_MAX_LINES,
   type ChatOutlinePrompt,
@@ -33,7 +34,7 @@ import {
 import type { ChatOutlineRailProps } from "./rail";
 import { PromptDetailPopover } from "./prompt-detail.web";
 
-const MIN_PANEL_WIDTH = 918;
+const MIN_PANEL_WIDTH = SIDE_RAIL_MIN_PANEL_WIDTH;
 
 export const ChatOutlineRail = memo(function ChatOutlineRail({
   prompts,
@@ -60,7 +61,7 @@ export const ChatOutlineRail = memo(function ChatOutlineRail({
 
   // The measure-only view keeps the width available while the panel has no gutter to put the
   // outline in, so the outline appears without the transcript column resizing around it.
-  const textRailWidth = resolveTextRailWidth(panelWidth, contentMaxWidth);
+  const textRailWidth = resolveSideRailWidth(panelWidth, contentMaxWidth);
 
   if (isPanelNarrow || textRailWidth === null) {
     return <View style={styles.panelMeasure} pointerEvents="box-none" onLayout={onLayout} />;

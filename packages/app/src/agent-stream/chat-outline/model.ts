@@ -59,12 +59,18 @@ export function collapsePromptWhitespace(text: string): string {
 }
 
 /**
- * Width available to the text outline, or `null` when the panel has not been
- * measured yet or the gutter is too narrow to show a readable line. A `null`
- * means the outline is not shown at all: the column never squeezes it down to
- * a sliver, and nothing else takes its place.
+ * Below this panel width the side rails have nowhere to live: the content column already takes
+ * the room the gutter would need, so the transcript keeps the whole panel instead.
  */
-export function resolveTextRailWidth(panelWidth: number, contentMaxWidth: number): number | null {
+export const SIDE_RAIL_MIN_PANEL_WIDTH = 918;
+
+/**
+ * Width available to a side rail, or `null` when the panel has not been measured yet or the
+ * gutter is too narrow to show a readable line. A `null` means the rail is not shown at all:
+ * the column never squeezes it down to a sliver, and nothing else takes its place. Both sides
+ * share this budget, so the left outline and the right panels never crowd the transcript.
+ */
+export function resolveSideRailWidth(panelWidth: number, contentMaxWidth: number): number | null {
   if (!(panelWidth > 0) || !(contentMaxWidth > 0)) return null;
   const available = (panelWidth - contentMaxWidth) / 2 - TEXT_RAIL_GUTTER_PADDING;
   if (available < TEXT_RAIL_MIN_WIDTH) return null;

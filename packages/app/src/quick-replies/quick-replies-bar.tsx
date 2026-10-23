@@ -24,10 +24,10 @@ interface QuickRepliesBarProps {
 }
 
 /**
- * Quick replies as pressable chips: the desktop composer's right gutter, and the body of the
- * compact sheet. Chips run left to right and wrap; each shows the reply's full text on one line,
- * ellipsized at the tail when it cannot fit the row, and sends immediately. The manage button is
- * always there, so an empty list still has a way to add the first reply.
+ * Quick replies as pressable chips: the pane's right gutter, and the body of the compact sheet.
+ * Chips run left to right and wrap; each shows the reply's full text on one line, ellipsized at
+ * the tail when it cannot fit the row, and sends immediately. The manage button is always there,
+ * so an empty list still has a way to add the first reply.
  */
 export function QuickRepliesBar({
   replies,

@@ -40,9 +40,9 @@ const MEMO_IMAGE_SIZE = 24;
  * group keeping the daemon's creation order. Every memo is one line, ellipsized at the tail, with
  * the full text in a hover tooltip. Pressing the text appends it to the composer and leaves the
  * memo in place; the context menu sends it, the checkbox toggles completion, and the trash button
- * asks before deleting. The header carries clear and add, matching the quick replies bar on the
- * opposite gutter: clearing the whole list asks in place first, like the row trash button does.
- * Completion lives on the daemon with the memo, so every client sees it.
+ * asks before deleting. The header carries clear and add, and it shares the pane's right gutter
+ * with the quick replies below it: clearing the whole list asks in place first, like the row trash
+ * button does. Completion lives on the daemon with the memo, so every client sees it.
  */
 export const AgentMemosRail = memo(function AgentMemosRail({
   serverId,

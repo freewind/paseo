@@ -5,7 +5,7 @@ import {
   PROMPT_DETAIL_GAP,
   PROMPT_DETAIL_MAX_HEIGHT,
   PROMPT_DETAIL_WIDTH,
-  resolveTextRailWidth,
+  resolveSideRailWidth,
   shouldAcceptPromptIndexEpoch,
   resolveActivePromptSeq,
   TEXT_RAIL_GUTTER_PADDING,
@@ -76,35 +76,35 @@ describe("resolveActivePromptSeq", () => {
   });
 });
 
-describe("resolveTextRailWidth", () => {
+describe("resolveSideRailWidth", () => {
   const CONTENT_WIDTH = 820;
 
   it("reports no width before the panel has been measured", () => {
-    expect(resolveTextRailWidth(0, CONTENT_WIDTH)).toBeNull();
-    expect(resolveTextRailWidth(-1, CONTENT_WIDTH)).toBeNull();
-    expect(resolveTextRailWidth(1200, 0)).toBeNull();
+    expect(resolveSideRailWidth(0, CONTENT_WIDTH)).toBeNull();
+    expect(resolveSideRailWidth(-1, CONTENT_WIDTH)).toBeNull();
+    expect(resolveSideRailWidth(1200, 0)).toBeNull();
   });
 
   it("reports no width when the gutter cannot hold a readable line", () => {
     // Exactly one pixel under the minimum, after the gutter inset.
     const justTooNarrow = CONTENT_WIDTH + 2 * (TEXT_RAIL_GUTTER_PADDING + TEXT_RAIL_MIN_WIDTH) - 2;
-    expect(resolveTextRailWidth(justTooNarrow, CONTENT_WIDTH)).toBeNull();
+    expect(resolveSideRailWidth(justTooNarrow, CONTENT_WIDTH)).toBeNull();
 
     const exactlyMin = CONTENT_WIDTH + 2 * (TEXT_RAIL_GUTTER_PADDING + TEXT_RAIL_MIN_WIDTH);
-    expect(resolveTextRailWidth(exactlyMin, CONTENT_WIDTH)).toBe(TEXT_RAIL_MIN_WIDTH);
+    expect(resolveSideRailWidth(exactlyMin, CONTENT_WIDTH)).toBe(TEXT_RAIL_MIN_WIDTH);
   });
 
   it("narrows as the transcript column grows", () => {
-    const narrow = resolveTextRailWidth(1400, 820);
-    const wider = resolveTextRailWidth(1400, 1000);
+    const narrow = resolveSideRailWidth(1400, 820);
+    const wider = resolveSideRailWidth(1400, 1000);
     expect(narrow).not.toBeNull();
     expect(wider).not.toBeNull();
     expect(wider!).toBeLessThan(narrow!);
   });
 
   it("stops growing on a very wide window", () => {
-    expect(resolveTextRailWidth(4000, CONTENT_WIDTH)).toBe(TEXT_RAIL_MAX_WIDTH);
-    expect(resolveTextRailWidth(2400, CONTENT_WIDTH)).toBe(TEXT_RAIL_MAX_WIDTH);
+    expect(resolveSideRailWidth(4000, CONTENT_WIDTH)).toBe(TEXT_RAIL_MAX_WIDTH);
+    expect(resolveSideRailWidth(2400, CONTENT_WIDTH)).toBe(TEXT_RAIL_MAX_WIDTH);
   });
 });
 

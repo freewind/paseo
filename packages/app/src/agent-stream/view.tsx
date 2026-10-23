@@ -18,6 +18,7 @@ import {
   Text,
   Pressable,
   Platform,
+  type LayoutChangeEvent,
   type PressableStateCallbackType,
   type StyleProp,
   type ViewStyle,
@@ -68,6 +69,7 @@ import { type AgentStreamRenderModel, buildAgentStreamRenderModel } from "./mode
 import { resolveStreamRenderStrategy } from "./strategy-resolver";
 import { type StreamSegmentRenderers, type StreamViewportHandle } from "./strategy";
 import { ChatOutlineRail } from "@/agent-stream/chat-outline/rail";
+import { resolveSideRailWidth, SIDE_RAIL_MIN_PANEL_WIDTH } from "@/agent-stream/chat-outline/model";
 import { ChatOutlineSheet, useChatOutlineSheetController } from "@/agent-stream/chat-outline/sheet";
 import { useChatOutline } from "@/agent-stream/chat-outline/use-chat-outline";
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
@@ -100,6 +102,7 @@ import {
 } from "@/workspace/file-open";
 import { navigateToWorkspace } from "@/stores/navigation-active-workspace-store";
 import { useStableEvent } from "@/hooks/use-stable-event";
+import { useContainerWidth, useContainerWidthBelow } from "@/hooks/use-container-width";
 import { useForkAgent } from "@/hooks/use-fork-agent";
 import { isWeb } from "@/constants/platform";
 import type { Theme } from "@/styles/theme";
@@ -292,6 +295,8 @@ export interface AgentStreamViewProps {
   bottomOverlayControlClearance?: number;
   toast?: ToastApi | null;
   onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
+  /** Panels the pane puts in the gutter right of the transcript, above the composer. */
+  rightGutter?: ReactNode;
   onChatOutlineAvailabilityChange?: (available: boolean) => void;
   readOnly?: boolean;
   /** Resend a user message verbatim after a rewind removed it and its successors. */
@@ -368,6 +373,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
       bottomOverlayControlClearance,
       toast,
       onOpenWorkspaceFile,
+      rightGutter,
       onChatOutlineAvailabilityChange,
       readOnly = false,
       onRegenerateUserMessage,
@@ -1209,6 +1215,9 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
               agentId={agentId}
               onRequestPromptText={chatOutline.fetchPromptText}
             />
+            {rightGutter != null ? (
+              <PanelRightGutter contentMaxWidth={contentMaxWidth}>{rightGutter}</PanelRightGutter>
+            ) : null}
             <ChatOutlineSheet
               prompts={chatOutline.prompts}
               activePrompt={chatOutline.activePrompt}
@@ -1351,6 +1360,7 @@ function agentStreamViewPropsEqual(
   }
   if (left.toast !== right.toast) reasons.push("toast");
   if (left.onOpenWorkspaceFile !== right.onOpenWorkspaceFile) reasons.push("onOpenWorkspaceFile");
+  if (left.rightGutter !== right.rightGutter) reasons.push("rightGutter");
   if (left.onChatOutlineAvailabilityChange !== right.onChatOutlineAvailabilityChange) {
     reasons.push("onChatOutlineAvailabilityChange");
   }
@@ -1699,10 +1709,64 @@ function PermissionRequestCard({
   );
 }
 
+/**
+ * The pane's own panels ride the gutter right of the transcript, mirrored against the outline
+ * rail: the same absolute band and the same width budget, so neither side can crowd the column.
+ * With no room for it the panels are not shown at all, and nothing reserves their space.
+ */
+const PanelRightGutter = memo(function PanelRightGutter({
+  contentMaxWidth,
+  children,
+}: {
+  contentMaxWidth: number;
+  children: ReactNode;
+}) {
+  const { onLayout: onLayoutWidth, width } = useContainerWidth();
+  const { onLayout: onLayoutBelow, isBelow } = useContainerWidthBelow(SIDE_RAIL_MIN_PANEL_WIDTH);
+  const onLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      onLayoutWidth(event);
+      onLayoutBelow(event);
+    },
+    [onLayoutBelow, onLayoutWidth],
+  );
+  const railWidth = resolveSideRailWidth(width, contentMaxWidth);
+
+  if (isBelow || railWidth === null) {
+    return (
+      <View style={stylesheet.rightGutterMeasure} pointerEvents="box-none" onLayout={onLayout} />
+    );
+  }
+
+  return (
+    <View style={stylesheet.rightGutterMeasure} pointerEvents="box-none" onLayout={onLayout}>
+      <View
+        style={[stylesheet.rightGutterRail, { width: railWidth }]}
+        testID="agent-panel-right-gutter"
+      >
+        {children}
+      </View>
+    </View>
+  );
+});
+
 const stylesheet = StyleSheet.create((theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.surface0,
+  },
+  // Mirrors the outline rail's band on the other side: one absolute layer that measures the
+  // panel without claiming layout space, and one fixed-width rail inside it.
+  rightGutterMeasure: {
+    position: "absolute",
+    inset: 0,
+  },
+  rightGutterRail: {
+    position: "absolute",
+    right: theme.spacing[2],
+    top: "10%",
+    bottom: "10%",
+    zIndex: 2,
   },
   contentWrapper: {
     width: "100%",
