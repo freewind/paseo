@@ -306,17 +306,22 @@ const AgentMemoEditor = memo(function AgentMemoEditor({
 });
 
 /**
- * Newest action first: adding, editing and ticking a memo all make it the top row. Ticking
- * therefore lifts a memo instead of dropping it into a finished pile at the bottom — the list
- * answers "what did I just touch", not "what is still open".
+ * Open memos first, completed ones in a group at the bottom. Each group keeps the daemon's
+ * creation order, so editing a memo leaves it where it is and ticking one moves it into the
+ * finished group instead of reordering the open list.
  */
 function orderMemos(memos: readonly AgentMemo[]): AgentMemo[] {
-  return [...memos].sort((a, b) => memoActivityTime(b) - memoActivityTime(a));
+  return [...memos].sort((a, b) => {
+    const completionDelta = Number(a.completed === true) - Number(b.completed === true);
+    if (completionDelta !== 0) {
+      return completionDelta;
+    }
+    return memoCreationTime(a) - memoCreationTime(b);
+  });
 }
 
-function memoActivityTime(entry: AgentMemo): number {
-  const stamp = entry.updatedAt ?? entry.createdAt;
-  const parsed = Date.parse(stamp);
+function memoCreationTime(entry: AgentMemo): number {
+  const parsed = Date.parse(entry.createdAt);
   return Number.isNaN(parsed) ? 0 : parsed;
 }
 

@@ -1590,9 +1590,9 @@ export const AgentMemoSchema = z.object({
   id: z.string(),
   text: z.string().min(1).max(AGENT_MEMO_MAX_CHARS),
   createdAt: z.string(),
-  // Every mutation stamps this, which is what the clients order the list by: a memo someone
-  // just touched belongs at the top, not wherever its creation date puts it. Absent on records
-  // written before ordering mattered; readers fall back to createdAt.
+  // Every mutation stamps this. It records when a memo was last touched, not where it belongs: the
+  // list orders by creation order, with completed memos sunk to the bottom. Absent on records
+  // written before it was stamped.
   updatedAt: z.string().optional(),
   // Optional so memos written before completion existed keep parsing; absent means open.
   completed: z.boolean().optional(),
