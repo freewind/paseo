@@ -86,7 +86,7 @@ export function ChatOutlineSheet({
   const header = useMemo<SheetHeader>(() => {
     if (selectedPrompt && onRequestPromptText) {
       return {
-        title: t("settings.appearance.chatOutline.title"),
+        title: t("agentStream.chatOutline.title"),
         back: {
           onPress: () => setSelectedPromptSeq(null),
           label: t("common.actions.back"),
@@ -94,7 +94,7 @@ export function ChatOutlineSheet({
         },
       };
     }
-    return { title: t("settings.appearance.chatOutline.title") };
+    return { title: t("agentStream.chatOutline.title") };
   }, [onRequestPromptText, selectedPrompt, t]);
 
   const handleJumpToPrompt = useCallback(

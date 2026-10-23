@@ -378,10 +378,6 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
     const { t } = useTranslation();
     const autoExpandReasoning = useSettings((settings) => settings.autoExpandReasoning);
     const toolCallDetailLevel = useSettings((settings) => settings.toolCallDetailLevel);
-    const chatOutlineEnabled = useSettings((settings) => settings.chatOutlineEnabled);
-    const chatOutlineVariant = useSettings((settings) =>
-      settings.chatOutlineTextLabels ? "text" : "dots",
-    );
     const contentMaxWidth = useSettings(resolveContentMaxWidth);
     const viewportRef = useRef<StreamViewportHandle | null>(null);
     const pendingClientMessageIds = useMemo(
@@ -658,7 +654,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
         ),
       [baseRenderModel.history, baseRenderModel.segments.liveHead],
     );
-    const isChatOutlineEnabled = supportsChatOutline && chatOutlineEnabled;
+    const isChatOutlineEnabled = supportsChatOutline;
     const chatOutline = useChatOutline({
       agentId,
       serverId: resolvedServerId,
@@ -1209,7 +1205,6 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
               prompts={chatOutline.prompts}
               activePrompt={chatOutline.activePrompt}
               onJumpToPrompt={chatOutline.jumpToPrompt}
-              variant={chatOutlineVariant}
               contentMaxWidth={contentMaxWidth}
               agentId={agentId}
               onRequestPromptText={chatOutline.fetchPromptText}

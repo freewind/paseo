@@ -7,9 +7,7 @@ import {
   PROMPT_DETAIL_WIDTH,
   resolveTextRailWidth,
   shouldAcceptPromptIndexEpoch,
-  promptTickMagnification,
   resolveActivePromptSeq,
-  OUTLINE_MAGNIFY_RADIUS,
   TEXT_RAIL_GUTTER_PADDING,
   TEXT_RAIL_MAX_WIDTH,
   TEXT_RAIL_MIN_WIDTH,
@@ -61,22 +59,6 @@ function prompt(seq: number): ChatOutlinePrompt {
   return { seq, timestamp: new Date(seq).toISOString(), preview: `prompt ${seq}` };
 }
 
-describe("promptTickMagnification", () => {
-  it("peaks under the pointer and decays to nothing at the radius", () => {
-    expect(promptTickMagnification(0)).toBe(1);
-    expect(promptTickMagnification(OUTLINE_MAGNIFY_RADIUS)).toBe(0);
-    expect(promptTickMagnification(OUTLINE_MAGNIFY_RADIUS + 10)).toBe(0);
-  });
-
-  it("falls off monotonically and symmetrically around the pointer", () => {
-    const above = [0, 1, 2, 3].map((distance) => promptTickMagnification(distance));
-    const below = [0, -1, -2, -3].map((distance) => promptTickMagnification(distance));
-
-    expect(above).toEqual(below);
-    expect(above).toEqual([...above].sort((left, right) => right - left));
-  });
-});
-
 describe("resolveActivePromptSeq", () => {
   const prompts = [prompt(2), prompt(9), prompt(20)];
 
@@ -103,7 +85,7 @@ describe("resolveTextRailWidth", () => {
     expect(resolveTextRailWidth(1200, 0)).toBeNull();
   });
 
-  it("falls back to the dot rail when the gutter cannot hold a readable line", () => {
+  it("reports no width when the gutter cannot hold a readable line", () => {
     // Exactly one pixel under the minimum, after the gutter inset.
     const justTooNarrow = CONTENT_WIDTH + 2 * (TEXT_RAIL_GUTTER_PADDING + TEXT_RAIL_MIN_WIDTH) - 2;
     expect(resolveTextRailWidth(justTooNarrow, CONTENT_WIDTH)).toBeNull();

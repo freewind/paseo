@@ -175,11 +175,11 @@ export const AgentTracks = memo(function AgentTracks({
             variant="ghost"
             size="xs"
             leftIcon={List}
-            accessibilityLabel={t("settings.appearance.chatOutline.title")}
+            accessibilityLabel={t("agentStream.chatOutline.title")}
             onPress={onOpenChatOutline}
             testID="composer-chat-outline-button"
           >
-            {t("settings.appearance.chatOutline.title")}
+            {t("agentStream.chatOutline.title")}
           </Button>
         ) : null}
         {hasQuickRepliesEntry ? (

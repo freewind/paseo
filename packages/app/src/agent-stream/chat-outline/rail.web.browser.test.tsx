@@ -84,7 +84,6 @@ async function mountRail(options?: {
         prompts={[prompt(1, "First prompt"), prompt(2, "Second prompt")]}
         activePrompt={activePrompt}
         onJumpToPrompt={onJumpToPrompt}
-        variant="text"
         contentMaxWidth={820}
         agentId="agent-1"
         onRequestPromptText={options?.onRequestPromptText ?? defaultPromptText}

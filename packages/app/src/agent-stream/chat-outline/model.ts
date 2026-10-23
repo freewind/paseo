@@ -7,28 +7,9 @@ export function shouldAcceptPromptIndexEpoch(timelineEpoch: string, indexEpoch: 
 }
 
 /**
- * Slots further than this from the pointer keep their resting size, so a long rail
- * magnifies a local band instead of swelling the whole column.
- */
-export const OUTLINE_MAGNIFY_RADIUS = 3;
-
-/**
- * Dock-style falloff: 1 under the pointer, easing to 0 at the radius. The raised cosine
- * has no corner at either end, so sweeping the rail reads as one bulge travelling with
- * the pointer rather than a band switching on and off.
- */
-export function promptTickMagnification(slotDistance: number): number {
-  const distance = Math.abs(slotDistance);
-  if (!Number.isFinite(distance) || distance >= OUTLINE_MAGNIFY_RADIUS) {
-    return 0;
-  }
-  return (1 + Math.cos((Math.PI * distance) / OUTLINE_MAGNIFY_RADIUS)) / 2;
-}
-
-/**
  * The transcript's content column is centred, so the space beside it is
  * `(panel - content) / 2`. The text outline lives in that gutter rather than
- * over the transcript.
+ * over the transcript, mirrored on the left edge.
  */
 export const TEXT_RAIL_MIN_WIDTH = 120;
 
@@ -80,8 +61,8 @@ export function collapsePromptWhitespace(text: string): string {
 /**
  * Width available to the text outline, or `null` when the panel has not been
  * measured yet or the gutter is too narrow to show a readable line. A `null`
- * tells the caller to fall back to the dot rail; it never hides the outline,
- * because a long conversation is exactly when navigation matters most.
+ * means the outline is not shown at all: the column never squeezes it down to
+ * a sliver, and nothing else takes its place.
  */
 export function resolveTextRailWidth(panelWidth: number, contentMaxWidth: number): number | null {
   if (!(panelWidth > 0) || !(contentMaxWidth > 0)) return null;

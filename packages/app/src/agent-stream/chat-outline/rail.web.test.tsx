@@ -1,10 +1,9 @@
 /**
  * @vitest-environment jsdom
  *
- * The text outline is the only place a reader scans prompt text instead of
- * counting dots, so these assert what actually reaches the DOM: a row per prompt
- * showing that prompt's whole text, a gutter taken out of the panel's slack, and a
- * click that jumps.
+ * The outline is one column of prompt text beside the transcript, so these assert
+ * what actually reaches the DOM: a row per prompt showing that prompt's whole text,
+ * a gutter taken out of the panel's slack, and a click that jumps.
  */
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -27,7 +26,7 @@ const CONTENT_MAX_WIDTH = 820;
 /** Wide enough for the gutter to hold a readable line. */
 const PANEL_WIDTH = 1600;
 const NARROW_PANEL_WIDTH = 918;
-/** The width useContainerWidthBelow treats as too narrow to show either form. */
+/** The width useContainerWidthBelow treats as too narrow to show the rail. */
 const HIDDEN_PANEL_WIDTH = 600;
 
 interface MeasuredNode {
@@ -174,7 +173,6 @@ describe("ChatOutlineRail in its text form", () => {
           prompts={prompts}
           activePrompt={activePrompt}
           onJumpToPrompt={onJumpToPrompt}
-          variant="text"
           contentMaxWidth={CONTENT_MAX_WIDTH}
           agentId={options?.agentId ?? "agent-1"}
           onRequestPromptText={onRequestPromptText}
@@ -192,15 +190,12 @@ describe("ChatOutlineRail in its text form", () => {
     return { onJumpToPrompt, panel, activePrompt };
   }
 
-  it("shows the words beside the dots, never instead of them", async () => {
+  it("shows one row per prompt in a single column", async () => {
     await renderRail([prompt(1, "First prompt"), prompt(2, "Second prompt")]);
 
     const textRail = document.querySelector('[data-testid="chat-outline-text-rail"]');
     expect(textRail).not.toBeNull();
-    // The two outlines are separate navigations, so the role query has to be scoped:
-    // the dots on the left keep their own tabs.
     expect(textRail?.querySelectorAll('[role="tab"]')).toHaveLength(2);
-    expect(document.querySelectorAll('[data-testid="chat-outline-tick-1"]')).toHaveLength(1);
     expect(document.body.textContent).toContain("First prompt");
     expect(document.body.textContent).toContain("Second prompt");
   });
@@ -217,18 +212,16 @@ describe("ChatOutlineRail in its text form", () => {
     expect(rail?.getAttribute("style") ?? "").not.toContain(`width: ${PANEL_WIDTH}px`);
   });
 
-  it("keeps the dots when the panel leaves no room for a line", async () => {
+  it("hides the rail when the panel leaves no room for a line", async () => {
     await renderRail([prompt(1, "First"), prompt(2, "Second")], { panelWidth: NARROW_PANEL_WIDTH });
 
     expect(document.querySelector('[data-testid="chat-outline-text-rail"]')).toBeNull();
-    expect(document.querySelectorAll('[data-testid="chat-outline-tick-1"]')).toHaveLength(1);
   });
 
-  it("hides both forms on a panel too narrow to navigate", async () => {
+  it("hides the rail on a panel too narrow to navigate", async () => {
     await renderRail([prompt(1, "First")], { panelWidth: HIDDEN_PANEL_WIDTH });
 
     expect(document.querySelector('[data-testid="chat-outline-text-rail"]')).toBeNull();
-    expect(document.querySelectorAll('[data-testid="chat-outline-tick-1"]')).toHaveLength(0);
   });
 
   it("jumps to the prompt the reader clicks", async () => {
@@ -315,7 +308,6 @@ describe("ChatOutlineRail in its text form", () => {
           prompts={[prompt(1, "First"), prompt(2, "Second"), prompt(3, "Third")]}
           activePrompt={activePrompt}
           onJumpToPrompt={vi.fn()}
-          variant="text"
           contentMaxWidth={CONTENT_MAX_WIDTH}
           agentId="agent-1"
           onRequestPromptText={onRequestPromptText}
@@ -617,17 +609,6 @@ describe("ChatOutlineRail in its text form", () => {
       (toggle() as HTMLElement).click();
     });
     expect(document.querySelectorAll('[data-testid="chat-outline-text-row-1"]')).toHaveLength(1);
-  });
-
-  it("keeps the dots while the words are collapsed", async () => {
-    await renderRail([prompt(1, "First"), prompt(2, "Second")]);
-
-    await act(async () => {
-      (document.querySelector('[data-testid="chat-outline-text-toggle"]') as HTMLElement).click();
-    });
-
-    // The dots are the primary navigation; collapsing the words must not take them.
-    expect(document.querySelectorAll('[data-testid="chat-outline-tick-1"]')).toHaveLength(1);
   });
 
   it("remembers the collapse for that chat, and only that chat", async () => {
