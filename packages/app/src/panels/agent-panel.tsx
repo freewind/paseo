@@ -1422,7 +1422,11 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     return (
       <View style={styles.panelRightGutter}>
         {memos === null ? null : (
-          <ScrollView style={styles.panelRightGutterGrow} showsVerticalScrollIndicator>
+          <ScrollView
+            style={styles.panelRightGutterGrow}
+            contentContainerStyle={styles.panelRightGutterScrollContent}
+            showsVerticalScrollIndicator
+          >
             {memos}
           </ScrollView>
         )}
@@ -2059,6 +2063,12 @@ const styles = StyleSheet.create((theme) => ({
   panelRightGutterGrow: {
     flex: 1,
     minHeight: 0,
+  },
+  // The list starts at the top of the gutter instead of being pushed down: a short list leaves
+  // its empty space below, where the pinned quick replies already sit.
+  panelRightGutterScrollContent: {
+    flexGrow: 1,
+    justifyContent: "flex-start",
   },
   panelRightGutterPinned: {
     flexShrink: 0,

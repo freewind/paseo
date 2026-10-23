@@ -483,10 +483,10 @@ const styles = StyleSheet.create((theme: Theme) => ({
     gap: theme.spacing[2],
     minWidth: 0,
   },
-  /** Beside the composer: the gutter stretches, the rows read top to bottom. */
+  /** In the pane's right gutter: the rows read top to bottom from the block's own top. */
   containerGutter: {
     alignItems: "stretch",
-    justifyContent: "flex-end",
+    justifyContent: "flex-start",
   },
   /** Above the composer: the list owns the full width of the input column. */
   containerCompact: {
