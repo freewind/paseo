@@ -880,6 +880,14 @@ export const en = {
       hideFolderTree: "Hide folder tree",
     },
     git: {
+      commitDialog: {
+        title: "Commit changes",
+        files: "{{count}} changed files",
+        retry: "Try again",
+        submit: "Commit",
+        committing: "Committing...",
+        loadFailed: "Could not prepare the commit.",
+      },
       actions: {
         moreOptions: "More options",
         moreActions: "More actions",

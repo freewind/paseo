@@ -59,8 +59,8 @@ describe("checkout-git-actions-store", () => {
 
     const store = useCheckoutGitActionsStore.getState();
 
-    const first = store.commit({ serverId, cwd });
-    const second = store.commit({ serverId, cwd });
+    const first = store.commit({ serverId, cwd, message: "Ship it" });
+    const second = store.commit({ serverId, cwd, message: "Ship it" });
 
     expect(store.getStatus({ serverId, cwd, actionId: "commit" })).toBe("pending");
 

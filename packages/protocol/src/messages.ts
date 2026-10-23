@@ -2579,6 +2579,12 @@ export const CheckoutCommitFileDiffRequestSchema = z.object({
   requestId: z.string(),
 });
 
+export const CheckoutCommitDraftRequestSchema = z.object({
+  type: z.literal("checkout.commit.draft.request"),
+  cwd: z.string(),
+  requestId: z.string(),
+});
+
 const GitHubRepoSegmentSchema = z.string().regex(/^[A-Za-z0-9._-]+$/);
 
 const CheckoutCheckDetailsRequestPayloadSchema = z.object({
@@ -3575,6 +3581,7 @@ export const SessionInboundMessageSchema = z.discriminatedUnion("type", [
   CheckoutGithubSetAutoMergeRequestSchema,
   CheckoutCommitsListRequestSchema,
   CheckoutCommitFileDiffRequestSchema,
+  CheckoutCommitDraftRequestSchema,
   CheckoutForgeGetCheckDetailsRequestSchema,
   CheckoutGithubGetCheckDetailsRequestSchema,
   CheckoutPrStatusRequestSchema,
@@ -5873,6 +5880,26 @@ export const CheckoutCommitsListResponseSchema = z.object({
   }),
 });
 
+const CheckoutCommitDraftFileSchema = z.object({
+  path: z.string(),
+  status: z.enum(["added", "modified", "deleted", "renamed"]),
+  additions: z.number(),
+  deletions: z.number(),
+});
+
+export const CheckoutCommitDraftResponseSchema = z.object({
+  type: z.literal("checkout.commit.draft.response"),
+  payload: z.object({
+    cwd: z.string(),
+    message: z.string(),
+    files: z.array(CheckoutCommitDraftFileSchema),
+    additions: z.number(),
+    deletions: z.number(),
+    error: CheckoutErrorSchema.nullable(),
+    requestId: z.string(),
+  }),
+});
+
 export const CheckoutCommitFileDiffResponseSchema = z.object({
   type: z.literal("checkout.commits.file_diff.response"),
   payload: z.object({
@@ -7294,6 +7321,7 @@ export const SessionOutboundMessageSchema = z.discriminatedUnion("type", [
   CheckoutGithubSetAutoMergeResponseSchema,
   CheckoutCommitsListResponseSchema,
   CheckoutCommitFileDiffResponseSchema,
+  CheckoutCommitDraftResponseSchema,
   CheckoutForgeGetCheckDetailsResponseSchema,
   CheckoutGithubGetCheckDetailsResponseSchema,
   CheckoutPrStatusResponseSchema,
@@ -7665,6 +7693,8 @@ export type CheckoutCommitsListRequest = z.infer<typeof CheckoutCommitsListReque
 export type CheckoutCommitsListResponse = z.infer<typeof CheckoutCommitsListResponseSchema>;
 export type CheckoutCommitFileDiffRequest = z.infer<typeof CheckoutCommitFileDiffRequestSchema>;
 export type CheckoutCommitFileDiffResponse = z.infer<typeof CheckoutCommitFileDiffResponseSchema>;
+export type CheckoutCommitDraftRequest = z.infer<typeof CheckoutCommitDraftRequestSchema>;
+export type CheckoutCommitDraftResponse = z.infer<typeof CheckoutCommitDraftResponseSchema>;
 export type ParsedDiffFile = z.infer<typeof ParsedDiffFileSchema>;
 export type CheckoutPrCreateRequest = z.infer<typeof CheckoutPrCreateRequestSchema>;
 export type CheckoutPrCreateResponse = z.infer<typeof CheckoutPrCreateResponseSchema>;

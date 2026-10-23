@@ -873,6 +873,14 @@ export const zhCN: TranslationResources = {
       hideFolderTree: "隐藏文件夹树",
     },
     git: {
+      commitDialog: {
+        title: "提交变更",
+        files: "{{count}} 个文件变更",
+        retry: "重试",
+        submit: "提交",
+        committing: "正在提交...",
+        loadFailed: "无法准备本次提交。",
+      },
       actions: {
         moreOptions: "更多选项",
         moreActions: "更多操作",

@@ -7,6 +7,7 @@ import { validateBranchSlug } from "@getpaseo/protocol/branch-slug";
 import type {
   BranchSuggestionsRequest,
   CheckoutCommitsListRequest,
+  CheckoutCommitDraftRequest,
   CheckoutCommitFileDiffRequest,
   CheckoutRefreshRequest,
   CheckoutRenameBranchRequest,
@@ -56,6 +57,7 @@ import {
 import { runGitCommand } from "../../../utils/run-git-command.js";
 import { expandTilde } from "../../../utils/path.js";
 import type { GitMetadataGenerator } from "./git-metadata-generator.js";
+import { COMMIT_MESSAGE_FALLBACK } from "./git-metadata-generator.js";
 
 /**
  * The collaborators a checkout command reaches that are NOT part of the checkout
@@ -129,6 +131,19 @@ export interface CheckoutSessionOptions {
   paseoHome: string;
   worktreesRoot: string | undefined;
   logger: pino.Logger;
+}
+
+type CommitDraftFileStatus = "added" | "modified" | "deleted" | "renamed";
+
+function commitDraftFileStatus(file: {
+  isNew: boolean;
+  isDeleted: boolean;
+  oldPath?: string;
+}): CommitDraftFileStatus {
+  if (file.isNew) return "added";
+  if (file.isDeleted) return "deleted";
+  if (file.oldPath) return "renamed";
+  return "modified";
 }
 
 /**
@@ -733,6 +748,59 @@ export class CheckoutSession {
         type: "stash_list_response",
         payload: { cwd, entries: [], error: toCheckoutError(error), requestId },
       });
+    }
+  }
+
+  async handleCommitDraftRequest(msg: CheckoutCommitDraftRequest): Promise<void> {
+    const { cwd, requestId } = msg;
+
+    try {
+      const resolvedCwd = expandTilde(cwd);
+      const diff = await this.workspaceGitService.getCheckoutDiff(resolvedCwd, {
+        mode: "uncommitted",
+        includeStructured: true,
+      });
+      const files = ("structured" in diff ? (diff.structured ?? []) : []).map((file) => ({
+        path: file.path,
+        status: commitDraftFileStatus(file),
+        additions: file.additions,
+        deletions: file.deletions,
+      }));
+
+      this.host.emit({
+        type: "checkout.commit.draft.response",
+        payload: {
+          cwd,
+          message: await this.draftCommitMessage(resolvedCwd),
+          files,
+          additions: files.reduce((total, file) => total + file.additions, 0),
+          deletions: files.reduce((total, file) => total + file.deletions, 0),
+          error: null,
+          requestId,
+        },
+      });
+    } catch (error) {
+      this.host.emit({
+        type: "checkout.commit.draft.response",
+        payload: {
+          cwd,
+          message: "",
+          files: [],
+          additions: 0,
+          deletions: 0,
+          error: toCheckoutError(error),
+          requestId,
+        },
+      });
+    }
+  }
+
+  /** A draft that previews the commit; the dialog's submit is the only thing that commits. */
+  private async draftCommitMessage(cwd: string): Promise<string> {
+    try {
+      return await this.gitMetadataGenerator.generateCommitMessage(cwd);
+    } catch {
+      return COMMIT_MESSAGE_FALLBACK;
     }
   }
 

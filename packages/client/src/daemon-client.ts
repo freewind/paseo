@@ -66,6 +66,7 @@ import type {
   GitSetupOptions,
   CheckoutStatusResponse,
   CheckoutCommit,
+  CheckoutCommitDraftResponse,
   ParsedDiffFile,
   CheckoutCommitResponse,
   CheckoutMergeResponse,
@@ -4533,6 +4534,25 @@ export class DaemonClient {
       throw new Error(payload.error.message);
     }
     return { file: payload.file };
+  }
+
+  async draftCheckoutCommit(
+    cwd: string,
+    requestId?: string,
+  ): Promise<CheckoutCommitDraftResponse["payload"]> {
+    const payload =
+      await this.sendNamespacedCorrelatedSessionRequest<"checkout.commit.draft.response">({
+        requestId,
+        message: {
+          type: "checkout.commit.draft.request",
+          cwd,
+        },
+        timeout: 60000,
+      });
+    if (payload.error) {
+      throw new Error(payload.error.message);
+    }
+    return payload;
   }
 
   async checkoutPrCreate(
