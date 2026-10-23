@@ -1710,8 +1710,10 @@ function PermissionRequestCard({
 }
 
 /**
- * The pane's own panels ride the gutter right of the transcript, mirrored against the outline
- * rail: the same absolute band and the same width budget, so neither side can crowd the column.
+ * The pane's own panels ride the gutter right of the transcript. Only the width budget is shared
+ * with the outline rail (`resolveSideRailWidth`), so neither side can crowd the column; the
+ * vertical range is not: these are standing panels, not a band of notes beside the middle of the
+ * conversation, so the rail fills the pane's height and the memo list starts at its very top.
  * With no room for it the panels are not shown at all, and nothing reserves their space.
  */
 const PanelRightGutter = memo(function PanelRightGutter({
@@ -1755,8 +1757,10 @@ const stylesheet = StyleSheet.create((theme) => ({
     flex: 1,
     backgroundColor: theme.colors.surface0,
   },
-  // Mirrors the outline rail's band on the other side: one absolute layer that measures the
-  // panel without claiming layout space, and one fixed-width rail inside it.
+  // Mirrors the outline rail's layer on the other side: one absolute layer that measures the
+  // panel without claiming layout space, and one fixed-width rail inside it. The rail spans the
+  // full height — the 10% band it used to share with the outline left a blank strip above the
+  // panels, which is exactly where they need to start reading.
   rightGutterMeasure: {
     position: "absolute",
     inset: 0,
@@ -1764,8 +1768,8 @@ const stylesheet = StyleSheet.create((theme) => ({
   rightGutterRail: {
     position: "absolute",
     right: theme.spacing[2],
-    top: "10%",
-    bottom: "10%",
+    top: 0,
+    bottom: 0,
     zIndex: 2,
   },
   contentWrapper: {
