@@ -2070,8 +2070,11 @@ const styles = StyleSheet.create((theme) => ({
     flexGrow: 1,
     justifyContent: "flex-start",
   },
+  // Pinned to the bottom by its own auto margin rather than by the scroll view above it filling
+  // the gutter: the replies stay the last line of the block even when the memo list is short.
   panelRightGutterPinned: {
     flexShrink: 0,
+    marginTop: "auto",
   },
   root: {
     flex: 1,
