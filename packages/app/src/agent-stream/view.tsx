@@ -74,6 +74,7 @@ import { TurnSummaryLine } from "./turn-collapse/summary-line";
 import { type AgentStreamRenderModel, buildAgentStreamRenderModel } from "./model";
 import { resolveStreamRenderStrategy } from "./strategy-resolver";
 import { type StreamSegmentRenderers, type StreamViewportHandle } from "./strategy";
+import { ChatOutlineTextRail } from "@/agent-stream/chat-outline/text-rail";
 import { ChatOutlineRail } from "@/agent-stream/chat-outline/rail";
 import { useChatOutline } from "@/agent-stream/chat-outline/use-chat-outline";
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
@@ -324,6 +325,14 @@ function resolveBottomOverlayControlOffset(clearance: number | undefined): numbe
   return Math.max(16, clearance ?? 0);
 }
 
+/** 关掉不常用功能就把转录交回上游的圆点；两套吃同一份提示索引。 */
+function useOutlineMode(supportsChatOutline: boolean): { enabled: boolean; worded: boolean } {
+  const chatOutlineEnabled = useSettings((settings) => settings.chatOutlineEnabled);
+  const disableUncommonFeatures = useSettings((settings) => settings.disableUncommonFeatures);
+  const enabled = supportsChatOutline && chatOutlineEnabled;
+  return { enabled, worded: enabled && disableUncommonFeatures };
+}
+
 const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamViewProps>(
   function AgentStreamView(
     {
@@ -349,7 +358,6 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
     const { t } = useTranslation();
     const autoExpandReasoning = useSettings((settings) => settings.autoExpandReasoning);
     const chatDisplay = useSettings((settings) => settings.chatDisplay);
-    const chatOutlineEnabled = useSettings((settings) => settings.chatOutlineEnabled);
     const contentMaxWidth = useSettings(resolveContentMaxWidth);
     const viewportRef = useRef<StreamViewportHandle | null>(null);
     const pendingClientMessageIds = useMemo(
@@ -615,19 +623,19 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
           mountedHistoryMessageIds.has(messageId) || liveHeadMessageIds.has(messageId),
       };
     }, [baseRenderModel.segments.liveHead, mountedHistoryMessageIds]);
+    const outline = useOutlineMode(supportsChatOutline);
     const chatOutline = useChatOutline({
       agentId,
       serverId: resolvedServerId,
       timelineEpoch,
       tail: effectiveStreamItems,
       head: effectiveStreamHead,
-      enabled: supportsChatOutline && chatOutlineEnabled,
+      enabled: outline.enabled,
       viewportRef,
       onJumpError: handleTimelineHistoryLoadError,
       mountedHistoryMessageIds,
       revealLoadedMessage: revealLoadedHistory,
     });
-
     useImperativeHandle(
       ref,
       () => ({
@@ -1100,7 +1108,8 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
         rowId === null
           ? undefined
           : (layoutHistoryItemById.get(rowId) ?? layoutLiveHeadItemById.get(rowId));
-      chatOutline.reportReadingPosition(row?.item.timelineCursor?.seq ?? null);
+      const seq = row?.item.timelineCursor?.seq ?? null;
+      chatOutline.reportReadingPosition(seq);
     });
 
     const renderHistoryRow = useCallback(
@@ -1232,11 +1241,21 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
                 })}
               </ToolCallExpansionContext.Provider>
             </MessageOuterSpacingProvider>
-            <ChatOutlineRail
-              prompts={chatOutline.prompts}
-              activePrompt={chatOutline.activePrompt}
-              onJumpToPrompt={chatOutline.jumpToPrompt}
-            />
+            {outline.worded ? (
+              <ChatOutlineTextRail
+                prompts={chatOutline.prompts}
+                activePrompt={chatOutline.activePrompt}
+                onJumpToPrompt={chatOutline.jumpToPrompt}
+                contentMaxWidth={contentMaxWidth}
+                agentId={agentId}
+              />
+            ) : (
+              <ChatOutlineRail
+                prompts={chatOutline.prompts}
+                activePrompt={chatOutline.activePrompt}
+                onJumpToPrompt={chatOutline.jumpToPrompt}
+              />
+            )}
             {(!isNearBottom || isTimelineDetached) && (
               <View style={scrollToBottomContainerStyle} pointerEvents="box-none">
                 <Animated.View entering={scrollIndicatorFadeIn} exiting={scrollIndicatorFadeOut}>
