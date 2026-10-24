@@ -124,20 +124,7 @@ export function SidebarModelProvider({
     [projectFilters, list.projects],
   );
   const hasActiveProjectFilter = resolvedProjectFilters.length > 0;
-  // The live-only mode asks about agents, so it is the only project filter that needs the agent
-  // maps; it subscribes to them only while the mode is on.
-  const needsAgentMaps = hasNameSearch || nonEmptyProjectsOnly;
-  // The project filter is deliberately absent from this gate. It reads `projectViewKey`, which
-  // lives on the project and the placement, so it can narrow the project list without hydrating
-  // anything; the label filter reads `labels`, which only exists on an entry. Hydration opens a
-  // live session-store subscription over every workspace on every visible host, so widening this
-  // for a filter that does not need it costs a retained-but-inactive sidebar real work. The name
-  // search joins the gate because its agent titles live on hydrated entries.
-  const needsWorkspaceEntries = groupMode !== "project" || hasActiveLabelFilter || hasNameSearch;
-  const workspaceEntriesByKey = useSidebarWorkspaceEntries(
-    list.workspacePlacements,
-    active !== false || needsWorkspaceEntries,
-  );
+  const workspaceEntriesByKey = useSidebarWorkspaceEntries(list.workspacePlacements);
   // The search matches only what the sidebar lists, so its agent ids come from
   // the tab layout rather than the session store. An agent whose tab is hidden
   // or closed has no row to show, and matching it would keep an ancestor with
@@ -173,11 +160,9 @@ export function SidebarModelProvider({
   // a selector that builds fresh objects re-renders on every store tick and spins forever.
   const agentMapsByServerId = useSessionStore(
     useShallow((state) =>
-      needsAgentMaps
-        ? list.workspacePlacements.map(
-            (placement) => state.sessions[placement.serverId]?.agents ?? null,
-          )
-        : EMPTY_AGENT_MAPS,
+      list.workspacePlacements.map(
+        (placement) => state.sessions[placement.serverId]?.agents ?? null,
+      ),
     ),
   );
   // A project counts as non-empty when one of its workspaces holds a root agent, the same rule
@@ -387,7 +372,6 @@ export function useSidebarModel(): SidebarModel {
 const EMPTY_PROJECT_MATCHES: SidebarNameFilterResult["projects"] = [];
 const EMPTY_WORKSPACE_MATCHES: SidebarNameFilterResult["workspaces"] = new Map();
 const EMPTY_AGENT_MATCHES: SidebarNameFilterResult["agents"] = new Map();
-const EMPTY_AGENT_MAPS: readonly never[] = [];
 const EMPTY_AGENT_IDS: readonly string[] = [];
 const EMPTY_AGENT_TITLES: ReadonlyMap<string, string> = new Map();
 const EMPTY_HOST_FILTERS: readonly string[] = [];
