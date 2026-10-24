@@ -3119,4 +3119,12 @@ type WidenStringLeaves<T> = {
   [K in keyof T]: T[K] extends string ? string : WidenStringLeaves<T[K]>;
 };
 
-export type TranslationResources = WidenStringLeaves<typeof en>;
+type DeepPartial<T> = {
+  [K in keyof T]?: T[K] extends string ? string : DeepPartial<T[K]>;
+};
+
+/**
+ * Locales other than `en` ship straight from upstream and carry none of the keys we add, so the
+ * shape is partial: a missing key falls back to `en` at runtime.
+ */
+export type TranslationResources = DeepPartial<WidenStringLeaves<typeof en>>;

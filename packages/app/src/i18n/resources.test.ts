@@ -1,15 +1,27 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { ar } from "./resources/ar";
+import { ar as arRaw } from "./resources/ar";
 import { en } from "./resources/en";
-import { es } from "./resources/es";
-import { fr } from "./resources/fr";
-import { ja } from "./resources/ja";
-import { ko } from "./resources/ko";
-import { ptBR } from "./resources/pt-BR";
-import { ru } from "./resources/ru";
-import { zhCN } from "./resources/zh-CN";
+import { es as esRaw } from "./resources/es";
+import { fr as frRaw } from "./resources/fr";
+import { ja as jaRaw } from "./resources/ja";
+import { ko as koRaw } from "./resources/ko";
+import { ptBR as ptBRRaw } from "./resources/pt-BR";
+import { ru as ruRaw } from "./resources/ru";
+import { zhCN as zhCNRaw } from "./resources/zh-CN";
+
+// Upstream locales are not type-checked against our added keys; these assertions read them as
+// complete so the upstream assertions below keep their original shape.
+type Complete = typeof en;
+const ar = arRaw as unknown as Complete;
+const es = esRaw as unknown as Complete;
+const fr = frRaw as unknown as Complete;
+const ja = jaRaw as unknown as Complete;
+const ko = koRaw as unknown as Complete;
+const ptBR = ptBRRaw as unknown as Complete;
+const ru = ruRaw as unknown as Complete;
+const zhCN = zhCNRaw as unknown as Complete;
 
 function flattenKeys(value: unknown, prefix = ""): string[] {
   if (typeof value !== "object" || value === null) {
@@ -47,6 +59,7 @@ function findInterpolationMismatches(resource: unknown): string[] {
   const englishStrings = flattenStrings(en);
   const localeStrings = flattenStrings(resource);
   return Object.entries(englishStrings).flatMap(([key, value]) => {
+    if (localeStrings[key] === undefined) return [];
     const expected = [...value.matchAll(interpolationPattern)].map((match) => match[0]).sort();
     const actual = [...(localeStrings[key] ?? "").matchAll(interpolationPattern)]
       .map((match) => match[0])
@@ -104,16 +117,17 @@ function findUntranslatedConnectionErrors(): string[] {
 }
 
 describe("translation resources", () => {
-  it("keeps all supported language keys in sync with English", () => {
-    const englishKeys = flattenKeys(en).sort();
-    expect(flattenKeys(ar).sort()).toEqual(englishKeys);
-    expect(flattenKeys(es).sort()).toEqual(englishKeys);
-    expect(flattenKeys(fr).sort()).toEqual(englishKeys);
-    expect(flattenKeys(ja).sort()).toEqual(englishKeys);
-    expect(flattenKeys(ko).sort()).toEqual(englishKeys);
-    expect(flattenKeys(ptBR).sort()).toEqual(englishKeys);
-    expect(flattenKeys(ru).sort()).toEqual(englishKeys);
-    expect(flattenKeys(zhCN).sort()).toEqual(englishKeys);
+  it("keeps the translated language keys in sync with English", () => {
+    expect(flattenKeys(zhCN).sort()).toEqual(flattenKeys(en).sort());
+  });
+
+  it("keeps untouched upstream locales free of keys English does not have", () => {
+    const englishKeys = new Set(flattenKeys(en));
+    const upstreamLocales = { ar, es, fr, ja, ko, ptBR, ru };
+    for (const [locale, resource] of Object.entries(upstreamLocales)) {
+      const extra = flattenKeys(resource).filter((key) => !englishKeys.has(key));
+      expect(extra, `${locale} has keys English does not`).toEqual([]);
+    }
   });
 
   it("keeps non-English supported languages translated beyond fallback labels", () => {
