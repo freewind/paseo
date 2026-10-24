@@ -23,6 +23,7 @@ import {
   DEFAULT_TERMINAL_PROFILES,
 } from "@getpaseo/protocol/terminal-profiles";
 import { AgentProfilesSection } from "@/agent-profiles";
+import { useSettings } from "@/hooks/use-settings";
 import { AgentSkillsSection } from "@/agent-skills";
 import {
   AdaptiveModalSheet,
@@ -1182,6 +1183,7 @@ function AutoArchiveMergedWorkspacesCard({ serverId }: { serverId: string }) {
 
 function EnableTerminalAgentHooksCard({ serverId }: { serverId: string }) {
   const isConnected = useHostRuntimeIsConnected(serverId);
+  const freewindMode = useSettings((settings) => settings.freewindMode);
   const { config, patchConfig } = useDaemonConfig(serverId);
 
   const handleValueChange = useCallback(
@@ -1197,7 +1199,7 @@ function EnableTerminalAgentHooksCard({ serverId }: { serverId: string }) {
     [patchConfig],
   );
 
-  if (!isConnected) return null;
+  if (!isConnected || freewindMode) return null;
 
   return (
     <View style={settingsStyles.card} testID="host-page-terminal-agent-hooks-card">
