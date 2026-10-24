@@ -1636,6 +1636,9 @@ function CommentableAgentStreamSection({
   onAddToTodo,
   ...props
 }: CommentableAgentStreamSectionProps) {
+  const freewindMode = useSettings((settings) => settings.freewindMode);
+  // Freewind mode adds the block-comment surface; upstream renders the stream as is.
+  if (!freewindMode) return <AgentStreamSection {...props} />;
   return (
     <AssistantCommentProvider onCommit={onCommentCommit} onAddToTodo={onAddToTodo}>
       <AgentStreamSection {...props} />
