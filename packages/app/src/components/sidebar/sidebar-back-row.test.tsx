@@ -46,6 +46,12 @@ vi.mock("@/hooks/use-route-back", () => ({
   useRouteBack: () => history,
 }));
 
+// The strip only renders in Freewind mode; the settings module pulls in the toast stack otherwise.
+vi.mock("@/hooks/use-settings", () => ({
+  useSettings: (selector: (settings: { freewindMode: boolean }) => unknown) =>
+    selector({ freewindMode: true }),
+}));
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) => {

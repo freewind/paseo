@@ -6,6 +6,7 @@ import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import type { SidebarRowIcon } from "@/components/sidebar/sidebar-header-row";
 import { SidebarRecentVisitsMenu } from "@/components/sidebar/sidebar-recent-visits-menu";
 import { useRouteBack } from "@/hooks/use-route-back";
+import { useSettings } from "@/hooks/use-settings";
 import { ICON_SIZE, type Theme } from "@/styles/theme";
 
 const foregroundColorMapping = (theme: Theme) => ({ color: theme.colors.foreground });
@@ -28,6 +29,7 @@ interface SidebarBackRowProps {
  */
 export function SidebarBackRow({ onBeforeNavigate }: SidebarBackRowProps) {
   const { t } = useTranslation();
+  const freewindMode = useSettings((settings) => settings.freewindMode);
   const { canGoBack, goBack, canGoForward, goForward } = useRouteBack();
 
   const handleBack = useCallback(() => {
@@ -47,6 +49,9 @@ export function SidebarBackRow({ onBeforeNavigate }: SidebarBackRowProps) {
     onBeforeNavigate?.();
     goForward();
   }, [canGoForward, goForward, onBeforeNavigate]);
+
+  // Upstream has no back/forward strip at the top of the sidebar.
+  if (!freewindMode) return null;
 
   return (
     <View style={styles.row}>
