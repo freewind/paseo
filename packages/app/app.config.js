@@ -174,7 +174,7 @@ export default {
         {
           ios: { enableSceneSupport: true },
           android: {
-            minSdkVersion: 29,
+            minSdkVersion: 28,
             kotlinVersion: "2.1.20",
             // Allow HTTP connections for local network hosts in release builds
             usesCleartextTraffic: true,
