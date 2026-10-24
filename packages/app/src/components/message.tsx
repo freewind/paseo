@@ -3276,7 +3276,7 @@ export const ExpandableBadge = memo(function ExpandableBadge({
             onLabelRowLayout={handleLabelRowLayout}
             onLabelLayout={handleLabelLayout}
             onSecondaryLayout={handleSecondaryLayout}
-            multiline={settings.workspaceTitleMultiline}
+            multiline={settings.freewindMode}
           />
         </Pressable>
         {/* Web renders role="button" as a real <button>, and a button inside a button

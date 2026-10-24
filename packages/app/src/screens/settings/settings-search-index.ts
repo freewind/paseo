@@ -46,7 +46,6 @@ export const SETTINGS_SEARCH_INDEX: SettingsSearchSection[] = [
     section: "appearance",
     rows: [
       { labelKey: "settings.appearance.theme.title" },
-      { labelKey: "settings.appearance.workspaceRows.titleLines.label" },
       { labelKey: "settings.appearance.fonts.interfaceFont" },
       { labelKey: "settings.appearance.fonts.interfaceSize" },
       { labelKey: "settings.appearance.fonts.contentSize" },
