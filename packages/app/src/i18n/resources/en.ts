@@ -2147,7 +2147,6 @@ export const en = {
     },
     groupInfo: "About {{title}}",
     sections: {
-      freewind: "Freewind mode",
       general: "General",
       chat: "Chat",
       appearance: "Appearance",
@@ -2222,13 +2221,6 @@ export const en = {
       sentTitle: "Test notification sent",
       sentDescription: "Paseo handed the notification to the operating system.",
       sendFailedTitle: "Unable to send test notification",
-    },
-    freewind: {
-      title: "Freewind mode",
-      mode: {
-        label: "Freewind mode",
-        description: "Show our customized features; turn off to use the upstream app.",
-      },
     },
     hostSections: {
       projects: "Projects",

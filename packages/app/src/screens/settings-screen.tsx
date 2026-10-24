@@ -57,7 +57,7 @@ import { AppearanceSection } from "@/screens/settings/appearance/appearance-sect
 import { OpenLocationSection } from "@/screens/settings/open-location/open-location-section";
 import { TerminalSection } from "@/screens/settings/terminal/terminal-section";
 import { ChatSection } from "@/screens/settings/chat/chat-section";
-import { FreewindSection } from "@/screens/settings/freewind/freewind-section";
+import { FreewindSection, useFreewindCopy } from "@/screens/settings/freewind/freewind-section";
 import { SidebarNavSection } from "@/screens/settings/sidebar/sidebar-nav-section";
 import { SendingSection } from "@/screens/settings/general/sending-section";
 import {
@@ -968,6 +968,7 @@ function SettingsSidebar({
 }: SettingsSidebarProps) {
   const { theme } = useUnistyles();
   const { t } = useTranslation();
+  const freewindCopy = useFreewindCopy();
   const hosts = useHosts();
   const localServerId = useLocalDaemonServerId();
   const sortedHosts = useSortedHosts(hosts, localServerId);
@@ -1030,7 +1031,7 @@ function SettingsSidebar({
           <SidebarSectionButton
             key={item.id}
             itemId={item.id}
-            label={t(item.labelKey)}
+            label={item.id === "freewind" ? freewindCopy.title : t(item.labelKey)}
             icon={item.icon}
             isSelected={selectedSectionId === item.id}
             onSelect={onSelectSection}
@@ -1145,6 +1146,7 @@ export interface SettingsScreenProps {
 export default function SettingsScreen({ view, openAddHostIntent = null }: SettingsScreenProps) {
   const router = useRouter();
   const { t } = useTranslation();
+  const freewindCopy = useFreewindCopy();
   const voiceAudioEngine = useVoiceAudioEngineOptional();
   const { settings, isLoading: settingsLoading, updateSettings } = useAppSettings();
   const [isAddHostMethodVisible, setIsAddHostMethodVisible] = useState(false);
@@ -1382,7 +1384,8 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
     }
     if (view.kind === "section") {
       const item = SIDEBAR_SECTION_ITEMS.find((s) => s.id === view.section);
-      return item ? t(item.labelKey) : undefined;
+      if (!item) return undefined;
+      return item.id === "freewind" ? freewindCopy.title : t(item.labelKey);
     }
     if (view.kind === "project") {
       return t("settings.projects");

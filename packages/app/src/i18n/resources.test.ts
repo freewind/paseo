@@ -104,8 +104,15 @@ function findUntranslatedConnectionErrors(): string[] {
 }
 
 describe("translation resources", () => {
-  it("keeps the Chinese keys in sync with English", () => {
+  it("keeps all supported language keys in sync with English", () => {
     const englishKeys = flattenKeys(en).sort();
+    expect(flattenKeys(ar).sort()).toEqual(englishKeys);
+    expect(flattenKeys(es).sort()).toEqual(englishKeys);
+    expect(flattenKeys(fr).sort()).toEqual(englishKeys);
+    expect(flattenKeys(ja).sort()).toEqual(englishKeys);
+    expect(flattenKeys(ko).sort()).toEqual(englishKeys);
+    expect(flattenKeys(ptBR).sort()).toEqual(englishKeys);
+    expect(flattenKeys(ru).sort()).toEqual(englishKeys);
     expect(flattenKeys(zhCN).sort()).toEqual(englishKeys);
   });
 

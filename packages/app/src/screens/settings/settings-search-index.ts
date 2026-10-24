@@ -16,7 +16,6 @@ export interface SettingsSearchRow {
 }
 
 export type SettingsSectionSlugForSearch =
-  | "freewind"
   | "general"
   | "appearance"
   | "sidebar"
@@ -35,10 +34,6 @@ export interface SettingsSearchSection {
 }
 
 export const SETTINGS_SEARCH_INDEX: SettingsSearchSection[] = [
-  {
-    section: "freewind",
-    rows: [{ labelKey: "settings.freewind.mode.label" }],
-  },
   {
     section: "general",
     rows: [

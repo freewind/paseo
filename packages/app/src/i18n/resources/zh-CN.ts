@@ -2106,7 +2106,6 @@ export const zhCN: TranslationResources = {
     },
     groupInfo: "关于 {{title}}",
     sections: {
-      freewind: "自由风模式",
       general: "通用",
       chat: "聊天",
       appearance: "外观",
@@ -2181,13 +2180,6 @@ export const zhCN: TranslationResources = {
       sentTitle: "测试通知已发送",
       sentDescription: "Paseo 已将通知交给操作系统。",
       sendFailedTitle: "无法发送测试通知",
-    },
-    freewind: {
-      title: "自由风模式",
-      mode: {
-        label: "自由风模式",
-        description: "显示我们的定制功能；关闭后使用上游原版。",
-      },
     },
     hostSections: {
       projects: "项目",
