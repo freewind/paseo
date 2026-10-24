@@ -24,6 +24,7 @@ import {
   type WorkspaceServiceSummary,
 } from "@/components/sidebar/workspace-meta-row";
 import { useWorkspaceLabelMenuPages, type WorkspaceLabelTarget } from "@/workspace-labels/picker";
+import { useSidebarWorkspaceSetup } from "@/components/sidebar/use-sidebar-workspace-setup";
 
 const foregroundColorMapping = (theme: Theme) => ({ color: theme.colors.foreground });
 const foregroundMutedColorMapping = (theme: Theme) => ({
@@ -48,6 +49,9 @@ export interface SidebarWorkspaceMenuProps {
   onCreateAgent?: () => void;
   onCopyPath?: () => void;
   onCopyBranchName?: () => void;
+  /** The header's "Show setup" item, fed by `useSidebarWorkspaceSetup`. */
+  showWorkspaceSetup?: boolean;
+  onOpenSetupTab?: () => void;
   onRename?: () => void;
   onMarkAsRead?: () => void;
   onMarkAsUnread?: () => void;
@@ -103,6 +107,7 @@ function SidebarWorkspaceMenuItems({
     [serverId, workspaceId, workspaceLabels],
   );
   const restoreLastArchivedAgent = useRestoreLastArchivedAgent({ serverId, workspaceId });
+  const sidebarSetup = useSidebarWorkspaceSetup(serverId, workspaceId);
   return (
     <WorkspaceMenuActionItems
       surface={surface}
@@ -112,6 +117,9 @@ function SidebarWorkspaceMenuItems({
       onCreateAgent={onCreateAgent}
       onCopyPath={onCopyPath}
       onCopyBranchName={onCopyBranchName}
+      showBranchName={Boolean(onCopyBranchName)}
+      onOpenSetupTab={sidebarSetup.openSetupTab}
+      showWorkspaceSetup={sidebarSetup.showWorkspaceSetup}
       onRename={onRename}
       onMarkAsRead={onMarkAsRead}
       onMarkAsUnread={onMarkAsUnread}
