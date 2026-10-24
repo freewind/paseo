@@ -118,6 +118,7 @@ and updating `next`, integrating it after a release, and releasing a hotfix from
 - **NEVER restart the main Paseo daemon on port 6767 without permission** — it manages all running agents. If you're an agent, restarting it kills your own process.
 - **NEVER assume a timeout means the service needs restarting** — timeouts can be transient.
 - **NEVER add auth checks to tests** — agent providers handle their own auth.
+- **Only `en` and `zh-CN` translations belong to us.** Treat every other locale (`ar`, `es`, `fr`, `ja`, `ko`, `pt-BR`, `ru`) as upstream-owned: never add, edit, or delete keys there. When UI copy changes, update `en` and `zh-CN` only, and keep the i18n key-sync test scoped to those two.
 - **Before changing app routes, startup routing, remembered workspace restore, or active workspace selection, read [docs/expo-router.md](docs/expo-router.md).**
 - **NEVER run the full test suite locally.** The test suites are heavy and will freeze the machine, especially if multiple agents run them in parallel. Rules:
   - Run only the specific test file you changed: `npx vitest run <file> --bail=1`
