@@ -190,6 +190,12 @@ The app runs on iOS, Android, web (browser), and web (Electron desktop). Code is
 - **Don't use Platform.OS as a proxy for layout capabilities.** Use breakpoints for layout decisions, not platform checks.
 - **Import `isWeb`/`isNative` from `@/constants/platform`.** Never write `const isWeb = Platform.OS === "web"` locally.
 
+## Menu parity
+
+The sidebar's workspace and agent menus must offer exactly the same items as the workspace header and tab menus on the chat page: same entries, same order, same wording. Only the presentation differs — the sidebar passes `surface="context"`, the header passes `"dropdown"`.
+
+Both sides already share `WorkspaceMenuActionItems` and `buildWorkspaceTabMenuEntries`; parity is a property of those two modules, not of the call sites. When you add, rename, or remove an item, change it there once and check both surfaces. A call site that passes `showX` / `xDisabled` flags is allowed; a call site that omits an entry the other one shows is not.
+
 ## Debugging
 
 Find the complete daemon logs and traces in the $PASEO_HOME/daemon.log
