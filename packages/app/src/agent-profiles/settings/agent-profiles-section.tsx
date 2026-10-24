@@ -6,6 +6,7 @@ import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import type { AgentProfile } from "@getpaseo/protocol/messages";
 import { Button } from "@/components/ui/button";
 import { useProvidersSnapshot } from "@/hooks/use-providers-snapshot";
+import { useSettings } from "@/hooks/use-settings";
 import { useHostRuntimeIsConnected } from "@/runtime/host-runtime";
 import { SettingsSection } from "@/components/settings/headings/settings-section";
 import { settingsStyles } from "@/styles/settings";
@@ -26,8 +27,9 @@ interface EditTarget {
   profile?: AgentProfile;
 }
 
-export function AgentProfilesSection({ serverId }: { serverId: string }): ReactElement {
+export function AgentProfilesSection({ serverId }: { serverId: string }): ReactElement | null {
   const { t } = useTranslation();
+  const freewindMode = useSettings((settings) => settings.freewindMode);
   const isConnected = useHostRuntimeIsConnected(serverId);
   const { profiles, isSupported, saveProfiles } = useAgentProfiles(serverId);
   const { entries } = useProvidersSnapshot(serverId, { cwd: null });
@@ -134,6 +136,9 @@ export function AgentProfilesSection({ serverId }: { serverId: string }): ReactE
     ),
     [handleAddOpen, profiles, t],
   );
+
+  // Freewind mode ships without profiles; upstream mode keeps them.
+  if (freewindMode) return null;
 
   if (!isConnected || !isSupported) {
     return (
