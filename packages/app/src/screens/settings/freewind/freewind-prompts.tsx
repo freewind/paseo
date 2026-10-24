@@ -93,6 +93,7 @@ export function FreewindPromptCard({
         value={draft}
         onChangeText={setDraft}
         placeholder={builtInDefaults[promptKey]}
+        style={styles.input}
       />
       <View style={styles.actions}>
         <Button
@@ -110,6 +111,10 @@ export function FreewindPromptCard({
 }
 
 const styles = StyleSheet.create((theme) => ({
+  // Two lines is enough to see what a prompt looks like; the full text is in the placeholder.
+  input: {
+    minHeight: 56,
+  },
   actions: {
     flexDirection: "row",
     justifyContent: "flex-end",

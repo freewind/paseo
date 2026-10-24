@@ -16,11 +16,15 @@ const freewind = {
     title: "Freewind mode",
     label: "Freewind mode",
     description: "Show our customized features; turn off to use the upstream app.",
+    promptsTitle: "Metadata prompts",
+    audioTitle: "Sound and read-aloud",
   },
   zh: {
     title: "Freewind 模式",
     label: "Freewind 模式",
     description: "显示我们的定制功能；关闭后使用上游原版。",
+    promptsTitle: "元数据提示词",
+    audioTitle: "声音与朗读",
   },
 } as const;
 
@@ -41,27 +45,33 @@ export function FreewindSection() {
   );
 
   return (
-    <SettingsSection title={copy.title}>
-      <SettingsCard>
-        <SettingsSwitch
-          label={copy.label}
-          hint={copy.description}
-          value={settings.freewindMode}
-          onValueChange={changeFreewindMode}
-          testID="freewind-mode-switch"
-        />
-      </SettingsCard>
+    <>
+      <SettingsSection title={copy.title}>
+        <SettingsCard>
+          <SettingsSwitch
+            label={copy.label}
+            hint={copy.description}
+            value={settings.freewindMode}
+            onValueChange={changeFreewindMode}
+            testID="freewind-mode-switch"
+          />
+        </SettingsCard>
+      </SettingsSection>
       {settings.freewindMode && serverId ? (
         <>
-          <SettingsCard>
-            <FreewindChatAudio />
-          </SettingsCard>
-          <FreewindPromptCard serverId={serverId} promptKey="title" isZh={isZh} />
-          <FreewindPromptCard serverId={serverId} promptKey="branchName" isZh={isZh} />
-          <FreewindPromptCard serverId={serverId} promptKey="commitMessage" isZh={isZh} />
-          <FreewindPromptCard serverId={serverId} promptKey="pullRequest" isZh={isZh} />
+          <SettingsSection title={copy.promptsTitle}>
+            <FreewindPromptCard serverId={serverId} promptKey="title" isZh={isZh} />
+            <FreewindPromptCard serverId={serverId} promptKey="branchName" isZh={isZh} />
+            <FreewindPromptCard serverId={serverId} promptKey="commitMessage" isZh={isZh} />
+            <FreewindPromptCard serverId={serverId} promptKey="pullRequest" isZh={isZh} />
+          </SettingsSection>
+          <SettingsSection title={copy.audioTitle}>
+            <SettingsCard>
+              <FreewindChatAudio />
+            </SettingsCard>
+          </SettingsSection>
         </>
       ) : null}
-    </SettingsSection>
+    </>
   );
 }
