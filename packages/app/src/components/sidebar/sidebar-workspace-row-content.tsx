@@ -156,9 +156,20 @@ export const SidebarWorkspaceRowContent = memo(function SidebarWorkspaceRowConte
         )}
         <View style={styles.workspaceContentColumn}>
           <View style={styles.workspaceTitleRow}>
-            <Text style={workspaceBranchTextStyle} numberOfLines={1}>
-              {workspaceLabel}
-            </Text>
+            <View style={sidebarWorkspaceRowStyles.titleWithCount}>
+              <Text style={workspaceBranchTextStyle} numberOfLines={1}>
+                {workspaceLabel}
+              </Text>
+              {workspace.activeAgentCount >= 2 ? (
+                <Text
+                  style={sidebarWorkspaceRowStyles.agentCountText}
+                  numberOfLines={1}
+                  testID={`sidebar-workspace-agent-count-${workspace.workspaceKey}`}
+                >
+                  ({workspace.activeAgentCount})
+                </Text>
+              ) : null}
+            </View>
             <View style={sidebarWorkspaceRowStyles.rowRight}>{children}</View>
           </View>
           <WorkspaceMetaRow
@@ -288,6 +299,21 @@ export const sidebarWorkspaceRowStyles = StyleSheet.create((theme) => ({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: theme.spacing[2],
+    flexShrink: 0,
+  },
+  // 有计数时（该工作区 >= 2 个根 agent）标题要让位：这一层的 flexShrink: 1 与 minWidth: 0
+  // 让标题文本收缩，把宽度留给右边的 rowRight（它 flexShrink: 0，不会自己让）。
+  // 代价是带计数的工作区里，长标题比过去更早被截断——这是有意的取舍，不是排版错。
+  titleWithCount: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: theme.spacing[0.5],
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  agentCountText: {
+    color: theme.colors.foregroundMuted,
+    fontSize: theme.fontSize.sm,
     flexShrink: 0,
   },
   shortcutBadge: {
