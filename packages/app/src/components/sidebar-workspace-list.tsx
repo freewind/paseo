@@ -1227,7 +1227,6 @@ function WorkspaceRowInner({
                 </SidebarWorkspaceRowContent>
               </SidebarWorkspaceContextMenu>
             </View>
-            {/* Core: every workspace lists its agent tabs in both modes, never behind freewindMode. */}
             <SidebarWorkspaceAgentList workspace={workspace} />
           </>
         );

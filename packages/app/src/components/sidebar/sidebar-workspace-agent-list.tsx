@@ -82,7 +82,7 @@ export const SidebarWorkspaceAgentList = memo(function SidebarWorkspaceAgentList
   // The same "Title lines" setting that lets a workspace title wrap governs the agent rows nested
   // under it, so a long agent title stops ending in a lone ellipsis under the ⋯ menu.
   const {
-    settings: { workspaceTitleMultiline },
+    settings: { workspaceTitleMultiline, freewindMode },
   } = useAppSettings();
   const actions = useWorkspaceAgentTabActions({ serverId, workspaceId, rows });
 
@@ -137,6 +137,8 @@ export const SidebarWorkspaceAgentList = memo(function SidebarWorkspaceAgentList
     [isCompactLayout, serverId, showMobileAgent, workspaceId],
   );
 
+  // Upstream workspaces hold no nested agent rows; the whole list belongs to Freewind mode.
+  if (!freewindMode) return null;
   if (rows.length === 0) return null;
 
   return (
