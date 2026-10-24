@@ -2,6 +2,29 @@ import { en, type TranslationResources } from "./en";
 import { pluginSettings } from "./plugin-settings";
 
 export const zhCN: TranslationResources = {
+  freewind: {
+    title: "Freewind 模式",
+    label: "Freewind 模式",
+    description: "显示我们的定制功能；关闭后使用上游原版。",
+    promptsTitle: "元数据提示词",
+    promptsEdit: "编辑提示词",
+    audioTitle: "声音与朗读",
+    prompt: {
+      title: "工作区标题",
+      branchName: "分支名",
+      commitMessage: "提交信息",
+      pullRequest: "PR 文本",
+      hint: "留空则使用内置文案。",
+      save: "保存",
+      saving: "保存中…",
+      saveFailed: "保存失败",
+    },
+    bulk: {
+      open: "批量添加",
+      placeholder: "每行输入一条",
+      submit: "全部添加",
+    },
+  },
   paneFind: {
     connectionFailure: "无法搜索此聊天。请检查主机连接后重试。",
     historyChangedFailure: "搜索期间聊天已更改。请重新搜索。",

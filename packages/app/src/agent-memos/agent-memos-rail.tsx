@@ -33,14 +33,6 @@ const BulkTextInput = withUnistyles(EditingTextInput, (theme) => ({
   placeholderTextColor: theme.colors.foregroundMuted,
 }));
 
-/**
- * Bulk-add copy lives here rather than in the i18n resources: adding a key to `en` would force the
- * same key into the seven locales that stay byte-identical to upstream. See AGENTS.md.
- */
-const bulkCopy = {
-  en: { open: "Add several", placeholder: "One memo per line", submit: "Add all" },
-  zh: { open: "批量添加", placeholder: "每行输入一条", submit: "全部添加" },
-} as const;
 const ThemedTrash2 = withUnistyles(Trash2, mutedIconMapping);
 const ThemedCircle = withUnistyles(Circle, mutedIconMapping);
 const ThemedCheckCircle2 = withUnistyles(CheckCircle2, completedIconMapping);
@@ -88,7 +80,7 @@ export const AgentMemosRail = memo(function AgentMemosRail({
   /** Appends the memo (text + images) to the composer without sending. */
   onAppendToComposer: (memo: AgentMemo) => void;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const supported = useHostFeature(serverId, "agentMemos");
   const supportsCompletion = useHostFeature(serverId, "agentMemoCompletion");
   const supportsImages = useHostFeature(serverId, "agentMemoImages");
@@ -100,7 +92,14 @@ export const AgentMemosRail = memo(function AgentMemosRail({
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [bulkKey, setBulkKey] = useState(0);
   const bulkDraft = useRef("");
-  const bulk = i18n.language.toLowerCase().startsWith("zh") ? bulkCopy.zh : bulkCopy.en;
+  const bulk = useMemo(
+    () => ({
+      open: t("freewind.bulk.open"),
+      placeholder: t("freewind.bulk.placeholder"),
+      submit: t("freewind.bulk.submit"),
+    }),
+    [t],
+  );
   const [editingMemoId, setEditingMemoId] = useState<string | null>(null);
   const [lightboxSource, setLightboxSource] = useState<ImageLightboxSource | null>(null);
 

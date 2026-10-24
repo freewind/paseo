@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { StyleSheet } from "react-native-unistyles";
 import { Button } from "@/components/ui/button";
 import { SettingsTextArea } from "@/components/settings-textarea";
@@ -24,18 +25,6 @@ const builtInDefaults: Record<MetadataPromptKey, string> = {
   pullRequest: "Clear, descriptive title; body explaining what changed and why.",
 };
 
-const labels: Record<MetadataPromptKey, { en: string; zh: string }> = {
-  title: { en: "Workspace title", zh: "工作区标题" },
-  branchName: { en: "Branch name", zh: "分支名" },
-  commitMessage: { en: "Commit message", zh: "提交信息" },
-  pullRequest: { en: "Pull request", zh: "PR 文本" },
-};
-
-const hints = { en: "Leave empty to use the built-in wording.", zh: "留空则使用内置文案。" };
-const saveLabels = { en: "Save", zh: "保存" };
-const savingLabels = { en: "Saving…", zh: "保存中…" };
-const saveErrorLabels = { en: "Save failed", zh: "保存失败" };
-
 function instructionsPatch(
   key: MetadataPromptKey,
   instructions: string,
@@ -46,12 +35,11 @@ function instructionsPatch(
 export function FreewindPromptCard({
   serverId,
   promptKey,
-  isZh,
 }: {
   serverId: string;
   promptKey: MetadataPromptKey;
-  isZh: boolean;
 }) {
+  const { t } = useTranslation();
   const { config, patchConfig } = useDaemonConfig(serverId);
   const persisted = config?.metadataGeneration[promptKey]?.instructions ?? "";
   const [draft, setDraft] = useState(persisted);
@@ -68,23 +56,23 @@ export function FreewindPromptCard({
     void patchConfig({ metadataGeneration: instructionsPatch(promptKey, draft.trim()) })
       .catch((error) => {
         Alert.alert(
-          isZh ? saveErrorLabels.zh : saveErrorLabels.en,
+          t("freewind.prompt.saveFailed"),
           error instanceof Error ? error.message : String(error),
         );
       })
       .finally(() => setIsSaving(false));
-  }, [draft, isZh, patchConfig, promptKey]);
+  }, [draft, patchConfig, promptKey, t]);
 
-  const label = isZh ? labels[promptKey].zh : labels[promptKey].en;
-  const saveLabel = isZh ? saveLabels.zh : saveLabels.en;
-  const savingLabel = isZh ? savingLabels.zh : savingLabels.en;
+  const label = t(`freewind.prompt.${promptKey}`);
+  const saveLabel = t("freewind.prompt.save");
+  const savingLabel = t("freewind.prompt.saving");
 
   return (
     <View style={settingsStyles.card}>
       <View style={settingsStyles.row}>
         <View style={settingsStyles.rowContent}>
           <Text style={settingsStyles.rowTitle}>{label}</Text>
-          <Text style={settingsStyles.rowHint}>{isZh ? hints.zh : hints.en}</Text>
+          <Text style={settingsStyles.rowHint}>{t("freewind.prompt.hint")}</Text>
         </View>
       </View>
       <SettingsTextArea

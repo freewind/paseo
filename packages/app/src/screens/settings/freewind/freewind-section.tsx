@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   SettingsCard,
@@ -11,39 +11,21 @@ import { useSessionStore } from "@/stores/session-store";
 import { FreewindChatAudio } from "./freewind-chat-audio";
 import { FreewindPromptCard } from "./freewind-prompts";
 
-/**
- * Copy lives here rather than in the i18n resources: only `en` and `zh-CN` belong to us and
- * the other locales stay byte-identical to upstream, so a key added to the resources would
- * force edits there. "Freewind" is a name, not a translated word. See AGENTS.md.
- */
-const freewind = {
-  en: {
-    title: "Freewind mode",
-    label: "Freewind mode",
-    description: "Show our customized features; turn off to use the upstream app.",
-    promptsTitle: "Metadata prompts",
-    promptsEdit: "Edit prompts",
-    audioTitle: "Sound and read-aloud",
-  },
-  zh: {
-    title: "Freewind 模式",
-    label: "Freewind 模式",
-    description: "显示我们的定制功能；关闭后使用上游原版。",
-    promptsTitle: "元数据提示词",
-    promptsEdit: "编辑提示词",
-    audioTitle: "声音与朗读",
-  },
-} as const;
-
+/** Menu label, page title and the switch's hint, read from the shared resources. */
 export function useFreewind() {
-  const { i18n } = useTranslation();
-  return i18n.language.toLowerCase().startsWith("zh") ? freewind.zh : freewind.en;
+  const { t } = useTranslation();
+  return useMemo(
+    () => ({
+      title: t("freewind.title"),
+      label: t("freewind.label"),
+      description: t("freewind.description"),
+    }),
+    [t],
+  );
 }
 
 export function FreewindSection() {
-  const copy = useFreewind();
-  const { i18n } = useTranslation();
-  const isZh = i18n.language.toLowerCase().startsWith("zh");
+  const { t } = useTranslation();
   const serverId = useSessionStore((state) => Object.keys(state.sessions)[0] ?? null);
   const { settings, updateSettings } = useAppSettings();
   const changeFreewindMode = useCallback(
@@ -53,11 +35,11 @@ export function FreewindSection() {
 
   return (
     <>
-      <SettingsSection title={copy.title}>
+      <SettingsSection title={t("freewind.title")}>
         <SettingsCard>
           <SettingsSwitch
-            label={copy.label}
-            hint={copy.description}
+            label={t("freewind.label")}
+            hint={t("freewind.description")}
             value={settings.freewindMode}
             onValueChange={changeFreewindMode}
             testID="freewind-mode-switch"
@@ -66,18 +48,18 @@ export function FreewindSection() {
       </SettingsSection>
       {settings.freewindMode && serverId ? (
         <>
-          <SettingsSection title={copy.audioTitle}>
+          <SettingsSection title={t("freewind.audioTitle")}>
             <SettingsCard>
               <FreewindChatAudio />
             </SettingsCard>
           </SettingsSection>
-          <SettingsSection title={copy.promptsTitle}>
+          <SettingsSection title={t("freewind.promptsTitle")}>
             <SettingsCard>
-              <SettingsCollapsibleRow label={copy.promptsEdit} testID="freewind-prompts">
-                <FreewindPromptCard serverId={serverId} promptKey="title" isZh={isZh} />
-                <FreewindPromptCard serverId={serverId} promptKey="branchName" isZh={isZh} />
-                <FreewindPromptCard serverId={serverId} promptKey="commitMessage" isZh={isZh} />
-                <FreewindPromptCard serverId={serverId} promptKey="pullRequest" isZh={isZh} />
+              <SettingsCollapsibleRow label={t("freewind.promptsEdit")} testID="freewind-prompts">
+                <FreewindPromptCard serverId={serverId} promptKey="title" />
+                <FreewindPromptCard serverId={serverId} promptKey="branchName" />
+                <FreewindPromptCard serverId={serverId} promptKey="commitMessage" />
+                <FreewindPromptCard serverId={serverId} promptKey="pullRequest" />
               </SettingsCollapsibleRow>
             </SettingsCard>
           </SettingsSection>

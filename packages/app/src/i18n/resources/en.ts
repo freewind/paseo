@@ -1,4 +1,27 @@
 export const en = {
+  freewind: {
+    title: "Freewind mode",
+    label: "Freewind mode",
+    description: "Show our customized features; turn off to use the upstream app.",
+    promptsTitle: "Metadata prompts",
+    promptsEdit: "Edit prompts",
+    audioTitle: "Sound and read-aloud",
+    prompt: {
+      title: "Workspace title",
+      branchName: "Branch name",
+      commitMessage: "Commit message",
+      pullRequest: "Pull request",
+      hint: "Leave empty to use the built-in wording.",
+      save: "Save",
+      saving: "Saving…",
+      saveFailed: "Save failed",
+    },
+    bulk: {
+      open: "Add several",
+      placeholder: "One memo per line",
+      submit: "Add all",
+    },
+  },
   paneFind: {
     connectionFailure: "Could not search this chat. Check the host connection and retry.",
     historyChangedFailure: "The chat changed while searching. Search again.",
