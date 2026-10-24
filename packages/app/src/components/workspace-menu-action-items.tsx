@@ -26,6 +26,7 @@ import { ContextMenuItem } from "@/components/ui/context-menu";
 import { Shortcut } from "@/components/ui/shortcut";
 import { OpenInFileManagerMenuItem } from "@/workspace/open-in-file-manager/menu-item";
 import { WORKSPACE_LABEL_PAGE_ID, type WorkspaceLabelTarget } from "@/workspace-labels/picker";
+import { useSettings } from "@/hooks/use-settings";
 
 const muted = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
 const IconNew = withUnistyles(SquarePen);
@@ -203,6 +204,7 @@ function WorkspaceMenuStateItems(props: WorkspaceMenuActionItemsProps) {
   } = props;
   const { t } = useTranslation();
   const closeMenu = useDropdownMenuClose();
+  const freewindMode = useSettings((settings) => settings.freewindMode);
   const archiveTrailing = useMemo(
     () => (archiveShortcutKeys ? <Shortcut chord={archiveShortcutKeys} /> : null),
     [archiveShortcutKeys],
@@ -251,7 +253,7 @@ function WorkspaceMenuStateItems(props: WorkspaceMenuActionItemsProps) {
           {t(isPinned ? "sidebar.workspace.actions.unpin" : "sidebar.workspace.actions.pin")}
         </WorkspaceMenuItem>
       ) : null}
-      {workspaceTarget ? (
+      {workspaceTarget && !freewindMode ? (
         <DropdownMenuSubTrigger
           id={WORKSPACE_LABEL_PAGE_ID}
           leading={LEADING_TAG}
