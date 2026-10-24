@@ -94,7 +94,6 @@ import { DesktopNotificationsSection } from "@/desktop/components/desktop-notifi
 import { BrowserDataSection } from "@/desktop/browser/settings/browser-data-section";
 import { IntegrationsSection } from "@/desktop/components/integrations-section";
 import { isElectronRuntime } from "@/desktop/host";
-import { useDesktopSettings } from "@/desktop/settings/desktop-settings";
 import { useDesktopAppUpdater } from "@/desktop/updates/use-desktop-app-updater";
 import { formatVersionWithPrefix } from "@/desktop/updates/desktop-updates";
 import { resolveAppVersion } from "@/utils/app-version";
@@ -620,7 +619,6 @@ function getUpdateButtonLabel(
 function DesktopAppUpdateRow() {
   const { t } = useTranslation();
   const { settings, updateSettings } = useSettings();
-  const { settings: desktopSettings, updateSettings: updateDesktopSettings } = useDesktopSettings();
   const {
     isDesktopApp,
     statusText,
@@ -654,12 +652,6 @@ function DesktopAppUpdateRow() {
       void updateSettings({ releaseChannel });
     },
     [updateSettings],
-  );
-  const handleAutoCheckUpdatesChange = useCallback(
-    (value: boolean) => {
-      void updateDesktopSettings({ autoCheckUpdates: value });
-    },
-    [updateDesktopSettings],
   );
   const releaseChannelOptions = useMemo(
     () => [
@@ -717,20 +709,6 @@ function DesktopAppUpdateRow() {
           value={settings.releaseChannel}
           onValueChange={handleReleaseChannelChange}
           options={releaseChannelOptions}
-        />
-      </View>
-      <View style={[settingsStyles.row, settingsStyles.rowBorder]}>
-        <View style={settingsStyles.rowContent}>
-          <Text style={settingsStyles.rowTitle}>{t("settings.about.updates.autoCheck.label")}</Text>
-          <Text style={settingsStyles.rowHint}>
-            {t("settings.about.updates.autoCheck.description")}
-          </Text>
-        </View>
-        <Switch
-          value={desktopSettings.autoCheckUpdates}
-          onValueChange={handleAutoCheckUpdatesChange}
-          accessibilityLabel={t("settings.about.updates.autoCheck.label")}
-          testID="settings-auto-check-updates-switch"
         />
       </View>
       <View style={[settingsStyles.row, settingsStyles.rowBorder]}>

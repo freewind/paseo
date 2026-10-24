@@ -18,6 +18,7 @@ import {
   type DesktopAppUpdateStatus,
 } from "@/desktop/updates/desktop-app-updater";
 import { formatMessageTimestamp } from "@/utils/time";
+import { useSettings } from "@/hooks/use-settings";
 
 export type { DesktopAppUpdateStatus };
 
@@ -42,7 +43,9 @@ export function useDesktopAppUpdater(): UseDesktopAppUpdaterReturn {
   const isDesktopApp = shouldShowDesktopUpdateSection();
   const { settings: desktopSettings, isLoading: isLoadingSettings } = useDesktopSettings();
   const releaseChannel = desktopSettings.releaseChannel;
-  const autoCheckUpdates = desktopSettings.autoCheckUpdates;
+  // Freewind mode never checks for updates on its own; a manual check still works.
+  const freewindMode = useSettings((settings) => settings.freewindMode);
+  const autoCheckUpdates = desktopSettings.autoCheckUpdates && !freewindMode;
   const settingsLoaded = !isLoadingSettings;
   const reportError = useDesktopIpcErrorReporter();
 
