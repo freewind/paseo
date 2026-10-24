@@ -149,7 +149,7 @@ export const SidebarWorkspaceRowContent = memo(function SidebarWorkspaceRowConte
                 style={workspaceBranchTextStyle}
                 numberOfLines={freewindMode ? undefined : 1}
               />
-              {workspace.activeAgentCount >= 2 ? (
+              {freewindMode && workspace.activeAgentCount >= 2 ? (
                 <Text
                   style={sidebarWorkspaceRowStyles.agentCountText}
                   numberOfLines={1}
