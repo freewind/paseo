@@ -134,6 +134,9 @@ const styles = StyleSheet.create((theme) => {
     pressed: {
       opacity: 0.85,
     },
+    pressedTransparent: {
+      backgroundColor: theme.colors.surface2,
+    },
     disabled: {
       opacity: theme.opacity[50],
     },
@@ -220,16 +223,22 @@ export function Button({
   const handleHoverIn = useCallback(() => setHovered(true), []);
   const handleHoverOut = useCallback(() => setHovered(false), []);
 
+  // 透明变体没有可变暗的东西：把透明填充调低透明度，只露出按钮
+  // 背后的内容，所以 outline 或 ghost 的按下完全看不出来。它们改用填充色，
+  // 与菜单行的按下态同一个。
+  const isTransparentVariant = variant === "ghost" || variant === "outline";
+  const pressedStyle = isTransparentVariant ? styles.pressedTransparent : styles.pressed;
+
   const pressableStyle = useCallback(
     ({ pressed }: PressableStateCallbackType): StyleProp<ViewStyle> => [
       styles.base,
       sizeStyle,
       variantStyle,
-      pressed ? styles.pressed : null,
+      pressed ? pressedStyle : null,
       isDisabled ? styles.disabled : null,
       style,
     ],
-    [sizeStyle, variantStyle, isDisabled, style],
+    [pressedStyle, sizeStyle, variantStyle, isDisabled, style],
   );
 
   const resolvedTextStyle = useMemo(
