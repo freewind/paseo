@@ -16,6 +16,7 @@ import {
   useState,
   useEffect,
   useRef,
+  type ComponentRef,
   type ReactElement,
   type MutableRefObject,
   type Ref,
@@ -2163,6 +2164,25 @@ function ProjectModeList({
   onPinnedWorkspaceReorder: (workspaces: SidebarWorkspacePlacement[]) => void;
 }) {
   const { t } = useTranslation();
+  const scrollRef = useRef<ComponentRef<typeof NestableScrollContainer>>(null);
+  const projectScrollOffset = useSidebarViewStore((state) => state.projectScrollOffset);
+  const setProjectScrollOffset = useSidebarViewStore((state) => state.setProjectScrollOffset);
+  const restoredScrollRef = useRef(false);
+  const initialProjectScrollOffsetRef = useRef(projectScrollOffset);
+  // 恢复滚动位置挂在 onLayout 上：此刻只是容器完成布局，列表内容未必已经撑开。
+  // 长列表遇到「布局先到、内容后撑开」时，scrollTo 的目标偏移会被随后撑开的内容顶回去，落不到目标处。
+  // 这是已知上限；要精确恢复，需等内容测量完成后再 scrollTo。
+  const restoreScroll = useCallback(() => {
+    if (restoredScrollRef.current) return;
+    restoredScrollRef.current = true;
+    scrollRef.current?.scrollTo({ y: initialProjectScrollOffsetRef.current, animated: false });
+  }, []);
+  const handleScroll = useCallback(
+    (event: { nativeEvent: { contentOffset: { y: number } } }) => {
+      setProjectScrollOffset(event.nativeEvent.contentOffset.y);
+    },
+    [setProjectScrollOffset],
+  );
   const hasActiveHostFilter = useSidebarViewStore((state) => state.hostFilters.length > 0);
   const [creatingWorkspaceIds, setCreatingWorkspaceIds] = useState<Set<string>>(() => new Set());
   const creatingWorkspaceTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
@@ -2520,18 +2540,26 @@ function ProjectModeList({
       {platformIsNative ? (
         <NestableScrollContainer
           {...nativeScrollGestureProps}
+          ref={scrollRef}
           style={styles.list}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          onLayout={restoreScroll}
+          onScroll={handleScroll}
+          scrollEventThrottle={100}
           testID="sidebar-project-workspace-list-scroll"
         >
           {content}
         </NestableScrollContainer>
       ) : (
         <ScrollView
+          ref={scrollRef}
           style={styles.list}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          onLayout={restoreScroll}
+          onScroll={handleScroll}
+          scrollEventThrottle={100}
           testID="sidebar-project-workspace-list-scroll"
         >
           {content}

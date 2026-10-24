@@ -92,6 +92,8 @@ describe("sidebar view store", () => {
       hostFilters: [],
       projectFilters: [],
       labelFilter: { labels: [] },
+      projectScrollOffset: 0,
+      statusScrollOffset: 0,
     });
   });
 
@@ -108,6 +110,8 @@ describe("sidebar view store", () => {
       hostFilters: ["host-a"],
       projectFilters: [],
       labelFilter: { labels: [] },
+      projectScrollOffset: 0,
+      statusScrollOffset: 0,
     });
   });
 
@@ -124,6 +128,8 @@ describe("sidebar view store", () => {
       hostFilters: ["host-a", "host-b"],
       projectFilters: [],
       labelFilter: { labels: [] },
+      projectScrollOffset: 0,
+      statusScrollOffset: 0,
     });
   });
 
@@ -236,6 +242,8 @@ describe("sidebar view store", () => {
       hostFilters: ["host-a"],
       projectFilters: ["project-a", "project-b"],
       labelFilter: { labels: [] },
+      projectScrollOffset: 0,
+      statusScrollOffset: 0,
     });
   });
 
@@ -247,6 +255,8 @@ describe("sidebar view store", () => {
       hostFilters: [],
       projectFilters: [],
       labelFilter: { labels: [] },
+      projectScrollOffset: 0,
+      statusScrollOffset: 0,
     });
   });
 
