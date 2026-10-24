@@ -1,6 +1,11 @@
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { SettingsCard, SettingsSection, SettingsSwitch } from "@/components/settings";
+import {
+  SettingsCard,
+  SettingsCollapsibleRow,
+  SettingsSection,
+  SettingsSwitch,
+} from "@/components/settings";
 import { useAppSettings } from "@/hooks/use-settings";
 import { useSessionStore } from "@/stores/session-store";
 import { FreewindChatAudio } from "./freewind-chat-audio";
@@ -17,6 +22,7 @@ const freewind = {
     label: "Freewind mode",
     description: "Show our customized features; turn off to use the upstream app.",
     promptsTitle: "Metadata prompts",
+    promptsEdit: "Edit prompts",
     audioTitle: "Sound and read-aloud",
   },
   zh: {
@@ -24,6 +30,7 @@ const freewind = {
     label: "Freewind 模式",
     description: "显示我们的定制功能；关闭后使用上游原版。",
     promptsTitle: "元数据提示词",
+    promptsEdit: "编辑提示词",
     audioTitle: "声音与朗读",
   },
 } as const;
@@ -59,15 +66,19 @@ export function FreewindSection() {
       </SettingsSection>
       {settings.freewindMode && serverId ? (
         <>
-          <SettingsSection title={copy.promptsTitle}>
-            <FreewindPromptCard serverId={serverId} promptKey="title" isZh={isZh} />
-            <FreewindPromptCard serverId={serverId} promptKey="branchName" isZh={isZh} />
-            <FreewindPromptCard serverId={serverId} promptKey="commitMessage" isZh={isZh} />
-            <FreewindPromptCard serverId={serverId} promptKey="pullRequest" isZh={isZh} />
-          </SettingsSection>
           <SettingsSection title={copy.audioTitle}>
             <SettingsCard>
               <FreewindChatAudio />
+            </SettingsCard>
+          </SettingsSection>
+          <SettingsSection title={copy.promptsTitle}>
+            <SettingsCard>
+              <SettingsCollapsibleRow label={copy.promptsEdit} testID="freewind-prompts">
+                <FreewindPromptCard serverId={serverId} promptKey="title" isZh={isZh} />
+                <FreewindPromptCard serverId={serverId} promptKey="branchName" isZh={isZh} />
+                <FreewindPromptCard serverId={serverId} promptKey="commitMessage" isZh={isZh} />
+                <FreewindPromptCard serverId={serverId} promptKey="pullRequest" isZh={isZh} />
+              </SettingsCollapsibleRow>
             </SettingsCard>
           </SettingsSection>
         </>
