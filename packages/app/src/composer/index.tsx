@@ -2094,7 +2094,7 @@ function ComposerContentImpl({
         isAgentRunning={isAgentRunning}
         hasSendableContent={hasSendableContent}
         isCompact={isCompactLayout}
-        showVoice={mode.showVoice && appSettings.showVoiceButton}
+        showVoice={mode.showVoice && appSettings.showVoiceButton && !appSettings.freewindMode}
         buttonIconSize={buttonIconSize}
         handleToggleRealtimeVoice={handleToggleRealtimeVoice}
         isConnected={isConnected}
@@ -2105,6 +2105,7 @@ function ComposerContentImpl({
       />
     ),
     [
+      appSettings.freewindMode,
       appSettings.showVoiceButton,
       buttonIconSize,
       handleToggleRealtimeVoice,
@@ -2501,7 +2502,7 @@ function ComposerContentImpl({
         activeActionContent={activeActionContent}
         voiceServerId={serverId}
         voiceAgentId={agentId}
-        showVoiceButton={appSettings.showVoiceButton}
+        showVoiceButton={appSettings.showVoiceButton && !appSettings.freewindMode}
         isAgentRunning={isAgentRunning}
         defaultSendBehavior={activeSendBehavior}
         onQueue={handleQueue}
