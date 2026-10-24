@@ -159,59 +159,63 @@ export function ChatSection() {
             options={toolCallDetailOptions}
             onValueChange={changeToolCallDetailLevel}
           />
-          <SettingsSwitch
-            label={t("settings.general.showVoiceButton.label")}
-            hint={t("settings.general.showVoiceButton.description")}
-            value={settings.showVoiceButton}
-            onValueChange={changeShowVoiceButton}
-          />
-          <SettingsSwitch
-            label={t("settings.general.doubleBackToExit.label")}
-            hint={t("settings.general.doubleBackToExit.description")}
-            value={settings.doubleBackToExit}
-            onValueChange={changeDoubleBackToExit}
-          />
-          <SettingsSwitch
-            label={t("settings.general.playTurnCompleteSound.label")}
-            hint={t("settings.general.playTurnCompleteSound.description")}
-            value={settings.playTurnCompleteSound}
-            onValueChange={changePlayTurnCompleteSound}
-          />
-          <SettingsSelect
-            label={t("settings.general.turnCompleteSound.label")}
-            hint={t("settings.general.turnCompleteSound.description")}
-            value={settings.turnCompleteSound}
-            options={turnCompleteSoundOptions}
-            onValueChange={changeTurnCompleteSound}
-          />
-          <SettingsSwitch
-            label={t("settings.general.ttsEnabled.label")}
-            hint={t("settings.general.ttsEnabled.description")}
-            value={settings.ttsEnabled}
-            onValueChange={changeTtsEnabled}
-          />
-          {ttsVoices.length > 0 ? (
-            <SettingsSelect
-              label={t("settings.general.ttsEngine.label")}
-              hint={t("settings.general.ttsEngine.description")}
-              value={settings.ttsEngine ?? TTS_ENGINE_DEFAULT}
-              options={ttsEngineOptions}
-              onValueChange={changeTtsEngine}
-            />
-          ) : null}
-          <SettingsSelect
-            label={t("settings.general.ttsRate.label")}
-            value={String(settings.ttsRate)}
-            options={TTS_RATE_OPTIONS}
-            onValueChange={changeTtsRate}
-            testID="settings-tts-rate"
-          />
-          <SettingsAction
-            label={t("settings.general.ttsPreview.label")}
-            actionLabel={t("settings.general.ttsPreview.play")}
-            onPress={previewVoice}
-            testID="settings-tts-preview"
-          />
+          {settings.freewindMode ? null : (
+            <>
+              <SettingsSwitch
+                label={t("settings.general.showVoiceButton.label")}
+                hint={t("settings.general.showVoiceButton.description")}
+                value={settings.showVoiceButton}
+                onValueChange={changeShowVoiceButton}
+              />
+              <SettingsSwitch
+                label={t("settings.general.doubleBackToExit.label")}
+                hint={t("settings.general.doubleBackToExit.description")}
+                value={settings.doubleBackToExit}
+                onValueChange={changeDoubleBackToExit}
+              />
+              <SettingsSwitch
+                label={t("settings.general.playTurnCompleteSound.label")}
+                hint={t("settings.general.playTurnCompleteSound.description")}
+                value={settings.playTurnCompleteSound}
+                onValueChange={changePlayTurnCompleteSound}
+              />
+              <SettingsSelect
+                label={t("settings.general.turnCompleteSound.label")}
+                hint={t("settings.general.turnCompleteSound.description")}
+                value={settings.turnCompleteSound}
+                options={turnCompleteSoundOptions}
+                onValueChange={changeTurnCompleteSound}
+              />
+              <SettingsSwitch
+                label={t("settings.general.ttsEnabled.label")}
+                hint={t("settings.general.ttsEnabled.description")}
+                value={settings.ttsEnabled}
+                onValueChange={changeTtsEnabled}
+              />
+              {ttsVoices.length > 0 ? (
+                <SettingsSelect
+                  label={t("settings.general.ttsEngine.label")}
+                  hint={t("settings.general.ttsEngine.description")}
+                  value={settings.ttsEngine ?? TTS_ENGINE_DEFAULT}
+                  options={ttsEngineOptions}
+                  onValueChange={changeTtsEngine}
+                />
+              ) : null}
+              <SettingsSelect
+                label={t("settings.general.ttsRate.label")}
+                value={String(settings.ttsRate)}
+                options={TTS_RATE_OPTIONS}
+                onValueChange={changeTtsRate}
+                testID="settings-tts-rate"
+              />
+              <SettingsAction
+                label={t("settings.general.ttsPreview.label")}
+                actionLabel={t("settings.general.ttsPreview.play")}
+                onPress={previewVoice}
+                testID="settings-tts-preview"
+              />
+            </>
+          )}
           {isNative || settings.freewindMode ? null : (
             <>
               <SettingsSwitch
