@@ -6,6 +6,7 @@ import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
 import { useRetainedPanelActive } from "@/components/retained-panel";
 import { useHostRuntimeClient, useHostRuntimeIsConnected } from "@/runtime/host-runtime";
 import { useSessionStore } from "@/stores/session-store";
+import { useSettings } from "@/hooks/use-settings";
 import { useReplicaQuery } from "@/data/query";
 import { queryClient as singletonQueryClient } from "@/data/query-client";
 import {
@@ -74,6 +75,7 @@ export function useProvidersSnapshot(
   const supportsSnapshot = useSessionStore(
     (state) => state.sessions[serverId ?? ""]?.serverInfo?.features?.providersSnapshot === true,
   );
+  const freewindMode = useSettings((settings) => settings.freewindMode);
 
   const queryKey = useMemo(() => providersSnapshotQueryKey(serverId, cwd), [cwd, serverId]);
 
@@ -90,6 +92,13 @@ export function useProvidersSnapshot(
       return fetchProvidersSnapshot({ client, serverId, cwd, queryClient, signal });
     },
   });
+
+  const allEntries = snapshotQuery.data?.entries;
+  // Freewind mode ships one provider: Pi. Upstream mode lists everything the host reports.
+  const entries = useMemo(() => {
+    if (!allEntries || !freewindMode) return allEntries;
+    return allEntries.filter((entry) => entry.provider === "pi");
+  }, [allEntries, freewindMode]);
 
   const refreshMutation = useMutation({
     mutationFn: async (providers?: AgentProvider[]) => {
@@ -130,7 +139,7 @@ export function useProvidersSnapshot(
   );
 
   return {
-    entries: snapshotQuery.data?.entries ?? undefined,
+    entries,
     isLoading: snapshotQuery.isLoading,
     isFetching: snapshotQuery.isFetching,
     isRefreshing,
