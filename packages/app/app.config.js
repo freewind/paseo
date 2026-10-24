@@ -174,7 +174,11 @@ export default {
         {
           ios: { enableSceneSupport: true },
           android: {
-            minSdkVersion: 29,
+            // 28 对应 Android 9。这个值决定 Android 打包出来的最低安装门槛：降到 28 是为了能装到更老的设备上，
+            // 原来的 29 是上游 Expo 模板给的默认值，不是我们主动选的。
+            // 这里没为 API 28 补任何运行时兼容判断。代码一旦用到仅 API 29+ 才有的能力，构建不会报错，问题只在真机上暴露。
+            // 所以改动这个值之前，先用 API 28 真机跑一遍。
+            minSdkVersion: 28,
             kotlinVersion: "2.1.20",
             // Allow HTTP connections for local network hosts in release builds
             usesCleartextTraffic: true,
