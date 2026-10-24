@@ -1,8 +1,8 @@
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { Image, Pressable, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
-import { CheckCircle2, Circle, ClipboardList, Plus, Trash2 } from "lucide-react-native";
+import { CheckCircle2, Circle, ClipboardList, ListPlus, Plus, Trash2 } from "lucide-react-native";
 import type { AgentMemo, ImageAttachment } from "@getpaseo/protocol/messages";
 import { AttachmentLightbox, type ImageLightboxSource } from "@/components/attachment-lightbox";
 import {
@@ -14,6 +14,8 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { iconButtonChromeStyle } from "@/components/ui/icon-button-chrome";
 import { InlineConfirm } from "@/components/ui/inline-confirm";
+import { Button } from "@/components/ui/button";
+import { EditingTextInput } from "@/components/ui/text-input";
 import { encodeAttachmentsForSend } from "@/attachments/service";
 import type { AttachmentMetadata } from "@/attachments/types";
 import { ICON_SIZE, type Theme } from "@/styles/theme";
@@ -25,6 +27,20 @@ const mutedIconMapping = (theme: Theme) => ({ color: theme.colors.foregroundMute
 const completedIconMapping = (theme: Theme) => ({ color: theme.colors.accent });
 const ThemedClipboardList = withUnistyles(ClipboardList, mutedIconMapping);
 const ThemedAddPlus = withUnistyles(Plus, mutedIconMapping);
+const ThemedListPlus = withUnistyles(ListPlus, mutedIconMapping);
+/** Multi-line bulk entry; the placeholder colour is a prop, so it goes through the theme. */
+const BulkTextInput = withUnistyles(EditingTextInput, (theme) => ({
+  placeholderTextColor: theme.colors.foregroundMuted,
+}));
+
+/**
+ * Bulk-add copy lives here rather than in the i18n resources: adding a key to `en` would force the
+ * same key into the seven locales that stay byte-identical to upstream. See AGENTS.md.
+ */
+const bulkCopy = {
+  en: { open: "Add several", placeholder: "One memo per line", submit: "Add all" },
+  zh: { open: "批量添加", placeholder: "每行输入一条", submit: "全部添加" },
+} as const;
 const ThemedTrash2 = withUnistyles(Trash2, mutedIconMapping);
 const ThemedCircle = withUnistyles(Circle, mutedIconMapping);
 const ThemedCheckCircle2 = withUnistyles(CheckCircle2, completedIconMapping);
@@ -72,7 +88,7 @@ export const AgentMemosRail = memo(function AgentMemosRail({
   /** Appends the memo (text + images) to the composer without sending. */
   onAppendToComposer: (memo: AgentMemo) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const supported = useHostFeature(serverId, "agentMemos");
   const supportsCompletion = useHostFeature(serverId, "agentMemoCompletion");
   const supportsImages = useHostFeature(serverId, "agentMemoImages");
@@ -81,6 +97,10 @@ export const AgentMemosRail = memo(function AgentMemosRail({
     agentId,
   });
   const [isAdding, setIsAdding] = useState(false);
+  const [isBulkOpen, setIsBulkOpen] = useState(false);
+  const [bulkKey, setBulkKey] = useState(0);
+  const bulkDraft = useRef("");
+  const bulk = i18n.language.toLowerCase().startsWith("zh") ? bulkCopy.zh : bulkCopy.en;
   const [editingMemoId, setEditingMemoId] = useState<string | null>(null);
   const [lightboxSource, setLightboxSource] = useState<ImageLightboxSource | null>(null);
 
@@ -117,6 +137,33 @@ export const AgentMemosRail = memo(function AgentMemosRail({
     },
     [addMemo],
   );
+  const handleOpenBulk = useCallback(() => {
+    setEditingMemoId(null);
+    setIsAdding(false);
+    bulkDraft.current = "";
+    setBulkKey((key) => key + 1);
+    setIsBulkOpen(true);
+  }, []);
+  const handleCancelBulk = useCallback(() => setIsBulkOpen(false), []);
+  // One memo per non-empty line, added in order so the list keeps the order they were typed in.
+  const handleBulkSubmit = useCallback(async () => {
+    const lines = bulkDraft.current
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+    if (lines.length === 0) return;
+    for (const line of lines) {
+      await addMemo(line, []);
+    }
+    bulkDraft.current = "";
+    setIsBulkOpen(false);
+  }, [addMemo]);
+  const handleBulkChange = useCallback((text: string) => {
+    bulkDraft.current = text;
+  }, []);
+  const handleBulkSubmitPress = useCallback(() => {
+    void handleBulkSubmit();
+  }, [handleBulkSubmit]);
   const handleMemoCompletedChange = useCallback(
     (memoId: string, completed: boolean) =>
       void setMemoCompleted(memoId, completed).catch(() => undefined),
@@ -182,6 +229,22 @@ export const AgentMemosRail = memo(function AgentMemosRail({
             <TooltipTrigger asChild>
               <Pressable
                 style={addButtonStyle}
+                onPress={handleOpenBulk}
+                accessibilityRole="button"
+                accessibilityLabel={bulk.open}
+                testID="agent-memo-bulk-add"
+              >
+                <ThemedListPlus size={ICON_SIZE.lg} uniProps={mutedIconMapping} />
+              </Pressable>
+            </TooltipTrigger>
+            <TooltipContent side="top" align="end" offset={8}>
+              <Text style={styles.tooltipText}>{bulk.open}</Text>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip delayDuration={250} enabledOnDesktop enabledOnMobile={false}>
+            <TooltipTrigger asChild>
+              <Pressable
+                style={addButtonStyle}
                 onPress={handleStartAdding}
                 accessibilityRole="button"
                 accessibilityLabel={t("common.actions.add")}
@@ -197,6 +260,27 @@ export const AgentMemosRail = memo(function AgentMemosRail({
         </View>
       </View>
       <View style={styles.list}>
+        {isBulkOpen ? (
+          <View style={styles.bulk}>
+            <BulkTextInput
+              key={bulkKey}
+              multiline
+              initialValue=""
+              onChangeText={handleBulkChange}
+              placeholder={bulk.placeholder}
+              style={styles.bulkInput}
+              testID="agent-memo-bulk-input"
+            />
+            <View style={styles.bulkActions}>
+              <Button variant="ghost" size="sm" onPress={handleCancelBulk}>
+                {t("common.actions.cancel")}
+              </Button>
+              <Button variant="default" size="sm" onPress={handleBulkSubmitPress}>
+                {bulk.submit}
+              </Button>
+            </View>
+          </View>
+        ) : null}
         {orderedMemos.map((entry) =>
           entry.id === editingMemoId ? (
             <AgentMemoEditor
@@ -610,6 +694,25 @@ const styles = StyleSheet.create((theme: Theme) => ({
   clearButtonHost: {
     alignItems: "center",
     justifyContent: "center",
+  },
+  bulk: {
+    gap: theme.spacing[2],
+    paddingVertical: theme.spacing[1],
+  },
+  bulkInput: {
+    minHeight: 88,
+    color: theme.colors.foreground,
+    fontSize: theme.fontSize.sm,
+    paddingVertical: theme.spacing[2],
+    paddingHorizontal: theme.spacing[2],
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.surface2,
+    textAlignVertical: "top",
+  },
+  bulkActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: theme.spacing[2],
   },
   tooltipText: {
     color: theme.colors.foreground,
