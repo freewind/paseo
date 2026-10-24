@@ -200,6 +200,9 @@ export function SidebarModelProvider({
   // Visibility and labels run here, once, so the name search narrows what they kept instead of
   // rebuilding the same project/workspace pairs from the unfiltered list.
   const preFilteredProjects = useMemo(() => {
+    // The search always runs over every project: an active query replaces the browsing filters
+    // instead of narrowing inside them, so a project you filtered out still answers a search.
+    if (hasNameSearch) return list.projects;
     let projects = list.projects;
     if (projectVisibility.kind === "selected") {
       const included = new Set(projectVisibility.keys);
@@ -220,6 +223,7 @@ export function SidebarModelProvider({
     return projects;
   }, [
     hasActiveLabelFilter,
+    hasNameSearch,
     list.isInitialLoad,
     list.projects,
     liveWorkspaceKeys,
