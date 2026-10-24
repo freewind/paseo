@@ -338,8 +338,15 @@ function LanguageMenuItem({ value, activeLocale, selected, onChange }: LanguageM
 
 function GeneralSection({ settings, handleLanguageChange }: GeneralSectionProps) {
   const { t, i18n } = useTranslation();
+  const freewindMode = useSettings((current) => current.freewindMode);
+  // Freewind mode ships two languages; every other locale stays in the bundle untouched.
+  const languageOptions = freewindMode
+    ? LANGUAGE_OPTIONS.filter(
+        (option) => option.value === "system" || option.value === "en" || option.value === "zh-CN",
+      )
+    : LANGUAGE_OPTIONS;
   const activeLocale = getActiveLocale(i18n.language);
-  const selectedLanguageOption = LANGUAGE_OPTIONS.find(
+  const selectedLanguageOption = languageOptions.find(
     (option) => option.value === settings.language,
   );
   const selectedLanguageLabel = selectedLanguageOption
@@ -362,7 +369,7 @@ function GeneralSection({ settings, handleLanguageChange }: GeneralSectionProps)
               {selectedLanguageLabel}
             </DropdownTrigger>
             <DropdownMenuContent side="bottom" align="end" width={300}>
-              {LANGUAGE_OPTIONS.map((option) => (
+              {languageOptions.map((option) => (
                 <LanguageMenuItem
                   key={option.value}
                   value={option.value}
@@ -979,7 +986,9 @@ function SettingsSidebar({
   const hasHosts = sortedHosts.length > 0;
   const enableBuiltInDaemonOption = useEnableBuiltInDaemonOption();
   const isDesktopApp = isElectronRuntime();
-  const items = SIDEBAR_SECTION_ITEMS.filter((item) => isSectionAvailable(item, isDesktopApp));
+  const items = SIDEBAR_SECTION_ITEMS.filter(
+    (item) => isSectionAvailable(item, isDesktopApp) && (!freewindMode || item.id !== "browser"),
+  );
   const insets = useSafeAreaInsets();
   const isDesktop = layout === "desktop";
   const outerContainerStyle = useMemo(

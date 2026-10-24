@@ -54,18 +54,20 @@ export function EditorSection({ serverId }: { serverId: string | null }) {
             testID="preferred-editor-select"
           />
         ) : null}
-        <View style={settingsStyles.row}>
-          <View style={settingsStyles.rowContent}>
-            <Text style={settingsStyles.rowTitle}>{t("settings.editor.vimKeybindings")}</Text>
-            <Text style={settingsStyles.rowHint}>{t("settings.editor.vimHint")}</Text>
+        {settings.freewindMode ? null : (
+          <View style={settingsStyles.row}>
+            <View style={settingsStyles.rowContent}>
+              <Text style={settingsStyles.rowTitle}>{t("settings.editor.vimKeybindings")}</Text>
+              <Text style={settingsStyles.rowHint}>{t("settings.editor.vimHint")}</Text>
+            </View>
+            <Switch
+              value={settings.vimKeybindings}
+              onValueChange={handleChange}
+              accessibilityLabel={t("settings.editor.vimKeybindings")}
+              testID="vim-keybindings-toggle"
+            />
           </View>
-          <Switch
-            value={settings.vimKeybindings}
-            onValueChange={handleChange}
-            accessibilityLabel={t("settings.editor.vimKeybindings")}
-            testID="vim-keybindings-toggle"
-          />
-        </View>
+        )}
       </View>
     </SettingsSection>
   );
