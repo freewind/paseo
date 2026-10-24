@@ -4,7 +4,7 @@ import type { PrHint } from "@/git/pr-hint";
 import { selectPrHintFromStatus } from "@/git/pr-hint";
 import { type HostProjectListItem } from "@/projects/host-project-model";
 import type { PendingCreateAttempt } from "@/stores/create-flow-store";
-import type { WorkspaceDescriptor } from "@/stores/session-store";
+import type { Agent, WorkspaceDescriptor } from "@/stores/session-store";
 import type {
   WorkspaceStructureHostPlacement,
   WorkspaceStructureProject,
@@ -55,6 +55,8 @@ export interface SidebarWorkspaceEntry extends SidebarStatusWorkspacePlacement {
   archiveUnpushedCommitCount: number | null;
   scripts: WorkspaceDescriptor["scripts"];
   hasRunningScripts: boolean;
+  /** 该工作区里未归档的根 agent；数量 >= 2 时侧栏显示 `(N)`。 */
+  activeAgentCount: number;
 }
 
 export interface SidebarProjectEntry {
@@ -76,11 +78,13 @@ export interface SidebarWorkspaceSession {
   serverId: string;
   workspaces: Map<string, WorkspaceDescriptor>;
   workspaceAgentActivity: Map<string, WorkspaceAgentActivity>;
+  agents: ReadonlyMap<string, Agent>;
 }
 
 interface SidebarWorkspaceSessionSource {
   workspaces: Map<string, WorkspaceDescriptor>;
   workspaceAgentActivity: Map<string, WorkspaceAgentActivity>;
+  agents: ReadonlyMap<string, Agent>;
 }
 
 export function selectSidebarWorkspaceSessions(
@@ -97,9 +101,28 @@ export function selectSidebarWorkspaceSessions(
       serverId,
       workspaces: session.workspaces,
       workspaceAgentActivity: session.workspaceAgentActivity,
+      agents: session.agents,
     });
   }
   return selected;
+}
+
+/**
+ * 一个工作区里有多少未归档的根 agent。供侧栏的 `(N)` 计数使用：
+ * 无论生命周期状态如何，子 agent 与已归档 agent 都不计入。
+ */
+export function countSidebarWorkspaceAgents(
+  agents: ReadonlyMap<string, Agent> | undefined,
+  workspaceId: string,
+): number {
+  if (!agents) return 0;
+  let count = 0;
+  for (const agent of agents.values()) {
+    if (agent.workspaceId === workspaceId && !agent.archivedAt && !agent.parentAgentId) {
+      count += 1;
+    }
+  }
+  return count;
 }
 
 export function areSidebarWorkspaceSessionsEqual(
@@ -117,7 +140,8 @@ export function areSidebarWorkspaceSessionsEqual(
       !rightSession ||
       leftSession.serverId !== rightSession.serverId ||
       leftSession.workspaces !== rightSession.workspaces ||
-      leftSession.workspaceAgentActivity !== rightSession.workspaceAgentActivity
+      leftSession.workspaceAgentActivity !== rightSession.workspaceAgentActivity ||
+      leftSession.agents !== rightSession.agents
     ) {
       return false;
     }
@@ -147,6 +171,7 @@ export function createSidebarWorkspaceEntry(input: {
   projectViewKey?: string;
   pendingCreateAttempts?: Record<string, PendingCreateAttempt>;
   workspaceAgentActivity?: ReadonlyMap<string, WorkspaceAgentActivity>;
+  agents?: ReadonlyMap<string, Agent>;
 }): SidebarWorkspaceEntry {
   const projectViewKey = input.projectViewKey ?? input.workspace.projectId;
   const effectiveStatus = deriveEffectiveWorkspaceStatus(input);
@@ -180,6 +205,7 @@ export function createSidebarWorkspaceEntry(input: {
     archiveUnpushedCommitCount: input.workspace.gitRuntime?.aheadOfOrigin ?? null,
     scripts: input.workspace.scripts,
     hasRunningScripts: input.workspace.scripts.some((script) => script.lifecycle === "running"),
+    activeAgentCount: countSidebarWorkspaceAgents(input.agents, input.workspace.id),
   };
 }
 
@@ -375,6 +401,7 @@ export function buildSidebarWorkspaceEntries(input: {
       projectViewKey: placement.projectViewKey,
       pendingCreateAttempts: input.pendingCreateAttempts,
       workspaceAgentActivity: session.workspaceAgentActivity,
+      agents: session.agents,
     });
     const previousEntry = input.previousEntries?.get(placement.workspaceKey);
     const nextEntry =
