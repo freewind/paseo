@@ -1888,7 +1888,10 @@ function WorkspaceScreenContent({
   const _insets = useSafeAreaInsets();
   const toast = useToast();
   const router = useRouter();
-  const doubleBackToExit = useSettings((settings) => settings.doubleBackToExit);
+  // Freewind mode always requires the double press, so the behaviour no longer needs a setting.
+  const doubleBackToExit = useSettings(
+    (settings) => settings.doubleBackToExit || settings.freewindMode,
+  );
   const isMobile = useIsCompactFormFactor();
   const hasMacTrafficLights = useHasWindowChromeObstruction("top-left");
   const explorerToggleOwner = resolveWorkspaceExplorerToggleOwner({
