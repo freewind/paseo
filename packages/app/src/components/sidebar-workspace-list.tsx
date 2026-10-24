@@ -72,6 +72,7 @@ import {
   type SidebarGroupMode,
 } from "@/stores/sidebar-view-store";
 import { useShowShortcutBadges } from "@/hooks/use-show-shortcut-badges";
+import { useSettings } from "@/hooks/use-settings";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -2213,20 +2214,22 @@ function ProjectModeList({
   onPinnedWorkspaceReorder: (workspaces: SidebarWorkspacePlacement[]) => void;
 }) {
   const scrollRef = useRef<ComponentRef<typeof NestableScrollContainer>>(null);
+  const freewindMode = useSettings((settings) => settings.freewindMode);
   const projectScrollOffset = useSidebarViewStore((state) => state.projectScrollOffset);
   const setProjectScrollOffset = useSidebarViewStore((state) => state.setProjectScrollOffset);
   const restoredScrollRef = useRef(false);
   const initialProjectScrollOffsetRef = useRef(projectScrollOffset);
   const restoreScroll = useCallback(() => {
-    if (restoredScrollRef.current) return;
+    if (!freewindMode || restoredScrollRef.current) return;
     restoredScrollRef.current = true;
     scrollRef.current?.scrollTo({ y: initialProjectScrollOffsetRef.current, animated: false });
-  }, []);
+  }, [freewindMode]);
   const handleScroll = useCallback(
     (event: { nativeEvent: { contentOffset: { y: number } } }) => {
+      if (!freewindMode) return;
       setProjectScrollOffset(event.nativeEvent.contentOffset.y);
     },
-    [setProjectScrollOffset],
+    [freewindMode, setProjectScrollOffset],
   );
   const hasActiveHostFilter = useSidebarViewStore((state) => state.hostFilters.length > 0);
   const [creatingWorkspaceIds, setCreatingWorkspaceIds] = useState<Set<string>>(() => new Set());
