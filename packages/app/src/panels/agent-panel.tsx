@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
 import type { TFunction } from "i18next";
-import { SquarePen } from "lucide-react-native";
+import { List, SquarePen } from "lucide-react-native";
 import React, {
   memo,
   type ReactNode,
@@ -81,6 +81,11 @@ import {
 } from "@/screens/agent/agent-ready-screen-bottom-anchor";
 import { WorkspaceDraftAgentTab } from "@/composer/draft/workspace-tab";
 import { AgentTracks, hasAgentTracks } from "@/panels/agent-tracks";
+import { SideRailSheetTrigger } from "@/components/side-rail-sheet";
+import { ComposerTrackBar } from "@/composer/tracks";
+import { resolveSideRailWidth } from "@/agent-stream/chat-outline/text-rail-model";
+import { useContainerWidth } from "@/hooks/use-container-width";
+import { resolveContentMaxWidth } from "@/hooks/use-settings";
 import { ParentAgentCallout, useParentAgentId } from "@/subagents/parent";
 import { useCreateFlowStore } from "@/stores/create-flow-store";
 import { buildDraftStoreKey, generateDraftId } from "@/stores/draft-keys";
@@ -1110,11 +1115,18 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     rows: subagentRows,
   });
   const hasPluginComposerPills = useHasPluginComposerPills(serverId, workspaceId, agentId);
+  const { onLayout: onPaneLayout, width: paneWidth } = useContainerWidth();
+  const contentMaxWidth = useSettings(resolveContentMaxWidth);
+  const isCompactFormFactor = useIsCompactFormFactor();
+  const [hasTextOutline, setHasTextOutline] = useState(false);
+  const railWidth = resolveSideRailWidth(paneWidth, contentMaxWidth);
+  const hasOutlineEntry = hasTextOutline && (paneWidth === 0 ? isCompactFormFactor : isCompactFormFactor || railWidth === null || railWidth < 180);
+  const openChatOutline = useCallback(() => streamViewRef.current?.openChatOutline(), [streamViewRef]);
   const hasActiveComposer = !agentState.archivedAt && !isArchivingCurrentAgent;
   const parentAgentId = useParentAgentId(serverId, agentId);
   // With a composer the parent is a pill above it; without one, the box takes the composer's place.
   const parentPillAgentId = showsComposer ? parentAgentId : null;
-  const hasVisibleAgentTracks = hasAgentTracks({
+  const hasVisibleAgentTracks = hasOutlineEntry || hasAgentTracks({
     parentAgentId: parentPillAgentId,
     subagentRows,
     tasks,
@@ -1192,7 +1204,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     parentCallout
   );
   const streamContent = (
-    <View style={animatedStaticStyles.content}>
+    <View style={animatedStaticStyles.content} onLayout={onPaneLayout}>
       {showsComposer ? null : <SheetAgentFacts serverId={serverId} agentId={agentId} />}
       <RenderProfile id={`AgentStreamSection:${agentId}`}>
         <AgentStreamSection
@@ -1205,10 +1217,12 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
           hasAppliedAuthoritativeHistory={hasAppliedAuthoritativeHistory}
           hasActiveComposer={hasActiveComposer}
           hasVisibleAgentTracks={hasVisibleAgentTracks}
+          onChatOutlineAvailabilityChange={setHasTextOutline}
           toast={toastApi}
           onOpenWorkspaceFile={onOpenWorkspaceFile}
         />
       </RenderProfile>
+      {hasOutlineEntry ? <ComposerTrackBar><SideRailSheetTrigger icon={List} accessibilityLabel={t("agentStream.chatOutline.title")} onPress={openChatOutline} /></ComposerTrackBar> : null}
       {hasActiveComposer ? (
         <AgentTracks
           serverId={serverId}
@@ -1341,6 +1355,7 @@ const AgentStreamSection = memo(function AgentStreamSection({
   hasAppliedAuthoritativeHistory,
   hasActiveComposer,
   hasVisibleAgentTracks,
+  onChatOutlineAvailabilityChange,
   toast,
   onOpenWorkspaceFile,
 }: {
@@ -1353,6 +1368,7 @@ const AgentStreamSection = memo(function AgentStreamSection({
   hasAppliedAuthoritativeHistory: boolean;
   hasActiveComposer: boolean;
   hasVisibleAgentTracks: boolean;
+  onChatOutlineAvailabilityChange: (available: boolean) => void;
   toast: ReturnType<typeof useToastHost>["api"];
   onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
 }) {
@@ -1425,6 +1441,7 @@ const AgentStreamSection = memo(function AgentStreamSection({
       pendingMessageSubmissions={pendingMessageSubmissions}
       turnPresentation={turnPresentation}
       onOpenWorkspaceFile={onOpenWorkspaceFile}
+      onChatOutlineAvailabilityChange={onChatOutlineAvailabilityChange}
     />
   );
 });

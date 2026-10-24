@@ -267,6 +267,13 @@ export const en = {
   agentStream: {
     empty: "Start chatting with this agent...",
     scrollToBottom: "Scroll to bottom",
+    chatOutline: {
+      open: "Open chat outline",
+      title: "Chat outline",
+      collapse: "Collapse outline",
+      expand: "Expand outline",
+      rowLabel: "{{index}} of {{total}}: {{text}}",
+    },
     historyLoadFailed: "Couldn't load agent history",
     messageCapped: "This message was capped ({{bytes}} bytes).",
     permission: {

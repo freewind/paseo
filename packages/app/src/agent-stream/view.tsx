@@ -9,6 +9,7 @@ import React, {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ComponentProps,
   type ReactNode,
 } from "react";
@@ -75,6 +76,9 @@ import { TurnSummaryLine } from "./turn-collapse/summary-line";
 import { type AgentStreamRenderModel, buildAgentStreamRenderModel } from "./model";
 import { resolveStreamRenderStrategy } from "./strategy-resolver";
 import { type StreamSegmentRenderers, type StreamViewportHandle } from "./strategy";
+import { ChatOutlineTextRail } from "@/agent-stream/chat-outline/text-rail";
+import { ChatOutlineTextList } from "@/agent-stream/chat-outline/text-rail-list";
+import { SideRailSheet } from "@/components/side-rail-sheet";
 import { ChatOutlineRail } from "@/agent-stream/chat-outline/rail";
 import { useChatOutline } from "@/agent-stream/chat-outline/use-chat-outline";
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
@@ -269,6 +273,7 @@ function renderStreamRow(input: {
 export interface AgentStreamViewHandle {
   scrollToBottom(reason?: BottomAnchorLocalRequest["reason"]): void;
   prepareForViewportChange(): void;
+  openChatOutline(): void;
 }
 
 export interface AgentStreamViewProps {
@@ -288,6 +293,7 @@ export interface AgentStreamViewProps {
   bottomOverlayControlClearance?: number;
   toast?: ToastApi | null;
   onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
+  onChatOutlineAvailabilityChange?: (available: boolean) => void;
   readOnly?: boolean;
   historyPagination?: {
     hasOlder: boolean;
@@ -325,6 +331,103 @@ function resolveBottomOverlayControlOffset(clearance: number | undefined): numbe
   return Math.max(16, clearance ?? 0);
 }
 
+/** 关掉不常用功能就把转录交回上游的圆点；两套吃同一份提示索引。 */
+function useOutlineMode(supportsChatOutline: boolean): { enabled: boolean; worded: boolean } {
+  const chatOutlineEnabled = useSettings((settings) => settings.chatOutlineEnabled);
+  const disableUncommonFeatures = useSettings((settings) => settings.disableUncommonFeatures);
+  const enabled = supportsChatOutline && chatOutlineEnabled;
+  return { enabled, worded: enabled && disableUncommonFeatures };
+}
+
+const ChatOutlineSheet = memo(function ChatOutlineSheet({
+  agentId,
+  prompts,
+  activePrompt,
+  onJumpToPrompt,
+  visible,
+  onClose,
+  enabled,
+}: Pick<
+  ComponentProps<typeof ChatOutlineTextRail>,
+  "agentId" | "prompts" | "activePrompt" | "onJumpToPrompt"
+> & {
+  visible: boolean;
+  onClose: () => void;
+  enabled: boolean;
+}) {
+  const { t } = useTranslation();
+  const handleJump = useCallback(
+    (seq: number) => {
+      onJumpToPrompt(seq);
+      onClose();
+    },
+    [onJumpToPrompt, onClose],
+  );
+  if (!isWeb || !enabled) return null;
+  return (
+    <SideRailSheet
+      accessibilityLabel={t("agentStream.chatOutline.title")}
+      visible={visible}
+      onClose={onClose}
+      scrollable
+    >
+      {visible ? (
+        <ChatOutlineSheetList
+          agentId={agentId}
+          prompts={prompts}
+          activePrompt={activePrompt}
+          onJumpToPrompt={handleJump}
+        />
+      ) : null}
+    </SideRailSheet>
+  );
+});
+
+function ChatOutlineSheetList({
+  agentId,
+  prompts,
+  activePrompt,
+  onJumpToPrompt,
+}: Pick<
+  ComponentProps<typeof ChatOutlineTextRail>,
+  "agentId" | "prompts" | "activePrompt" | "onJumpToPrompt"
+>) {
+  const activeSeq = useSyncExternalStore(
+    activePrompt.subscribe,
+    activePrompt.getActiveSeq,
+    activePrompt.getActiveSeq,
+  );
+  return (
+    <ChatOutlineTextList
+      key={agentId}
+      prompts={prompts}
+      activeSeq={activeSeq}
+      width="100%"
+      agentId={agentId}
+      onJumpToPrompt={onJumpToPrompt}
+      embedded
+      collapsible={false}
+    />
+  );
+}
+
+function useChatOutlineAvailability(
+  agentId: string,
+  worded: boolean,
+  promptCount: number,
+  onAvailabilityChange: AgentStreamViewProps["onChatOutlineAvailabilityChange"],
+  close: () => void,
+) {
+  const hasTextOutline = isWeb && worded && promptCount > 0;
+  useEffect(() => {
+    onAvailabilityChange?.(hasTextOutline);
+  }, [agentId, hasTextOutline, onAvailabilityChange]);
+  useEffect(() => () => onAvailabilityChange?.(false), [agentId, onAvailabilityChange]);
+  useEffect(() => {
+    if (!hasTextOutline) close();
+  }, [close, hasTextOutline]);
+}
+
 const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamViewProps>(
   function AgentStreamView(
     {
@@ -342,6 +445,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
       bottomOverlayControlClearance,
       toast,
       onOpenWorkspaceFile,
+      onChatOutlineAvailabilityChange,
       readOnly = false,
       historyPagination,
     },
@@ -350,7 +454,6 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
     const { t } = useTranslation();
     const autoExpandReasoning = useSettings((settings) => settings.autoExpandReasoning);
     const chatDisplay = useSettings((settings) => settings.chatDisplay);
-    const chatOutlineEnabled = useSettings((settings) => settings.chatOutlineEnabled);
     const contentMaxWidth = useSettings(resolveContentMaxWidth);
     const viewportRef = useRef<StreamViewportHandle | null>(null);
     const pendingClientMessageIds = useMemo(
@@ -366,6 +469,9 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
         }),
       [isMobile],
     );
+    const [isChatOutlineOpen, setIsChatOutlineOpen] = useState(false);
+    const closeChatOutline = useCallback(() => setIsChatOutlineOpen(false), []);
+    useResetWhenPanelInactive(closeChatOutline);
     const [isNearBottom, setIsNearBottom] = useState(true);
     const [expandedInlineToolCallIds, setExpandedInlineToolCallIds] = useState<Set<string>>(
       new Set(),
@@ -619,19 +725,26 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
           mountedHistoryMessageIds.has(messageId) || liveHeadMessageIds.has(messageId),
       };
     }, [baseRenderModel.segments.liveHead, mountedHistoryMessageIds]);
+    const outline = useOutlineMode(supportsChatOutline);
     const chatOutline = useChatOutline({
       agentId,
       serverId: resolvedServerId,
       timelineEpoch,
       tail: effectiveStreamItems,
       head: effectiveStreamHead,
-      enabled: supportsChatOutline && chatOutlineEnabled,
+      enabled: outline.enabled,
       viewportRef,
       onJumpError: handleTimelineHistoryLoadError,
       mountedHistoryMessageIds,
       revealLoadedMessage: revealLoadedHistory,
     });
-
+    useChatOutlineAvailability(
+      agentId,
+      outline.worded,
+      chatOutline.prompts.length,
+      onChatOutlineAvailabilityChange,
+      closeChatOutline,
+    );
     useImperativeHandle(
       ref,
       () => ({
@@ -640,6 +753,9 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
         },
         prepareForViewportChange() {
           viewportRef.current?.prepareForViewportChange();
+        },
+        openChatOutline() {
+          setIsChatOutlineOpen(true);
         },
       }),
       [],
@@ -1104,7 +1220,8 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
         rowId === null
           ? undefined
           : (layoutHistoryItemById.get(rowId) ?? layoutLiveHeadItemById.get(rowId));
-      chatOutline.reportReadingPosition(row?.item.timelineCursor?.seq ?? null);
+      const seq = row?.item.timelineCursor?.seq ?? null;
+      chatOutline.reportReadingPosition(seq);
     });
 
     const renderHistoryRow = useCallback(
@@ -1236,10 +1353,29 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
                 })}
               </ToolCallExpansionContext.Provider>
             </MessageOuterSpacingProvider>
-            <ChatOutlineRail
+            {outline.worded ? (
+              <ChatOutlineTextRail
+                prompts={chatOutline.prompts}
+                activePrompt={chatOutline.activePrompt}
+                onJumpToPrompt={chatOutline.jumpToPrompt}
+                contentMaxWidth={contentMaxWidth}
+                agentId={agentId}
+              />
+            ) : (
+              <ChatOutlineRail
+                prompts={chatOutline.prompts}
+                activePrompt={chatOutline.activePrompt}
+                onJumpToPrompt={chatOutline.jumpToPrompt}
+              />
+            )}
+            <ChatOutlineSheet
+              agentId={agentId}
               prompts={chatOutline.prompts}
               activePrompt={chatOutline.activePrompt}
               onJumpToPrompt={chatOutline.jumpToPrompt}
+              visible={isChatOutlineOpen}
+              onClose={closeChatOutline}
+              enabled={outline.worded}
             />
             {(!isNearBottom || isTimelineDetached) && (
               <View style={scrollToBottomContainerStyle} pointerEvents="box-none">
@@ -1381,6 +1517,9 @@ function agentStreamViewPropsEqual(
   }
   if (left.toast !== right.toast) reasons.push("toast");
   if (left.onOpenWorkspaceFile !== right.onOpenWorkspaceFile) reasons.push("onOpenWorkspaceFile");
+  if (left.onChatOutlineAvailabilityChange !== right.onChatOutlineAvailabilityChange) {
+    reasons.push("onChatOutlineAvailabilityChange");
+  }
   if (left.readOnly !== right.readOnly) reasons.push("readOnly");
   if (!historyPaginationPropsEqual(left.historyPagination, right.historyPagination)) {
     reasons.push("historyPagination");

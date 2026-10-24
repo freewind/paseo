@@ -268,6 +268,13 @@ export const zhCN: TranslationResources = {
   agentStream: {
     empty: "开始和这个 Agent 对话...",
     scrollToBottom: "滚动到底部",
+    chatOutline: {
+      open: "打开聊天大纲",
+      title: "聊天大纲",
+      collapse: "收起大纲",
+      expand: "展开大纲",
+      rowLabel: "第 {{index}} 条，共 {{total}} 条：{{text}}",
+    },
     historyLoadFailed: "无法加载智能体历史记录",
     messageCapped: "此消息已被截断（{{bytes}} 字节）。",
     permission: {
