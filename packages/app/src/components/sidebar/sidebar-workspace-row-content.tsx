@@ -143,18 +143,12 @@ export const SidebarWorkspaceRowContent = memo(function SidebarWorkspaceRowConte
         <View style={styles.workspaceContentColumn}>
           <View style={styles.workspaceTitleRow}>
             <View style={sidebarWorkspaceRowStyles.titleWithCount}>
-              {nameHighlightRanges && nameHighlightRanges.length > 0 ? (
-                <HighlightedText
-                  text={workspaceLabel}
-                  ranges={nameHighlightRanges}
-                  style={workspaceBranchTextStyle}
-                  numberOfLines={1}
-                />
-              ) : (
-                <Text style={workspaceBranchTextStyle} numberOfLines={1}>
-                  {workspaceLabel}
-                </Text>
-              )}
+              <HighlightedText
+                text={workspaceLabel}
+                ranges={nameHighlightRanges}
+                style={workspaceBranchTextStyle}
+                numberOfLines={1}
+              />
               {workspace.activeAgentCount >= 2 ? (
                 <Text
                   style={sidebarWorkspaceRowStyles.agentCountText}

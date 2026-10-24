@@ -823,17 +823,24 @@ function DesktopSidebar({
 function WorkspacesSectionHeader() {
   const nameSearch = useSidebarViewStore((state) => state.nameSearch);
   const setNameSearch = useSidebarViewStore((state) => state.setNameSearch);
+  const freewindMode = useSettings((settings) => settings.freewindMode);
   const { t } = useTranslation();
+  // A query left over from Freewind mode would keep filtering a list whose search box is gone.
+  useEffect(() => {
+    if (!freewindMode) setNameSearch("");
+  }, [freewindMode, setNameSearch]);
   return (
     <View style={styles.workspacesSectionHeader}>
-      <SearchField
-        value={nameSearch}
-        onChangeText={setNameSearch}
-        placeholder={t("sidebar.nameSearch.placeholder")}
-        clearAccessibilityLabel={t("sidebar.nameSearch.clear")}
-        testID="sidebar-name-search"
-        clearTestID="sidebar-name-search-clear"
-      />
+      {freewindMode ? (
+        <SearchField
+          value={nameSearch}
+          onChangeText={setNameSearch}
+          placeholder={t("sidebar.nameSearch.placeholder")}
+          clearAccessibilityLabel={t("sidebar.nameSearch.clear")}
+          testID="sidebar-name-search"
+          clearTestID="sidebar-name-search-clear"
+        />
+      ) : null}
       <View style={styles.workspacesSectionActions}>
         <Tooltip delayDuration={300}>
           <TooltipTrigger asChild>

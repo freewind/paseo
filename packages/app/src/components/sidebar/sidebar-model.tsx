@@ -79,7 +79,7 @@ export function SidebarModelProvider({
   children: ReactNode;
 }) {
   const {
-    settings: { workspaceTitleSource },
+    settings: { workspaceTitleSource, freewindMode },
   } = useAppSettings();
   const nameSearch = useSidebarViewStore((state) => state.nameSearch);
   const hasNameSearch = hasActiveSidebarNameSearch(nameSearch);
@@ -228,16 +228,18 @@ export function SidebarModelProvider({
                         workspaceTitleSource,
                       })
                     : "",
-                  agentIds:
-                    visibleAgentIdsByWorkspaceKey.get(workspace.workspaceKey) ?? EMPTY_AGENT_IDS,
+                  agentIds: freewindMode
+                    ? (visibleAgentIdsByWorkspaceKey.get(workspace.workspaceKey) ?? EMPTY_AGENT_IDS)
+                    : EMPTY_AGENT_IDS,
                 };
               }),
             })),
-            agentTitles: agentTitlesMap,
+            agentTitles: freewindMode ? agentTitlesMap : EMPTY_AGENT_TITLES,
           })
         : null,
     [
       hasNameSearch,
+      freewindMode,
       nameSearch,
       list.projects,
       agentTitlesMap,
@@ -387,4 +389,5 @@ const EMPTY_WORKSPACE_MATCHES: SidebarNameFilterResult["workspaces"] = new Map()
 const EMPTY_AGENT_MATCHES: SidebarNameFilterResult["agents"] = new Map();
 const EMPTY_AGENT_MAPS: readonly never[] = [];
 const EMPTY_AGENT_IDS: readonly string[] = [];
+const EMPTY_AGENT_TITLES: ReadonlyMap<string, string> = new Map();
 const EMPTY_HOST_FILTERS: readonly string[] = [];
