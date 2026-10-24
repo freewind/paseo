@@ -9,6 +9,7 @@ import {
   type ReactNode,
   type Ref,
 } from "react";
+import { SidebarWorkspaceAgentList } from "@/components/sidebar/sidebar-workspace-agent-list";
 import { useTranslation } from "react-i18next";
 import {
   View,
@@ -978,6 +979,7 @@ function StatusWorkspaceRowInnerContent({
                 ) : null}
               </SidebarWorkspaceRowContent>
             </SidebarWorkspaceContextMenu>
+            <SidebarWorkspaceAgentList workspace={workspace} />
           </View>
         );
       }}
