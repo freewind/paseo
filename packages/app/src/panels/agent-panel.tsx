@@ -1400,10 +1400,11 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     setIsQuickRepliesSheetOpen(false);
   }, []);
 
+  const freewindMode = useSettings((settings) => settings.freewindMode);
   // Memos on top, quick replies pinned below: both panels take the gutter right of the
   // transcript, so neither reads as a one-line strip beside the input any more.
   const rightGutter = useMemo(() => {
-    if (isCompactFormFactor) return null;
+    if (isCompactFormFactor || !freewindMode) return null;
     const memos = memosSupported ? (
       <AgentMemosRail
         serverId={serverId}
@@ -1436,6 +1437,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   }, [
     agentId,
     handleMemoAppendToComposer,
+    freewindMode,
     isCompactFormFactor,
     memosSupported,
     openQuickRepliesEditor,
