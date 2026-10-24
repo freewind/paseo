@@ -79,12 +79,13 @@ export function AgentProfileRow({
         </View>
         <View style={settingsStyles.rowContent}>
           <View style={styles.titleLine}>
-            <Text style={settingsStyles.rowTitle} numberOfLines={1}>
-              {profile.name}
-            </Text>
-            <Text style={styles.summary} numberOfLines={1}>
-              {summary}
-            </Text>
+            <Text style={[settingsStyles.rowTitle, styles.nameText]}>{profile.name}</Text>
+            {/* 标题区改成上下两行后高度随内容走，空摘要不渲染，否则白白多占一行 */}
+            {summary ? (
+              <Text style={styles.summary} numberOfLines={1}>
+                {summary}
+              </Text>
+            ) : null}
           </View>
           {profile.notes ? (
             <View style={styles.notes}>
@@ -104,6 +105,7 @@ export function AgentProfileRow({
         <Button
           variant="ghost"
           size="sm"
+          style={styles.rowActionButton}
           leftIcon={moveUpIcon}
           onPress={handleMoveUp}
           disabled={isFirst}
@@ -113,6 +115,7 @@ export function AgentProfileRow({
         <Button
           variant="ghost"
           size="sm"
+          style={styles.rowActionButton}
           leftIcon={moveDownIcon}
           onPress={handleMoveDown}
           disabled={isLast}
@@ -122,6 +125,7 @@ export function AgentProfileRow({
         <Button
           variant="ghost"
           size="sm"
+          style={styles.rowActionButton}
           leftIcon={editIcon}
           onPress={handleEdit}
           accessibilityLabel={t("settings.host.agentProfiles.editProfile")}
@@ -130,6 +134,7 @@ export function AgentProfileRow({
         <Button
           variant="ghost"
           size="sm"
+          style={styles.rowActionButton}
           leftIcon={removeIcon}
           onPress={handleRemove}
           accessibilityLabel={t("settings.host.agentProfiles.remove")}
@@ -160,10 +165,15 @@ const styles = StyleSheet.create((theme) => ({
     marginTop: 1,
   },
   titleLine: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: theme.spacing[2],
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: theme.spacing[0.5],
     minWidth: 0,
+  },
+  // 名称靠换行完整显示，不要为了压住标题区高度再加 numberOfLines={1}：
+  // 省略号只固定行高，保不住名称本身，长名称仍被截断，等于退回这次修复前的样子。
+  nameText: {
+    flexShrink: 1,
   },
   summary: {
     flexShrink: 1,
@@ -181,8 +191,15 @@ const styles = StyleSheet.create((theme) => ({
     color: theme.colors.foregroundMuted,
     fontSize: theme.fontSize.sm,
   },
+  // 档案名很长时，这个按钮组一旦参与横向收缩，四个操作按钮就会被挤出可视区；
+  // 显式写死 0 是别让后人把它改成可收缩，代价是名称那一侧只能换行变高。
   rowActions: {
     flexDirection: "row",
     alignItems: "center",
+    gap: theme.spacing[0.5],
+    flexShrink: 0,
+  },
+  rowActionButton: {
+    paddingHorizontal: theme.spacing[1],
   },
 }));
