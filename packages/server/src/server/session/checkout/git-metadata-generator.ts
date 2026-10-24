@@ -90,18 +90,22 @@ interface PromptForDiffInput {
 export function createGitMetadataGenerator(deps: {
   workspaceGitService: GitMetadataDiffSource;
   generation: StructuredTextGeneration;
+  readDaemonConfig: () => StructuredGenerationDaemonConfig;
 }): GitMetadataGenerator {
-  const { workspaceGitService, generation } = deps;
+  const { workspaceGitService, generation, readDaemonConfig } = deps;
 
   async function buildPromptForDiff(input: PromptForDiffInput): Promise<string> {
     const diff = await workspaceGitService.getCheckoutDiff(input.cwd, input.diffOptions);
     const fileList = renderFileList(diff.structured);
     const patch = truncatePatch(diff.diff, input.maxPatchChars);
+    const instructions =
+      readDaemonConfig().metadataGeneration?.[input.styleConfigKey]?.instructions;
     return buildMetadataPrompt({
       cwd: input.cwd,
       workspaceGitService,
       contract: input.contract,
       styles: [{ configKey: input.styleConfigKey, default: input.styleDefault }],
+      daemonOverrides: instructions ? { [input.styleConfigKey]: instructions } : undefined,
       after: [
         input.jsonFieldsHint,
         "",

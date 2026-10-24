@@ -161,15 +161,19 @@ const MutableStructuredGenerationProviderSchema = z
   })
   .passthrough();
 
+const MetadataInstructionsSchema = z
+  .object({
+    instructions: z.string().optional(),
+  })
+  .passthrough();
+
 const MutableMetadataGenerationConfigSchema = z
   .object({
     providers: z.array(MutableStructuredGenerationProviderSchema).default([]),
-    title: z
-      .object({
-        instructions: z.string().optional(),
-      })
-      .passthrough()
-      .optional(),
+    title: MetadataInstructionsSchema.optional(),
+    branchName: MetadataInstructionsSchema.optional(),
+    commitMessage: MetadataInstructionsSchema.optional(),
+    pullRequest: MetadataInstructionsSchema.optional(),
   })
   .passthrough();
 

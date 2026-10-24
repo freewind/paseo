@@ -16,6 +16,15 @@ export interface StructuredGenerationDaemonConfig {
     title?: {
       instructions?: string;
     };
+    branchName?: {
+      instructions?: string;
+    };
+    commitMessage?: {
+      instructions?: string;
+    };
+    pullRequest?: {
+      instructions?: string;
+    };
   };
 }
 
