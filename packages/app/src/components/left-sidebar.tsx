@@ -482,8 +482,8 @@ function SidebarFooterRows({ onBeforeNavigate }: { onBeforeNavigate?: () => void
     (item) =>
       item.visible &&
       (item.kind === "plugin" || hasUsageSummary) &&
-      // Freewind mode has no usage summary; upstream keeps the row when it has one.
-      (!freewindMode || item.key !== "usage"),
+      // Freewind mode has no usage summary or plugin rows; upstream keeps both.
+      (!freewindMode || (item.key !== "usage" && item.kind !== "plugin")),
   );
   if (visibleItems.length === 0) return null;
   return (

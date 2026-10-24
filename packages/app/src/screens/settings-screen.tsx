@@ -971,7 +971,7 @@ function SettingsSidebar({
   const freewind = useFreewind();
   const freewindMode = useSettings((settings) => settings.freewindMode);
   const hostSectionItems = freewindMode
-    ? HOST_SECTION_ITEMS.filter((item) => item.id !== "usage")
+    ? HOST_SECTION_ITEMS.filter((item) => item.id !== "usage" && item.id !== "plugins")
     : HOST_SECTION_ITEMS;
   const hosts = useHosts();
   const localServerId = useLocalDaemonServerId();
