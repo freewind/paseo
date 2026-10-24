@@ -70,8 +70,10 @@ import {
 } from "@/add-project-flow/options";
 import {
   buildProjectPickerOptions,
+  isOpenableProjectPath,
   type ProjectPickerOption,
 } from "@/components/project-picker-options";
+import { appLog } from "@/utils/app-log";
 import { Shortcut } from "@/components/ui/shortcut";
 import { useRevealActiveItem } from "@/components/ui/scroll-reveal";
 import { useKeyboardShortcutsAvailable } from "@/keyboard/availability";
@@ -110,6 +112,7 @@ interface FlowRowOption {
   title: string;
   subtitle: string | null;
   icon: ComponentType<{ size?: number; color?: string }>;
+  actionIcon?: ComponentType<{ size?: number; color?: string }>;
   disabled?: boolean;
   testID: string;
   select: () => void;
@@ -129,6 +132,9 @@ function FlowIcon({ icon: Icon, size, color }: FlowIconProps) {
 
 const MutedFlowIcon = withUnistyles(FlowIcon, (theme) => ({
   color: theme.colors.foregroundMuted,
+}));
+const AccentFlowIcon = withUnistyles(FlowIcon, (theme) => ({
+  color: theme.colors.accent,
 }));
 const ThemedArrowLeft = withUnistyles(ArrowLeft);
 const ThemedTextInput = withUnistyles(TextInput, (theme) => ({
@@ -302,6 +308,11 @@ function FlowRow({
           </Text>
         ) : null}
       </View>
+      {option.actionIcon ? (
+        <View style={styles.rowAction}>
+          <AccentFlowIcon icon={option.actionIcon} size={16} />
+        </View>
+      ) : null}
     </Pressable>
   );
 }
@@ -643,15 +654,33 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
       }));
     }
     if (page.kind === "directory-search") {
+      // 只 trim 查询串，行里的路径按原样比较：列表返回带尾斜杠的路径时与 queryPath
+      // 不相等，那一行就不出现创建图标，点它只回填输入框。
+      const queryPath = page.query.trim();
       return pathOptions.map((option) => {
         const shortPath = shortenPath(option.path);
+        // 输入与某行完全一致，说明用户已经
+        // 逐层点到了这个路径；再选一次就是创建项目。
+        const isExactMatch = option.path === queryPath;
         return {
           id: option.path,
           title: shortPath,
           subtitle: directoryOptionSubtitle(option, shortPath),
           icon: Folder,
+          actionIcon: isExactMatch ? FolderPlus : undefined,
           testID: pathTestId(option.path),
-          select: () => void openAddedProject(option.path, "directory-search"),
+          select: () => {
+            if (isExactMatch) {
+              void openAddedProject(option.path, "directory-search");
+              return;
+            }
+            // 回填输入框，让列表继续匹配更深的目录。
+            setState((current) => setAddProjectPageInput(current, option.path));
+            // EditingTextInput 的 initialValue 只在挂载时生效，所以把回填同步进
+            // 可见的输入框（查询本身已经通过页面状态更新过了）。
+            inputRef.current?.replaceText(option.path);
+            appLog("add-project", "fill", { path: option.path });
+          },
         };
       });
     }
@@ -787,14 +816,30 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
     }
   }, [client, openNewWorkspaceForProject, page, setHasHydratedWorkspaces, upsertProject]);
 
+  const submitDirectorySearchCreate = useCallback(() => {
+    if (page.kind !== "directory-search") return;
+    // 输入还不是可打开的路径形态（正一个字一个字敲目录名、或敲的是相对路径）时静默
+    // 返回：Enter 在这一页兼作创建项目，输入过程中随时可能还没成形，逐次报错会把正常
+    // 输入变成一串错误提示，所以这里刻意不给提示。去掉这行判断，半截路径会被拿去建项目。
+    if (!isOpenableProjectPath(page.query.trim())) return;
+    appLog("add-project", "create", { query: page.query });
+    void openAddedProject(page.query, "directory-search");
+  }, [openAddedProject, page]);
+
   const submitActive = useCallback(() => {
     if (page.kind === "new-directory-name") {
       void createDirectory();
       return;
     }
+    // 目录检索页的 Enter 是按输入框路径创建项目，不看 activeIndex：光标停在哪一行都不
+    // 影响结果，建的仍是输入框里那个路径。所以它不走下面按 rows[activeIndex] 选中的逻辑。
+    if (page.kind === "directory-search") {
+      void submitDirectorySearchCreate();
+      return;
+    }
     const option = rows[activeIndex];
     if (option && !option.disabled) option.select();
-  }, [activeIndex, createDirectory, page.kind, rows]);
+  }, [activeIndex, createDirectory, page.kind, rows, submitDirectorySearchCreate]);
 
   const handleKey = useCallback(
     (key: string): boolean => {
@@ -913,20 +958,22 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
               />
             ) : null}
             {page.kind !== "method" ? (
-              <ThemedTextInput
-                ref={inputRef}
-                initialValue={pageInput(page)}
-                onChangeText={handleInputChange}
-                onKeyPress={isWeb ? undefined : handleNativeKeyPress}
-                onSubmitEditing={isWeb ? undefined : submitActive}
-                placeholder={pagePlaceholder(page)}
-                style={styles.input}
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!isSubmitting}
-                returnKeyType="go"
-                testID="add-project-flow-input"
-              />
+              <View style={styles.inputRow}>
+                <ThemedTextInput
+                  ref={inputRef}
+                  initialValue={pageInput(page)}
+                  onChangeText={handleInputChange}
+                  onKeyPress={isWeb ? undefined : handleNativeKeyPress}
+                  onSubmitEditing={isWeb ? undefined : submitActive}
+                  placeholder={pagePlaceholder(page)}
+                  style={styles.input}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!isSubmitting}
+                  returnKeyType="go"
+                  testID="add-project-flow-input"
+                />
+              </View>
             ) : null}
           </View>
           <ScrollView
@@ -991,6 +1038,7 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
           </ScrollView>
           <View style={styles.footer} testID="add-project-flow-footer">
             <FlowHint keys={NAVIGATION_HINT_KEYS} action="Navigate" />
+            {/* 页脚这里仍统一写 Select。directory-search 页的 Enter 实际是创建项目，文案与行为不一致，属已知 */}
             <FlowHint keys={SELECT_HINT_KEYS} action="Select" />
             <FlowHint keys={ESCAPE_HINT_KEYS} action={state.pages.length > 1 ? "Back" : "Close"} />
           </View>
@@ -1067,7 +1115,14 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.normal,
   },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing[3],
+  },
   input: {
+    flex: 1,
+    minWidth: 0,
     color: theme.colors.foreground,
     fontSize: theme.fontSize.base,
     paddingVertical: theme.spacing[1],
@@ -1091,6 +1146,7 @@ const styles = StyleSheet.create((theme) => ({
   rowActive: { backgroundColor: theme.colors.surface1 },
   disabled: { opacity: theme.opacity[50] },
   iconSlot: { width: 18, alignItems: "center" },
+  rowAction: { width: 18, alignItems: "center" },
   rowText: { flex: 1, minWidth: 0 },
   rowTitle: { color: theme.colors.foreground, fontSize: theme.fontSize.base },
   rowSubtitle: { color: theme.colors.foregroundMuted, fontSize: theme.fontSize.sm, marginTop: 2 },
