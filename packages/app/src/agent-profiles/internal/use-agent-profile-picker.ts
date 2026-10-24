@@ -15,6 +15,7 @@ import {
 } from "./materialize-profile";
 import { buildAgentProfileTags } from "./profile-summary";
 import { useAgentProfiles } from "./use-agent-profiles";
+import { useSettings } from "@/hooks/use-settings";
 
 /** The draft composer owns profile application as one state transition. */
 export interface DraftAgentProfileControls {
@@ -68,6 +69,7 @@ export function useAgentProfilePicker(
   const { serverId, availableProviders, target } = input;
   const { t } = useTranslation();
   const { profiles, isSupported } = useAgentProfiles(serverId);
+  const freewindMode = useSettings((settings) => settings.freewindMode);
   // Profiles are host config, so their labels read from the host-wide catalog
   // rather than a workspace's. That is also the key the settings section uses,
   // so every composer on a host shares one query instead of adding its own.
@@ -161,7 +163,7 @@ export function useAgentProfilePicker(
   );
 
   return useMemo(
-    () => (isSupported && profiles !== null ? { rows, applyProfile } : null),
-    [applyProfile, isSupported, profiles, rows],
+    () => (isSupported && profiles !== null && !freewindMode ? { rows, applyProfile } : null),
+    [applyProfile, freewindMode, isSupported, profiles, rows],
   );
 }
