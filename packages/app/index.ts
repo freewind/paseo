@@ -2,6 +2,10 @@
 // oxlint-disable-next-line import/no-unassigned-import -- Polyfills install on import.
 import "./src/polyfills/install-early";
 
+// 从最早的时机捕获：等后面的 import 加载时再崩，就什么都不留了。
+import { installGlobalErrorLogging } from "./src/utils/global-error-logging";
+installGlobalErrorLogging();
+
 // Configure Unistyles before Expo Router pulls in any components using StyleSheet.
 import "./src/styles/unistyles";
 // oxlint-disable-next-line import/no-unassigned-import -- Preserve Expo's entry side effects.
