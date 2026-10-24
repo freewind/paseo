@@ -824,11 +824,14 @@ function WorkspacesSectionHeader() {
   const nameSearch = useSidebarViewStore((state) => state.nameSearch);
   const setNameSearch = useSidebarViewStore((state) => state.setNameSearch);
   const freewindMode = useSettings((settings) => settings.freewindMode);
+  const setNonEmptyProjectsOnly = useSidebarViewStore((state) => state.setNonEmptyProjectsOnly);
   const { t } = useTranslation();
-  // A query left over from Freewind mode would keep filtering a list whose search box is gone.
+  // A query or filter left over from Freewind mode would keep narrowing a list whose controls are gone.
   useEffect(() => {
-    if (!freewindMode) setNameSearch("");
-  }, [freewindMode, setNameSearch]);
+    if (freewindMode) return;
+    setNameSearch("");
+    setNonEmptyProjectsOnly(false);
+  }, [freewindMode, setNonEmptyProjectsOnly, setNameSearch]);
   return (
     <View style={styles.workspacesSectionHeader}>
       {freewindMode ? (

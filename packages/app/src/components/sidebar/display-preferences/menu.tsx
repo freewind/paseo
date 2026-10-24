@@ -52,6 +52,7 @@ import {
 } from "@/stores/sidebar-view-store";
 import { workspaceLabelKey, type WorkspaceLabelColor } from "@getpaseo/protocol/workspace-labels";
 import type { WorkspaceTitleSource } from "@/hooks/use-settings";
+import { useSettings } from "@/hooks/use-settings";
 import { SIDEBAR_CHECKS_DISPLAYS, type SidebarChecksDisplay } from "./checks-display";
 import { useSidebarDisplayPreferences, type SidebarTrailingChoice } from "./model";
 import { SIDEBAR_ROW_ITEMS, type SidebarRowItem } from "./row-items";
@@ -619,6 +620,7 @@ function ProjectFilterPage({
   preferences: Preferences;
 }): ReactElement {
   const { t } = useTranslation();
+  const freewindMode = useSettings((settings) => settings.freewindMode);
   const iconTargets = useMemo(() => resolveSidebarProjectIconTargets(projects), [projects]);
   // Shares TanStack's cache with the sidebar's own call, so this subscribes rather than refetches.
   const iconByProjectViewKey = useProjectIcons({ projects: iconTargets });
@@ -638,14 +640,16 @@ function ProjectFilterPage({
       >
         {t("sidebar.display.projectFilter.all")}
       </MenuItem>
-      <MenuItem
-        selected={preferences.nonEmptyProjectsOnly}
-        closeOnSelect={false}
-        onSelect={toggleNonEmptyProjectsOnly}
-        testID="sidebar-project-filter-non-empty"
-      >
-        {t("sidebar.display.projectFilter.nonEmpty")}
-      </MenuItem>
+      {freewindMode ? (
+        <MenuItem
+          selected={preferences.nonEmptyProjectsOnly}
+          closeOnSelect={false}
+          onSelect={toggleNonEmptyProjectsOnly}
+          testID="sidebar-project-filter-non-empty"
+        >
+          {t("sidebar.display.projectFilter.nonEmpty")}
+        </MenuItem>
+      ) : null}
       {projects.map((project) => (
         <ProjectFilterItem
           key={project.viewKey}
