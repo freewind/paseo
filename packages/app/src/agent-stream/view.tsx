@@ -69,6 +69,7 @@ import { type AgentStreamRenderModel, buildAgentStreamRenderModel } from "./mode
 import { resolveStreamRenderStrategy } from "./strategy-resolver";
 import { type StreamSegmentRenderers, type StreamViewportHandle } from "./strategy";
 import { ChatOutlineRail } from "@/agent-stream/chat-outline/rail";
+import { useChatOutlineVariant } from "@/agent-stream/chat-outline/use-outline-variant";
 import { resolveSideRailWidth, SIDE_RAIL_MIN_PANEL_WIDTH } from "@/agent-stream/chat-outline/model";
 import { ChatOutlineSheet, useChatOutlineSheetController } from "@/agent-stream/chat-outline/sheet";
 import { useChatOutline } from "@/agent-stream/chat-outline/use-chat-outline";
@@ -384,6 +385,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
     const { t } = useTranslation();
     const autoExpandReasoning = useSettings((settings) => settings.autoExpandReasoning);
     const toolCallDetailLevel = useSettings((settings) => settings.toolCallDetailLevel);
+    const chatOutlineVariant = useChatOutlineVariant();
     const contentMaxWidth = useSettings(resolveContentMaxWidth);
     const viewportRef = useRef<StreamViewportHandle | null>(null);
     const pendingClientMessageIds = useMemo(
@@ -1214,6 +1216,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
               contentMaxWidth={contentMaxWidth}
               agentId={agentId}
               onRequestPromptText={chatOutline.fetchPromptText}
+              variant={chatOutlineVariant}
             />
             {rightGutter != null ? (
               <PanelRightGutter contentMaxWidth={contentMaxWidth}>{rightGutter}</PanelRightGutter>

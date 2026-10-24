@@ -1,9 +1,14 @@
 import type { ActivePromptSource, ChatOutlinePrompt } from "./model";
 
+/** Which outline the chat shows: our left text rail, or the upstream dots and their list. */
+export type ChatOutlineVariant = "freewind" | "dots" | "text";
+
 export interface ChatOutlineRailProps {
   prompts: ChatOutlinePrompt[];
   activePrompt: ActivePromptSource;
   onJumpToPrompt: (seq: number) => void;
+  /** Upstream outline form; ignored while Freewind mode draws its own text outline. */
+  variant: ChatOutlineVariant;
   /** The transcript's content column width. The outline takes the gutter beside it. */
   contentMaxWidth: number;
   /** Identifies the chat, so a collapsed outline stays collapsed for that chat alone. */

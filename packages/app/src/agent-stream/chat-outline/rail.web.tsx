@@ -32,11 +32,12 @@ import {
   type ChatOutlinePrompt,
 } from "./model";
 import type { ChatOutlineRailProps } from "./rail";
+import { ChatOutlineUpstreamRail } from "./dots.web";
 import { PromptDetailPopover } from "./prompt-detail.web";
 
 const MIN_PANEL_WIDTH = SIDE_RAIL_MIN_PANEL_WIDTH;
 
-export const ChatOutlineRail = memo(function ChatOutlineRail({
+const ChatOutlineFreewindRail = memo(function ChatOutlineFreewindRail({
   prompts,
   activePrompt,
   onJumpToPrompt,
@@ -83,6 +84,17 @@ export const ChatOutlineRail = memo(function ChatOutlineRail({
       />
     </View>
   );
+});
+
+/**
+ * Freewind mode draws the worded outline on the left. Off keeps the upstream outline — dots
+ * plus the optional worded list — exactly as upstream ships it.
+ */
+export const ChatOutlineRail = memo(function ChatOutlineRail(props: ChatOutlineRailProps) {
+  if (props.variant === "freewind") {
+    return <ChatOutlineFreewindRail {...props} />;
+  }
+  return <ChatOutlineUpstreamRail {...props} />;
 });
 
 interface ChatOutlineTextRailProps {

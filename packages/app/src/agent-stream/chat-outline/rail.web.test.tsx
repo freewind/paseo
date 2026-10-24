@@ -176,6 +176,7 @@ describe("ChatOutlineRail in its text form", () => {
           contentMaxWidth={CONTENT_MAX_WIDTH}
           agentId={options?.agentId ?? "agent-1"}
           onRequestPromptText={onRequestPromptText}
+          variant="freewind"
         />,
       );
     });
@@ -311,6 +312,7 @@ describe("ChatOutlineRail in its text form", () => {
           contentMaxWidth={CONTENT_MAX_WIDTH}
           agentId="agent-1"
           onRequestPromptText={onRequestPromptText}
+          variant="freewind"
         />,
       );
     });

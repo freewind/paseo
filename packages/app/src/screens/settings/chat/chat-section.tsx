@@ -212,7 +212,7 @@ export function ChatSection() {
             onPress={previewVoice}
             testID="settings-tts-preview"
           />
-          {isNative ? null : (
+          {isNative || settings.freewindMode ? null : (
             <>
               <SettingsSwitch
                 label={t("settings.appearance.chatOutline.title")}

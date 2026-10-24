@@ -87,6 +87,7 @@ async function mountRail(options?: {
         contentMaxWidth={820}
         agentId="agent-1"
         onRequestPromptText={options?.onRequestPromptText ?? defaultPromptText}
+        variant="freewind"
       />,
     );
   });
