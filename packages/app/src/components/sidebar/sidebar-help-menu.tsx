@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { buttonControlHeight } from "@/components/ui/control-geometry";
 import { useIsCompactFormFactor } from "@/constants/layout";
+import { useSettings } from "@/hooks/use-settings";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAppDiagnosticStore } from "@/diagnostics/store";
 import { useKeyboardShortcutsAvailable } from "@/keyboard/availability";
@@ -81,6 +82,7 @@ function HostVersionHint({ host }: { host: HostProfile }) {
 export function SidebarHelpMenu() {
   const isCompact = useIsCompactFormFactor();
   const { t } = useTranslation();
+  const freewindMode = useSettings((settings) => settings.freewindMode);
   const shortcutsAvailable = useKeyboardShortcutsAvailable();
   const openAppDiagnostic = useAppDiagnosticStore((state) => state.open);
   const setShortcutsDialogOpen = useKeyboardShortcutsStore((state) => state.setShortcutsDialogOpen);
@@ -149,22 +151,26 @@ export function SidebarHelpMenu() {
         >
           {t("sidebar.help.diagnostics")}
         </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel>{t("sidebar.help.reportIssue")}</DropdownMenuLabel>
-        <DropdownMenuItem
-          testID="sidebar-help-discord"
-          leading={discordLeadingIcon}
-          onSelect={openDiscord}
-        >
-          {t("sidebar.help.discord")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          testID="sidebar-help-github"
-          leading={githubLeadingIcon}
-          onSelect={openGitHubIssue}
-        >
-          {t("sidebar.help.github")}
-        </DropdownMenuItem>
+        {freewindMode ? null : (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>{t("sidebar.help.reportIssue")}</DropdownMenuLabel>
+            <DropdownMenuItem
+              testID="sidebar-help-discord"
+              leading={discordLeadingIcon}
+              onSelect={openDiscord}
+            >
+              {t("sidebar.help.discord")}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              testID="sidebar-help-github"
+              leading={githubLeadingIcon}
+              onSelect={openGitHubIssue}
+            >
+              {t("sidebar.help.github")}
+            </DropdownMenuItem>
+          </>
+        )}
         <DropdownMenuSeparator />
         <View style={styles.versionList}>
           <DropdownMenuHint
