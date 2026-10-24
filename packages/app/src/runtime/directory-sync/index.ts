@@ -156,6 +156,7 @@ export class DirectorySync {
   private revision = 0;
   private workspaceRevision = 0;
   private readonly routeDemandIds = new Set<string>();
+  private readonly workspaceRouteRefreshes = new Set<string>();
   private readonly fullDemandSources = new Set<object>();
   private demandRefresh: Promise<void> | null = null;
   private satisfiedDemandSource: DirectorySourceToken | null = null;
@@ -231,6 +232,7 @@ export class DirectorySync {
     this.abortPendingSessionWaits();
     this.releaseSubscriptions();
     this.fullDemandSources.clear();
+    this.workspaceRouteRefreshes.clear();
     this.routeDemandIds.clear();
     workspaceLabels.disconnect(this.serverId);
   }
@@ -356,6 +358,19 @@ export class DirectorySync {
 
   async prepareWorkspaceRoute(workspaceId: string): Promise<void> {
     await this.loadCachedWorkspace(workspaceId);
+    // Cache only answers for workspaces this install has already seen. A route straight to a
+    // workspace the daemon knows but this cache does not has to ask the host, or the screen has
+    // no descriptor and every surface derived from its directory stays unavailable.
+    const session = useSessionStore.getState().sessions[this.serverId];
+    if (!session || session.workspaces.has(workspaceId)) return;
+    if (this.workspaceRouteRefreshes.has(workspaceId)) return;
+    if (!this.getOnlineConnection()) return;
+    this.workspaceRouteRefreshes.add(workspaceId);
+    try {
+      await this.refreshWorkspacesInternal({ subscribe: true }, false);
+    } catch {
+      this.workspaceRouteRefreshes.delete(workspaceId);
+    }
   }
 
   private async loadCachedWorkspace(workspaceId: string): Promise<void> {
