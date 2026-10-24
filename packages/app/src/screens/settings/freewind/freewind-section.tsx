@@ -2,6 +2,8 @@ import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { SettingsCard, SettingsSection, SettingsSwitch } from "@/components/settings";
 import { useAppSettings } from "@/hooks/use-settings";
+import { useSessionStore } from "@/stores/session-store";
+import { FreewindPromptCard } from "./freewind-prompts";
 
 /**
  * Copy lives here rather than in the i18n resources: only `en` and `zh-CN` belong to us and
@@ -28,6 +30,9 @@ export function useFreewind() {
 
 export function FreewindSection() {
   const copy = useFreewind();
+  const { i18n } = useTranslation();
+  const isZh = i18n.language.toLowerCase().startsWith("zh");
+  const serverId = useSessionStore((state) => Object.keys(state.sessions)[0] ?? null);
   const { settings, updateSettings } = useAppSettings();
   const changeFreewindMode = useCallback(
     (freewindMode: boolean) => void updateSettings({ freewindMode }),
@@ -45,6 +50,14 @@ export function FreewindSection() {
           testID="freewind-mode-switch"
         />
       </SettingsCard>
+      {settings.freewindMode && serverId ? (
+        <>
+          <FreewindPromptCard serverId={serverId} promptKey="title" isZh={isZh} />
+          <FreewindPromptCard serverId={serverId} promptKey="branchName" isZh={isZh} />
+          <FreewindPromptCard serverId={serverId} promptKey="commitMessage" isZh={isZh} />
+          <FreewindPromptCard serverId={serverId} promptKey="pullRequest" isZh={isZh} />
+        </>
+      ) : null}
     </SettingsSection>
   );
 }
