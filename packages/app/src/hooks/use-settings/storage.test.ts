@@ -213,6 +213,26 @@ describe("loadAppSettingsFromStorage", () => {
     expect(result.workspaceTitleSource).toBe("title");
   });
 
+  it("defaults the freewind mode to on when storage is empty", async () => {
+    const deps = makeDeps();
+
+    const result = await loadAppSettingsFromStorage(deps);
+
+    expect(result.freewindMode).toBe(true);
+  });
+
+  it("loads a disabled freewind mode preference", async () => {
+    const deps = makeDeps({
+      storage: createInMemoryKeyValueStorage({
+        [APP_SETTINGS_KEY]: JSON.stringify({ freewindMode: false }),
+      }),
+    });
+
+    const result = await loadAppSettingsFromStorage(deps);
+
+    expect(result.freewindMode).toBe(false);
+  });
+
   it("enables the chat outline by default", async () => {
     const deps = makeDeps();
 

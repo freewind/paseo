@@ -37,6 +37,7 @@ import {
   Code2,
   Smartphone,
   Sparkles,
+  Zap,
   Blocks,
   Globe,
   PanelLeft,
@@ -56,6 +57,7 @@ import { AppearanceSection } from "@/screens/settings/appearance/appearance-sect
 import { OpenLocationSection } from "@/screens/settings/open-location/open-location-section";
 import { TerminalSection } from "@/screens/settings/terminal/terminal-section";
 import { ChatSection } from "@/screens/settings/chat/chat-section";
+import { FreewindSection } from "@/screens/settings/freewind/freewind-section";
 import { SidebarNavSection } from "@/screens/settings/sidebar/sidebar-nav-section";
 import { SendingSection } from "@/screens/settings/general/sending-section";
 import {
@@ -155,6 +157,12 @@ interface SidebarSectionItem {
 }
 
 const SIDEBAR_SECTION_ITEMS: SidebarSectionItem[] = [
+  {
+    id: "freewind",
+    labelKey: "settings.sections.freewind",
+    icon: Zap,
+    Content: FreewindSection,
+  },
   { id: "general", labelKey: "settings.sections.general", icon: Settings },
   {
     id: "appearance",

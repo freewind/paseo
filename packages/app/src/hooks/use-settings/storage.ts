@@ -102,6 +102,8 @@ export interface AppSettings {
   usage: UsagePreferences;
   autoExpandReasoning: boolean;
   toolCallDetailLevel: ToolCallDetailLevel;
+  /** Whether the app runs our customized build; off returns every surface to upstream behavior. */
+  freewindMode: boolean;
   chatOutlineEnabled: boolean;
   /** Whether the outline shows prompt text instead of dots. Web only; the dots stay the default. */
   chatOutlineTextLabels: boolean;
@@ -176,6 +178,7 @@ export const DEFAULT_CLIENT_SETTINGS: AppSettings = {
   usage: DEFAULT_USAGE_PREFERENCES,
   autoExpandReasoning: false,
   toolCallDetailLevel: "detailed",
+  freewindMode: true,
   chatOutlineEnabled: true,
   chatOutlineTextLabels: false,
   vimKeybindings: false,
@@ -286,6 +289,7 @@ const StoredAppSettingsSchema = z
       .catch("detailed"),
     // COMPAT(compactToolCalls): migrated in v0.1.105, remove after 2027-01-12.
     compactToolCalls: z.boolean().optional().catch(undefined),
+    freewindMode: z.boolean().catch(true),
     chatOutlineEnabled: z.boolean().catch(true),
     chatOutlineTextLabels: z.boolean().catch(false),
     vimKeybindings: z.boolean().catch(false),
