@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { SettingsCard, SettingsSection, SettingsSwitch } from "@/components/settings";
 import { useAppSettings } from "@/hooks/use-settings";
 import { useSessionStore } from "@/stores/session-store";
+import { FreewindChatAudio } from "./freewind-chat-audio";
 import { FreewindPromptCard } from "./freewind-prompts";
 
 /**
@@ -52,6 +53,9 @@ export function FreewindSection() {
       </SettingsCard>
       {settings.freewindMode && serverId ? (
         <>
+          <SettingsCard>
+            <FreewindChatAudio />
+          </SettingsCard>
           <FreewindPromptCard serverId={serverId} promptKey="title" isZh={isZh} />
           <FreewindPromptCard serverId={serverId} promptKey="branchName" isZh={isZh} />
           <FreewindPromptCard serverId={serverId} promptKey="commitMessage" isZh={isZh} />
