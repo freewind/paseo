@@ -56,6 +56,7 @@ import { useCloseAgentListGesture } from "@/mobile-panels/gestures";
 import { MobilePanelOverlay } from "@/mobile-panels/presentation";
 import { buildSettingsAddHostRoute, buildSettingsRoute } from "@/utils/host-routes";
 import { openHostOverview } from "@/navigation/settings-navigation";
+import { useSettings } from "@/hooks/use-settings";
 import { UsageSidebarItem, useHasUsageSummary, useOpenUsageScreen } from "@/usage";
 import { SidebarAgentListSkeleton } from "./sidebar-agent-list-skeleton";
 import { SidebarCalloutSlot } from "./sidebar-callout-slot";
@@ -475,9 +476,14 @@ function SidebarFooter({
 function SidebarFooterRows({ onBeforeNavigate }: { onBeforeNavigate?: () => void }) {
   const { items } = useSidebarNavItems("footer");
   const hasUsageSummary = useHasUsageSummary();
+  const freewindMode = useSettings((settings) => settings.freewindMode);
   const rowsRef = useRef<View | null>(null);
   const visibleItems = items.filter(
-    (item) => item.visible && (item.kind === "plugin" || hasUsageSummary),
+    (item) =>
+      item.visible &&
+      (item.kind === "plugin" || hasUsageSummary) &&
+      // Freewind mode has no usage summary; upstream keeps the row when it has one.
+      (!freewindMode || item.key !== "usage"),
   );
   if (visibleItems.length === 0) return null;
   return (

@@ -969,6 +969,10 @@ function SettingsSidebar({
   const { theme } = useUnistyles();
   const { t } = useTranslation();
   const freewind = useFreewind();
+  const freewindMode = useSettings((settings) => settings.freewindMode);
+  const hostSectionItems = freewindMode
+    ? HOST_SECTION_ITEMS.filter((item) => item.id !== "usage")
+    : HOST_SECTION_ITEMS;
   const hosts = useHosts();
   const localServerId = useLocalDaemonServerId();
   const sortedHosts = useSortedHosts(hosts, localServerId);
@@ -1048,7 +1052,7 @@ function SettingsSidebar({
             onAddHost={onAddHost}
             enableBuiltInDaemonOption={enableBuiltInDaemonOption}
           />
-          {HOST_SECTION_ITEMS.map((item) => (
+          {hostSectionItems.map((item) => (
             <SidebarHostSectionButton
               key={item.id}
               itemId={item.id}
