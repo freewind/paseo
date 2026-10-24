@@ -64,8 +64,6 @@ export const SETTINGS_SEARCH_INDEX: SettingsSearchSection[] = [
     rows: [
       { labelKey: "settings.general.autoExpandReasoning.label" },
       { labelKey: "settings.general.toolCallDetail.label" },
-      { labelKey: "settings.general.showVoiceButton.label" },
-      { labelKey: "settings.general.doubleBackToExit.label" },
       { labelKey: "settings.general.playTurnCompleteSound.label" },
       { labelKey: "settings.general.turnCompleteSound.label" },
       { labelKey: "settings.general.ttsEnabled.label" },

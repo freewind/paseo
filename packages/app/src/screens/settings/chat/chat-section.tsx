@@ -95,14 +95,6 @@ export function ChatSection() {
     (chatOutlineTextLabels: boolean) => void updateSettings({ chatOutlineTextLabels }),
     [updateSettings],
   );
-  const changeShowVoiceButton = useCallback(
-    (showVoiceButton: boolean) => void updateSettings({ showVoiceButton }),
-    [updateSettings],
-  );
-  const changeDoubleBackToExit = useCallback(
-    (doubleBackToExit: boolean) => void updateSettings({ doubleBackToExit }),
-    [updateSettings],
-  );
   const changePlayTurnCompleteSound = useCallback(
     (playTurnCompleteSound: boolean) => void updateSettings({ playTurnCompleteSound }),
     [updateSettings],
@@ -161,18 +153,6 @@ export function ChatSection() {
           />
           {settings.freewindMode ? null : (
             <>
-              <SettingsSwitch
-                label={t("settings.general.showVoiceButton.label")}
-                hint={t("settings.general.showVoiceButton.description")}
-                value={settings.showVoiceButton}
-                onValueChange={changeShowVoiceButton}
-              />
-              <SettingsSwitch
-                label={t("settings.general.doubleBackToExit.label")}
-                hint={t("settings.general.doubleBackToExit.description")}
-                value={settings.doubleBackToExit}
-                onValueChange={changeDoubleBackToExit}
-              />
               <SettingsSwitch
                 label={t("settings.general.playTurnCompleteSound.label")}
                 hint={t("settings.general.playTurnCompleteSound.description")}
