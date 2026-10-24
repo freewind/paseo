@@ -16,6 +16,7 @@ import {
   hasActiveSidebarLabelFilter,
   useSidebarViewStore,
   type SidebarGroupMode,
+  resolveProjectVisibility,
 } from "@/stores/sidebar-view-store";
 import {
   filterSidebarByName,
@@ -123,7 +124,10 @@ export function SidebarModelProvider({
       ),
     [projectFilters, list.projects],
   );
-  const hasActiveProjectFilter = resolvedProjectFilters.length > 0;
+  const projectVisibility = resolveProjectVisibility({
+    projectFilters: resolvedProjectFilters,
+    nonEmptyProjectsOnly,
+  });
   const workspaceEntriesByKey = useSidebarWorkspaceEntries(list.workspacePlacements);
   // The search matches only what the sidebar lists, so its agent ids come from
   // the tab layout rather than the session store. An agent whose tab is hidden
@@ -259,11 +263,11 @@ export function SidebarModelProvider({
   // workspaces, so a project it empties has nothing left to show.
   const filteredProjects = useMemo(() => {
     let projects = nameFilteredProjects;
-    if (!hasNameSearch && hasActiveProjectFilter) {
-      const included = new Set(resolvedProjectFilters);
+    if (!hasNameSearch && projectVisibility.kind === "selected") {
+      const included = new Set(projectVisibility.keys);
       projects = projects.filter((project) => included.has(project.viewKey));
     }
-    if (!hasNameSearch && nonEmptyProjectsOnly) {
+    if (!hasNameSearch && projectVisibility.kind === "non-empty") {
       // Derived every render: a project reappears the moment a chat starts in it. The first
       // load is exempt because an empty agent map there means "not fetched yet", and filtering
       // on it would blank the sidebar instead of narrowing it.
@@ -283,10 +287,8 @@ export function SidebarModelProvider({
     return projects;
   }, [
     hasActiveLabelFilter,
-    hasActiveProjectFilter,
+    projectVisibility,
     hasNameSearch,
-    resolvedProjectFilters,
-    nonEmptyProjectsOnly,
     liveWorkspaceKeys,
     list.isInitialLoad,
     nameFilteredProjects,

@@ -8,6 +8,8 @@ import {
   useSidebarViewStore,
   type SidebarGroupMode,
   type SidebarLabelFilter,
+  resolveProjectVisibility,
+  type ProjectVisibility,
 } from "@/stores/sidebar-view-store";
 import { DEFAULT_SIDEBAR_CHECKS_DISPLAY, type SidebarChecksDisplay } from "./checks-display";
 import { DEFAULT_SIDEBAR_ROW_ITEMS, type SidebarRowItem, type SidebarRowItems } from "./row-items";
@@ -37,6 +39,8 @@ export interface SidebarDisplayPreferences {
   /** Only projects holding a live conversation. Mutually exclusive with `projectFilters`. */
   nonEmptyProjectsOnly: boolean;
   setNonEmptyProjectsOnly: (enabled: boolean) => void;
+  /** The one reason the list hides a project, derived from the two fields above. */
+  projectVisibility: ProjectVisibility;
   labelFilter: SidebarLabelFilter;
   toggleLabelFilter: (name: string) => void;
   clearLabelFilter: () => void;
@@ -64,6 +68,10 @@ export function useSidebarDisplayPreferences(): SidebarDisplayPreferences {
   const labelFilter = useSidebarViewStore((state) => state.labelFilter);
   const toggleLabelFilter = useSidebarViewStore((state) => state.toggleLabelFilter);
   const clearLabelFilter = useSidebarViewStore((state) => state.clearLabelFilter);
+  const projectVisibility = useMemo(
+    () => resolveProjectVisibility({ projectFilters, nonEmptyProjectsOnly }),
+    [nonEmptyProjectsOnly, projectFilters],
+  );
 
   const {
     settings: {
@@ -127,6 +135,7 @@ export function useSidebarDisplayPreferences(): SidebarDisplayPreferences {
       clearProjectFilters,
       nonEmptyProjectsOnly,
       setNonEmptyProjectsOnly,
+      projectVisibility,
       labelFilter,
       toggleLabelFilter,
       clearLabelFilter,
@@ -150,6 +159,7 @@ export function useSidebarDisplayPreferences(): SidebarDisplayPreferences {
       clearProjectFilters,
       nonEmptyProjectsOnly,
       setNonEmptyProjectsOnly,
+      projectVisibility,
       labelFilter,
       toggleLabelFilter,
       clearLabelFilter,

@@ -341,7 +341,7 @@ export function SidebarDisplayPreferencesMenu(): ReactElement {
               {showHostFilter ? null : <MenuSeparator />}
               <MenuSubTrigger
                 id="projectFilter"
-                indicator={resolvedProjectFilters.length > 0 || preferences.nonEmptyProjectsOnly}
+                indicator={preferences.projectVisibility.kind !== "all"}
                 testID="sidebar-display-project-filter"
               >
                 {t("sidebar.display.projectFilter.label")}
@@ -633,7 +633,7 @@ function ProjectFilterPage({
   return (
     <>
       <MenuItem
-        selected={resolvedProjectFilters.length === 0 && !preferences.nonEmptyProjectsOnly}
+        selected={preferences.projectVisibility.kind === "all"}
         closeOnSelect={false}
         onSelect={preferences.clearProjectFilters}
         testID="sidebar-project-filter-all"
@@ -642,7 +642,7 @@ function ProjectFilterPage({
       </MenuItem>
       {freewindMode ? (
         <MenuItem
-          selected={preferences.nonEmptyProjectsOnly}
+          selected={preferences.projectVisibility.kind === "non-empty"}
           closeOnSelect={false}
           onSelect={toggleNonEmptyProjectsOnly}
           testID="sidebar-project-filter-non-empty"

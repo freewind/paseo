@@ -293,3 +293,21 @@ export const useSidebarViewStore = create<SidebarViewStoreState>()(
 function emptyLabelFilter(): SidebarLabelFilter {
   return { labels: [] };
 }
+
+/**
+ * The single reason the sidebar has for hiding a project. Derived from the two persisted fields so
+ * the model, the display-preferences menu, and the filter pipeline all speak one vocabulary.
+ */
+export type ProjectVisibility =
+  | { kind: "all" }
+  | { kind: "selected"; keys: readonly string[] }
+  | { kind: "non-empty" };
+
+export function resolveProjectVisibility(input: {
+  projectFilters: readonly string[];
+  nonEmptyProjectsOnly: boolean;
+}): ProjectVisibility {
+  if (input.nonEmptyProjectsOnly) return { kind: "non-empty" };
+  if (input.projectFilters.length > 0) return { kind: "selected", keys: input.projectFilters };
+  return { kind: "all" };
+}
