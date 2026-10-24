@@ -102,7 +102,7 @@ interface CheckoutGitActionsStoreState {
     actionId: CheckoutGitAsyncActionId;
   }) => CheckoutGitActionStatus;
 
-  commit: (params: { serverId: string; cwd: string; message: string }) => Promise<void>;
+  commit: (params: { serverId: string; cwd: string; message?: string }) => Promise<void>;
   pull: (params: { serverId: string; cwd: string }) => Promise<void>;
   push: (params: { serverId: string; cwd: string }) => Promise<void>;
   pullAndPush: (params: { serverId: string; cwd: string }) => Promise<void>;

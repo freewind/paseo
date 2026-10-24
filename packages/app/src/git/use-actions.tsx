@@ -9,6 +9,7 @@ import { getForgePresentation, type Forge } from "@/git/forge";
 import { ForgeBrandIcon, getForgeBrandColorMapping } from "@/git/forge-icon";
 import { type CheckoutGitActionStatus, useCheckoutGitActionsStore } from "@/git/actions-store";
 import { useCommitDialogStore } from "@/git/commit-dialog-store";
+import { useSettings } from "@/hooks/use-settings";
 import { type CheckoutStatusPayload, useCheckoutStatusQuery } from "@/git/use-status-query";
 import { type CheckoutPrStatusPayload, useCheckoutPrStatusQuery } from "@/git/use-pr-status-query";
 import {
@@ -452,6 +453,8 @@ export function useGitActions({ serverId, cwd, icons }: UseGitActionsInput): Use
   const runMergePr = useCheckoutGitActionsStore((s) => s.mergePr);
   const runEnablePrAutoMerge = useCheckoutGitActionsStore((s) => s.enablePrAutoMerge);
   const runDisablePrAutoMerge = useCheckoutGitActionsStore((s) => s.disablePrAutoMerge);
+  const runCommit = useCheckoutGitActionsStore((s) => s.commit);
+  const freewindMode = useSettings((s) => s.freewindMode);
   const runMergeBranch = useCheckoutGitActionsStore((s) => s.mergeBranch);
   const runMergeFromBase = useCheckoutGitActionsStore((s) => s.mergeFromBase);
   const githubAutoMergeActionsEnabled = useSessionStore(
@@ -477,8 +480,29 @@ export function useGitActions({ serverId, cwd, icons }: UseGitActionsInput): Use
 
   // Handlers
   const handleCommit = useCallback(() => {
-    openCommitDialog({ serverId, cwd });
-  }, [cwd, openCommitDialog, serverId]);
+    if (freewindMode) {
+      openCommitDialog({ serverId, cwd });
+      return;
+    }
+    // Upstream lets the daemon generate the commit message instead of previewing it first.
+    void runCommit({ serverId, cwd })
+      .then(() => {
+        toastActionSuccess(t("workspace.git.actions.commit.success"));
+        return;
+      })
+      .catch((err) => {
+        toastActionError(err, t("workspace.git.actions.toasts.failedCommit"));
+      });
+  }, [
+    cwd,
+    freewindMode,
+    openCommitDialog,
+    runCommit,
+    serverId,
+    t,
+    toastActionError,
+    toastActionSuccess,
+  ]);
 
   const handlePull = useCallback(() => {
     void runPull({ serverId, cwd })
