@@ -197,12 +197,41 @@ export function SidebarModelProvider({
     }
     return titles;
   }, [agentMapsByServerId]);
+  // Visibility and labels run here, once, so the name search narrows what they kept instead of
+  // rebuilding the same project/workspace pairs from the unfiltered list.
+  const preFilteredProjects = useMemo(() => {
+    let projects = list.projects;
+    if (projectVisibility.kind === "selected") {
+      const included = new Set(projectVisibility.keys);
+      projects = projects.filter((project) => included.has(project.viewKey));
+    }
+    if (projectVisibility.kind === "non-empty" && !list.isInitialLoad) {
+      const live = collectLiveProjectKeys({ projects, liveWorkspaceKeys });
+      projects = projects.filter((project) => live.has(project.viewKey));
+    }
+    if (hasActiveLabelFilter) {
+      projects = projects.flatMap((project) => {
+        const workspaces = project.workspaces.filter((workspace) =>
+          visibleWorkspaceKeys.has(workspace.workspaceKey),
+        );
+        return workspaces.length > 0 ? [{ ...project, workspaces }] : [];
+      });
+    }
+    return projects;
+  }, [
+    hasActiveLabelFilter,
+    list.isInitialLoad,
+    list.projects,
+    liveWorkspaceKeys,
+    projectVisibility,
+    visibleWorkspaceKeys,
+  ]);
   const nameFilter = useMemo(
     () =>
       hasNameSearch
         ? filterSidebarByName({
             query: nameSearch,
-            projects: list.projects.map((project) => ({
+            projects: preFilteredProjects.map((project) => ({
               viewKey: project.viewKey,
               projectName: project.projectName,
               workspaces: project.workspaces.map((workspace) => {
@@ -230,7 +259,7 @@ export function SidebarModelProvider({
       hasNameSearch,
       freewindMode,
       nameSearch,
-      list.projects,
+      preFilteredProjects,
       agentTitlesMap,
       visibleAgentIdsByWorkspaceKey,
       workspaceEntriesByKey,
@@ -240,11 +269,11 @@ export function SidebarModelProvider({
   const nameFilteredProjects = useMemo(
     () =>
       nameFilter
-        ? list.projects.filter((project) =>
+        ? preFilteredProjects.filter((project) =>
             nameFilter.projects.some((kept) => kept.projectViewKey === project.viewKey),
           )
-        : list.projects,
-    [nameFilter, list.projects],
+        : preFilteredProjects,
+    [nameFilter, preFilteredProjects],
   );
   const baseWorkspaceEntriesByKey = hasNameSearch
     ? workspaceEntriesByKey
@@ -257,43 +286,8 @@ export function SidebarModelProvider({
     }
     return next;
   }, [nameFilter, baseWorkspaceEntriesByKey]);
-  // The two filters prune differently on purpose. The project filter is a membership test on the
-  // project itself, so a project you filtered TO survives even with no workspaces — it still owns
-  // a header row you can create your first workspace under. The label filter can only ask about
-  // workspaces, so a project it empties has nothing left to show.
-  const filteredProjects = useMemo(() => {
-    let projects = nameFilteredProjects;
-    if (!hasNameSearch && projectVisibility.kind === "selected") {
-      const included = new Set(projectVisibility.keys);
-      projects = projects.filter((project) => included.has(project.viewKey));
-    }
-    if (!hasNameSearch && projectVisibility.kind === "non-empty") {
-      // Derived every render: a project reappears the moment a chat starts in it. The first
-      // load is exempt because an empty agent map there means "not fetched yet", and filtering
-      // on it would blank the sidebar instead of narrowing it.
-      const live = collectLiveProjectKeys({ projects, liveWorkspaceKeys });
-      projects = list.isInitialLoad
-        ? projects
-        : projects.filter((project) => live.has(project.viewKey));
-    }
-    if (!hasNameSearch && hasActiveLabelFilter) {
-      projects = projects.flatMap((project) => {
-        const workspaces = project.workspaces.filter((workspace) =>
-          visibleWorkspaceKeys.has(workspace.workspaceKey),
-        );
-        return workspaces.length > 0 ? [{ ...project, workspaces }] : [];
-      });
-    }
-    return projects;
-  }, [
-    hasActiveLabelFilter,
-    projectVisibility,
-    hasNameSearch,
-    liveWorkspaceKeys,
-    list.isInitialLoad,
-    nameFilteredProjects,
-    visibleWorkspaceKeys,
-  ]);
+  // Visibility and labels already ran above, so the name filter's result is the final list.
+  const filteredProjects = nameFilteredProjects;
   const pinnedKeys = usePinnedSidebarKeys(filteredProjects);
   const projectionInput = useMemo(
     () => ({

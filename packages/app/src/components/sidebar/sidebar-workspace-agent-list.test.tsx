@@ -108,6 +108,12 @@ vi.mock("@/components/ui/dropdown-menu", () => ({
   ),
 }));
 
+vi.mock("@/hooks/use-settings", () => ({
+  useAppSettings: () => ({ settings: { freewindMode: true } }),
+  useSettings: (selector: (settings: { freewindMode: boolean }) => unknown) =>
+    selector({ freewindMode: true }),
+}));
+
 vi.mock("@/utils/confirm-dialog", () => ({ confirmDialog: vi.fn(() => Promise.resolve(true)) }));
 
 // The agent list now reads the name-search model; tests that don't exercise the search get an
