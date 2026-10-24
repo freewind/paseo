@@ -70,8 +70,10 @@ import {
 } from "@/add-project-flow/options";
 import {
   buildProjectPickerOptions,
+  isOpenableProjectPath,
   type ProjectPickerOption,
 } from "@/components/project-picker-options";
+import { appLog } from "@/utils/app-log";
 import { Shortcut } from "@/components/ui/shortcut";
 import { useRevealActiveItem } from "@/components/ui/scroll-reveal";
 import { useKeyboardShortcutsAvailable } from "@/keyboard/availability";
@@ -110,6 +112,7 @@ interface FlowRowOption {
   title: string;
   subtitle: string | null;
   icon: ComponentType<{ size?: number; color?: string }>;
+  actionIcon?: ComponentType<{ size?: number; color?: string }>;
   disabled?: boolean;
   testID: string;
   select: () => void;
@@ -129,6 +132,9 @@ function FlowIcon({ icon: Icon, size, color }: FlowIconProps) {
 
 const MutedFlowIcon = withUnistyles(FlowIcon, (theme) => ({
   color: theme.colors.foregroundMuted,
+}));
+const AccentFlowIcon = withUnistyles(FlowIcon, (theme) => ({
+  color: theme.colors.accent,
 }));
 const ThemedArrowLeft = withUnistyles(ArrowLeft);
 const ThemedTextInput = withUnistyles(TextInput, (theme) => ({
@@ -302,6 +308,11 @@ function FlowRow({
           </Text>
         ) : null}
       </View>
+      {option.actionIcon ? (
+        <View style={styles.rowAction}>
+          <AccentFlowIcon icon={option.actionIcon} size={16} />
+        </View>
+      ) : null}
     </Pressable>
   );
 }
@@ -643,15 +654,31 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
       }));
     }
     if (page.kind === "directory-search") {
+      const queryPath = page.query.trim();
       return pathOptions.map((option) => {
         const shortPath = shortenPath(option.path);
+        // 输入与某行完全一致，说明用户已经
+        // 逐层点到了这个路径；再选一次就是创建项目。
+        const isExactMatch = option.path === queryPath;
         return {
           id: option.path,
           title: shortPath,
           subtitle: directoryOptionSubtitle(option, shortPath),
           icon: Folder,
+          actionIcon: isExactMatch ? FolderPlus : undefined,
           testID: pathTestId(option.path),
-          select: () => void openAddedProject(option.path, "directory-search"),
+          select: () => {
+            if (isExactMatch) {
+              void openAddedProject(option.path, "directory-search");
+              return;
+            }
+            // 回填输入框，让列表继续匹配更深的目录。
+            setState((current) => setAddProjectPageInput(current, option.path));
+            // EditingTextInput 的 initialValue 只在挂载时生效，所以把回填同步进
+            // 可见的输入框（查询本身已经通过页面状态更新过了）。
+            inputRef.current?.replaceText(option.path);
+            appLog("add-project", "fill", { path: option.path });
+          },
         };
       });
     }
@@ -787,14 +814,25 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
     }
   }, [client, openNewWorkspaceForProject, page, setHasHydratedWorkspaces, upsertProject]);
 
+  const submitDirectorySearchCreate = useCallback(() => {
+    if (page.kind !== "directory-search") return;
+    if (!isOpenableProjectPath(page.query.trim())) return;
+    appLog("add-project", "create", { query: page.query });
+    void openAddedProject(page.query, "directory-search");
+  }, [openAddedProject, page]);
+
   const submitActive = useCallback(() => {
     if (page.kind === "new-directory-name") {
       void createDirectory();
       return;
     }
+    if (page.kind === "directory-search") {
+      void submitDirectorySearchCreate();
+      return;
+    }
     const option = rows[activeIndex];
     if (option && !option.disabled) option.select();
-  }, [activeIndex, createDirectory, page.kind, rows]);
+  }, [activeIndex, createDirectory, page.kind, rows, submitDirectorySearchCreate]);
 
   const handleKey = useCallback(
     (key: string): boolean => {
@@ -913,20 +951,22 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
               />
             ) : null}
             {page.kind !== "method" ? (
-              <ThemedTextInput
-                ref={inputRef}
-                initialValue={pageInput(page)}
-                onChangeText={handleInputChange}
-                onKeyPress={isWeb ? undefined : handleNativeKeyPress}
-                onSubmitEditing={isWeb ? undefined : submitActive}
-                placeholder={pagePlaceholder(page)}
-                style={styles.input}
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!isSubmitting}
-                returnKeyType="go"
-                testID="add-project-flow-input"
-              />
+              <View style={styles.inputRow}>
+                <ThemedTextInput
+                  ref={inputRef}
+                  initialValue={pageInput(page)}
+                  onChangeText={handleInputChange}
+                  onKeyPress={isWeb ? undefined : handleNativeKeyPress}
+                  onSubmitEditing={isWeb ? undefined : submitActive}
+                  placeholder={pagePlaceholder(page)}
+                  style={styles.input}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!isSubmitting}
+                  returnKeyType="go"
+                  testID="add-project-flow-input"
+                />
+              </View>
             ) : null}
           </View>
           <ScrollView
@@ -1067,7 +1107,14 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.normal,
   },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing[3],
+  },
   input: {
+    flex: 1,
+    minWidth: 0,
     color: theme.colors.foreground,
     fontSize: theme.fontSize.base,
     paddingVertical: theme.spacing[1],
@@ -1091,6 +1138,7 @@ const styles = StyleSheet.create((theme) => ({
   rowActive: { backgroundColor: theme.colors.surface1 },
   disabled: { opacity: theme.opacity[50] },
   iconSlot: { width: 18, alignItems: "center" },
+  rowAction: { width: 18, alignItems: "center" },
   rowText: { flex: 1, minWidth: 0 },
   rowTitle: { color: theme.colors.foreground, fontSize: theme.fontSize.base },
   rowSubtitle: { color: theme.colors.foregroundMuted, fontSize: theme.fontSize.sm, marginTop: 2 },
