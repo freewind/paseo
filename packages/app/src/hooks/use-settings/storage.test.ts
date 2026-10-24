@@ -213,12 +213,12 @@ describe("loadAppSettingsFromStorage", () => {
     expect(result.workspaceTitleSource).toBe("title");
   });
 
-  it("defaults the freewind mode to on when storage is empty", async () => {
+  it("defaults the freewind mode to off when storage is empty", async () => {
     const deps = makeDeps();
 
     const result = await loadAppSettingsFromStorage(deps);
 
-    expect(result.freewindMode).toBe(true);
+    expect(result.freewindMode).toBe(false);
   });
 
   it("loads a disabled freewind mode preference", async () => {

@@ -178,7 +178,7 @@ export const DEFAULT_CLIENT_SETTINGS: AppSettings = {
   usage: DEFAULT_USAGE_PREFERENCES,
   autoExpandReasoning: false,
   toolCallDetailLevel: "detailed",
-  freewindMode: true,
+  freewindMode: false,
   chatOutlineEnabled: true,
   chatOutlineTextLabels: false,
   vimKeybindings: false,
@@ -289,7 +289,7 @@ const StoredAppSettingsSchema = z
       .catch("detailed"),
     // COMPAT(compactToolCalls): migrated in v0.1.105, remove after 2027-01-12.
     compactToolCalls: z.boolean().optional().catch(undefined),
-    freewindMode: z.boolean().catch(true),
+    freewindMode: z.boolean().catch(false),
     chatOutlineEnabled: z.boolean().catch(true),
     chatOutlineTextLabels: z.boolean().catch(false),
     vimKeybindings: z.boolean().catch(false),
