@@ -129,12 +129,6 @@ vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
 import { SidebarWorkspaceAgentList } from "@/components/sidebar/sidebar-workspace-agent-list";
 import { useWorkspaceLayoutStore } from "@/stores/workspace-layout-store";
 import { usePanelStore } from "@/stores/panel-store";
-import { createFakeDesktopBridge, createInMemoryKeyValueStorage } from "@/hooks/use-settings/fakes";
-import {
-  APP_SETTINGS_KEY,
-  APP_SETTINGS_QUERY_KEY,
-  loadAppSettingsFromStorage,
-} from "@/hooks/use-settings/storage";
 import { useSessionStore, type Agent } from "@/stores/session-store";
 import type { MessageSubmissionRecord } from "@/composer/submission/model";
 import { TURN_LIVENESS_IDLE } from "@/timeline/turn-liveness";
@@ -273,28 +267,6 @@ describe("SidebarWorkspaceAgentList", () => {
     );
   }
 
-  // `useAppSettings` resolves the persisted blob through react-query, so a plain first paint lands
-  // before the switch arrives. Reading the seeded blob into that same query key up front means the
-  // component renders against a settled cache instead of racing the query.
-  async function renderWithStoredSettings(stored: Record<string, unknown> = {}) {
-    const client = new QueryClient();
-    await client.prefetchQuery({
-      queryKey: APP_SETTINGS_QUERY_KEY,
-      queryFn: () =>
-        loadAppSettingsFromStorage({
-          storage: createInMemoryKeyValueStorage({ [APP_SETTINGS_KEY]: JSON.stringify(stored) }),
-          desktop: createFakeDesktopBridge(),
-        }),
-    });
-    act(() => {
-      root?.render(
-        <QueryClientProvider client={client}>
-          <SidebarWorkspaceAgentList workspace={entry()} />
-        </QueryClientProvider>,
-      );
-    });
-  }
-
   it("renders one row per agent tab, in tab order", () => {
     openAgentTabs(["agent-a", "agent-b"]);
     seedAgents([agent("agent-a", null), agent("agent-b", null)]);
@@ -409,23 +381,12 @@ describe("SidebarWorkspaceAgentList", () => {
     expect(agentRows()).toHaveLength(0);
   });
 
-  it("keeps the agent title on one line by default", () => {
+  it("wraps the agent title", () => {
     openAgentTabs(["agent-a"]);
     seedAgents([agent("agent-a", "Rewrite the sidebar")]);
     render();
 
-    // The RNW one-line style is the only thing that truncates, so assert on the resolved style
-    // rather than on a prop the DOM does not carry.
-    const [title] = agentTitles();
-    expect(getComputedStyle(title).whiteSpace).toBe("nowrap");
-    expect(getComputedStyle(title).textOverflow).toBe("ellipsis");
-  });
-
-  it("lets the agent title wrap when the workspace title lines setting is on", async () => {
-    openAgentTabs(["agent-a"]);
-    seedAgents([agent("agent-a", "Rewrite the sidebar")]);
-    await renderWithStoredSettings({ workspaceTitleMultiline: true });
-
+    // Freewind mode always wraps: the title-lines setting only applies to upstream mode.
     const [title] = agentTitles();
     expect(getComputedStyle(title).whiteSpace).not.toBe("nowrap");
     expect(getComputedStyle(title).textOverflow).not.toBe("ellipsis");

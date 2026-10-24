@@ -104,7 +104,7 @@ export const SidebarWorkspaceRowContent = memo(function SidebarWorkspaceRowConte
   children?: ReactNode;
 }) {
   const {
-    settings: { workspaceTitleSource },
+    settings: { workspaceTitleSource, freewindMode },
   } = useAppSettings();
   const workspaceLabel = resolveSidebarWorkspacePrimaryLabel({ workspace, workspaceTitleSource });
   // The workspace carries label names; their colors live in its host's catalog, so the row is
@@ -147,7 +147,7 @@ export const SidebarWorkspaceRowContent = memo(function SidebarWorkspaceRowConte
                 text={workspaceLabel}
                 ranges={nameHighlightRanges}
                 style={workspaceBranchTextStyle}
-                numberOfLines={1}
+                numberOfLines={freewindMode ? undefined : 1}
               />
               {workspace.activeAgentCount >= 2 ? (
                 <Text
