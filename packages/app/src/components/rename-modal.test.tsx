@@ -10,6 +10,7 @@ const { theme, adaptiveInputState } = vi.hoisted(() => ({
       onChangeText?: (next: string) => void;
       onSubmitEditing?: () => void;
     } | null,
+    reset: vi.fn(),
   },
   theme: {
     spacing: { 2: 8, 3: 12 },
@@ -30,6 +31,7 @@ vi.mock("react-native-unistyles", () => ({
     create: (factory: unknown) => (typeof factory === "function" ? factory(theme) : factory),
   },
   useUnistyles: () => ({ theme }),
+  withUnistyles: (component: unknown) => component,
 }));
 
 vi.mock("@/constants/platform", () => ({
@@ -86,8 +88,17 @@ vi.mock("@/components/adaptive-modal-sheet", async () => {
         onChangeText: p.onChangeText,
         onSubmitEditing: p.onSubmitEditing,
       };
-      return ReactModule.createElement("input", {
-        ref,
+      const inputElement = ReactModule.createElement("input", {
+        ref: (node: HTMLInputElement | null) => {
+          if (node) {
+            (node as HTMLInputElement & { reset: () => void }).reset = () => {
+              adaptiveInputState.reset();
+              node.value = "";
+            };
+          }
+          if (typeof ref === "function") ref(node);
+          else if (ref) ref.current = node;
+        },
         defaultValue: p.initialValue ?? p.defaultValue ?? "",
         disabled: p.editable === false,
         maxLength: p.maxLength,
@@ -100,6 +111,7 @@ vi.mock("@/components/adaptive-modal-sheet", async () => {
           }
         },
       });
+      return inputElement;
     },
   );
   return { AdaptiveModalSheet, AdaptiveTextInput };
@@ -151,6 +163,7 @@ beforeEach(() => {
   document.body.appendChild(container);
   root = createRoot(container);
   adaptiveInputState.latestProps = null;
+  adaptiveInputState.reset.mockClear();
 });
 
 afterEach(() => {
