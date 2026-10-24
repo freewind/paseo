@@ -249,19 +249,9 @@ function resolveCheckoutRemoteUrl(
   return checkoutStatus?.remoteUrl ?? null;
 }
 
-function buildCancelButtonStyle(
-  isConnected: boolean,
-  isCancellingAgent: boolean,
-): (state: PressableStateCallbackType) => object[] {
-  const disabled = !isConnected || isCancellingAgent;
-  // A finger covers this button while it is held, and a tap swaps it for the send button
-  // in place, so without a press state a tap looks like it never registered.
-  return ({ pressed }: PressableStateCallbackType) =>
-    [
-      styles.cancelButton,
-      disabled && styles.buttonDisabled,
-      pressed && !disabled && styles.cancelButtonPressed,
-    ].filter((value): value is object => Boolean(value));
+function buildCancelButtonStyle(isConnected: boolean, isCancellingAgent: boolean): object[] {
+  const disabled = !isConnected || isCancellingAgent ? styles.buttonDisabled : undefined;
+  return [styles.cancelButton, disabled].filter((value): value is object => Boolean(value));
 }
 
 function buildRealtimeVoiceButtonStyle(
@@ -332,17 +322,19 @@ interface RenderLeftContentArgs {
   focusInput: () => void;
   isCompactLayout: boolean;
   showAgentControls: boolean;
+  /** The read-aloud toggle is a Freewind addition; upstream has only the agent controls. */
+  freewindMode: boolean;
 }
 
 function renderLeftContent(args: RenderLeftContentArgs): ReactElement | null {
-  const { agentControls, agentId, serverId, focusInput, isCompactLayout } = args;
+  const { agentControls, agentId, serverId, focusInput, isCompactLayout, freewindMode } = args;
   if (!args.showAgentControls) return null;
   if (resolveAgentControlsMode(agentControls) === "draft" && agentControls) {
     return <DraftAgentControls {...agentControls} isCompactLayout={isCompactLayout} />;
   }
   return (
     <>
-      <ConversationSpeechToggle serverId={serverId} agentId={agentId} />
+      {freewindMode ? <ConversationSpeechToggle serverId={serverId} agentId={agentId} /> : null}
       <AgentControls
         agentId={agentId}
         serverId={serverId}
@@ -1114,7 +1106,7 @@ function ComposerForgeBinding({
 
 interface ComposerCancelButtonProps {
   buttonIconSize: number;
-  cancelButtonStyle: (state: PressableStateCallbackType) => (object | undefined)[];
+  cancelButtonStyle: (object | undefined)[];
   handleCancelAgent: () => void;
   isConnected: boolean;
   isCancellingAgent: boolean;
@@ -2283,8 +2275,17 @@ function ComposerContentImpl({
         focusInput,
         isCompactLayout,
         showAgentControls: mode.showAgentControls,
+        freewindMode: appSettings.freewindMode,
       }),
-    [agentControls, agentId, focusInput, isCompactLayout, mode.showAgentControls, serverId],
+    [
+      agentControls,
+      agentId,
+      appSettings.freewindMode,
+      focusInput,
+      isCompactLayout,
+      mode.showAgentControls,
+      serverId,
+    ],
   );
 
   const handleAttachButtonRef = useCallback((node: View | null) => {
@@ -2612,18 +2613,13 @@ const styles = StyleSheet.create((theme: Theme) => ({
     gap: theme.spacing[3],
   },
   cancelButton: {
-    width: 36,
-    height: 36,
+    width: 28,
+    height: 28,
     borderRadius: theme.borderRadius.full,
     backgroundColor: theme.colors.palette.red[600],
     alignItems: "center",
     justifyContent: "center",
     marginLeft: theme.spacing[1],
-  },
-  // Brightens like the send button it swaps with, so the same press reads the same way
-  // on either side of the swap and stays visible under the finger.
-  cancelButtonPressed: {
-    backgroundColor: theme.colors.palette.red[500],
   },
   rightControls: {
     flexDirection: "row",
