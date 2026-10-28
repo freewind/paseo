@@ -4,6 +4,8 @@ Paseo is a mobile app for monitoring and controlling your local AI coding agents
 
 **Supported agents:** Claude Code, Codex, GitHub Copilot, OpenCode, Pi, Antigravity, and Muse Code.
 
+> **改 fork 定制功能前必读**：本 fork 的所有改动与维护约定见 [AGENTS-FREEWIND.md](AGENTS-FREEWIND.md)。上游文档一律保持原样。
+
 ## Repository map
 
 This is an npm workspace monorepo:
