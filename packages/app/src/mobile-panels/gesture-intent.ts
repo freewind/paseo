@@ -1,6 +1,19 @@
 export type MobilePanelGestureDirection = -1 | 1;
 export type MobilePanelGestureIntent = "activate" | "fail" | "wait";
 
+/**
+ * 面板滑动只归屏幕两侧边缘区；屏幕中间一半无论什么尺寸和平台，
+ * 都不会因为拖动而打开面板。
+ */
+export function isOutsidePanelEdge(
+  touchStartX: number,
+  windowWidth: number,
+  direction: MobilePanelGestureDirection,
+): boolean {
+  "worklet";
+  return direction === 1 ? touchStartX > windowWidth / 4 : touchStartX < (windowWidth * 3) / 4;
+}
+
 export function resolveMobilePanelGestureIntent(input: {
   deltaX: number;
   deltaY: number;
