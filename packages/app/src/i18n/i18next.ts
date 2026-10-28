@@ -14,27 +14,6 @@ const bundledTranslations: BackendModule = {
       case "en":
         callback(null, en);
         return;
-      case "ar":
-        callback(null, require("./resources/ar").ar);
-        return;
-      case "es":
-        callback(null, require("./resources/es").es);
-        return;
-      case "fr":
-        callback(null, require("./resources/fr").fr);
-        return;
-      case "ja":
-        callback(null, require("./resources/ja").ja);
-        return;
-      case "ko":
-        callback(null, require("./resources/ko").ko);
-        return;
-      case "pt-BR":
-        callback(null, require("./resources/pt-BR").ptBR);
-        return;
-      case "ru":
-        callback(null, require("./resources/ru").ru);
-        return;
       case "zh-CN":
         callback(null, require("./resources/zh-CN").zhCN);
         return;

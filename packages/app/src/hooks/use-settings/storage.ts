@@ -219,9 +219,10 @@ const StoredAppSettingsSchema = z
   .looseObject({
     theme: ThemePreferenceSchema.catch(DEFAULT_THEME_PREFERENCE),
     pluginThemeId: z.string().nullable().catch(null),
-    language: z
-      .enum(["system", "ar", "en", "es", "fr", "ja", "ko", "pt-BR", "ru", "zh-CN"])
-      .catch("system"),
+    // 语言收窄到 system/en/zh-CN 之前，老版本还允许存 ar、es、fr、ja、ko、pt-BR、ru。
+    // 老用户带着这些值升级后走到这里，被 .catch("system") 静默回落到 system：不报错、不弹迁移提示，
+    // 界面语言跟着系统变。不写这条，下次再动枚举的人会以为老值已经被迁移处理过。
+    language: z.enum(["system", "en", "zh-CN"]).catch("system"),
     sendBehavior: z.enum(["interrupt", "steer", "queue"]).catch("steer"),
     serviceUrlBehavior: z.enum(["ask", "in-app", "external"]).catch("ask"),
     terminalScrollbackLines: clampedNumber(
