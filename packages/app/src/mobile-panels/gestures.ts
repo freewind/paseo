@@ -7,7 +7,7 @@ import { useHorizontalScrollOptional } from "@/contexts/horizontal-scroll-contex
 import { usePanelStore } from "@/stores/panel-store";
 import { canBeginMobilePanelGesture, isMobilePanelGestureCurrent } from "./model";
 import { useMobilePanelsRuntime } from "./provider";
-import { resolveMobilePanelGestureIntent } from "./gesture-intent";
+import { resolveMobilePanelGestureIntent, isOutsidePanelEdge } from "./gesture-intent";
 
 const MOBILE_WEB_EDGE_SWIPE_WIDTH = 32;
 
@@ -84,6 +84,7 @@ export function useOpenAgentListGesture(enabled: boolean) {
           if (
             !canBeginMobilePanelGesture(motionState.value, "agent", position.value) ||
             horizontalScroll?.isAnyScrolledRight.value ||
+            isOutsidePanelEdge(touchStartX.value, windowWidth, 1) ||
             (isWeb && touchStartX.value > MOBILE_WEB_EDGE_SWIPE_WIDTH) ||
             panIntent === "fail"
           ) {
@@ -276,6 +277,7 @@ export function useOpenFileExplorerGesture({ enabled, onOpen }: OpenFileExplorer
           });
           if (
             !canBeginMobilePanelGesture(motionState.value, "agent", position.value) ||
+            isOutsidePanelEdge(touchStartX.value, windowWidth, -1) ||
             (isWeb && touchStartX.value < windowWidth - MOBILE_WEB_EDGE_SWIPE_WIDTH) ||
             panIntent === "fail"
           ) {
