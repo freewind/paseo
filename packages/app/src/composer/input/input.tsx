@@ -168,6 +168,9 @@ export interface MessageInputProps {
   activeActionContent?: React.ReactNode;
   voiceServerId?: string;
   voiceAgentId?: string;
+  /** 让调用方单独关掉语音按钮：只有显式传 false 才隐藏，不传或传 true 都按模式原有逻辑显示。
+   *  不写这条说明，读代码的人看不出这个字段是开关，也看不出它与「不传」的区别。 */
+  showVoiceButton?: boolean;
   /** When true and there's sendable content, calls onQueue instead of onSubmit */
   isAgentRunning?: boolean;
   /** Controls what the default send action (Enter, send button, dictation) does when the agent is
@@ -782,6 +785,13 @@ function VoiceButtonTooltip({
   );
 }
 
+/** 「模式要求显示」与「调用方没关掉」的唯一判定点：显式传 false 才算关掉，不传与传 true 都
+ *  退回 showVoice 的结果。单独命名是为了这条规则能被直接单测，而不是散在渲染表达式里。
+ *  不写这段，两行包装看起来只是多余的间接，下一个人会把它内联掉，判定规则随之失去名字。 */
+function isVoiceButtonVisible(showVoice: boolean, showVoiceButton: boolean | undefined): boolean {
+  return showVoice && showVoiceButton !== false;
+}
+
 function SendButtonTooltip({
   shouldShow,
   canPressLoadingButton,
@@ -1130,6 +1140,7 @@ interface ResolvedMessageInputProps {
   activeActionContent: React.ReactNode;
   voiceServerId: string | undefined;
   voiceAgentId: string | undefined;
+  showVoiceButton: boolean | undefined;
   isAgentRunning: boolean;
   defaultSendBehavior: "interrupt" | "steer" | "queue";
   sendShortcut: SendShortcut;
@@ -1178,6 +1189,7 @@ function resolveMessageInputProps(props: MessageInputProps): ResolvedMessageInpu
     activeActionContent: props.activeActionContent,
     voiceServerId: props.voiceServerId,
     voiceAgentId: props.voiceAgentId,
+    showVoiceButton: props.showVoiceButton,
     isAgentRunning: props.isAgentRunning ?? false,
     defaultSendBehavior: props.defaultSendBehavior,
     sendShortcut: props.sendShortcut,
@@ -1256,6 +1268,7 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
       activeActionContent,
       voiceServerId,
       voiceAgentId,
+      showVoiceButton,
       isAgentRunning,
       defaultSendBehavior,
       sendShortcut,
@@ -2124,7 +2137,7 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
           <View style={styles.rightButtonGroup}>
             {beforeVoiceContent}
             <VoiceButtonTooltip
-              visible={mode.showVoice}
+              visible={isVoiceButtonVisible(mode.showVoice, showVoiceButton)}
               onVoicePress={handleVoicePress}
               isDictationStartEnabled={isDictationStartEnabled}
               voiceButtonAccessibilityLabel={voiceButtonAccessibilityLabel}
@@ -2151,6 +2164,9 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
         leftContent,
         beforeVoiceContent,
         mode.showVoice,
+        // showVoiceButton 决定语音按钮是否渲染，删掉这一项后调用方切换该属性不会触发重新渲染，
+        // 按钮会停在旧状态，且没有任何报错提示。
+        showVoiceButton,
         handleVoicePress,
         isDictationStartEnabled,
         voiceButtonAccessibilityLabel,
