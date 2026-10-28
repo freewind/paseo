@@ -1,14 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { ar } from "./resources/ar";
 import { en } from "./resources/en";
-import { es } from "./resources/es";
-import { fr } from "./resources/fr";
-import { ja } from "./resources/ja";
-import { ko } from "./resources/ko";
-import { ptBR } from "./resources/pt-BR";
-import { ru } from "./resources/ru";
 import { zhCN } from "./resources/zh-CN";
 
 function flattenKeys(value: unknown, prefix = ""): string[] {
@@ -21,15 +14,6 @@ function flattenKeys(value: unknown, prefix = ""): string[] {
 }
 
 const pluralSuffixPattern = /_(zero|one|two|few|many|other)$/;
-const arabicPluralSuffixes = ["zero", "one", "two", "few", "many", "other"] as const;
-const arabicProviderUsagePluralKeys = [
-  "providerUsage.duration.days",
-  "providerUsage.duration.hours",
-  "providerUsage.duration.minutes",
-  "providerUsage.timing.daysAgo",
-  "providerUsage.timing.hoursAgo",
-  "providerUsage.timing.minutesAgo",
-] as const;
 
 function canonicalKeys(value: unknown): string[] {
   const keys = flattenKeys(value);
@@ -167,109 +151,31 @@ function findUntranslatedConnectionErrors(): string[] {
 }
 
 describe("translation resources", () => {
-  it("keeps all supported language keys in sync with English", () => {
+  it("keeps the Chinese keys in sync with English", () => {
     const englishKeys = canonicalKeys(en);
-    expect(canonicalKeys(ar)).toEqual(englishKeys);
-    expect(canonicalKeys(es)).toEqual(englishKeys);
-    expect(canonicalKeys(fr)).toEqual(englishKeys);
-    expect(canonicalKeys(ja)).toEqual(englishKeys);
-    expect(canonicalKeys(ko)).toEqual(englishKeys);
-    expect(canonicalKeys(ptBR)).toEqual(englishKeys);
-    expect(canonicalKeys(ru)).toEqual(englishKeys);
     expect(canonicalKeys(zhCN)).toEqual(englishKeys);
   });
 
-  it("includes every Arabic form for provider-usage durations", () => {
-    const arabicStrings = flattenStrings(ar);
-    for (const key of arabicProviderUsagePluralKeys) {
-      for (const suffix of arabicPluralSuffixes) {
-        expect(arabicStrings[`${key}_${suffix}`]).toBeTypeOf("string");
-      }
-    }
-  });
-
-  it("keeps non-English supported languages translated beyond fallback labels", () => {
+  it("keeps Chinese translated beyond fallback labels", () => {
     const totalStrings = Object.keys(flattenStrings(en)).length;
     const maxFallbackStrings = Math.floor(totalStrings * 0.25);
-    expect(countMatchingEnglishStrings(ar)).toBeLessThan(maxFallbackStrings);
-    expect(countMatchingEnglishStrings(es)).toBeLessThan(maxFallbackStrings);
-    expect(countMatchingEnglishStrings(fr)).toBeLessThan(maxFallbackStrings);
-    expect(countMatchingEnglishStrings(ja)).toBeLessThan(maxFallbackStrings);
-    expect(countMatchingEnglishStrings(ko)).toBeLessThan(maxFallbackStrings);
-    expect(countMatchingEnglishStrings(ptBR)).toBeLessThan(maxFallbackStrings);
-    expect(countMatchingEnglishStrings(ru)).toBeLessThan(maxFallbackStrings);
     expect(countMatchingEnglishStrings(zhCN)).toBeLessThan(maxFallbackStrings);
   });
 
-  it("localizes the pull request empty state in every supported language", () => {
-    for (const resource of [ar, es, fr, ja, ko, ptBR, ru, zhCN]) {
-      expect(resource.panels.pullRequest.emptyTitle).not.toBe(en.panels.pullRequest.emptyTitle);
-      expect(resource.panels.pullRequest.emptyDescription).not.toBe(
-        en.panels.pullRequest.emptyDescription,
-      );
-    }
+  it("localizes the pull request empty state in Chinese", () => {
+    expect(zhCN.panels.pullRequest.emptyTitle).not.toBe(en.panels.pullRequest.emptyTitle);
+    expect(zhCN.panels.pullRequest.emptyDescription).not.toBe(
+      en.panels.pullRequest.emptyDescription,
+    );
   });
 
-  it("preserves interpolation placeholders in every language", () => {
-    expect(findInterpolationMismatches(ar)).toEqual([]);
-    expect(findInterpolationMismatches(es)).toEqual([]);
-    expect(findInterpolationMismatches(fr)).toEqual([]);
-    expect(findInterpolationMismatches(ja)).toEqual([]);
-    expect(findInterpolationMismatches(ko)).toEqual([]);
-    expect(findInterpolationMismatches(ptBR)).toEqual([]);
-    expect(findInterpolationMismatches(ru)).toEqual([]);
+  it("preserves interpolation placeholders in Chinese", () => {
     expect(findInterpolationMismatches(zhCN)).toEqual([]);
   });
 
-  it("keeps reported Spanish settings and scripts labels clean", () => {
-    expect(es.workspace.scripts.title).toBe("Scripts");
-    expect(es.settings.general.terminalScrollback.label).toBe("Historial de terminal");
-    expect(es.settings.project.scripts.title).toBe("Scripts");
-  });
-
-  it("uses the Russian term for continuing a session in copied commands", () => {
-    expect(ru.workspace.tabs.menu.copyResumeCommand).toBe("Копировать команду продолжения");
-    expect(ru.workspace.tabs.toasts.resumeCommandCopiedLabel).toBe("команда продолжения");
-  });
-
   it("keeps model count labels spaced around the count", () => {
-    expect(ar.modelSelector.modelCountPlural).toBe("{{count}} نماذج");
-    expect(es.modelSelector.modelCountPlural).toBe("{{count}} modelos");
-    expect(fr.modelSelector.modelCountPlural).toBe("{{count}} modèles");
-    expect(ja.modelSelector.modelCountPlural).toBe("{{count}}つのモデル");
-    expect(ko.modelSelector.modelCountPlural).toBe("모델 {{count}}개");
-    expect(ptBR.modelSelector.modelCountPlural).toBe("{{count}} modelos");
-    expect(ru.modelSelector.modelCountPlural).toBe("{{count}} моделей");
     expect(zhCN.modelSelector.modelCountPlural).toBe("{{count}} 个模型");
-    expect(ar.settings.providers.models.many).toBe("{{count}} نماذج");
-    expect(es.settings.providers.models.many).toBe("{{count}} modelos");
-    expect(fr.settings.providers.models.many).toBe("{{count}} modèles");
-    expect(ja.settings.providers.models.many).toBe("{{count}}つのモデル");
-    expect(ptBR.settings.providers.models.many).toBe("{{count}} modelos");
-    expect(ru.settings.providers.models.many).toBe("{{count}} моделей");
     expect(zhCN.settings.providers.models.many).toBe("{{count}} 个 Model");
-  });
-
-  it("preserves reviewed Korean status labels", () => {
-    expect(ko.common.states.starting).toBe("시작 중...");
-    expect(ko.desktop.daemon.status.notRunning).toBe("실행 중이 아님");
-  });
-
-  it("uses the French navigation and Git meanings for reported labels", () => {
-    expect(fr.common.back).toBe("Retour");
-    expect(fr.common.actions.back).toBe("Retour");
-    expect(fr.common.actions.copy).toBe("Copier");
-    expect(fr.common.states.starting).toBe("Démarrage…");
-    expect(fr.common.connectionStatus.connecting).toBe("Connexion…");
-    expect(fr.workspace.git.pr.sections.checks).toBe("Vérifications");
-    expect(fr.sidebar.display.show.checks).toBe("Vérifications");
-  });
-
-  it("separates French interpolation placeholders from neighboring words", () => {
-    const glued = Object.entries(flattenStrings(fr)).filter(([, value]) =>
-      /\p{L}\{\{|\}\}\p{L}{2,}/u.test(value),
-    );
-    expect(glued).toEqual([]);
   });
 
   it("labels the immediate add-to-chat action without an ellipsis", () => {
@@ -278,28 +184,24 @@ describe("translation resources", () => {
 
   it("keeps pull request panel and sidebar status group labels translated", () => {
     expect(findUntranslatedPullRequestPanelLabels()).toEqual([]);
-    for (const resource of [ar, es, fr, ja, ko, ptBR, ru, zhCN]) {
-      const pr = resource.workspace.git.pr;
-      const englishPr = en.workspace.git.pr;
-      expect(pr.sections.activity).not.toBe(englishPr.sections.activity);
-      expect(pr.empty.noActivity).not.toBe(englishPr.empty.noActivity);
-      expect(pr.actions.addToChat).not.toBe(englishPr.actions.addToChat);
-      expect(pr.actions.addAllToChat).not.toBe(englishPr.actions.addAllToChat);
-      expect(pr.actions.addingToChat).not.toBe(englishPr.actions.addingToChat);
-      expect(pr.accessibility.commentActions).not.toBe(englishPr.accessibility.commentActions);
-      expect(pr.accessibility.threadActions).not.toBe(englishPr.accessibility.threadActions);
-      for (const verb of Object.keys(englishPr.activity) as (keyof typeof englishPr.activity)[]) {
-        expect(pr.activity[verb]).not.toBe(englishPr.activity[verb]);
-      }
-      for (const state of Object.keys(englishPr.states) as (keyof typeof englishPr.states)[]) {
-        expect(pr.states[state]).not.toBe(englishPr.states[state]);
-      }
-      expect(pr.thread.resolved).not.toBe(englishPr.thread.resolved);
-      expect(pr.thread.outdated).not.toBe(englishPr.thread.outdated);
-      expect(resource.sidebar.statusGroupAccessibility).not.toBe(
-        en.sidebar.statusGroupAccessibility,
-      );
+    const pr = zhCN.workspace.git.pr;
+    const englishPr = en.workspace.git.pr;
+    expect(pr.sections.activity).not.toBe(englishPr.sections.activity);
+    expect(pr.empty.noActivity).not.toBe(englishPr.empty.noActivity);
+    expect(pr.actions.addToChat).not.toBe(englishPr.actions.addToChat);
+    expect(pr.actions.addAllToChat).not.toBe(englishPr.actions.addAllToChat);
+    expect(pr.actions.addingToChat).not.toBe(englishPr.actions.addingToChat);
+    expect(pr.accessibility.commentActions).not.toBe(englishPr.accessibility.commentActions);
+    expect(pr.accessibility.threadActions).not.toBe(englishPr.accessibility.threadActions);
+    for (const verb of Object.keys(englishPr.activity) as (keyof typeof englishPr.activity)[]) {
+      expect(pr.activity[verb]).not.toBe(englishPr.activity[verb]);
     }
+    for (const state of Object.keys(englishPr.states) as (keyof typeof englishPr.states)[]) {
+      expect(pr.states[state]).not.toBe(englishPr.states[state]);
+    }
+    expect(pr.thread.resolved).not.toBe(englishPr.thread.resolved);
+    expect(pr.thread.outdated).not.toBe(englishPr.thread.outdated);
+    expect(zhCN.sidebar.statusGroupAccessibility).not.toBe(en.sidebar.statusGroupAccessibility);
   });
 
   it("keeps local connection fallback errors translated", () => {

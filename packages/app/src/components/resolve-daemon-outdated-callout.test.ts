@@ -178,16 +178,16 @@ describe("resolveDaemonOutdatedCallout", () => {
   });
 
   it("uses the active app language", async () => {
-    await i18n.changeLanguage("es");
+    await i18n.changeLanguage("zh-CN");
     try {
       const descriptor = resolveDaemonOutdatedCallout(input({ terminalsSurviveRestart: false }));
 
-      expect(descriptor?.title).toBe("Daemon desactualizado");
+      expect(descriptor?.title).toBe("守护进程版本过旧");
       expect(descriptor?.description).toEqual([
-        "Workstation ejecuta el daemon v0.11.4. Esta app es v0.12.0.",
-        "Actualizar reinicia el daemon y cierra las terminales abiertas.",
+        "Workstation 运行的守护进程为 v0.11.4，此应用为 v0.12.0。",
+        "更新会重启守护进程，并关闭已打开的终端。",
       ]);
-      expect(descriptor?.updateAction?.label).toBe("Actualizar");
+      expect(descriptor?.updateAction?.label).toBe("更新");
     } finally {
       await i18n.changeLanguage("en");
     }

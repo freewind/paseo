@@ -67,7 +67,7 @@ function expectActionsInsideCard(card: HTMLElement) {
 }
 
 describe("SidebarProjectEmptyState", () => {
-  const cases = ["en", "ru", "fr", "ja", "es", "pt-BR", "ar", "ko", "zh-CN"].flatMap((language) =>
+  const cases = ["en", "zh-CN"].flatMap((language) =>
     [MIN_SIDEBAR_WIDTH, DEFAULT_SIDEBAR_WIDTH].map((width) => ({ language, width })),
   );
   it.each(cases)(

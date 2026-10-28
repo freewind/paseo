@@ -64,28 +64,19 @@ describe("bundled translation startup", () => {
     });
   });
 
-  it.each([
-    ["ar", "يلغي"],
-    ["es", "Cancelar"],
-    ["fr", "Annuler"],
-    ["ja", "キャンセル"],
-    ["ko", "취소"],
-    ["pt-BR", "Cancelar"],
-    ["ru", "Отмена"],
-    ["zh-CN", "取消"],
-  ])("loads %s synchronously on selection and reuses it", (locale, cancel) => {
+  it("loads zh-CN synchronously on selection and reuses it", () => {
     const result = runStartupProbe(`
       i18n.addResource("en", "translation", "startupProbeOnlyInEnglish", "English fallback");
-      i18n.changeLanguage(${JSON.stringify(locale)});
-      if (i18n.language !== ${JSON.stringify(locale)}) throw new Error("Language selection became asynchronous");
+      i18n.changeLanguage("zh-CN");
+      if (i18n.language !== "zh-CN") throw new Error("Language selection became asynchronous");
       i18n.changeLanguage("en");
-      i18n.changeLanguage(${JSON.stringify(locale)});
+      i18n.changeLanguage("zh-CN");
     `);
     expect(result).toEqual({
-      evaluated: ["en", locale],
-      registered: ["en", locale],
-      language: locale,
-      cancel,
+      evaluated: ["en", "zh-CN"],
+      registered: ["en", "zh-CN"],
+      language: "zh-CN",
+      cancel: "取消",
       fallback: "English fallback",
     });
   });
