@@ -23,4 +23,5 @@ export type HighlightStyle =
 export interface HighlightToken {
   text: string;
   style: HighlightStyle | null;
+  changed?: boolean;
 }
