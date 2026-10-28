@@ -1,4 +1,7 @@
 export const en = {
+  freewind: {
+    title: "Freewind",
+  },
   paneFind: {
     connectionFailure: "Could not search this chat. Check the host connection and retry.",
     historyChangedFailure: "The chat changed while searching. Search again.",
