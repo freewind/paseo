@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/isolated-bottom-sheet-modal";
 import { RetainedPanelGate, useResetWhenPanelInactive } from "@/components/retained-panel";
 import type { ToolCallIconComponent } from "@/utils/tool-call-icon";
+import { buildToolCallDetailText } from "@/utils/tool-call-detail-text";
+import { CopyTextButton } from "./copy-text-button";
 import { ToolCallDetailsContent } from "./tool-call-details";
 
 // ----- Types -----
@@ -158,11 +160,17 @@ function ToolCallSheetContent({ data, onClose }: ToolCallSheetContentProps) {
   const {
     toolName,
     displayName,
+    summary,
     detail,
     errorText,
     icon: IconComponent,
     showLoadingSkeleton,
   } = data;
+
+  const getCopyText = useCallback(
+    () => buildToolCallDetailText(detail, toolName),
+    [detail, toolName],
+  );
 
   return (
     <View style={styles.container}>
@@ -170,10 +178,18 @@ function ToolCallSheetContent({ data, onClose }: ToolCallSheetContentProps) {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <ThemedToolCallHeaderIcon icon={IconComponent} size={20} />
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {displayName}
-          </Text>
+          <View style={styles.headerText}>
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              {displayName}
+            </Text>
+            {summary ? (
+              <Text style={styles.headerSummary} numberOfLines={2}>
+                {summary}
+              </Text>
+            ) : null}
+          </View>
         </View>
+        <CopyTextButton getText={getCopyText} size={20} />
         <Pressable
           onPress={onClose}
           style={styles.closeButton}
@@ -226,6 +242,15 @@ const styles = StyleSheet.create((theme) => ({
     fontWeight: theme.fontWeight.semibold,
     color: theme.colors.foreground,
     flex: 1,
+  },
+  headerText: {
+    flex: 1,
+    minWidth: 0,
+    gap: theme.spacing[1],
+  },
+  headerSummary: {
+    color: theme.colors.foregroundMuted,
+    fontSize: theme.fontSize.sm,
   },
   closeButton: {
     padding: theme.spacing[2],
