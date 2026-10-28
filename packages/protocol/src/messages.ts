@@ -590,6 +590,8 @@ const ToolCallDetailPayloadSchema: z.ZodType<ToolCallDetail, unknown> = z.discri
       oldString: z.string().optional(),
       newString: z.string().optional(),
       unifiedDiff: z.string().optional(),
+      output: z.unknown().optional(),
+      input: z.unknown().optional(),
     }),
     z.object({
       type: z.literal("write"),
@@ -599,6 +601,9 @@ const ToolCallDetailPayloadSchema: z.ZodType<ToolCallDetail, unknown> = z.discri
     z.object({
       type: z.literal("search"),
       query: z.string(),
+      path: z.string().optional(),
+      glob: z.string().optional(),
+      limit: z.number().optional(),
       toolName: z.enum(["search", "grep", "glob", "web_search"]).optional(),
       content: z.string().optional(),
       filePaths: z.array(z.string()).optional(),

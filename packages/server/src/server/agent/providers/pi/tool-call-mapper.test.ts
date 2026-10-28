@@ -29,6 +29,8 @@ describe("Pi tool call mapper", () => {
       oldString: "before",
       newString: "after",
       unifiedDiff: "-before\n+after",
+      // 完整入参一并带出，供详情里展示原始输入
+      input: { path: "app.ts", edits: [{ oldText: "before", newText: "after" }] },
     });
   });
 

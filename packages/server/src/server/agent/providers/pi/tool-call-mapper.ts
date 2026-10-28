@@ -308,6 +308,8 @@ export function mapToolDetail(toolCall: PiTrackedToolCall, result?: PiToolResult
         oldString: firstEdit?.oldText,
         newString: firstEdit?.newText,
         unifiedDiff,
+        output: parsedResult ?? undefined,
+        input: toolCall.args,
       };
     }
     case "write":
@@ -396,6 +398,8 @@ function mapFindToolDetail(args: FindToolInput, result: PiToolResult): ToolCallD
   return {
     type: "search",
     query: args.pattern,
+    path: args.path,
+    limit: args.limit,
     toolName: "search",
     content: typeof result === "string" ? result : undefined,
   };
@@ -405,6 +409,9 @@ function mapGrepToolDetail(args: GrepToolInput, result: PiToolResult): ToolCallD
   return {
     type: "search",
     query: args.pattern,
+    path: args.path,
+    glob: args.glob,
+    limit: args.limit,
     toolName: "grep",
     content: typeof result === "string" ? result : undefined,
   };

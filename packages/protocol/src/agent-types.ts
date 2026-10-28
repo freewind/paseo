@@ -212,6 +212,11 @@ export const TOOL_CALL_ICON_NAMES = [
 
 export type ToolCallIconName = (typeof TOOL_CALL_ICON_NAMES)[number];
 
+/**
+ * server 侧 `server/agent/agent-sdk-types.ts` 有同构副本，两处必须同时修改。
+ * 只改一侧不会报类型错误：对面多出来的字段它用不到，跑起来没有任何报错或界面差异，
+ * 漂移只能靠人肉对读发现。
+ */
 export type ToolCallDetail =
   | {
       type: "shell";
@@ -233,6 +238,10 @@ export type ToolCallDetail =
       oldString?: string;
       newString?: string;
       unifiedDiff?: string;
+      /** 工具结果的完整原文，复制时整段输出，不再解析或重组 */
+      output?: unknown;
+      /** 调用方传入的完整参数，用于在详情里展示原始输入（如 freewind-edit 的 edits 列表） */
+      input?: unknown;
     }
   | {
       type: "write";
@@ -242,6 +251,9 @@ export type ToolCallDetail =
   | {
       type: "search";
       query: string;
+      path?: string;
+      glob?: string;
+      limit?: number;
       toolName?: "search" | "grep" | "glob" | "web_search";
       content?: string;
       filePaths?: string[];
