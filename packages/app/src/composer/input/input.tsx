@@ -168,6 +168,7 @@ export interface MessageInputProps {
   activeActionContent?: React.ReactNode;
   voiceServerId?: string;
   voiceAgentId?: string;
+  showVoiceButton?: boolean;
   /** When true and there's sendable content, calls onQueue instead of onSubmit */
   isAgentRunning?: boolean;
   /** Controls what the default send action (Enter, send button, dictation) does when the agent is
@@ -782,6 +783,10 @@ function VoiceButtonTooltip({
   );
 }
 
+function isVoiceButtonVisible(showVoice: boolean, showVoiceButton: boolean | undefined): boolean {
+  return showVoice && showVoiceButton !== false;
+}
+
 function SendButtonTooltip({
   shouldShow,
   canPressLoadingButton,
@@ -1130,6 +1135,7 @@ interface ResolvedMessageInputProps {
   activeActionContent: React.ReactNode;
   voiceServerId: string | undefined;
   voiceAgentId: string | undefined;
+  showVoiceButton: boolean | undefined;
   isAgentRunning: boolean;
   defaultSendBehavior: "interrupt" | "steer" | "queue";
   sendShortcut: SendShortcut;
@@ -1178,6 +1184,7 @@ function resolveMessageInputProps(props: MessageInputProps): ResolvedMessageInpu
     activeActionContent: props.activeActionContent,
     voiceServerId: props.voiceServerId,
     voiceAgentId: props.voiceAgentId,
+    showVoiceButton: props.showVoiceButton,
     isAgentRunning: props.isAgentRunning ?? false,
     defaultSendBehavior: props.defaultSendBehavior,
     sendShortcut: props.sendShortcut,
@@ -1256,6 +1263,7 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
       activeActionContent,
       voiceServerId,
       voiceAgentId,
+      showVoiceButton,
       isAgentRunning,
       defaultSendBehavior,
       sendShortcut,
@@ -2124,7 +2132,7 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
           <View style={styles.rightButtonGroup}>
             {beforeVoiceContent}
             <VoiceButtonTooltip
-              visible={mode.showVoice}
+              visible={isVoiceButtonVisible(mode.showVoice, showVoiceButton)}
               onVoicePress={handleVoicePress}
               isDictationStartEnabled={isDictationStartEnabled}
               voiceButtonAccessibilityLabel={voiceButtonAccessibilityLabel}
@@ -2151,6 +2159,7 @@ export const MessageInput = forwardRef<MessageInputRef, MessageInputProps>(
         leftContent,
         beforeVoiceContent,
         mode.showVoice,
+        showVoiceButton,
         handleVoicePress,
         isDictationStartEnabled,
         voiceButtonAccessibilityLabel,
