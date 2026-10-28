@@ -663,17 +663,17 @@ async function expectRetainedLoginUsage(page: Page, message: string) {
   await expect(card.getByText("Reset time passed", { exact: false })).toBeVisible();
 }
 
-async function switchToJapanese(page: Page) {
+async function switchToChinese(page: Page) {
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await openSettings(page);
   await openSettingsSection(page, "general");
   await page.getByRole("button", { name: "System", exact: true }).click();
-  await page.getByRole("menuitem", { name: "日本語 - Japanese", exact: true }).click();
-  await page.getByRole("button", { name: "戻る", exact: true }).click();
+  await page.getByRole("menuitem", { name: "简体中文 - Simplified Chinese", exact: true }).click();
+  await page.getByRole("button", { name: "返回", exact: true }).click();
 }
 
-async function openJapaneseUsage(page: Page) {
-  await page.getByRole("button", { name: "使用状況", exact: true }).click();
+async function openChineseUsage(page: Page) {
+  await page.getByRole("button", { name: "使用情况", exact: true }).click();
   await expect(page.getByTestId("usage-modal").first()).toBeVisible();
 }
 
@@ -687,15 +687,15 @@ test("usage percentages state their meaning and follow the selected language", a
     await gotoAppShell(page);
     await openUsageFromIcon(page);
     await expect(page.getByText("70% used", { exact: true })).toBeVisible();
-    await switchToJapanese(page);
-    await expect(usageItem(page)).toHaveAccessibleName(/Claude セッション 70% 使用済み/);
-    await openJapaneseUsage(page);
-    await expect(page.getByText("70% 使用済み", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "すべて更新", exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "設定", exact: true }).last().click();
-    await expect(page.getByText("割合", { exact: true })).toBeVisible();
-    await expect(page.getByText("使用済み", { exact: true })).toBeVisible();
-    await expect(page.getByText("残り", { exact: true })).toBeVisible();
+    await switchToChinese(page);
+    await expect(usageItem(page)).toHaveAccessibleName(/Claude 会话 已使用 70%/);
+    await openChineseUsage(page);
+    await expect(page.getByText("已使用 70%", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "全部刷新", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "设置", exact: true }).last().click();
+    await expect(page.getByText("百分比", { exact: true })).toBeVisible();
+    await expect(page.getByText("已使用", { exact: true })).toBeVisible();
+    await expect(page.getByText("剩余", { exact: true })).toBeVisible();
   } finally {
     await login.cleanup();
   }

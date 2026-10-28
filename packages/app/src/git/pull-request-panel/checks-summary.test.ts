@@ -68,7 +68,7 @@ describe("summarizeChecks", () => {
   });
 
   it("reads in the active app language", async () => {
-    await i18n.changeLanguage("fr");
+    await i18n.changeLanguage("zh-CN");
     try {
       const summary = summarizeChecks(
         [
@@ -80,14 +80,14 @@ describe("summarizeChecks", () => {
         i18n.t,
       );
 
-      expect(summary.headline).toBe("Certaines vérifications ont échoué");
-      expect(summary.detail).toBe("Vérifications : 2 en échec, 1 réussie(s), 1 ignorée(s)");
+      expect(summary.headline).toBe("部分检查未通过");
+      expect(summary.detail).toBe("检查：2 个失败, 1 个成功, 1 个已跳过");
       expect(summary.groups.map((group) => group.label)).toEqual([
-        "2 vérifications en échec",
-        "1 vérification réussie",
-        "1 vérification ignorée",
+        "2 个失败的检查",
+        "1 个成功的检查",
+        "1 个已跳过的检查",
       ]);
-      expect(summarizeChecks([], i18n.t).headline).toBe("Aucune vérification");
+      expect(summarizeChecks([], i18n.t).headline).toBe("没有检查");
     } finally {
       await i18n.changeLanguage("en");
     }
