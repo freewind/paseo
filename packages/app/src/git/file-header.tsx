@@ -1,11 +1,13 @@
-import { memo, type ReactElement, useCallback, useMemo, useState } from "react";
+import { memo, type ReactElement, type Ref, useCallback, useMemo, useState } from "react";
 import {
   Text,
   View,
   type GestureResponderEvent,
   type PressableStateCallbackType,
+  type StyleProp,
+  type TextStyle,
 } from "react-native";
-import { StyleSheet } from "react-native-unistyles";
+import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { useWorkspaceFileDragSource } from "@/attachments/use-workspace-file-drag-source";
 import { DiffStat } from "@/components/diff-stat";
 import { FileActionsContextMenuContent } from "@/components/file-actions-menu";
@@ -20,8 +22,16 @@ import {
   WORKSPACE_TREE_ICON_SIZE,
 } from "@/components/tree-primitives";
 import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { ToolbarButton } from "@/components/ui/pane-content-toolbar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useFileHeaderInteraction } from "@/git/file-header-interaction";
+import { WrapText } from "lucide-react-native";
+import type { Theme } from "@/styles/theme";
+
+const mutedColorMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
+const activeColorMapping = (theme: Theme) => ({ color: theme.colors.foreground });
+const ThemedWrapText = withUnistyles(WrapText);
+import { useTranslation } from "react-i18next";
 import {
   diffFileChangeKind,
   directorySuffix,
@@ -53,6 +63,7 @@ export interface FileHeaderProps {
   onDuplicate?: (path: string) => void;
   onRevert?: (path: string, oldPath?: string) => void;
   onHeaderHeightChange?: (path: string, height: number) => void;
+  wrapToggle?: { wrapped: boolean; onToggle: () => void };
   testID?: string;
   canvasRendered?: boolean;
   onActiveChange?: (active: boolean) => void;
@@ -182,6 +193,91 @@ function FileHeaderMenu({
   );
 }
 
+function FileHeaderContent({
+  file,
+  fileName,
+  nameStyle,
+  showDir,
+  dragSourceRef,
+  showsBodyState,
+  wrapToggle,
+  testID,
+}: {
+  file: ParsedDiffFile;
+  fileName: string;
+  nameStyle: StyleProp<TextStyle>;
+  showDir: boolean;
+  dragSourceRef: Ref<View> | undefined;
+  showsBodyState: boolean;
+  wrapToggle?: { wrapped: boolean; onToggle: () => void };
+  testID?: string;
+}) {
+  return (
+    <View
+      style={[styles.content, showsBodyState && styles.documentContent]}
+      testID={testID ? `${testID}-header-content` : undefined}
+    >
+      <View ref={dragSourceRef} style={showDir ? styles.left : [styles.left, styles.leftTree]}>
+        {showDir ? null : (
+          <View style={styles.icon}>
+            <MaterialFileIcon fileName={fileName} size={WORKSPACE_TREE_ICON_SIZE} />
+          </View>
+        )}
+        <Text style={nameStyle} numberOfLines={1} testID={testID ? `${testID}-name` : undefined}>
+          {fileName}
+        </Text>
+        {showDir ? (
+          <Text style={styles.directory} numberOfLines={1}>
+            {directorySuffix(file.path)}
+          </Text>
+        ) : (
+          <View style={styles.directorySpacer} />
+        )}
+      </View>
+      <View style={styles.right}>
+        {wrapToggle ? (
+          <FileWrapToggle
+            wrapped={wrapToggle.wrapped}
+            onToggle={wrapToggle.onToggle}
+            testID={testID}
+          />
+        ) : null}
+        <DiffStat
+          additions={file.additions}
+          deletions={file.deletions}
+          testID={testID ? `${testID}-stat` : undefined}
+        />
+        <FileChangeIcon change={fileChange(file)} />
+      </View>
+    </View>
+  );
+}
+
+/** 开关只属于头部，从不持久化。 */
+const FileWrapToggle = memo(function FileWrapToggle({
+  wrapped,
+  onToggle,
+  testID,
+}: {
+  wrapped: boolean;
+  onToggle: () => void;
+  testID?: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <ToolbarButton
+      label={
+        wrapped ? t("workspace.git.diff.scrollLongLines") : t("workspace.git.diff.wrapLongLines")
+      }
+      selected={wrapped}
+      onPress={onToggle}
+      testID={testID ? `${testID}-wrap-toggle` : undefined}
+    >
+      <ThemedWrapText size={14} uniProps={wrapped ? activeColorMapping : mutedColorMapping} />
+    </ToolbarButton>
+  );
+});
+
 export const FileHeader = memo(function FileHeader({
   file,
   workspaceFileDragScope,
@@ -194,6 +290,7 @@ export const FileHeader = memo(function FileHeader({
   onActivate,
   onSelect,
   onHeaderHeightChange,
+  wrapToggle,
   testID,
   canvasRendered = false,
   onActiveChange,
@@ -249,38 +346,17 @@ export const FileHeader = memo(function FileHeader({
   );
   const fileName = fileNameForPath(file.path);
   const nameStyle = fileHeaderNameStyle(showsBodyState, hover.isHovered);
-  const changeIcon = <FileChangeIcon change={fileChange(file)} />;
   const content = (
-    <View
-      style={[styles.content, showsBodyState && styles.documentContent]}
-      testID={testID ? `${testID}-header-content` : undefined}
-    >
-      <View ref={dragSourceRef} style={showDir ? styles.left : [styles.left, styles.leftTree]}>
-        {showDir ? null : (
-          <View style={styles.icon}>
-            <MaterialFileIcon fileName={fileName} size={WORKSPACE_TREE_ICON_SIZE} />
-          </View>
-        )}
-        <Text style={nameStyle} numberOfLines={1} testID={testID ? `${testID}-name` : undefined}>
-          {fileName}
-        </Text>
-        {showDir ? (
-          <Text style={styles.directory} numberOfLines={1}>
-            {directorySuffix(file.path)}
-          </Text>
-        ) : (
-          <View style={styles.directorySpacer} />
-        )}
-      </View>
-      <View style={styles.right}>
-        <DiffStat
-          additions={file.additions}
-          deletions={file.deletions}
-          testID={testID ? `${testID}-stat` : undefined}
-        />
-        {changeIcon}
-      </View>
-    </View>
+    <FileHeaderContent
+      file={file}
+      fileName={fileName}
+      nameStyle={nameStyle}
+      showDir={showDir}
+      dragSourceRef={dragSourceRef}
+      showsBodyState={showsBodyState}
+      wrapToggle={canvasRendered ? undefined : wrapToggle}
+      testID={testID}
+    />
   );
   const renderedContent = canvasRendered ? (
     <View ref={dragSourceRef} style={styles.canvasInteractionContent} />

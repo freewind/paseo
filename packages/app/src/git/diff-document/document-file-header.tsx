@@ -11,6 +11,7 @@ interface DocumentFileHeaderProps {
   onSelectPath: (path: string) => void;
   canvasRendered?: boolean;
   onActiveChange?: (active: boolean) => void;
+  wrapToggle?: { wrapped: boolean; onToggle: () => void };
 }
 
 export const DocumentFileHeader = memo(function DocumentFileHeader({
@@ -21,6 +22,7 @@ export const DocumentFileHeader = memo(function DocumentFileHeader({
   onSelectPath,
   canvasRendered = false,
   onActiveChange,
+  wrapToggle,
 }: DocumentFileHeaderProps) {
   const activate = useCallback(
     (path: string) => {
@@ -53,6 +55,7 @@ export const DocumentFileHeader = memo(function DocumentFileHeader({
       testID={`diff-file-${file.fileIndex}`}
       canvasRendered={canvasRendered}
       onActiveChange={onActiveChange}
+      wrapToggle={wrapToggle}
     />
   );
 }, documentFileHeaderPropsEqual);
@@ -63,20 +66,13 @@ function documentFileHeaderPropsEqual(
 ): boolean {
   if (!documentFileHeaderIdentityMatches(previous, next)) return false;
   if (previous.mode.kind === "commit" || next.mode.kind === "commit") return true;
-  return (
-    previous.mode.onFilePress === next.mode.onFilePress &&
-    previous.mode.workspaceFileDragScope === next.mode.workspaceFileDragScope &&
-    previous.mode.onOpenFile === next.mode.onOpenFile &&
-    previous.mode.onOpenToSide === next.mode.onOpenToSide &&
-    previous.mode.onAddToChat === next.mode.onAddToChat &&
-    previous.mode.onCopyPath === next.mode.onCopyPath &&
-    previous.mode.onCopyRelativePath === next.mode.onCopyRelativePath &&
-    previous.mode.onReveal === next.mode.onReveal &&
-    previous.mode.revealTargetName === next.mode.revealTargetName &&
-    previous.mode.onDownload === next.mode.onDownload &&
-    previous.mode.onDuplicate === next.mode.onDuplicate &&
-    previous.mode.onRevert === next.mode.onRevert
-  );
+  const previousWrap = previous.wrapToggle;
+  const nextWrap = next.wrapToggle;
+  if (previousWrap === undefined || nextWrap === undefined) {
+    return previousWrap === nextWrap;
+  }
+  if (previousWrap.wrapped !== nextWrap.wrapped) return false;
+  return previousWrap.onToggle === nextWrap.onToggle;
 }
 
 function documentFileHeaderIdentityMatches(

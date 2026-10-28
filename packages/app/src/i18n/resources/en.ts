@@ -114,6 +114,10 @@ export const en = {
       settingOff: "Off",
     },
   },
+  codeBlock: {
+    enableWrap: "Wrap long lines",
+    disableWrap: "Scroll long lines",
+  },
   composer: {
     placeholders: {
       desktop: "Message the agent, tag @files, or use /commands and /skills",
