@@ -7,11 +7,28 @@ import {
 } from "./tool-call-parsers";
 
 describe("tool-call-parsers", () => {
-  it("builds line diff for text changes", () => {
-    const diff = buildLineDiff("old\nline\n", "new\nline\n");
-
-    expect(diff.some((entry) => entry.type === "remove")).toBe(true);
-    expect(diff.some((entry) => entry.type === "add")).toBe(true);
+  it("builds line diff without highlighting the common suffix", () => {
+    expect(buildLineDiff("const value = 1;\nline", "const value = 2;\nline")).toEqual([
+      {
+        type: "remove",
+        content: "-const value = 1;",
+        segments: [
+          { text: "const value = ", changed: false },
+          { text: "1", changed: true },
+          { text: ";", changed: false },
+        ],
+      },
+      {
+        type: "add",
+        content: "+const value = 2;",
+        segments: [
+          { text: "const value = ", changed: false },
+          { text: "2", changed: true },
+          { text: ";", changed: false },
+        ],
+      },
+      { type: "context", content: " line" },
+    ]);
   });
 
   it("parses unified diff", () => {

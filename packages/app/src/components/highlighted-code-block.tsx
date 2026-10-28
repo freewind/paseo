@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Pressable,
+  ScrollView,
   View,
   Text,
   type StyleProp,
@@ -9,7 +10,7 @@ import {
 } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import * as Clipboard from "expo-clipboard";
-import { Check, Copy } from "lucide-react-native";
+import { Check, Copy, WrapText } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import type { HighlightToken } from "@getpaseo/highlight";
 import { isNative, isWeb } from "@/constants/platform";
@@ -86,6 +87,8 @@ export const HighlightedCodeBlock = React.memo(function HighlightedCodeBlock({
 
   const isCompact = useIsCompactFormFactor();
   const [isHovered, setIsHovered] = useState(false);
+  const [wrapLines, setWrapLines] = useState(false);
+  const toggleWrap = useCallback(() => setWrapLines((current) => !current), []);
   const handlePointerEnter = useCallback(() => setIsHovered(true), []);
   const handlePointerLeave = useCallback(() => setIsHovered(false), []);
   const controlsVisible = isHovered || isNative || isCompact;
@@ -96,37 +99,83 @@ export const HighlightedCodeBlock = React.memo(function HighlightedCodeBlock({
 
   return (
     <View
-      style={containerStyle}
+      style={[containerStyle, styles.container]}
       dataSet={copyDataSet}
       onPointerEnter={handlePointerEnter}
       onPointerLeave={handlePointerLeave}
     >
-      {keyedLines ? (
-        <Text style={innerTextStyle} dataSet={markdownCopyDataSet.code}>
-          {renderCodeSegments(keyedLines)}
-        </Text>
-      ) : (
-        <Text style={innerTextStyle} dataSet={markdownCopyDataSet.code}>
-          {renderedCode}
-        </Text>
-      )}
-      <CopyButton getCode={getCode} visible={controlsVisible} />
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        nestedScrollEnabled
+        showsVerticalScrollIndicator
+      >
+        {/* Default is no wrap: the inner horizontal scroll carries long lines, so indentation
+            and column alignment survive on a phone-width screen. Wrapping is a per-block,
+            ephemeral opt-in from the header toggle — it is never persisted. */}
+        {wrapLines ? (
+          <View style={styles.codeLines}>
+            {keyedLines
+              ? renderCodeLines(keyedLines, innerTextStyle)
+              : renderPlainCodeLines(renderedCode, innerTextStyle)}
+          </View>
+        ) : (
+          <ScrollView
+            horizontal
+            nestedScrollEnabled
+            showsHorizontalScrollIndicator
+            contentContainerStyle={styles.horizontalContent}
+          >
+            <View style={styles.codeLines}>
+              {keyedLines
+                ? renderCodeLines(keyedLines, innerTextStyle)
+                : renderPlainCodeLines(renderedCode, innerTextStyle)}
+            </View>
+          </ScrollView>
+        )}
+      </ScrollView>
+      <CodeBlockControls
+        visible={controlsVisible}
+        wrapLines={wrapLines}
+        onToggleWrap={toggleWrap}
+        getCode={getCode}
+      />
     </View>
   );
 });
 
-function renderCodeSegments(keyedLines: KeyedLine[]): React.ReactNode[] {
-  const segments: React.ReactNode[] = [];
-  for (let lineIndex = 0; lineIndex < keyedLines.length; lineIndex += 1) {
-    const line = keyedLines[lineIndex];
-    if (lineIndex > 0) {
-      segments.push(<CodeTextSpan key={`${line.key}-newline`} text={"\n"} />);
-    }
-    for (const { key, token } of line.tokens) {
-      segments.push(<TokenSpan key={`${line.key}-${key}`} token={token} />);
-    }
-  }
-  return segments;
+// 每行一个 <Text>：单个 <Text> 会按容器宽度折行，兄弟行不重排，缩进才保得住。
+// 无高亮的兜底（未知语言、超大代码块）：同样一行一个 <Text>，
+// 理由与高亮路径相同——单个 <Text> 会按容器宽度折行。
+function renderPlainCodeLines(
+  code: string,
+  innerTextStyle: StyleProp<TextStyle>,
+): React.ReactNode[] {
+  let offset = 0;
+  return code.split("\n").map((line) => {
+    const key = `${offset}:${line.length}`;
+    offset += line.length + 1;
+    return (
+      <Text key={key} style={innerTextStyle} dataSet={markdownCopyDataSet.code}>
+        {line.length === 0 ? ZERO_WIDTH : line}
+      </Text>
+    );
+  });
+}
+
+function renderCodeLines(
+  keyedLines: KeyedLine[],
+  innerTextStyle: StyleProp<TextStyle>,
+): React.ReactNode[] {
+  return keyedLines.map((line) => (
+    <Text key={line.key} style={innerTextStyle} dataSet={markdownCopyDataSet.code}>
+      {line.tokens.length === 0
+        ? ZERO_WIDTH
+        : line.tokens.map(({ key, token }) => (
+            <TokenSpan key={`${line.key}-${key}`} token={token} />
+          ))}
+    </Text>
+  ));
 }
 
 interface TokenSpanProps {
@@ -139,20 +188,13 @@ const TokenSpan = React.memo(function TokenSpan({ token }: TokenSpanProps) {
   );
 });
 
-interface CodeTextSpanProps {
-  text: string;
-}
-
-const CodeTextSpan = React.memo(function CodeTextSpan({ text }: CodeTextSpanProps) {
-  return <Text>{text}</Text>;
-});
-
 interface SplitStyles {
   containerStyle: StyleProp<ViewStyle>;
   innerTextStyle: StyleProp<TextStyle>;
 }
 
-const CONTAINER_BASE: ViewStyle = { position: "relative" };
+const CONTAINER_BASE: ViewStyle = { position: "relative", overflow: "hidden" };
+const ZERO_WIDTH = "\u200b";
 const WEB_SELECTABLE: TextStyle = isWeb ? ({ userSelect: "text" } as TextStyle) : {};
 
 function splitFenceStyle(inheritedStyles: TextStyle, textStyle: TextStyle): SplitStyles {
@@ -167,6 +209,67 @@ function splitFenceStyle(inheritedStyles: TextStyle, textStyle: TextStyle): Spli
     innerTextStyle: [inheritedStyles, textOnly],
   };
 }
+
+interface CodeBlockControlsProps {
+  getCode: () => string;
+  visible: boolean;
+  wrapLines: boolean;
+  onToggleWrap: () => void;
+}
+
+const CodeBlockControls = React.memo(function CodeBlockControls({
+  getCode,
+  visible,
+  wrapLines,
+  onToggleWrap,
+}: CodeBlockControlsProps) {
+  return (
+    <>
+      <WrapToggleButton visible={visible} wrapLines={wrapLines} onToggle={onToggleWrap} />
+      <CopyButton getCode={getCode} visible={visible} />
+    </>
+  );
+});
+
+const WrapToggleButton = React.memo(function WrapToggleButton({
+  visible,
+  wrapLines,
+  onToggle,
+}: {
+  visible: boolean;
+  wrapLines: boolean;
+  onToggle: () => void;
+}) {
+  const { t } = useTranslation();
+  const visibilityStyle = visible
+    ? copyButtonStyles.containerVisible
+    : copyButtonStyles.containerHidden;
+  const wrapperStyle = useMemo(
+    () => [copyButtonStyles.container, visibilityStyle, wrapToggleStyles.wrapToggleOffset],
+    [visibilityStyle],
+  );
+  const accessibilityState = useMemo(() => ({ checked: wrapLines }), [wrapLines]);
+  return (
+    <Pressable
+      onPress={onToggle}
+      style={wrapperStyle}
+      pointerEvents={visible ? "auto" : "none"}
+      accessibilityRole="switch"
+      accessibilityState={accessibilityState}
+      accessibilityLabel={wrapLines ? t("codeBlock.disableWrap") : t("codeBlock.enableWrap")}
+      hitSlop={8}
+      dataSet={markdownCopyDataSet.ignore}
+      testID="code-block-wrap-toggle"
+    >
+      {({ hovered }) => {
+        const iconColor = hovered
+          ? copyButtonStyles.iconHoveredColor.color
+          : copyButtonStyles.iconColor.color;
+        return <WrapText size={14} color={iconColor} />;
+      }}
+    </Pressable>
+  );
+});
 
 interface CopyButtonProps {
   getCode: () => string;
@@ -230,6 +333,35 @@ const CopyButton = React.memo(function CopyButton({ getCode, visible }: CopyButt
     </Pressable>
   );
 });
+
+const styles = StyleSheet.create(() => ({
+  container: {
+    overflow: "hidden",
+  },
+  scroll: {
+    flexShrink: 1,
+    minHeight: 0,
+  },
+  scrollContent: {
+    flexDirection: "column" as const,
+  },
+  horizontalContent: {
+    flexDirection: "row" as const,
+  },
+  // `alignSelf: flex-start` 让代码块在横向滚动视图里保持自然宽度，
+  // 行容器永不收缩，也就没有内容被挤回折行。
+  codeLines: {
+    alignSelf: "flex-start",
+    flexShrink: 0,
+    flexDirection: "column" as const,
+  },
+}));
+
+const wrapToggleStyles = StyleSheet.create((theme) => ({
+  wrapToggleOffset: {
+    right: theme.spacing[8],
+  },
+}));
 
 const copyButtonStyles = StyleSheet.create((theme) => ({
   container: {
