@@ -30,6 +30,11 @@ export interface ToolCallPresentation {
   detail: ToolCallDetail | undefined;
   displayName: string;
   summary?: string;
+  /**
+   * 当 `summary` 是未映射工具调用的原始参数 JSON 时为真。徽标用它
+   * 来决定加分隔符，以及压掉那段 JSON 里的连续缩进。
+   */
+  isRawInputSummary: boolean;
   errorText?: string;
   icon: ToolCallPresentationIcon;
   isLoadingDetails: boolean;
@@ -48,6 +53,11 @@ export type ToolCallIconResolver = (
 
 function displayStatus(status: ToolCallStatus): ToolCallDisplayInput["status"] {
   return status === "executing" ? "running" : status;
+}
+
+/** 摘要只显示命令的第一个物理行；完整命令留在详情里。 */
+function firstPhysicalLine(text: string): string {
+  return text.split(/\r?\n/, 1)[0] ?? text;
 }
 
 function displayDetail(detail: ToolCallDetail | undefined): ToolCallDetail {
@@ -71,6 +81,10 @@ export function buildToolCallPresentation(
     cwd: input.cwd,
     targetAgentTitle: input.targetAgentTitle,
   });
+  let summary = displayModel.summary;
+  if (detailForDisplay.type === "shell" && displayModel.summary) {
+    summary = firstPhysicalLine(displayModel.summary);
+  }
   const isLoadingDetails = isPendingToolCallDetail({
     detail,
     status: input.status,
@@ -81,7 +95,8 @@ export function buildToolCallPresentation(
   return {
     detail,
     displayName: displayModel.displayName,
-    summary: displayModel.summary,
+    summary,
+    isRawInputSummary: displayModel.isArgumentSummary === true && Boolean(summary),
     errorText: displayModel.errorText,
     icon: input.resolveIcon(input.toolName, detail, input.agentMessage),
     isLoadingDetails,
