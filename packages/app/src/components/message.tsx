@@ -85,6 +85,8 @@ import { capAssistantMessageForRender, getUtf8ByteLength } from "./assistant-mes
 import { getTurnDurationLabel } from "./assistant-turn-footer-label";
 import { getCompactionMarkerLabel } from "./message-compaction-label";
 import { PlanCard } from "./plan-card";
+import { CopyTextButton } from "./copy-text-button";
+import { buildToolCallDetailText } from "@/utils/tool-call-detail-text";
 import { ToolCallDetailsContent } from "./tool-call-details";
 import { useToolCallSheet } from "./tool-call-sheet";
 export type { InlinePathTarget } from "@/assistant-file-links";
@@ -874,6 +876,12 @@ export const TurnCopyButton = memo(function TurnCopyButton({
   );
 });
 
+const RAW_INPUT_SUMMARY_SEPARATOR = "🔹";
+
+function formatRawInputSummary(summary: string): string {
+  return `${RAW_INPUT_SUMMARY_SEPARATOR} ${summary.replace(/ {2,}/g, " ")}`;
+}
+
 const expandableBadgeStylesheet = StyleSheet.create((theme) => ({
   container: {
     marginHorizontal: -13,
@@ -933,7 +941,13 @@ const expandableBadgeStylesheet = StyleSheet.create((theme) => ({
     color: theme.colors.foregroundMuted,
     fontSize: theme.fontSize.base,
     fontWeight: theme.fontWeight.normal,
+  },
+  secondaryLabelColumnIndent: {
     marginLeft: theme.spacing[2],
+  },
+  inlineTitleText: {
+    flexShrink: 1,
+    minWidth: 0,
   },
   secondaryLabelActive: {
     color: theme.colors.foreground,
@@ -958,6 +972,10 @@ const expandableBadgeStylesheet = StyleSheet.create((theme) => ({
   openFileButtonPlaceholderIcon: {
     width: 14,
     height: 14,
+  },
+  trailingAction: {
+    marginLeft: theme.spacing[1],
+    flexShrink: 0,
   },
   detailWrapper: {
     borderBottomLeftRadius: theme.borderRadius.lg,
@@ -1022,21 +1040,25 @@ const expandableBadgeStylesheet = StyleSheet.create((theme) => ({
 interface NativeExpandableBadgeShimmerProps {
   label: string;
   secondaryLabel?: string;
+  secondaryLabelMaxLines?: number;
   rowWidth: number;
   rowHeight: number;
   peakWidth: number;
   durationSeconds: number;
   gradientId: string;
+  multiline: boolean;
 }
 
 const NativeExpandableBadgeShimmer = memo(function NativeExpandableBadgeShimmer({
   label,
   secondaryLabel,
+  secondaryLabelMaxLines,
   rowWidth,
   rowHeight,
   peakWidth,
   durationSeconds,
   gradientId,
+  multiline,
 }: NativeExpandableBadgeShimmerProps) {
   const isPanelActive = useRetainedPanelActive();
   const shimmerTranslateX = useSharedValue(0);
@@ -1095,23 +1117,43 @@ const NativeExpandableBadgeShimmer = memo(function NativeExpandableBadgeShimmer(
     [nativeShimmerPeakStyle, peakWidth, rowHeight],
   );
 
-  const maskElement = useMemo(
-    () => (
+  const maskElement = useMemo(() => {
+    if (secondaryLabelMaxLines !== undefined) {
+      return (
+        <View pointerEvents="none" style={nativeShimmerMaskStyle}>
+          <ExpandableBadgeInlineText
+            label={label}
+            secondaryLabel={secondaryLabel}
+            labelStyle={nativeLabelMaskStyle}
+            secondaryLabelStyle={nativeSecondaryMaskStyle}
+            maxLines={secondaryLabelMaxLines}
+          />
+        </View>
+      );
+    }
+    return (
       <View pointerEvents="none" style={nativeShimmerMaskStyle}>
         <Text style={nativeLabelMaskStyle} numberOfLines={1}>
           {label}
         </Text>
         {secondaryLabel ? (
-          <Text style={nativeSecondaryMaskStyle} numberOfLines={1}>
+          <Text style={nativeSecondaryMaskStyle} numberOfLines={multiline ? undefined : 1}>
             {secondaryLabel}
           </Text>
         ) : (
           <View style={expandableBadgeStylesheet.spacer} />
         )}
       </View>
-    ),
-    [nativeShimmerMaskStyle, nativeLabelMaskStyle, nativeSecondaryMaskStyle, label, secondaryLabel],
-  );
+    );
+  }, [
+    nativeShimmerMaskStyle,
+    nativeLabelMaskStyle,
+    nativeSecondaryMaskStyle,
+    label,
+    secondaryLabel,
+    secondaryLabelMaxLines,
+    multiline,
+  ]);
 
   return (
     <View style={expandableBadgeStylesheet.shimmerOverlay} pointerEvents="none">
@@ -1516,6 +1558,8 @@ export const TodoListCard = memo(function TodoListCard({
 interface ExpandableBadgeProps {
   label: string;
   secondaryLabel?: string;
+  /** 名称+摘要合并流的行数上限；默认关闭，其他调用方仍是一行。 */
+  secondaryLabelMaxLines?: number;
   icon?: ComponentType<{ size?: number; color?: string }>;
   isExpanded: boolean;
   style?: StyleProp<ViewStyle>;
@@ -1523,6 +1567,7 @@ interface ExpandableBadgeProps {
   onOpenFile?: () => void;
   onDetailHoverChange?: (hovered: boolean) => void;
   renderDetails?: () => ReactNode;
+  trailingAction?: ReactNode;
   isLoading?: boolean;
   isError?: boolean;
   isLastInSequence?: boolean;
@@ -1536,6 +1581,7 @@ interface ExpandableBadgeSecondaryLabelProps {
   secondaryLabelStyle: StyleProp<TextStyle>;
   shouldMeasureWebShimmer: boolean;
   onSecondaryLayout: (event: LayoutChangeEvent) => void;
+  multiline: boolean;
 }
 
 function ExpandableBadgeSecondaryLabel({
@@ -1543,6 +1589,7 @@ function ExpandableBadgeSecondaryLabel({
   secondaryLabelStyle,
   shouldMeasureWebShimmer,
   onSecondaryLayout,
+  multiline,
 }: ExpandableBadgeSecondaryLabelProps) {
   if (!secondaryLabel) {
     return null;
@@ -1550,7 +1597,7 @@ function ExpandableBadgeSecondaryLabel({
   return (
     <Text
       style={secondaryLabelStyle}
-      numberOfLines={1}
+      numberOfLines={multiline ? undefined : 1}
       onLayout={shouldMeasureWebShimmer ? onSecondaryLayout : undefined}
     >
       {secondaryLabel}
@@ -1558,36 +1605,88 @@ function ExpandableBadgeSecondaryLabel({
   );
 }
 
+interface ExpandableBadgeInlineTextProps {
+  label: string;
+  secondaryLabel?: string;
+  labelStyle: StyleProp<TextStyle>;
+  secondaryLabelStyle: StyleProp<TextStyle>;
+  /** 整个流的额外样式；web 上的微光效果把动画文本样式放这里。 */
+  outerStyle?: StyleProp<TextStyle>;
+  onLayout?: (event: LayoutChangeEvent) => void;
+  maxLines: number;
+}
+
+/**
+ * 外层单个 Text 管 `numberOfLines`，摘要才会接在名称后面并复用下方整行宽度，
+ * 不再预留左列；嵌套 span 保留各自样式。
+ */
+function ExpandableBadgeInlineText({
+  label,
+  secondaryLabel,
+  labelStyle,
+  secondaryLabelStyle,
+  outerStyle,
+  onLayout,
+  maxLines,
+}: ExpandableBadgeInlineTextProps) {
+  return (
+    <Text style={outerStyle} numberOfLines={maxLines} ellipsizeMode="tail" onLayout={onLayout}>
+      <Text style={labelStyle}>{label}</Text>
+      {secondaryLabel ? <Text style={secondaryLabelStyle}>{` ${secondaryLabel}`}</Text> : null}
+    </Text>
+  );
+}
+
 interface ExpandableBadgeWebShimmerOverlayProps {
   label: string;
   secondaryLabel?: string;
+  secondaryLabelMaxLines?: number;
   shimmerLabelTextStyle: StyleProp<TextStyle>;
   shimmerSecondaryTextStyle: StyleProp<TextStyle>;
   showOpenFileButton: boolean;
+  multiline: boolean;
 }
 
 function ExpandableBadgeWebShimmerOverlay({
   label,
   secondaryLabel,
+  secondaryLabelMaxLines,
   shimmerLabelTextStyle,
   shimmerSecondaryTextStyle,
   showOpenFileButton,
+  multiline,
 }: ExpandableBadgeWebShimmerOverlayProps) {
+  const openFilePlaceholder = showOpenFileButton ? (
+    <View style={expandableBadgeStylesheet.openFileButton}>
+      <View style={expandableBadgeStylesheet.openFileButtonPlaceholderIcon} />
+    </View>
+  ) : null;
+  if (secondaryLabelMaxLines !== undefined) {
+    return (
+      <View style={expandableBadgeStylesheet.shimmerOverlay} pointerEvents="none">
+        <ExpandableBadgeInlineText
+          label={label}
+          secondaryLabel={secondaryLabel}
+          labelStyle={shimmerLabelTextStyle}
+          secondaryLabelStyle={shimmerSecondaryTextStyle}
+          outerStyle={expandableBadgeStylesheet.inlineTitleText}
+          maxLines={secondaryLabelMaxLines}
+        />
+        {openFilePlaceholder}
+      </View>
+    );
+  }
   return (
     <View style={expandableBadgeStylesheet.shimmerOverlay} pointerEvents="none">
       <Text style={shimmerLabelTextStyle} numberOfLines={1}>
         {label}
       </Text>
       {secondaryLabel ? (
-        <Text style={shimmerSecondaryTextStyle} numberOfLines={1}>
+        <Text style={shimmerSecondaryTextStyle} numberOfLines={multiline ? undefined : 1}>
           {secondaryLabel}
         </Text>
       ) : null}
-      {showOpenFileButton ? (
-        <View style={expandableBadgeStylesheet.openFileButton}>
-          <View style={expandableBadgeStylesheet.openFileButtonPlaceholderIcon} />
-        </View>
-      ) : null}
+      {openFilePlaceholder}
       {!secondaryLabel && !showOpenFileButton ? (
         <View style={expandableBadgeStylesheet.spacer} />
       ) : null}
@@ -1600,6 +1699,8 @@ interface ExpandableBadgeLabelRowProps {
   labelStyle: StyleProp<TextStyle>;
   secondaryLabel?: string;
   secondaryLabelStyle: StyleProp<TextStyle>;
+  /** 为空时保持工具调用标题之外那些调用方使用的两列标签行。 */
+  secondaryLabelMaxLines?: number;
   shouldMeasureWebShimmer: boolean;
   shouldMeasureNativeShimmer: boolean;
   isWebShimmer: boolean;
@@ -1619,6 +1720,7 @@ interface ExpandableBadgeLabelRowProps {
   onOpenFilePress: (event: GestureResponderEvent) => void;
   onOpenFileHoverIn: () => void;
   onOpenFileHoverOut: () => void;
+  multiline?: boolean;
 }
 
 function ExpandableBadgeLabelRow({
@@ -1626,6 +1728,7 @@ function ExpandableBadgeLabelRow({
   labelStyle,
   secondaryLabel,
   secondaryLabelStyle,
+  secondaryLabelMaxLines,
   shouldMeasureWebShimmer,
   shouldMeasureNativeShimmer,
   isWebShimmer,
@@ -1645,8 +1748,71 @@ function ExpandableBadgeLabelRow({
   onOpenFilePress,
   onOpenFileHoverIn,
   onOpenFileHoverOut,
+  multiline = true,
 }: ExpandableBadgeLabelRowProps) {
   const { t } = useTranslation();
+  const openFileAction = showOpenFileButton ? (
+    <Pressable
+      onPress={onOpenFilePress}
+      onHoverIn={onOpenFileHoverIn}
+      onHoverOut={onOpenFileHoverOut}
+      accessibilityRole="button"
+      accessibilityLabel={t("message.actions.openFile")}
+      testID="tool-call-open-file"
+      style={expandableBadgeStylesheet.openFileButton}
+      hitSlop={6}
+    >
+      <ThemedFileSymlinkIcon
+        size={14}
+        uniProps={isOpenFileHovered ? foregroundColorMapping : foregroundMutedColorMapping}
+      />
+    </Pressable>
+  ) : null;
+  const shimmerOverlay = isWebShimmer ? (
+    <ExpandableBadgeWebShimmerOverlay
+      label={label}
+      secondaryLabel={secondaryLabel}
+      secondaryLabelMaxLines={secondaryLabelMaxLines}
+      shimmerLabelTextStyle={shimmerLabelTextStyle}
+      shimmerSecondaryTextStyle={shimmerSecondaryTextStyle}
+      showOpenFileButton={showOpenFileButton}
+      multiline={multiline}
+    />
+  ) : null;
+  const nativeShimmer = isNativeShimmer ? (
+    <NativeExpandableBadgeShimmer
+      label={label}
+      secondaryLabel={secondaryLabel}
+      secondaryLabelMaxLines={secondaryLabelMaxLines}
+      rowWidth={labelRowWidth}
+      rowHeight={labelRowHeight}
+      peakWidth={nativeShimmerPeakWidth}
+      durationSeconds={shimmerDuration}
+      gradientId={nativeGradientId}
+      multiline={multiline}
+    />
+  ) : null;
+  if (secondaryLabelMaxLines !== undefined) {
+    return (
+      <View
+        style={expandableBadgeStylesheet.labelRow}
+        onLayout={shouldMeasureNativeShimmer ? onLabelRowLayout : undefined}
+      >
+        <ExpandableBadgeInlineText
+          label={label}
+          secondaryLabel={secondaryLabel}
+          labelStyle={labelStyle}
+          secondaryLabelStyle={secondaryLabelStyle}
+          outerStyle={expandableBadgeStylesheet.inlineTitleText}
+          onLayout={shouldMeasureWebShimmer ? onLabelLayout : undefined}
+          maxLines={secondaryLabelMaxLines}
+        />
+        {openFileAction}
+        {nativeShimmer}
+        {shimmerOverlay}
+      </View>
+    );
+  }
   return (
     <View
       style={expandableBadgeStylesheet.labelRow}
@@ -1664,44 +1830,11 @@ function ExpandableBadgeLabelRow({
         secondaryLabelStyle={secondaryLabelStyle}
         shouldMeasureWebShimmer={shouldMeasureWebShimmer}
         onSecondaryLayout={onSecondaryLayout}
+        multiline={multiline}
       />
-      {showOpenFileButton ? (
-        <Pressable
-          onPress={onOpenFilePress}
-          onHoverIn={onOpenFileHoverIn}
-          onHoverOut={onOpenFileHoverOut}
-          accessibilityRole="button"
-          accessibilityLabel={t("message.actions.openFile")}
-          testID="tool-call-open-file"
-          style={expandableBadgeStylesheet.openFileButton}
-          hitSlop={6}
-        >
-          <ThemedFileSymlinkIcon
-            size={14}
-            uniProps={isOpenFileHovered ? foregroundColorMapping : foregroundMutedColorMapping}
-          />
-        </Pressable>
-      ) : null}
-      {isWebShimmer ? (
-        <ExpandableBadgeWebShimmerOverlay
-          label={label}
-          secondaryLabel={secondaryLabel}
-          shimmerLabelTextStyle={shimmerLabelTextStyle}
-          shimmerSecondaryTextStyle={shimmerSecondaryTextStyle}
-          showOpenFileButton={showOpenFileButton}
-        />
-      ) : null}
-      {isNativeShimmer ? (
-        <NativeExpandableBadgeShimmer
-          label={label}
-          secondaryLabel={secondaryLabel}
-          rowWidth={labelRowWidth}
-          rowHeight={labelRowHeight}
-          peakWidth={nativeShimmerPeakWidth}
-          durationSeconds={shimmerDuration}
-          gradientId={nativeGradientId}
-        />
-      ) : null}
+      {openFileAction}
+      {nativeShimmer}
+      {shimmerOverlay}
     </View>
   );
 }
@@ -1880,12 +2013,14 @@ export const ExpandableBadge = memo(function ExpandableBadge({
   label,
   style,
   secondaryLabel,
+  secondaryLabelMaxLines,
   icon,
   isExpanded,
   onToggle,
   onOpenFile,
   onDetailHoverChange,
   renderDetails,
+  trailingAction,
   isLoading = false,
   isError = false,
   isLastInSequence = false,
@@ -2097,8 +2232,13 @@ export const ExpandableBadge = memo(function ExpandableBadge({
     () => [
       expandableBadgeStylesheet.secondaryLabel,
       isActive && expandableBadgeStylesheet.secondaryLabelActive,
+      // 只有两列布局用外边距给摘要缩进；合并的行内流
+      // 靠文字里的前导空格分隔。
+      secondaryLabelMaxLines === undefined
+        ? expandableBadgeStylesheet.secondaryLabelColumnIndent
+        : null,
     ],
-    [isActive],
+    [isActive, secondaryLabelMaxLines],
   );
 
   const shimmerLabelTextStyle = useMemo(
@@ -2168,6 +2308,7 @@ export const ExpandableBadge = memo(function ExpandableBadge({
             labelStyle={labelStyle}
             secondaryLabel={secondaryLabel}
             secondaryLabelStyle={secondaryLabelStyle}
+            secondaryLabelMaxLines={secondaryLabelMaxLines}
             shouldMeasureWebShimmer={shouldMeasureWebShimmer}
             shouldMeasureNativeShimmer={shouldMeasureNativeShimmer}
             isWebShimmer={isWebShimmer}
@@ -2188,6 +2329,9 @@ export const ExpandableBadge = memo(function ExpandableBadge({
             onOpenFileHoverIn={handleOpenFileHoverIn}
             onOpenFileHoverOut={handleOpenFileHoverOut}
           />
+          {isExpanded && trailingAction ? (
+            <View style={expandableBadgeStylesheet.trailingAction}>{trailingAction}</View>
+          ) : null}
         </View>
       </Pressable>
       {detailContent ? (
@@ -2207,6 +2351,8 @@ export const ExpandableBadge = memo(function ExpandableBadge({
 function areExpandableBadgePropsEqual(previous: ExpandableBadgeProps, next: ExpandableBadgeProps) {
   if (previous.label !== next.label) return false;
   if (previous.secondaryLabel !== next.secondaryLabel) return false;
+  if (previous.secondaryLabelMaxLines !== next.secondaryLabelMaxLines) return false;
+  if (previous.trailingAction !== next.trailingAction) return false;
   if (previous.icon !== next.icon) return false;
   if (previous.isExpanded !== next.isExpanded) return false;
   if (previous.style !== next.style) return false;
@@ -2309,6 +2455,28 @@ export const ToolCall = memo(function ToolCall({
       }),
     [toolName, status, error, effectiveDetail, metadata, cwd, agentMessage, targetAgentTitle],
   );
+  // 只改写徽标里的摘要；详情面板与工具详情面板
+  // 保持 `presentation.summary` 不动。
+  const badgeSecondaryLabel = useMemo(() => {
+    const summary = presentation.summary;
+    if (!summary || !presentation.isRawInputSummary) {
+      return summary;
+    }
+    return formatRawInputSummary(summary);
+  }, [presentation.summary, presentation.isRawInputSummary]);
+  const getCopyText = useCallback(
+    () => buildToolCallDetailText(effectiveDetail, toolName),
+    [effectiveDetail, toolName],
+  );
+  // 桌面端的详情是内联展开的，所以徽标自己带复制动作；
+  // 折叠时它隐藏，免得空闲的那一行显得杂乱。
+  const copyAction = useMemo(
+    () =>
+      shouldRenderInline && isExpanded ? (
+        <CopyTextButton getText={getCopyText} size={16} />
+      ) : undefined,
+    [shouldRenderInline, isExpanded, getCopyText],
+  );
   const handleOpenFile = useMemo(() => {
     const openFilePath = presentation.openFilePath;
     if (!openFilePath || !onOpenFilePath) {
@@ -2407,12 +2575,14 @@ export const ToolCall = memo(function ToolCall({
     <ExpandableBadge
       testID="tool-call-badge"
       label={presentation.displayName}
-      secondaryLabel={presentation.summary}
+      secondaryLabel={badgeSecondaryLabel}
+      secondaryLabelMaxLines={3}
       icon={presentation.icon}
       isExpanded={shouldRenderInline && isExpanded}
       onToggle={presentation.canOpenDetails ? handleToggle : undefined}
       onOpenFile={handleOpenFile}
       renderDetails={presentation.canOpenDetails && shouldRenderInline ? renderDetails : undefined}
+      trailingAction={copyAction}
       isLoading={status === "running" || status === "executing"}
       isError={status === "failed"}
       isLastInSequence={isLastInSequence}

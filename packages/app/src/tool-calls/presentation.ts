@@ -30,6 +30,11 @@ export interface ToolCallPresentation {
   detail: ToolCallDetail | undefined;
   displayName: string;
   summary?: string;
+  /**
+   * 当 `summary` 是未映射工具调用的原始参数 JSON 时为真。徽标用它
+   * 来决定加分隔符，以及压掉那段 JSON 里的连续缩进。
+   */
+  isRawInputSummary: boolean;
   errorText?: string;
   icon: ToolCallPresentationIcon;
   isLoadingDetails: boolean;
@@ -50,8 +55,20 @@ function displayStatus(status: ToolCallStatus): ToolCallDisplayInput["status"] {
   return status === "executing" ? "running" : status;
 }
 
+/** 摘要只显示命令的第一个物理行；完整命令留在详情里。 */
+function firstPhysicalLine(text: string): string {
+  return text.split(/\r?\n/, 1)[0] ?? text;
+}
+
 function displayDetail(detail: ToolCallDetail | undefined): ToolCallDetail {
   return detail ?? { type: "unknown", input: null, output: null };
+}
+
+/**
+ * 只显示标题：未知详情覆盖不带摘要，否则兜底链会把原始参数 JSON 露出来。
+ */
+function isThinkingToolName(name: string): boolean {
+  return name.trim().toLowerCase() === "thinking";
 }
 
 export function buildToolCallPresentation(
@@ -71,6 +88,12 @@ export function buildToolCallPresentation(
     cwd: input.cwd,
     targetAgentTitle: input.targetAgentTitle,
   });
+  let summary = displayModel.summary;
+  if (isThinkingToolName(input.toolName)) {
+    summary = undefined;
+  } else if (detailForDisplay.type === "shell" && displayModel.summary) {
+    summary = firstPhysicalLine(displayModel.summary);
+  }
   const isLoadingDetails = isPendingToolCallDetail({
     detail,
     status: input.status,
@@ -81,7 +104,8 @@ export function buildToolCallPresentation(
   return {
     detail,
     displayName: displayModel.displayName,
-    summary: displayModel.summary,
+    summary,
+    isRawInputSummary: displayModel.isArgumentSummary === true && Boolean(summary),
     errorText: displayModel.errorText,
     icon: input.resolveIcon(input.toolName, detail, input.agentMessage),
     isLoadingDetails,

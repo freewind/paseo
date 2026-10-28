@@ -18,11 +18,13 @@ export interface ToolCallDisplayModel {
   displayName: string;
   summary?: string;
   errorText?: string;
+  isArgumentSummary?: boolean;
 }
 
 interface DetailDisplay {
   displayName?: string;
   summary?: string;
+  isArgumentSummary?: boolean;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -127,6 +129,96 @@ function buildCanonicalDetailDisplay(input: ToolCallDisplayInput): DetailDisplay
   }
 }
 
+/**
+ * 未映射工具想要什么，按字段可读性排序。没有这段逻辑，搜索徽标只会显示目录，
+ * 看起来像在说文件夹。`command` 刻意排除：原始参数不是 shell 工具的契约。
+ *
+ * 顺序就是全部策略：没有任何分支认识具体工具名，`query`/`pattern` 优先于
+ * 符号形式，再是标题、prompt，没见过的工具也能取到最好的两段。
+ */
+const UNKNOWN_INTENT_KEYS = [
+  "query",
+  "pattern",
+  "patterns",
+  "substring_pattern",
+  "name_path_pattern",
+  "name_path",
+  "symbol",
+  "symbolName",
+  "symbol_name",
+  "memory_name",
+  "title",
+  "url",
+  "uri",
+  "prompt",
+  "initialPrompt",
+  "message",
+] as const;
+
+const UNKNOWN_TARGET_KEYS = [
+  "path",
+  "relative_path",
+  "filePath",
+  "file_path",
+  "file",
+  "projectPath",
+  "project_path",
+  "cwd",
+  "directory",
+  "dir",
+] as const;
+
+function readSummaryValue(input: Record<string, unknown>, key: string): string | undefined {
+  const value = input[key];
+  if (Array.isArray(value)) {
+    const items = value.filter((item): item is string => typeof item === "string" && item !== "");
+    if (items.length === 0) {
+      return undefined;
+    }
+    // 最多两个值：再多就会超出一行徽标，只会被截掉。
+    return items.length > 2 ? `${items[0]} | ${items[1]} | …` : items.join(" | ");
+  }
+  return readString(value);
+}
+
+function firstSummaryValue(
+  input: Record<string, unknown>,
+  keys: readonly string[],
+): string | undefined {
+  for (const key of keys) {
+    const value = readSummaryValue(input, key);
+    if (value) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+/** 让徽标保持一行：否则带换行的 prompt 会把它撑开。 */
+function collapseWhitespace(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * 最多两段——先问什么，再指向哪里——无论命中多少键。徽标
+ * 长到三四段就不再是一眼能读完的东西了。
+ */
+function buildUnknownInputSummary(input: unknown, cwd: string | undefined): string | undefined {
+  if (!isRecord(input)) {
+    return undefined;
+  }
+  const intent = firstSummaryValue(input, UNKNOWN_INTENT_KEYS);
+  const target = firstSummaryValue(input, UNKNOWN_TARGET_KEYS);
+  const intentText = intent ? collapseWhitespace(intent) : undefined;
+  const targetText = target ? stripCwdPrefix(collapseWhitespace(target), cwd) : undefined;
+  // 工具只说一次的主体不能显示两次，比如 `uri` 与同一个 `path`。
+  if (intentText && targetText && intentText === targetText) {
+    return intentText;
+  }
+  const parts = [intentText, targetText].filter((part): part is string => Boolean(part));
+  return parts.length > 0 ? parts.join(" · ") : undefined;
+}
+
 function buildUnknownDetailOverride(input: ToolCallDisplayInput): DetailDisplay {
   const lowerName = input.name.trim().toLowerCase();
   if (input.detail.type === "unknown" && lowerName === "task") {
@@ -145,6 +237,12 @@ function buildUnknownDetailOverride(input: ToolCallDisplayInput): DetailDisplay 
       displayName: "Terminal",
       summary: input.detail.type === "plain_text" ? readString(input.detail.label) : undefined,
     };
+  }
+  if (input.detail.type === "unknown") {
+    const summary = buildUnknownInputSummary(input.detail.input, input.cwd);
+    if (summary) {
+      return { summary, isArgumentSummary: true };
+    }
   }
   return {};
 }
@@ -176,6 +274,7 @@ export function buildToolCallDisplayModel(input: ToolCallDisplayInput): ToolCall
   return {
     displayName,
     ...(summary ? { summary } : {}),
+    ...(unknownDetailOverride.isArgumentSummary ? { isArgumentSummary: true } : {}),
     ...(errorText ? { errorText } : {}),
   };
 }
