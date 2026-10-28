@@ -118,6 +118,10 @@ export const zhCN: TranslationResources = {
       settingOff: "关",
     },
   },
+  codeBlock: {
+    enableWrap: "自动换行长行",
+    disableWrap: "滚动长行",
+  },
   composer: {
     placeholders: {
       desktop: "给 Agent 发消息，标记 @files，或使用 /commands 和 /skills",

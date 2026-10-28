@@ -232,4 +232,11 @@ export type DiffSurfaceProps = DiffDocumentProps & {
   onToggleFile: (path: string) => void;
   selectedPath: string | null;
   onSelectPath: (path: string) => void;
+  /**
+   * `wrapped` 是生效值（覆盖 ?? 全局偏好），只为这个文件存，从不持久化。
+   */
+  fileWrapToggle?: {
+    wrappedFor: (path: string) => boolean;
+    onToggle: (path: string) => void;
+  };
 };
