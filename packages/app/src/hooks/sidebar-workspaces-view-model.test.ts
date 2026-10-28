@@ -429,6 +429,7 @@ describe("shared sidebar workspace model", () => {
     const sessions = [
       {
         serverId: "srv",
+        agents: new Map(),
         workspaceAgentActivity: new Map(),
         workspaces: new Map([
           ["one", one],
