@@ -2,7 +2,20 @@ import React, { useCallback, useMemo } from "react";
 import { View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Copy, Ellipsis, Globe, Import as ImportIcon, Settings } from "lucide-react-native";
+import {
+  Archive,
+  Circle,
+  CircleCheck,
+  Copy,
+  Ellipsis,
+  Globe,
+  Import as ImportIcon,
+  Pencil,
+  Pin,
+  PinOff,
+  Settings,
+  Tag,
+} from "lucide-react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import type { TerminalProfile } from "@getpaseo/protocol/messages";
 import {
@@ -11,7 +24,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  useDropdownMenuClose,
 } from "@/components/ui/dropdown-menu";
 import {
   extraMutedIconColorMapping,
@@ -32,19 +47,35 @@ import {
   type UseWorkspaceScriptsMenuPagesInput,
 } from "@/screens/workspace/scripts";
 import { usePluginWorkspaceMenu } from "@/plugins";
+import { OpenInFileManagerMenuItem } from "@/workspace/open-in-file-manager/menu-item";
+import { WORKSPACE_LABEL_PAGE_ID, type WorkspaceLabelTarget } from "@/workspace-labels/picker";
 
 const ThemedEllipsis = withUnistyles(Ellipsis);
 const ThemedCopy = withUnistyles(Copy);
 const ThemedGlobe = withUnistyles(Globe);
 const ThemedImport = withUnistyles(ImportIcon);
 const ThemedSettings = withUnistyles(Settings);
+const ThemedRename = withUnistyles(Pencil);
+const ThemedMarkAsRead = withUnistyles(CircleCheck);
+const ThemedMarkAsUnread = withUnistyles(Circle);
+const ThemedPin = withUnistyles(Pin);
+const ThemedPinOff = withUnistyles(PinOff);
+const ThemedTag = withUnistyles(Tag);
+const ThemedArchive = withUnistyles(Archive);
 
 const mutedColorMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
 
 const MENU_NEW_BROWSER_ICON = <ThemedGlobe size={16} uniProps={mutedColorMapping} />;
 const MENU_IMPORT_ICON = <ThemedImport size={16} uniProps={mutedColorMapping} />;
 const MENU_COPY_ICON = <ThemedCopy size={16} uniProps={mutedColorMapping} />;
+const MENU_RENAME_ICON = <ThemedRename size={16} uniProps={mutedColorMapping} />;
+const MENU_MARK_AS_READ_ICON = <ThemedMarkAsRead size={16} uniProps={mutedColorMapping} />;
+const MENU_MARK_AS_UNREAD_ICON = <ThemedMarkAsUnread size={16} uniProps={mutedColorMapping} />;
+const MENU_PIN_ICON = <ThemedPin size={16} uniProps={mutedColorMapping} />;
+const MENU_UNPIN_ICON = <ThemedPinOff size={16} uniProps={mutedColorMapping} />;
+const MENU_LABELS_ICON = <ThemedTag size={16} uniProps={mutedColorMapping} />;
 const MENU_SETTINGS_ICON = <ThemedSettings size={16} uniProps={mutedColorMapping} />;
+const MENU_ARCHIVE_ICON = <ThemedArchive size={16} uniProps={mutedColorMapping} />;
 function WorkspaceHeaderMenuTriggerIcon() {
   return (
     <ThemedEllipsis
@@ -73,7 +104,10 @@ const COMPACT_HEADER_BUTTON_HIT_SLOP = { top: 8, bottom: 8 } as const;
 
 /**
  * Actions that belong to the workspace itself rather than to a tab. Both header menus render them,
- * from the same callbacks, so the two surfaces can't drift.
+ * 用同一批回调，这样紧凑与宽屏不会走偏。
+ *
+ * 侧栏自己写了一份这些项，两处要保持同项、同序、同措辞；各写自己的 JSX，
+ * 上游改动才只落在一个文件里。
  */
 export interface WorkspaceHeaderWorkspaceActions {
   currentBranchName: string | null;
@@ -84,6 +118,18 @@ export interface WorkspaceHeaderWorkspaceActions {
   onCopyWorkspacePath: () => void;
   onCopyBranchName: () => void;
   onOpenSetupTab: () => void;
+  /** 菜单所属工作区的标识；菜单不为每一行渲染 test id。 */
+  workspaceKey: string;
+  workspaceTarget: WorkspaceLabelTarget | null;
+  workspaceDirectory?: string | null;
+  onRename?: () => void;
+  onMarkAsRead?: () => void;
+  onMarkAsUnread?: () => void;
+  onTogglePin?: () => void;
+  isPinned?: boolean;
+  onArchive?: () => void;
+  isArchiving?: boolean;
+  archiveLabel?: string;
 }
 
 function WorkspaceHeaderWorkspaceActionItems({
@@ -95,8 +141,37 @@ function WorkspaceHeaderWorkspaceActionItems({
   onCopyWorkspacePath,
   onCopyBranchName,
   onOpenSetupTab,
+  workspaceTarget,
+  workspaceDirectory,
+  onRename,
+  onMarkAsRead,
+  onMarkAsUnread,
+  onTogglePin,
+  isPinned,
+  onArchive,
+  isArchiving,
+  archiveLabel,
 }: WorkspaceHeaderWorkspaceActions) {
   const { t } = useTranslation();
+  const closeMenu = useDropdownMenuClose();
+  const handleRename = useCallback(() => {
+    if (!onRename) return;
+    // 先关菜单，免得重命名弹窗叠在它上面。
+    closeMenu();
+    onRename();
+  }, [closeMenu, onRename]);
+  const handleTogglePin = useCallback(() => {
+    if (!onTogglePin) return;
+    // 先关菜单，免得固定开关的乐观状态叠在它上面。
+    closeMenu();
+    onTogglePin();
+  }, [closeMenu, onTogglePin]);
+  const handleArchive = useCallback(() => {
+    if (!onArchive) return;
+    // 先关菜单，免得归档流程（确认弹窗 / 跳转）叠在它上面。
+    closeMenu();
+    onArchive();
+  }, [closeMenu, onArchive]);
   return (
     <>
       <DropdownMenuItem
@@ -116,6 +191,15 @@ function WorkspaceHeaderWorkspaceActionItems({
           {t("workspace.header.actions.copyBranchName")}
         </DropdownMenuItem>
       ) : null}
+      {onRename ? (
+        <DropdownMenuItem
+          testID="workspace-header-rename"
+          leading={MENU_RENAME_ICON}
+          onSelect={handleRename}
+        >
+          {t("sidebar.workspace.actions.rename")}
+        </DropdownMenuItem>
+      ) : null}
       <DropdownMenuItem
         testID="workspace-header-import-agent"
         leading={MENU_IMPORT_ICON}
@@ -124,17 +208,67 @@ function WorkspaceHeaderWorkspaceActionItems({
       >
         {t("workspace.header.actions.importSession")}
       </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      {onMarkAsRead ? (
+        <DropdownMenuItem
+          testID="workspace-header-mark-as-read"
+          leading={MENU_MARK_AS_READ_ICON}
+          onSelect={onMarkAsRead}
+        >
+          {t("sidebar.workspace.actions.markAsRead")}
+        </DropdownMenuItem>
+      ) : null}
+      {onMarkAsUnread ? (
+        <DropdownMenuItem
+          testID="workspace-header-mark-as-unread"
+          leading={MENU_MARK_AS_UNREAD_ICON}
+          onSelect={onMarkAsUnread}
+        >
+          {t("sidebar.workspace.actions.markAsUnread")}
+        </DropdownMenuItem>
+      ) : null}
+      {onTogglePin ? (
+        <DropdownMenuItem
+          testID="workspace-header-pin"
+          leading={isPinned ? MENU_UNPIN_ICON : MENU_PIN_ICON}
+          onSelect={handleTogglePin}
+        >
+          {t(isPinned ? "sidebar.workspace.actions.unpin" : "sidebar.workspace.actions.pin")}
+        </DropdownMenuItem>
+      ) : null}
+      {workspaceTarget ? (
+        <DropdownMenuSubTrigger
+          id={WORKSPACE_LABEL_PAGE_ID}
+          leading={MENU_LABELS_ICON}
+          testID="workspace-header-labels"
+        >
+          {t("workspaceLabels.title")}
+        </DropdownMenuSubTrigger>
+      ) : null}
       {showWorkspaceSetup ? (
-        <>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            testID="workspace-header-show-setup"
-            leading={MENU_SETTINGS_ICON}
-            onSelect={onOpenSetupTab}
-          >
-            {t("workspace.header.actions.showSetup")}
-          </DropdownMenuItem>
-        </>
+        <DropdownMenuItem
+          testID="workspace-header-show-setup"
+          leading={MENU_SETTINGS_ICON}
+          onSelect={onOpenSetupTab}
+        >
+          {t("workspace.header.actions.showSetup")}
+        </DropdownMenuItem>
+      ) : null}
+      <OpenInFileManagerMenuItem
+        surface="dropdown"
+        path={workspaceDirectory}
+        testID="workspace-header-open-folder"
+      />
+      {onArchive ? (
+        <DropdownMenuItem
+          testID="workspace-header-archive"
+          leading={MENU_ARCHIVE_ICON}
+          status={isArchiving ? "pending" : "idle"}
+          pendingLabel={archiveLabel}
+          onSelect={handleArchive}
+        >
+          {t("sidebar.workspace.actions.archive")}
+        </DropdownMenuItem>
       ) : null}
     </>
   );

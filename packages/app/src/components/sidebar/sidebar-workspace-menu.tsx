@@ -1,4 +1,10 @@
-import { useMemo, type ComponentProps, type PropsWithChildren, type ReactNode } from "react";
+import {
+  useCallback,
+  useMemo,
+  type ComponentProps,
+  type PropsWithChildren,
+  type ReactNode,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { type PressableStateCallbackType } from "react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
@@ -15,8 +21,8 @@ import {
 } from "lucide-react-native";
 import { isWeb } from "@/constants/platform";
 import { getForgePresentation, normalizeForge } from "@/git/forge";
-import type { SidebarWorkspaceEntry } from "@/hooks/use-sidebar-workspaces-list";
 import { useAppSettings } from "@/hooks/use-settings";
+import type { SidebarWorkspaceEntry } from "@/hooks/use-sidebar-workspaces-list";
 import { densityIconProps } from "@/styles/density";
 import type { Theme } from "@/styles/theme";
 import type { ShortcutKey } from "@/utils/format-shortcut";
@@ -26,6 +32,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  useDropdownMenuClose,
 } from "@/components/ui/dropdown-menu";
 import {
   ContextMenu,
@@ -146,6 +153,19 @@ function SidebarWorkspaceMenuItems({
   openInFileManagerPath,
 }: SidebarWorkspaceMenuItemsProps & { surface: MenuSurface }): ReactNode {
   const { t } = useTranslation();
+  const closeMenu = useDropdownMenuClose();
+  const handleTogglePin = useCallback(() => {
+    if (!onTogglePin) return;
+    // 先关菜单，免得固定开关的乐观状态叠在它上面。
+    closeMenu();
+    onTogglePin();
+  }, [closeMenu, onTogglePin]);
+  const handleArchive = useCallback(() => {
+    if (!onArchive) return;
+    // 先关菜单，免得归档流程（确认弹窗 / 跳转）叠在它上面。
+    closeMenu();
+    onArchive();
+  }, [closeMenu, onArchive]);
   const archiveTrailing = useMemo(
     () => (archiveShortcutKeys ? <Shortcut chord={archiveShortcutKeys} /> : null),
     [archiveShortcutKeys],
@@ -164,7 +184,7 @@ function SidebarWorkspaceMenuItems({
           leading={copyLeadingIcon}
           onSelect={onCopyPath}
         >
-          {t("sidebar.workspace.actions.copyPath")}
+          {t("workspace.header.actions.copyPath")}
         </WorkspaceMenuItem>
       ) : null}
       {onCopyBranchName ? (
@@ -194,7 +214,7 @@ function SidebarWorkspaceMenuItems({
           leading={markAsReadLeadingIcon}
           onSelect={onMarkAsRead}
         >
-          Mark as read
+          {t("sidebar.workspace.actions.markAsRead")}
         </WorkspaceMenuItem>
       ) : null}
       {onMarkAsUnread ? (
@@ -204,7 +224,7 @@ function SidebarWorkspaceMenuItems({
           leading={markAsUnreadLeadingIcon}
           onSelect={onMarkAsUnread}
         >
-          Mark as unread
+          {t("sidebar.workspace.actions.markAsUnread")}
         </WorkspaceMenuItem>
       ) : null}
       {onTogglePin ? (
@@ -212,7 +232,7 @@ function SidebarWorkspaceMenuItems({
           surface={surface}
           testID={`sidebar-workspace-menu-pin-${workspaceKey}`}
           leading={isPinned ? unpinLeadingIcon : pinLeadingIcon}
-          onSelect={onTogglePin}
+          onSelect={handleTogglePin}
         >
           {isPinned ? t("sidebar.workspace.actions.unpin") : t("sidebar.workspace.actions.pin")}
         </WorkspaceMenuItem>
@@ -239,7 +259,7 @@ function SidebarWorkspaceMenuItems({
           trailing={archiveTrailing}
           status={archiveStatus}
           pendingLabel={archivePendingLabel}
-          onSelect={onArchive}
+          onSelect={handleArchive}
         >
           {archiveLabel ?? t("sidebar.workspace.actions.archive")}
         </WorkspaceMenuItem>
