@@ -5,6 +5,7 @@ import { SettingsSection } from "@/components/settings/headings/settings-section
 import { Switch } from "@/components/ui/switch";
 import { useAppSettings } from "@/hooks/use-settings";
 import { settingsStyles } from "@/styles/settings";
+import { FreewindChatAudio } from "./freewind-chat-audio";
 
 /** 一项都没有时页面也保留，免得设置项临时清空就把整页藏掉。 */
 export function FreewindSection() {
@@ -34,6 +35,7 @@ export function FreewindSection() {
           />
         </View>
       </View>
+      <FreewindChatAudio />
     </SettingsSection>
   );
 }

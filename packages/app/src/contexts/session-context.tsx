@@ -13,6 +13,8 @@ import {
 } from "@/hooks/use-agent-initialization";
 import type { StreamItem } from "@/types/stream";
 import { deriveAgentStreamTurnLiveness } from "@/timeline/session-stream-reducers";
+import { useTurnCompleteSound } from "@/hooks/use-turn-complete-sound";
+import { useAppSettings } from "@/hooks/use-settings";
 import { planTimelineTailFetch } from "@/timeline/timeline-sync-plan";
 import { requestTimelineReplacement } from "@/timeline/timeline-replacement";
 import { type ViewedTimelineOwner } from "@/timeline/viewed-timeline-sync";
@@ -205,6 +207,26 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
   const isConnected = useHostRuntimeIsConnected(serverId);
   const toast = useToast();
 
+  // 提示音按完成的回合触发，以 turnId 去重，这样重放的流事件
+  // 不会为同一个回合响两次。
+  const playTurnCompleteSound = useTurnCompleteSound();
+  const { settings: appSettings } = useAppSettings();
+  const completedTurnSoundRef = useRef<Set<string>>(new Set());
+  const handleTurnCompletion = useCallback(
+    (turnLiveness: ReturnType<typeof deriveAgentStreamTurnLiveness>) => {
+      if (!appSettings.playTurnCompleteSound) return;
+      for (const transition of turnLiveness) {
+        if (transition.type !== "stream_close" || !transition.turnId) continue;
+        if (completedTurnSoundRef.current.has(transition.turnId)) continue;
+        completedTurnSoundRef.current.add(transition.turnId);
+        playTurnCompleteSound(appSettings.turnCompleteSound);
+      }
+    },
+    [appSettings.playTurnCompleteSound, appSettings.turnCompleteSound, playTurnCompleteSound],
+  );
+  const handleTurnCompletionRef = useRef(handleTurnCompletion);
+  handleTurnCompletionRef.current = handleTurnCompletion;
+
   // Zustand store actions
   const setIsPlayingAudio = useSessionStore((state) => state.setIsPlayingAudio);
   const setAgentStreamTail = useSessionStore((state) => state.setAgentStreamTail);
@@ -375,6 +397,7 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
       ]);
       if (turnLiveness.length > 0) {
         getHostRuntimeStore().applyAgentTurnLiveness(serverId, agentId, turnLiveness);
+        handleTurnCompletionRef.current(turnLiveness);
       }
       sync.enqueueStreamEvent(agentId, {
         event: streamEvent,

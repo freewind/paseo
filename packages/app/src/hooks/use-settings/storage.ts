@@ -109,6 +109,8 @@ export interface AppSettings {
   sendShortcut: SendShortcut;
   filePanelAssociations: Record<string, string>;
   disableUncommonFeatures: boolean;
+  playTurnCompleteSound: boolean;
+  turnCompleteSound: string;
   /** Desktop-only preferences for implicit opens into the ordinary side pane. */
   openInSidePane: OpenInSidePanePreferences;
   pullRequestOpenLocation: PullRequestOpenLocation;
@@ -167,6 +169,8 @@ export const DEFAULT_CLIENT_SETTINGS: AppSettings = {
   sendShortcut: "enter",
   filePanelAssociations: {},
   disableUncommonFeatures: true,
+  playTurnCompleteSound: false,
+  turnCompleteSound: "default",
   openInSidePane: DEFAULT_OPEN_IN_SIDE_PANE_PREFERENCES,
   pullRequestOpenLocation: "explorer",
 };
@@ -271,6 +275,8 @@ const StoredAppSettingsSchema = z
     sendShortcut: z.enum(["enter", "mod-enter"]).catch("enter"),
     filePanelAssociations: z.record(z.string(), z.string()).catch({}),
     disableUncommonFeatures: z.boolean().catch(true),
+    playTurnCompleteSound: z.boolean().catch(false),
+    turnCompleteSound: z.string().catch("default"),
     openInSidePane: z
       .object({
         explorerFiles: z.boolean().catch(false),

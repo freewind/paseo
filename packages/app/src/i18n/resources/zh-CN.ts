@@ -8,6 +8,24 @@ export const zhCN: TranslationResources = {
       label: "禁用不常用功能",
       description: "隐藏插件、用量、浏览器数据、多余语言、多余 provider 与后台更新检查",
     },
+    playTurnCompleteSound: {
+      label: "Agent 完成时播放提示音",
+      description: "回合结束时响一声",
+    },
+    turnCompleteSound: {
+      label: "完成提示音",
+      description: "选择要播放的音效",
+      options: {
+        default: "默认",
+        chime: "风铃",
+        bell: "铃声",
+        ding: "叮",
+        pop: "气泡",
+        drop: "水滴",
+        woodblock: "木鱼",
+        chord: "和弦",
+      },
+    },
   },
   paneFind: {
     connectionFailure: "无法搜索此聊天。请检查主机连接后重试。",
