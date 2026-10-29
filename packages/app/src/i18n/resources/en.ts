@@ -1,6 +1,11 @@
 export const en = {
   freewind: {
     title: "Freewind",
+    disableUncommonFeatures: {
+      label: "Disable uncommon features",
+      description:
+        "Hide plugins, usage, browser data, extra languages, extra providers, and background update checks",
+    },
   },
   paneFind: {
     connectionFailure: "Could not search this chat. Check the host connection and retry.",

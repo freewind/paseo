@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { AgentProvider, ProviderSnapshotEntry } from "@getpaseo/protocol/agent-types";
 import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
 import { useRetainedPanelActive } from "@/components/retained-panel";
+import { useAppSettings } from "@/hooks/use-settings";
 import { useHostRuntimeClient, useHostRuntimeIsConnected } from "@/runtime/host-runtime";
 import { useSessionStore } from "@/stores/session-store";
 import { useReplicaQuery } from "@/data/query";
@@ -91,6 +92,13 @@ export function useProvidersSnapshot(
     },
   });
 
+  const { settings } = useAppSettings();
+  const allEntries = snapshotQuery.data?.entries;
+  const entries = useMemo(() => {
+    if (!allEntries || !settings.disableUncommonFeatures) return allEntries;
+    return allEntries.filter((entry) => entry.provider === "pi");
+  }, [allEntries, settings.disableUncommonFeatures]);
+
   const refreshMutation = useMutation({
     mutationFn: async (providers?: AgentProvider[]) => {
       if (!client || !serverId) {
@@ -130,7 +138,7 @@ export function useProvidersSnapshot(
   );
 
   return {
-    entries: snapshotQuery.data?.entries ?? undefined,
+    entries,
     isLoading: snapshotQuery.isLoading,
     isFetching: snapshotQuery.isFetching,
     isRefreshing,
