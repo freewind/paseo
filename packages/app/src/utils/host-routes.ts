@@ -264,9 +264,12 @@ export function parseServerIdFromPathname(pathname: string): string | null {
   return trimNonEmpty(decodeSegment(raw));
 }
 
-export function parseHostAgentRouteFromPathname(
-  pathname: string,
-): { serverId: string; agentId: string } | null {
+export interface HostAgentRoute {
+  serverId: string;
+  agentId: string;
+}
+
+export function parseHostAgentRouteFromPathname(pathname: string): HostAgentRoute | null {
   const pathOnly = stripSearchAndHash(pathname);
   const match = pathOnly.match(/^\/h\/([^/]+)\/agent\/([^/]+)(?:\/|$)/);
   if (!match) {

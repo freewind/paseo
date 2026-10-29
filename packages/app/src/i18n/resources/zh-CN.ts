@@ -146,6 +146,7 @@ export const zhCN: TranslationResources = {
     disableWrap: "滚动长行",
   },
   composer: {
+    readAloud: { start: "开启此对话朗读", stop: "关闭此对话朗读" },
     placeholders: {
       desktop: "给 Agent 发消息，标记 @files，或使用 /commands 和 /skills",
       mobile: "发消息，@files，/commands",
@@ -2401,6 +2402,21 @@ export const zhCN: TranslationResources = {
         confirmMessage: "网站帐号将退出登录，打开的浏览器标签页将重新加载。",
         success: "浏览器数据已清除。",
         error: "无法清除浏览器数据。",
+      },
+      ttsEnabled: {
+        label: "启用朗读功能",
+        description: "在每个对话中单独开启或关闭朗读",
+      },
+      ttsRate: { label: "朗读语速" },
+      ttsPreview: {
+        label: "试听朗读语音",
+        play: "播放试听",
+        sample: "你好，这是 Paseo 朗读回复的声音。你可以选择喜欢的语音。",
+      },
+      ttsEngine: {
+        label: "朗读语音",
+        description: "选择朗读回复时使用的语音",
+        default: "系统默认",
       },
       defaultSend: {
         label: "默认发送",

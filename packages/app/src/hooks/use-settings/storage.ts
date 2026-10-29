@@ -111,6 +111,11 @@ export interface AppSettings {
   disableUncommonFeatures: boolean;
   playTurnCompleteSound: boolean;
   turnCompleteSound: string;
+  ttsEnabled: boolean;
+  ttsEngine: string | null;
+  ttsRate: number;
+  /** 按会话覆盖朗读开关，以主机与 agent 身份为键；没有记录就跟随全局开关。 */
+  ttsConversations: Record<string, boolean>;
   /** Desktop-only preferences for implicit opens into the ordinary side pane. */
   openInSidePane: OpenInSidePanePreferences;
   pullRequestOpenLocation: PullRequestOpenLocation;
@@ -171,6 +176,10 @@ export const DEFAULT_CLIENT_SETTINGS: AppSettings = {
   disableUncommonFeatures: true,
   playTurnCompleteSound: false,
   turnCompleteSound: "default",
+  ttsEnabled: false,
+  ttsEngine: null,
+  ttsRate: 1,
+  ttsConversations: {},
   openInSidePane: DEFAULT_OPEN_IN_SIDE_PANE_PREFERENCES,
   pullRequestOpenLocation: "explorer",
 };
@@ -277,6 +286,10 @@ const StoredAppSettingsSchema = z
     disableUncommonFeatures: z.boolean().catch(true),
     playTurnCompleteSound: z.boolean().catch(false),
     turnCompleteSound: z.string().catch("default"),
+    ttsEnabled: z.boolean().catch(false),
+    ttsEngine: z.string().nullable().catch(null),
+    ttsRate: z.number().min(0.5).max(2).catch(1),
+    ttsConversations: z.record(z.string(), z.boolean()).catch({}),
     openInSidePane: z
       .object({
         explorerFiles: z.boolean().catch(false),

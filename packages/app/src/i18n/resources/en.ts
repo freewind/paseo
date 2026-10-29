@@ -143,6 +143,10 @@ export const en = {
     disableWrap: "Scroll long lines",
   },
   composer: {
+    readAloud: {
+      start: "Start reading this conversation aloud",
+      stop: "Stop reading this conversation aloud",
+    },
     placeholders: {
       desktop: "Message the agent, tag @files, or use /commands and /skills",
       mobile: "Message, @files, /commands",
@@ -2497,6 +2501,21 @@ export const en = {
         confirmMessage: "Sites will be signed out and open browser tabs will reload.",
         success: "Browser data cleared.",
         error: "Couldn't clear browser data.",
+      },
+      ttsEnabled: {
+        label: "Enable read-aloud",
+        description: "Turn reading on or off separately in each conversation",
+      },
+      ttsRate: { label: "Read-aloud speed" },
+      ttsPreview: {
+        label: "Voice preview",
+        play: "Play sample",
+        sample: "Hello! This is how Paseo reads your agent replies aloud.",
+      },
+      ttsEngine: {
+        label: "Read-aloud voice",
+        description: "Choose the voice used to read replies aloud",
+        default: "System default",
       },
       defaultSend: {
         label: "Default send",

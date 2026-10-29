@@ -54,6 +54,8 @@ import {
   type DraftAgentControlsProps,
 } from "@/composer/agent-controls";
 import { ContextWindowMeter } from "@/components/context-window-meter";
+import { ConversationSpeechToggle } from "@/tts/conversation-speech-toggle";
+import { interruptConversationSpeech } from "@/tts/speech-interruption";
 import { useImageAttachmentPicker } from "@/hooks/use-image-attachment-picker";
 import {
   selectAgentSentMessages,
@@ -305,12 +307,15 @@ function renderLeftContent(args: RenderLeftContentArgs): ReactElement | null {
     return <DraftAgentControls {...agentControls} isCompactLayout={isCompactLayout} />;
   }
   return (
-    <AgentControls
-      agentId={agentId}
-      serverId={serverId}
-      onDropdownClose={focusInput}
-      isCompactLayout={isCompactLayout}
-    />
+    <>
+      <ConversationSpeechToggle serverId={serverId} agentId={agentId} />
+      <AgentControls
+        agentId={agentId}
+        serverId={serverId}
+        onDropdownClose={focusInput}
+        isCompactLayout={isCompactLayout}
+      />
+    </>
   );
 }
 
@@ -1893,6 +1898,7 @@ function ComposerContentImpl({
 
   const handleCancelAgent = useCallback(() => {
     const targetAgentId = agentIdRef.current;
+    interruptConversationSpeech(serverId, targetAgentId);
     const cancellation = cancelComposerAgent({
       client,
       agentId: targetAgentId,
