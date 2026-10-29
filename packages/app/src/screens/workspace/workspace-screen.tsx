@@ -104,6 +104,9 @@ import {
   type WorkspaceTabTarget,
 } from "@/workspace-tabs/model";
 import { useSettings } from "@/hooks/use-settings";
+import { useSidebarWorkspacePinController } from "@/hooks/use-sidebar-workspace-pin";
+import { useWorkspaceReadState } from "@/hooks/use-workspace-read-state";
+import type { WorkspaceLabelTarget } from "@/workspace-labels/picker";
 import { useKeyboardActionHandler } from "@/hooks/use-keyboard-action-handler";
 import { buildWorkspaceKeyboardHandlerId } from "@/keyboard/handler-id";
 import type {
@@ -185,7 +188,9 @@ import { SheetPaneHostProvider, type SheetPaneHost } from "@/screens/workspace/s
 import { SheetTabs } from "@/screens/workspace/sheet-tabs";
 import type { PaneHost } from "@/panels/panel-manifest";
 import { WorkspaceFocusProvider } from "@/workspace/focus";
+import { WorkspaceRenameModal, type RenamableWorkspace } from "@/components/workspace-rename-modal";
 import { DiffDocumentWorkspaceCacheProvider } from "@/git/diff-document/workspace-cache";
+import { useWorkspaceHeaderArchive } from "@/workspace/use-workspace-header-archive";
 import type { NewTabSelection } from "@/workspace-tabs/new-tab";
 import {
   NewTabLauncherProvider,
@@ -225,6 +230,38 @@ import {
 import { RenderProfile } from "@/utils/render-profiler";
 import { useWorkspaceCheckoutStatus } from "@/screens/workspace/use-workspace-checkout-status";
 import { useWorkspacePullRequestDiscovery } from "@/panels/pull-request";
+
+function useWorkspaceHeaderPin(
+  serverId: string,
+  workspace: WorkspaceDescriptor | null,
+): {
+  canPin: boolean;
+  isPinned: boolean;
+  handleTogglePin: (() => void) | undefined;
+} {
+  const canPin = useHostFeature(serverId, "workspacePinning");
+  const togglePin = useSidebarWorkspacePinController();
+  const isPinned = workspace?.pinnedAt != null;
+  const handleTogglePin =
+    !workspace || !canPin
+      ? undefined
+      : () => {
+          const workspaceKey = buildWorkspaceTabPersistenceKey({
+            serverId,
+            workspaceId: workspace.id,
+          });
+          if (!workspaceKey) {
+            return;
+          }
+          togglePin({
+            serverId,
+            workspaceId: workspace.id,
+            workspaceKey,
+            pinnedAt: workspace.pinnedAt ?? null,
+          });
+        };
+  return { canPin, isPinned, handleTogglePin };
+}
 
 const NO_SHEETS: readonly SheetTab[] = [];
 const WORKSPACE_FLOATING_PANEL_PORTAL_HOST_PREFIX = "workspace-floating-panels";
@@ -477,6 +514,11 @@ interface WorkspaceHeaderTitleBarProps {
   isSubtitleDistinct: boolean;
   currentBranchName: string | null;
   normalizedServerId: string;
+  workspaceKey: string;
+  workspaceTarget: WorkspaceLabelTarget | null;
+  workspaceDirectory: string | null;
+  onMarkAsRead?: () => void;
+  onMarkAsUnread?: () => void;
   showWorkspaceSetup: boolean;
   importAgentDisabled: boolean;
   copyPathDisabled: boolean;
@@ -484,6 +526,12 @@ interface WorkspaceHeaderTitleBarProps {
   onCopyWorkspacePath: () => void;
   onCopyBranchName: () => void;
   onOpenSetupTab: () => void;
+  onRename?: () => void;
+  onTogglePin?: () => void;
+  isPinned?: boolean;
+  onArchive?: () => void;
+  isArchiving?: boolean;
+  archiveLabel?: string;
 }
 
 function WorkspaceHeaderTitleBar({
@@ -493,6 +541,11 @@ function WorkspaceHeaderTitleBar({
   isSubtitleDistinct,
   currentBranchName,
   normalizedServerId,
+  workspaceKey,
+  workspaceTarget,
+  workspaceDirectory,
+  onMarkAsRead,
+  onMarkAsUnread,
   showWorkspaceSetup,
   importAgentDisabled,
   copyPathDisabled,
@@ -500,6 +553,12 @@ function WorkspaceHeaderTitleBar({
   onCopyWorkspacePath,
   onCopyBranchName,
   onOpenSetupTab,
+  onRename,
+  onTogglePin,
+  isPinned,
+  onArchive,
+  isArchiving,
+  archiveLabel,
 }: WorkspaceHeaderTitleBarProps) {
   return (
     <View style={styles.headerTitleContainer}>
@@ -519,6 +578,11 @@ function WorkspaceHeaderTitleBar({
       )}
       <View style={styles.compactHeaderMenuCluster}>
         <WorkspaceHeaderMenuDesktop
+          workspaceKey={workspaceKey}
+          workspaceTarget={workspaceTarget}
+          onMarkAsRead={onMarkAsRead}
+          onMarkAsUnread={onMarkAsUnread}
+          workspaceDirectory={workspaceTarget ? workspaceDirectory : null}
           currentBranchName={currentBranchName}
           showWorkspaceSetup={showWorkspaceSetup}
           importAgentDisabled={importAgentDisabled}
@@ -527,6 +591,12 @@ function WorkspaceHeaderTitleBar({
           onCopyWorkspacePath={onCopyWorkspacePath}
           onCopyBranchName={onCopyBranchName}
           onOpenSetupTab={onOpenSetupTab}
+          onRename={onRename}
+          onTogglePin={onTogglePin}
+          isPinned={isPinned}
+          onArchive={onArchive}
+          isArchiving={isArchiving}
+          archiveLabel={archiveLabel}
         />
       </View>
     </View>
@@ -1047,6 +1117,46 @@ function WorkspaceScreenContent({
     [workspaceId],
   );
   const workspaceDescriptor = useWorkspace(normalizedServerId, normalizedWorkspaceId);
+  const [isRenameOpen, setIsRenameOpen] = useState(false);
+  const handleOpenRename = useCallback(() => setIsRenameOpen(true), []);
+  const handleCloseRename = useCallback(() => setIsRenameOpen(false), []);
+  const renameWorkspace = useMemo<RenamableWorkspace>(
+    () => ({
+      serverId: normalizedServerId,
+      workspaceId: normalizedWorkspaceId,
+      name: workspaceDescriptor?.name ?? "",
+      title: workspaceDescriptor?.title ?? null,
+    }),
+    [normalizedServerId, normalizedWorkspaceId, workspaceDescriptor],
+  );
+  const workspaceReadState = useWorkspaceReadState({
+    serverId: normalizedServerId,
+    workspaceId: normalizedWorkspaceId,
+  });
+  const handleMarkWorkspaceAsRead = useCallback(() => {
+    void workspaceReadState.clearAttention().catch((error) => {
+      toast.error(
+        error instanceof Error ? error.message : t("workspace.terminal.hostDisconnected"),
+      );
+    });
+  }, [t, toast, workspaceReadState]);
+  const handleMarkWorkspaceAsUnread = useCallback(() => {
+    void workspaceReadState.markUnread().catch((error) => {
+      toast.error(
+        error instanceof Error ? error.message : t("workspace.terminal.hostDisconnected"),
+      );
+    });
+  }, [t, toast, workspaceReadState]);
+  const { archive: handleArchive, isArchiving } = useWorkspaceHeaderArchive({
+    serverId: normalizedServerId,
+    workspaceId: normalizedWorkspaceId,
+    workspace: workspaceDescriptor,
+  });
+  const archiveLabel = t("sidebar.workspace.actions.archiving");
+  const { isPinned: isWorkspacePinned, handleTogglePin } = useWorkspaceHeaderPin(
+    normalizedServerId,
+    workspaceDescriptor,
+  );
   useEffect(() => {
     if (!normalizedServerId || !normalizedWorkspaceId || workspaceDescriptor) return;
     void getHostRuntimeStore()
@@ -1080,6 +1190,17 @@ function WorkspaceScreenContent({
     (state) => state.sessions[normalizedServerId]?.serverInfo?.features?.providersSnapshot === true,
   );
   const workspaceDirectory = workspaceDescriptor?.workspaceDirectory || null;
+  const workspaceTarget = useMemo<WorkspaceLabelTarget | null>(
+    () =>
+      workspaceDescriptor
+        ? {
+            serverId: normalizedServerId,
+            workspaceId: normalizedWorkspaceId,
+            labels: workspaceDescriptor.labels ?? [],
+          }
+        : null,
+    [workspaceDescriptor, normalizedServerId, normalizedWorkspaceId],
+  );
   const isMissingWorkspaceDirectory = Boolean(workspaceDescriptor) && !workspaceDirectory;
   const [isImportSheetVisible, setIsImportSheetVisible] = useState(false);
   const canOpenImportSheet = [client, isConnected, workspaceDirectory].every(Boolean);
@@ -3313,43 +3434,82 @@ function WorkspaceScreenContent({
   const renderWorkspaceScreenHeader = useCallback(
     () =>
       showScreenHeader ? (
-        <ScreenHeader
-          left={
-            <>
-              <SidebarMenuToggle />
-              <WorkspaceHeaderTitleBar
-                isLoading={isWorkspaceHeaderLoading}
-                title={workspaceHeaderTitle}
-                subtitle={workspaceHeaderSubtitle}
-                isSubtitleDistinct={isWorkspaceHeaderSubtitleDistinct}
-                currentBranchName={currentBranchName}
-                normalizedServerId={normalizedServerId}
-                showWorkspaceSetup={showWorkspaceSetup}
-                importAgentDisabled={!canOpenImportSheet}
-                copyPathDisabled={!workspaceDirectory}
-                onOpenImportSheet={openImportSheet}
-                onCopyWorkspacePath={handleCopyWorkspacePath}
-                onCopyBranchName={handleCopyBranchName}
-                onOpenSetupTab={handleOpenSetupTab}
-              />
-            </>
-          }
-          right={headerRight}
-        />
+        <>
+          <ScreenHeader
+            left={
+              <>
+                <SidebarMenuToggle />
+                <WorkspaceHeaderTitleBar
+                  isLoading={isWorkspaceHeaderLoading}
+                  title={workspaceHeaderTitle}
+                  subtitle={workspaceHeaderSubtitle}
+                  isSubtitleDistinct={isWorkspaceHeaderSubtitleDistinct}
+                  currentBranchName={currentBranchName}
+                  normalizedServerId={normalizedServerId}
+                  workspaceKey={`${normalizedServerId}:${normalizedWorkspaceId}`}
+                  workspaceTarget={workspaceTarget}
+                  workspaceDirectory={workspaceDirectory}
+                  onMarkAsRead={
+                    workspaceReadState.hasClearableAttention ? handleMarkWorkspaceAsRead : undefined
+                  }
+                  onMarkAsUnread={
+                    workspaceReadState.canMarkUnread ? handleMarkWorkspaceAsUnread : undefined
+                  }
+                  showWorkspaceSetup={showWorkspaceSetup}
+                  importAgentDisabled={!canOpenImportSheet}
+                  copyPathDisabled={!workspaceDirectory}
+                  onOpenImportSheet={openImportSheet}
+                  onCopyWorkspacePath={handleCopyWorkspacePath}
+                  onCopyBranchName={handleCopyBranchName}
+                  onOpenSetupTab={handleOpenSetupTab}
+                  onRename={workspaceDescriptor ? handleOpenRename : undefined}
+                  onTogglePin={handleTogglePin}
+                  isPinned={isWorkspacePinned}
+                  onArchive={workspaceDescriptor ? handleArchive : undefined}
+                  isArchiving={isArchiving}
+                  archiveLabel={archiveLabel}
+                />
+              </>
+            }
+            right={headerRight}
+          />
+          <WorkspaceRenameModal
+            visible={isRenameOpen}
+            workspace={renameWorkspace}
+            onClose={handleCloseRename}
+            testID="workspace-rename-modal-header"
+          />
+        </>
       ) : null,
     [
+      archiveLabel,
       canOpenImportSheet,
       currentBranchName,
+      handleArchive,
+      handleCloseRename,
       handleCopyBranchName,
       handleCopyWorkspacePath,
+      handleCreateDraftTab,
+      handleMarkWorkspaceAsRead,
+      handleMarkWorkspaceAsUnread,
+      handleOpenRename,
       handleOpenSetupTab,
+      handleTogglePin,
       headerRight,
+      isArchiving,
+      isRenameOpen,
       isWorkspaceHeaderLoading,
+      isWorkspacePinned,
       normalizedServerId,
+      normalizedWorkspaceId,
       openImportSheet,
+      renameWorkspace,
       showScreenHeader,
       showWorkspaceSetup,
+      workspaceDescriptor,
       workspaceDirectory,
+      workspaceReadState,
+      workspaceTarget,
       workspaceHeaderSubtitle,
       workspaceHeaderTitle,
       isWorkspaceHeaderSubtitleDistinct,
@@ -3413,6 +3573,15 @@ function WorkspaceScreenContent({
             normalizedWorkspaceId={normalizedWorkspaceId}
             scripts={compactHeaderScripts}
             currentBranchName={currentBranchName}
+            workspaceKey={`${normalizedServerId}:${normalizedWorkspaceId}`}
+            workspaceTarget={workspaceTarget}
+            workspaceDirectory={workspaceTarget ? workspaceDirectory : null}
+            onMarkAsRead={
+              workspaceReadState.hasClearableAttention ? handleMarkWorkspaceAsRead : undefined
+            }
+            onMarkAsUnread={
+              workspaceReadState.canMarkUnread ? handleMarkWorkspaceAsUnread : undefined
+            }
             showWorkspaceSetup={showWorkspaceSetup}
             showCreateBrowserTab={showCreateBrowserTab}
             createTerminalDisabled={createTerminalDisabled}
@@ -3424,17 +3593,25 @@ function WorkspaceScreenContent({
             onCopyWorkspacePath={handleCopyWorkspacePath}
             onCopyBranchName={handleCopyBranchName}
             onOpenSetupTab={handleOpenSetupTab}
+            onRename={workspaceDescriptor ? handleOpenRename : undefined}
+            onTogglePin={handleTogglePin}
+            isPinned={isWorkspacePinned}
+            onArchive={workspaceDescriptor ? handleArchive : undefined}
+            isArchiving={isArchiving}
+            archiveLabel={archiveLabel}
           />
         </CompactWorkspaceHeader>
       ) : null,
     [
       activeTabKey,
+      archiveLabel,
       canOpenImportSheet,
       compactHeaderScripts,
       createTerminalDisabled,
       currentBranchName,
       explorerSidebarToggleAccessibilityState,
       explorerSidebarToggleLabel,
+      handleArchive,
       handleCloseOtherTabs,
       handleCloseTabById,
       handleCloseTabsToLeft,
@@ -3449,21 +3626,30 @@ function WorkspaceScreenContent({
       handleCreateDraftTab,
       handleCreateTerminal,
       handleCreateTerminalWithProfile,
+      handleMarkWorkspaceAsRead,
+      handleMarkWorkspaceAsUnread,
+      handleOpenRename,
       handleOpenSetupTab,
       handleReloadAgent,
       handleRenameTab,
       handleSelectSwitcherTab,
       handleToggleExplorerSidebar,
+      handleTogglePin,
+      isArchiving,
       isMobile,
       isWorkspaceHeaderLoading,
       isWorkspaceHeaderSubtitleDistinct,
+      isWorkspacePinned,
       normalizedServerId,
       normalizedWorkspaceId,
       openImportSheet,
       showCreateBrowserTab,
       showWorkspaceSetup,
       tabs,
+      workspaceDescriptor,
       workspaceDirectory,
+      workspaceReadState,
+      workspaceTarget,
       workspaceHeaderSubtitle,
       workspaceHeaderTitle,
     ],
