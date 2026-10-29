@@ -17,10 +17,12 @@ import {
   Pencil,
   Pin,
   PinOff,
+  SquarePen,
   Tag,
 } from "lucide-react-native";
 import { isWeb } from "@/constants/platform";
 import { getForgePresentation, normalizeForge } from "@/git/forge";
+import { useCreateWorkspaceAgent } from "@/hooks/use-create-workspace-agent";
 import { useAppSettings } from "@/hooks/use-settings";
 import type { SidebarWorkspaceEntry } from "@/hooks/use-sidebar-workspaces-list";
 import { densityIconProps } from "@/styles/density";
@@ -67,7 +69,9 @@ const ThemedCircleCheck = withUnistyles(CircleCheck);
 const ThemedPin = withUnistyles(Pin);
 const ThemedPinOff = withUnistyles(PinOff);
 const ThemedTag = withUnistyles(Tag);
+const ThemedNewAgent = withUnistyles(SquarePen);
 
+const newAgentLeadingIcon = <ThemedNewAgent size={14} uniProps={foregroundMutedColorMapping} />;
 const copyLeadingIcon = <ThemedCopy size={14} uniProps={foregroundMutedColorMapping} />;
 const renameLeadingIcon = <ThemedPencil size={14} uniProps={foregroundMutedColorMapping} />;
 const markAsReadLeadingIcon = (
@@ -154,6 +158,7 @@ function SidebarWorkspaceMenuItems({
 }: SidebarWorkspaceMenuItemsProps & { surface: MenuSurface }): ReactNode {
   const { t } = useTranslation();
   const closeMenu = useDropdownMenuClose();
+  const onCreateAgent = useCreateWorkspaceAgent({ serverId, workspaceId });
   const handleTogglePin = useCallback(() => {
     if (!onTogglePin) return;
     // 先关菜单，免得固定开关的乐观状态叠在它上面。
@@ -177,6 +182,16 @@ function SidebarWorkspaceMenuItems({
 
   return (
     <>
+      {onCreateAgent ? (
+        <WorkspaceMenuItem
+          surface={surface}
+          testID={`sidebar-workspace-menu-new-agent-${workspaceKey}`}
+          leading={newAgentLeadingIcon}
+          onSelect={onCreateAgent}
+        >
+          {t("workspace.header.actions.newAgent")}
+        </WorkspaceMenuItem>
+      ) : null}
       {onCopyPath ? (
         <WorkspaceMenuItem
           surface={surface}
