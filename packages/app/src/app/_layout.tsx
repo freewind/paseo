@@ -32,6 +32,7 @@ import { PluginCommandCenterActions } from "@/plugins/command-center/registratio
 import { AddProjectFlowHost } from "@/components/add-project-flow-host";
 import { WorktreeSetupCalloutSource } from "@/components/worktree-setup-callout-source";
 import { DownloadToast } from "@/components/download-toast";
+import { DoubleBackToExit } from "@/components/double-back-to-exit";
 import { QuittingOverlay } from "@/components/quitting-overlay";
 import { KeyboardShortcutsDialog } from "@/components/keyboard-shortcuts-dialog";
 import { ChangelogHost } from "@/changelog";
@@ -838,6 +839,7 @@ function AppShell() {
       <HorizontalScrollProvider>
         <OpenProjectListener />
         <AgentNavigationListener />
+        <DoubleBackToExit />
         <AppWithSidebar>
           <WorkspaceRouteNavigationBridge />
           <RootStack />
