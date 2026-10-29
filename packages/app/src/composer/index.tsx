@@ -2054,7 +2054,7 @@ function ComposerContentImpl({
         isAgentRunning={isAgentRunning}
         hasSendableContent={hasSendableContent}
         isCompact={isCompactLayout}
-        showVoice={mode.showVoice}
+        showVoice={!appSettings.disableUncommonFeatures && mode.showVoice}
         buttonIconSize={buttonIconSize}
         handleToggleRealtimeVoice={handleToggleRealtimeVoice}
         isConnected={isConnected}
@@ -2065,6 +2065,7 @@ function ComposerContentImpl({
       />
     ),
     [
+      appSettings.disableUncommonFeatures,
       buttonIconSize,
       handleToggleRealtimeVoice,
       hasAgent,

@@ -4,6 +4,10 @@ import { pluginSettings } from "./plugin-settings";
 export const zhCN: TranslationResources = {
   freewind: {
     title: "Freewind",
+    disableUncommonFeatures: {
+      label: "禁用不常用功能",
+      description: "隐藏插件、用量、浏览器数据、多余语言、多余 provider 与后台更新检查",
+    },
   },
   paneFind: {
     connectionFailure: "无法搜索此聊天。请检查主机连接后重试。",

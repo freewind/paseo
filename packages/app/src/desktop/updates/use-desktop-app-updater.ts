@@ -10,6 +10,7 @@ import {
 } from "@/desktop/updates/desktop-updates";
 import { useDesktopSettings } from "@/desktop/settings/desktop-settings";
 import { useDesktopIpcErrorReporter } from "@/desktop/hooks/desktop-ipc-error";
+import { useAppSettings } from "@/hooks/use-settings";
 import {
   PENDING_RECHECK_MS,
   createDesktopAppUpdater,
@@ -39,7 +40,9 @@ export interface UseDesktopAppUpdaterReturn {
 export function useDesktopAppUpdater(): UseDesktopAppUpdaterReturn {
   const isDesktopApp = shouldShowDesktopUpdateSection();
   const { settings: desktopSettings } = useDesktopSettings();
+  const { settings: appSettings } = useAppSettings();
   const releaseChannel = desktopSettings.releaseChannel;
+  const disableUncommonFeatures = appSettings.disableUncommonFeatures;
   const reportError = useDesktopIpcErrorReporter();
 
   const updater = useMemo(
@@ -63,16 +66,20 @@ export function useDesktopAppUpdater(): UseDesktopAppUpdaterReturn {
 
   const checkForUpdates = useCallback(
     async (options: { intent?: DesktopAppUpdateCheckIntent; silent?: boolean } = {}) => {
+      const intent = options.intent ?? "manual";
       if (!isDesktopApp) {
+        return null;
+      }
+      if (intent === "automatic" && disableUncommonFeatures) {
         return null;
       }
       return updater.checkForUpdates({
         releaseChannel,
-        intent: options.intent ?? "manual",
+        intent,
         silent: options.silent,
       });
     },
-    [isDesktopApp, releaseChannel, updater],
+    [disableUncommonFeatures, isDesktopApp, releaseChannel, updater],
   );
 
   const installUpdate = useCallback(async () => {
@@ -83,14 +90,14 @@ export function useDesktopAppUpdater(): UseDesktopAppUpdaterReturn {
   }, [isDesktopApp, releaseChannel, updater]);
 
   useEffect(() => {
-    if (!isDesktopApp) {
+    if (!isDesktopApp || disableUncommonFeatures) {
       return;
     }
     void checkForUpdates({ intent: "automatic", silent: true });
-  }, [checkForUpdates, isDesktopApp]);
+  }, [checkForUpdates, disableUncommonFeatures, isDesktopApp]);
 
   useEffect(() => {
-    if (!isDesktopApp || snapshot.status !== "pending") {
+    if (!isDesktopApp || disableUncommonFeatures || snapshot.status !== "pending") {
       return undefined;
     }
 
@@ -101,7 +108,7 @@ export function useDesktopAppUpdater(): UseDesktopAppUpdaterReturn {
     return () => {
       clearInterval(intervalId);
     };
-  }, [checkForUpdates, isDesktopApp, snapshot.status]);
+  }, [checkForUpdates, disableUncommonFeatures, isDesktopApp, snapshot.status]);
 
   return {
     isDesktopApp,

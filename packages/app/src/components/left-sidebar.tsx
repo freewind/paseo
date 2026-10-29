@@ -33,6 +33,7 @@ import { SidebarDisplayPreferencesMenu } from "@/components/sidebar/display-pref
 import { SidebarSeparator } from "@/components/sidebar/sidebar-separator";
 import { SidebarNavRows } from "@/components/sidebar/sidebar-nav-rows";
 import { SidebarFooterIconHighlight } from "@/components/sidebar/sidebar-footer-icon-highlight";
+import { useAppSettings } from "@/hooks/use-settings";
 import { SidebarHelpMenu } from "@/components/sidebar/sidebar-help-menu";
 import { SidebarResizeHandle } from "@/components/sidebar-resize-handle";
 import { DensityIcon } from "@/components/ui/density-icon";
@@ -481,10 +482,14 @@ function SidebarUsageIcon({ label }: { label: string }) {
  */
 function SidebarFooterRows({ onBeforeNavigate }: { onBeforeNavigate?: () => void }) {
   const { items } = useSidebarNavItems("footer");
+  const { settings } = useAppSettings();
   const hasUsageSummary = useHasUsageSummary();
   const rowsRef = useRef<View | null>(null);
   const visibleItems = items.filter(
-    (item) => item.visible && (item.kind === "plugin" || hasUsageSummary),
+    (item) =>
+      item.visible &&
+      (item.kind === "plugin" || hasUsageSummary) &&
+      (!settings.disableUncommonFeatures || (item.key !== "usage" && item.kind !== "plugin")),
   );
   if (visibleItems.length === 0) return null;
   return (

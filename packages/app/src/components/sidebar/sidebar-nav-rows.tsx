@@ -6,6 +6,7 @@ import { View, type StyleProp, type ViewStyle } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { SidebarHeaderRow } from "@/components/sidebar/sidebar-header-row";
 import { useShortcutKeys } from "@/hooks/use-shortcut-keys";
+import { useAppSettings } from "@/hooks/use-settings";
 import { PluginSidebarItem } from "@/plugins/sidebar-items";
 import { canCreateWorktreeForProjectKind } from "@/projects/host-projects";
 import { useHostFeature } from "@/runtime/host-features";
@@ -42,7 +43,14 @@ interface SidebarNavRowsProps extends SidebarNavRowProps {
  */
 export function SidebarNavRows({ style, onBeforeNavigate, firstRowTrailing }: SidebarNavRowsProps) {
   const { items } = useSidebarNavItems("header");
-  const visibleItems = useMemo(() => items.filter((item) => item.visible), [items]);
+  const { settings } = useAppSettings();
+  const visibleItems = useMemo(
+    () =>
+      items.filter(
+        (item) => item.visible && (!settings.disableUncommonFeatures || item.kind !== "plugin"),
+      ),
+    [items, settings.disableUncommonFeatures],
+  );
   const groupRef = useRef<View | null>(null);
 
   if (visibleItems.length === 0 && !firstRowTrailing) return null;
