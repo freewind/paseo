@@ -118,6 +118,7 @@ export const en = {
       settingOn: "On",
       settingOff: "Off",
     },
+    doubleBackToExit: "Press Back again to exit",
   },
   codeBlock: {
     enableWrap: "Wrap long lines",

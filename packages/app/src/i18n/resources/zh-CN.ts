@@ -121,6 +121,7 @@ export const zhCN: TranslationResources = {
       settingOn: "开",
       settingOff: "关",
     },
+    doubleBackToExit: "再按一次返回键退出",
   },
   codeBlock: {
     enableWrap: "自动换行长行",
