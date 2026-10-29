@@ -1,6 +1,7 @@
 import { Buffer } from "buffer";
 import type { AgentStreamEventPayload, SessionOutboundMessage } from "@getpaseo/protocol/messages";
 import { resolveVoiceUnavailableMessage } from "@/utils/server-info-capabilities";
+import { interruptConversationSpeech } from "@/tts/speech-interruption";
 import type { DaemonServerInfo } from "@/stores/session-store";
 import type { AudioEngine } from "@/audio";
 import {
@@ -902,6 +903,9 @@ export function createVoiceRuntime(deps: VoiceRuntimeDeps): VoiceRuntime {
         return;
       }
 
+      if (isSpeaking && !state.serverSpeechDetected && state.snapshot.activeAgentId) {
+        interruptConversationSpeech(serverId, state.snapshot.activeAgentId);
+      }
       state.serverSpeechDetected = isSpeaking;
       state.serverSpeechStartedAt = isSpeaking ? (state.serverSpeechStartedAt ?? Date.now()) : null;
       if (isSpeaking) {
