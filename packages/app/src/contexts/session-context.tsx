@@ -3,6 +3,7 @@ import { Buffer } from "buffer";
 import { AppState } from "react-native";
 import { observeOpenWorkspaceAgentIds } from "@/stores/workspace-layout-store";
 import { useQueryClient } from "@tanstack/react-query";
+import type { StreamItem } from "@/types/stream";
 import { useTranslation } from "react-i18next";
 import { useClientActivity } from "@/hooks/use-client-activity";
 import { useAppVisible } from "@/hooks/use-app-visible";
@@ -11,14 +12,18 @@ import {
   createSetAgentInitializing,
   refreshAgentInitializationTimeout,
 } from "@/hooks/use-agent-initialization";
-import type { StreamItem } from "@/types/stream";
 import { deriveAgentStreamTurnLiveness } from "@/timeline/session-stream-reducers";
 import { useTurnCompleteSound } from "@/hooks/use-turn-complete-sound";
+import { useTts } from "@/hooks/use-tts";
+import { useActiveTtsAgentId } from "@/tts/active-tts-agent";
+import { createAssistantSpeechSender } from "@/tts/assistant-message-completion";
+import { isConversationSpeechEnabled } from "@/tts/conversation-speech";
+import { observeSpeechInterruptions } from "@/tts/speech-interruption";
 import { useAppSettings } from "@/hooks/use-settings";
 import { planTimelineTailFetch } from "@/timeline/timeline-sync-plan";
 import { requestTimelineReplacement } from "@/timeline/timeline-replacement";
 import { type ViewedTimelineOwner } from "@/timeline/viewed-timeline-sync";
-import type { SessionOutboundMessage } from "@getpaseo/protocol/messages";
+import type { AgentStreamEventPayload, SessionOutboundMessage } from "@getpaseo/protocol/messages";
 import { parseServerInfoStatusPayload } from "@getpaseo/protocol/messages";
 import {
   buildAgentAttentionNotificationPayload,
@@ -210,8 +215,16 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
   // 提示音按完成的回合触发，以 turnId 去重，这样重放的流事件
   // 不会为同一个回合响两次。
   const playTurnCompleteSound = useTurnCompleteSound();
+  const { speak: speakReply, stop: stopTts } = useTts();
   const { settings: appSettings } = useAppSettings();
+  // 通过 ref 读取，这样流的订阅能一直跟随焦点而不用重新注册。
+  const activeTtsAgentId = useActiveTtsAgentId(serverId);
+  const activeTtsAgentIdRef = useRef<string | null>(activeTtsAgentId);
+  activeTtsAgentIdRef.current = activeTtsAgentId;
+  // 记录已经放过完成提示音的 turnId，保证一个回合只完成一次。
   const completedTurnSoundRef = useRef<Set<string>>(new Set());
+  const speechSettingsRef = useRef({ appSettings });
+  speechSettingsRef.current = { appSettings };
   const handleTurnCompletion = useCallback(
     (turnLiveness: ReturnType<typeof deriveAgentStreamTurnLiveness>) => {
       if (!appSettings.playTurnCompleteSound) return;
@@ -226,6 +239,14 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
   );
   const handleTurnCompletionRef = useRef(handleTurnCompletion);
   handleTurnCompletionRef.current = handleTurnCompletion;
+  const activeConversationSpeechEnabled =
+    activeTtsAgentId !== null &&
+    isConversationSpeechEnabled(appSettings, serverId, activeTtsAgentId);
+  // 只停掉真正在播放的那个会话，而不是某个无关主机的偏好更新。
+  useEffect(() => {
+    if (!activeConversationSpeechEnabled) return;
+    return () => stopTts();
+  }, [activeTtsAgentId, activeConversationSpeechEnabled, stopTts]);
 
   // Zustand store actions
   const setIsPlayingAudio = useSessionStore((state) => state.setIsPlayingAudio);
@@ -379,10 +400,37 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
 
   useEffect(() => {
     const setAgentInitializing = createSetAgentInitializing(serverId, setInitializingAgents);
+    const speechSender = createAssistantSpeechSender();
+    const stopObservingSpeechInterruptions = observeSpeechInterruptions(serverId, (agentId) => {
+      speechSender.interrupt(agentId);
+      if (agentId === activeTtsAgentIdRef.current) stopTts();
+    });
+    /** 朗读跟随数据流：用户发消息或回合被取消就停，回合结束就开始。 */
+    const handleSpeechStreamEvent = (agentId: string, event: AgentStreamEventPayload) => {
+      speechSender.consume(agentId, event);
+      const isActiveAgent = agentId === activeTtsAgentIdRef.current;
+      const interruptsReading =
+        (event.type === "timeline" && event.item.type === "user_message" && isActiveAgent) ||
+        (event.type === "turn_canceled" && isActiveAgent);
+      if (interruptsReading) {
+        stopTts();
+      }
+      if (event.type !== "turn_completed" || !isActiveAgent) return;
+      const current = speechSettingsRef.current;
+      if (!isConversationSpeechEnabled(current.appSettings, serverId, agentId)) return;
+      const text = speechSender.take(agentId, event.turnId);
+      if (!text) return;
+      speakReply({
+        text,
+        voiceId: current.appSettings.ttsEngine,
+        rate: current.appSettings.ttsRate,
+      });
+    };
     const onStream = (message: SessionOutboundMessage) => {
       if (message.type !== "agent_stream") return;
       const { agentId, event, timestamp, seq, epoch } = message.payload;
       const parsedTimestamp = new Date(timestamp);
+      handleSpeechStreamEvent(agentId, event);
       const streamEvent = event;
       if (
         event.type === "turn_started" ||
@@ -491,6 +539,7 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
     );
 
     return () => {
+      stopObservingSpeechInterruptions();
       stopObservingOpenChats();
       if (viewedTimelineSyncRef.current === sync) {
         viewedTimelineSyncRef.current = null;
@@ -498,7 +547,15 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
       setViewedTimelineSync(serverId, null);
       sync.dispose();
     };
-  }, [client, serverId, setInitializingAgents, setViewedTimelineSync, voiceRuntime]);
+  }, [
+    client,
+    serverId,
+    setInitializingAgents,
+    setViewedTimelineSync,
+    speakReply,
+    stopTts,
+    voiceRuntime,
+  ]);
 
   useEffect(() => {
     viewedTimelineSyncRef.current?.setConnected(isConnected);
@@ -762,7 +819,6 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
     },
     [client],
   );
-
   const _archiveAgent = useCallback(
     (agentId: string) => {
       if (!client) {
