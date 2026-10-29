@@ -517,6 +517,7 @@ interface WorkspaceHeaderTitleBarProps {
   workspaceKey: string;
   workspaceTarget: WorkspaceLabelTarget | null;
   workspaceDirectory: string | null;
+  onCreateDraftTab: () => void;
   onMarkAsRead?: () => void;
   onMarkAsUnread?: () => void;
   showWorkspaceSetup: boolean;
@@ -544,6 +545,7 @@ function WorkspaceHeaderTitleBar({
   workspaceKey,
   workspaceTarget,
   workspaceDirectory,
+  onCreateDraftTab,
   onMarkAsRead,
   onMarkAsUnread,
   showWorkspaceSetup,
@@ -580,6 +582,7 @@ function WorkspaceHeaderTitleBar({
         <WorkspaceHeaderMenuDesktop
           workspaceKey={workspaceKey}
           workspaceTarget={workspaceTarget}
+          onCreateAgent={onCreateDraftTab}
           onMarkAsRead={onMarkAsRead}
           onMarkAsUnread={onMarkAsUnread}
           workspaceDirectory={workspaceTarget ? workspaceDirectory : null}
@@ -3449,6 +3452,7 @@ function WorkspaceScreenContent({
                   workspaceKey={`${normalizedServerId}:${normalizedWorkspaceId}`}
                   workspaceTarget={workspaceTarget}
                   workspaceDirectory={workspaceDirectory}
+                  onCreateDraftTab={handleCreateDraftTab}
                   onMarkAsRead={
                     workspaceReadState.hasClearableAttention ? handleMarkWorkspaceAsRead : undefined
                   }
@@ -3576,6 +3580,7 @@ function WorkspaceScreenContent({
             workspaceKey={`${normalizedServerId}:${normalizedWorkspaceId}`}
             workspaceTarget={workspaceTarget}
             workspaceDirectory={workspaceTarget ? workspaceDirectory : null}
+            onCreateAgent={handleCreateDraftTab}
             onMarkAsRead={
               workspaceReadState.hasClearableAttention ? handleMarkWorkspaceAsRead : undefined
             }
