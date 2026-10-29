@@ -4,6 +4,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import type { DesktopSettings } from "@/desktop/settings/desktop-settings";
 import type { AppLanguage } from "@/i18n/locales";
 import type { SidebarNavPreference } from "@/sidebar-nav/model";
+import { TURN_COMPLETE_SOUND_IDS } from "@/audio/turn-complete-sounds";
 import {
   DEFAULT_USAGE_PREFERENCES,
   UsagePreferencesSchema,
@@ -109,6 +110,8 @@ export interface AppSettings {
   sendShortcut: SendShortcut;
   filePanelAssociations: Record<string, string>;
   disableUncommonFeatures: boolean;
+  playTurnCompleteSound: boolean;
+  turnCompleteSound: string;
   /** Desktop-only preferences for implicit opens into the ordinary side pane. */
   openInSidePane: OpenInSidePanePreferences;
   pullRequestOpenLocation: PullRequestOpenLocation;
@@ -167,6 +170,8 @@ export const DEFAULT_CLIENT_SETTINGS: AppSettings = {
   sendShortcut: "enter",
   filePanelAssociations: {},
   disableUncommonFeatures: true,
+  playTurnCompleteSound: false,
+  turnCompleteSound: TURN_COMPLETE_SOUND_IDS[0],
   openInSidePane: DEFAULT_OPEN_IN_SIDE_PANE_PREFERENCES,
   pullRequestOpenLocation: "explorer",
 };
@@ -274,6 +279,8 @@ const StoredAppSettingsSchema = z
     sendShortcut: z.enum(["enter", "mod-enter"]).catch("enter"),
     filePanelAssociations: z.record(z.string(), z.string()).catch({}),
     disableUncommonFeatures: z.boolean().catch(true),
+    playTurnCompleteSound: z.boolean().catch(false),
+    turnCompleteSound: z.string().catch(TURN_COMPLETE_SOUND_IDS[0]),
     openInSidePane: z
       .object({
         explorerFiles: z.boolean().catch(false),

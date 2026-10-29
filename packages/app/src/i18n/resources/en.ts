@@ -6,6 +6,24 @@ export const en = {
       description:
         "Hide plugins, usage, browser data, extra languages, extra providers, background update checks, and the voice entry",
     },
+    playTurnCompleteSound: {
+      label: "Play a sound when an agent finishes",
+      description: "Chime once when a turn completes",
+    },
+    turnCompleteSound: {
+      label: "Turn complete sound",
+      description: "Which sound to play",
+      preview: "Preview {{name}}",
+      options: {
+        chime: "Chime",
+        bell: "Bell",
+        ding: "Ding",
+        pop: "Pop",
+        drop: "Drop",
+        woodblock: "Woodblock",
+        chord: "Chord",
+      },
+    },
   },
   paneFind: {
     connectionFailure: "Could not search this chat. Check the host connection and retry.",
