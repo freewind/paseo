@@ -1,10 +1,10 @@
 import { memo, useMemo, useCallback, useState, type ReactNode } from "react";
 import { Text, View } from "react-native";
-import { StyleSheet } from "react-native-unistyles";
+import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { Folder, FolderGit2, Monitor } from "lucide-react-native";
 import { ProjectStatusIndicator } from "@/components/sidebar/project-leading-visual";
 import { SidebarStatusSlot } from "@/components/sidebar/sidebar-status-slot";
-import { DensityIcon } from "@/components/ui/density-icon";
+import type { Theme } from "@/styles/theme";
 import type { SidebarSurfaceBackdrop } from "@/styles/surface-backdrop";
 import {
   WorkspaceMetaRow,
@@ -196,13 +196,18 @@ function WorkspaceStatusIndicator({
   );
 }
 
+const ThemedMonitor = withUnistyles(Monitor);
+const ThemedFolderGit2 = withUnistyles(FolderGit2);
+const ThemedFolder = withUnistyles(Folder);
+
+const mutedIconColor = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
+
 function renderWorkspaceKindIcon(workspaceKind: SidebarWorkspaceEntry["workspaceKind"]) {
   // checkout / directory 没有自己的图标，回落到普通文件夹。
   if (workspaceKind === "local_checkout")
-    return <DensityIcon icon={Monitor} size="sm" color="foregroundMuted" />;
-  if (workspaceKind === "worktree")
-    return <DensityIcon icon={FolderGit2} size="sm" color="foregroundMuted" />;
-  return <DensityIcon icon={Folder} size="sm" color="foregroundMuted" />;
+    return <ThemedMonitor size={14} uniProps={mutedIconColor} />;
+  if (workspaceKind === "worktree") return <ThemedFolderGit2 size={14} uniProps={mutedIconColor} />;
+  return <ThemedFolder size={14} uniProps={mutedIconColor} />;
 }
 
 export const sidebarWorkspaceRowStyles = StyleSheet.create((theme) => ({

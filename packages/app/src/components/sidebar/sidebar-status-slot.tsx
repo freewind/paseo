@@ -78,11 +78,7 @@ export function SidebarStatusSlot({
 
   // tab 可能比它指的 agent 先到（从磁盘恢复时），槽位先占住宽度，标题才不会跳。
   if (!bucket) {
-    return (
-      <View style={styles.slot} testID={`${testID}-null`}>
-        {leadingVisual}
-      </View>
-    );
+    return <View style={styles.slot} testID={`${testID}-unknown`} />;
   }
 
   const dotColorStyle = getStatusDotColorStyle(bucket);
@@ -106,13 +102,11 @@ function getStatusDotColorStyle(bucket: SidebarStateBucket | null | undefined) {
   return null;
 }
 
-const TITLE_LINE_HEIGHT = 20;
-
 const styles = StyleSheet.create((theme) => ({
   slot: {
     position: "relative",
     width: theme.iconSize.md,
-    height: TITLE_LINE_HEIGHT,
+    height: 20,
     borderRadius: theme.borderRadius.full,
     flexShrink: 0,
     alignItems: "center",

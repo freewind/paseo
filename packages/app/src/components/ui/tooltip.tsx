@@ -11,6 +11,7 @@ import {
   useState,
   type PropsWithChildren,
   type ReactElement,
+  type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -28,6 +29,7 @@ import { StyleSheet } from "react-native-unistyles";
 import { useIsCompactFormFactor } from "@/constants/layout";
 import { FloatingSurface } from "@/components/ui/floating";
 import { useRetainedPanelActive } from "@/components/retained-panel";
+import { useHoverSafeZone } from "@/hooks/use-hover-safe-zone";
 import { isNative, isWeb } from "@/constants/platform";
 import { getOverlayRoot, OVERLAY_Z } from "@/lib/overlay-root";
 
@@ -50,6 +52,11 @@ interface TooltipContextValue {
   enabled: boolean;
   openOnPress: boolean;
   delayDuration: number;
+  /**
+   * web 上为真时内容接收指针事件，指针在它上面时 tooltip 不走，可滚动的内容才能真滚。
+   * 默认关：普通 tooltip 不可交互，指针一离开 trigger 就关。
+   */
+  interactive: boolean;
 }
 
 const TooltipContext = createContext<TooltipContextValue | null>(null);
@@ -240,6 +247,7 @@ export function Tooltip({
   delayDuration = 0,
   enabledOnDesktop = true,
   enabledOnMobile = false,
+  interactive = false,
   children,
 }: PropsWithChildren<{
   open?: boolean;
@@ -248,6 +256,7 @@ export function Tooltip({
   delayDuration?: number;
   enabledOnDesktop?: boolean;
   enabledOnMobile?: boolean;
+  interactive?: boolean;
 }>): ReactElement {
   const triggerRef = useRef<TooltipTriggerElement>(null);
   const [isOpen, setIsOpen] = useControllableOpenState({
@@ -275,8 +284,9 @@ export function Tooltip({
       enabled,
       openOnPress: opensOnPress,
       delayDuration,
+      interactive,
     }),
-    [isOpen, setIsOpen, enabled, opensOnPress, delayDuration],
+    [isOpen, setIsOpen, enabled, opensOnPress, delayDuration, interactive],
   );
 
   return <TooltipContext.Provider value={value}>{children}</TooltipContext.Provider>;
@@ -352,9 +362,12 @@ export function TooltipTrigger({
   const handleHoverOut = useCallback(
     (e?: unknown) => {
       if (isCallable(onHoverOut)) onHoverOut(e);
+      // interactive 的 tooltip 由 TooltipContent 里的 safe zone 关闭，它覆盖 trigger 和
+      // content；在这里按 trigger 自己的 hover-out 关，指针走过中间那段就会丢掉。
+      if (ctx.interactive) return;
       close();
     },
-    [onHoverOut, close],
+    [onHoverOut, close, ctx.interactive],
   );
 
   const handleFocus = useCallback(
@@ -535,16 +548,35 @@ export function TooltipContent({
 
   const handleDismiss = useCallback(() => ctx.setOpen(false), [ctx]);
 
+  // 关闭由覆盖 trigger、content 和中间桥接区的 safe zone 决定，
+  // 指针才能从一个挪到另一个而不丢 tooltip。
+  const contentRef = useRef<View>(null);
+  const handleSafeZoneEnter = useCallback(() => {}, []);
+  const handleSafeZoneLeave = useCallback(() => ctx.setOpen(false), [ctx]);
+  // 上游 hook 只认 View，而 triggerRef 还可能是 DOM 节点；readRect 内部按 Element 处理。
+  const safeZoneTriggerRef = ctx.triggerRef as unknown as RefObject<View | null>;
+  useHoverSafeZone({
+    enabled: ctx.interactive && ctx.open,
+    triggerRef: safeZoneTriggerRef,
+    contentRef,
+    onEnterSafeZone: handleSafeZoneEnter,
+    onLeaveSafeZone: handleSafeZoneLeave,
+  });
+
   if (!ctx.open || !ctx.enabled) return null;
 
   // On web, avoid React Native's <Modal/> implementation (it uses <dialog> and can
   // steal focus / disrupt hover). Rendering via Portal + position:fixed keeps the
   // exact same positioning math as DropdownMenu, without hover feedback loops.
   if (isWeb) {
+    // interactive 的要接收指针事件，内容才能滚；普通的保持透明，
+    // 免得从页面那里抢走 hover 和点击。
+    const overlayPointerEvents = ctx.interactive ? "box-none" : "none";
     return createPortal(
-      <View pointerEvents="none" style={styles.portalOverlay}>
+      <View pointerEvents={overlayPointerEvents} style={styles.portalOverlay}>
         <FloatingSurface
-          pointerEvents="none"
+          ref={contentRef}
+          pointerEvents={ctx.interactive ? "auto" : "none"}
           entering={FadeIn.duration(80)}
           exiting={FadeOut.duration(80)}
           collapsable={false}

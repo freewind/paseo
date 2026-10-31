@@ -17,6 +17,7 @@ import {
   ArrowLeftToLine,
   ArrowRightToLine,
   Copy,
+  Circle,
   Pencil,
   RotateCw,
   Columns2,
@@ -45,6 +46,7 @@ import {
 } from "@/components/ui/context-menu";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { FloatingScrollView } from "@/components/ui/floating";
 import { useShortcutKeys } from "@/hooks/use-shortcut-keys";
 import { WORKSPACE_SECONDARY_HEADER_HEIGHT, useIsCompactFormFactor } from "@/constants/layout";
 import { buttonControlHeight } from "@/components/ui/control-geometry";
@@ -119,7 +121,6 @@ const TAB_MIN_WIDTH = 64;
 const TAB_MAX_WIDTH = 160;
 const TAB_CLOSE_BUTTON_RESERVED_WIDTH = 0;
 const TAB_LABEL_LAYOUT_ALLOWANCE = 4;
-const AGENT_TOOLTIP_TITLE_MAX_LENGTH = 80;
 
 const ThemedLoadingSpinner = withUnistyles(LoadingSpinner);
 const ThemedX = withUnistyles(X);
@@ -128,6 +129,7 @@ const ThemedCopy = withUnistyles(Copy);
 const ThemedRotateCw = withUnistyles(RotateCw);
 const ThemedArrowLeftToLine = withUnistyles(ArrowLeftToLine);
 const ThemedArrowRightToLine = withUnistyles(ArrowRightToLine);
+const ThemedCircle = withUnistyles(Circle);
 const ThemedCopyX = withUnistyles(CopyX);
 const ThemedPencil = withUnistyles(Pencil);
 const ThemedPlus = withUnistyles(Plus);
@@ -152,11 +154,6 @@ function normalizeAgentTooltipTitle(title: string): string {
   return title.replace(/\s+/g, " ").trim();
 }
 
-function formatAgentTooltipTitle(singleLineTitle: string): string {
-  if (singleLineTitle.length <= AGENT_TOOLTIP_TITLE_MAX_LENGTH) return singleLineTitle;
-  return `${singleLineTitle.slice(0, AGENT_TOOLTIP_TITLE_MAX_LENGTH - 1).trimEnd()}…`;
-}
-
 function AgentTabTooltipBody({
   serverId,
   agentId,
@@ -175,10 +172,12 @@ function AgentTabTooltipBody({
   const activity = formatCompactTimeAgoAsProse(compactActivity);
 
   return (
-    <View style={styles.tooltipAgentContent}>
-      <Text style={styles.agentTooltipTitle} numberOfLines={1} ellipsizeMode="tail">
-        {title}
-      </Text>
+    <FloatingScrollView
+      style={styles.tooltipAgentScroll}
+      contentContainerStyle={styles.tooltipAgentContent}
+      showsVerticalScrollIndicator
+    >
+      <Text style={styles.agentTooltipTitle}>{title}</Text>
       <View style={styles.tooltipAgentMetadata}>
         <Text style={styles.tooltipAgentId}>{agentId.slice(0, 7)}</Text>
         {activity ? (
@@ -188,7 +187,7 @@ function AgentTabTooltipBody({
           </>
         ) : null}
       </View>
-    </View>
+    </FloatingScrollView>
   );
 }
 
@@ -432,6 +431,8 @@ function TabContextMenuItem({
         return <ThemedArrowRightToLine size={16} uniProps={mutedColorMapping} />;
       case "copy-x":
         return <ThemedCopyX size={16} uniProps={mutedColorMapping} />;
+      case "circle":
+        return <ThemedCircle size={16} uniProps={mutedColorMapping} />;
       case "pencil":
         return <ThemedPencil size={16} uniProps={mutedColorMapping} />;
       case "x":
@@ -853,7 +854,7 @@ function TabChip({
       onPointerLeave={handleTabPointerLeave}
     >
       <ContextMenu key={tab.key}>
-        <Tooltip delayDuration={400} enabledOnDesktop enabledOnMobile={false}>
+        <Tooltip delayDuration={400} enabledOnDesktop enabledOnMobile={false} interactive>
           <TooltipTrigger asChild triggerRefProp="triggerRef">
             <ContextMenuTrigger
               {...(dragHandleProps?.attributes as object | undefined)}
@@ -1553,10 +1554,9 @@ function ResolvedDesktopTabChip({
     item.tab.target.kind === "agent"
       ? normalizeAgentTooltipTitle(rawTooltipLabel)
       : rawTooltipLabel;
-  const tooltipLabel =
-    item.tab.target.kind === "agent"
-      ? formatAgentTooltipTitle(accessibilityLabel)
-      : rawTooltipLabel;
+  // A long agent title wraps across lines in the hover tooltip instead of ending in an ellipsis,
+  // so the user can read the whole title without scrolling back to the top of the tab.
+  const tooltipLabel = accessibilityLabel;
 
   return (
     <View style={styles.tabSlot}>
@@ -1771,9 +1771,13 @@ const styles = StyleSheet.create((theme) => ({
     color: theme.colors.foreground,
     fontSize: theme.fontSize.base,
   },
+  tooltipAgentScroll: {
+    maxWidth: 420,
+    // Cap the hover tooltip so a long title cannot cover the page; the body scrolls past it.
+    maxHeight: 200,
+  },
   tooltipAgentContent: {
     gap: theme.spacing[0.5],
-    maxWidth: 420,
   },
   agentTooltipTitle: {
     color: theme.colors.foreground,

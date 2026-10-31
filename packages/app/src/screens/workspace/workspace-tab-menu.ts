@@ -48,6 +48,7 @@ export type WorkspaceTabMenuEntry =
         | "arrow-left-to-line"
         | "arrow-right-to-line"
         | "copy-x"
+        | "circle"
         | "pencil"
         | "x";
       hint?: string;
