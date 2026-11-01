@@ -23,6 +23,7 @@ interface ExplorerSidebarDockProps extends Pick<
   | "onCopyResumeCommand"
   | "onCopyAgentId"
   | "onCopyAgentAsNew"
+  | "onCopyConversationMarkdown"
   | "canCloneAgent"
   | "onDeleteAgent"
   | "onCopyTerminalId"
@@ -69,6 +70,7 @@ export function ExplorerSidebarDock({
   onCopyResumeCommand,
   onCopyAgentId,
   onCopyAgentAsNew,
+  onCopyConversationMarkdown,
   onDeleteAgent,
   canCloneAgent,
   onCopyTerminalId,
@@ -141,6 +143,7 @@ export function ExplorerSidebarDock({
                 onCopyResumeCommand={onCopyResumeCommand}
                 onCopyAgentId={onCopyAgentId}
                 onCopyAgentAsNew={onCopyAgentAsNew}
+                onCopyConversationMarkdown={onCopyConversationMarkdown}
                 onDeleteAgent={onDeleteAgent}
                 canCloneAgent={canCloneAgent}
                 onCopyTerminalId={onCopyTerminalId}

@@ -2,16 +2,31 @@ import { useCallback } from "react";
 import * as Clipboard from "expo-clipboard";
 import { useTranslation } from "react-i18next";
 import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
+import type { AgentTaskSnapshotItem, AgentTimelineItem } from "@getpaseo/protocol/agent-types";
 import { useToast } from "@/contexts/toast-context";
+import { useHostFeature } from "@/runtime/host-features";
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
 import { useSessionStore } from "@/stores/session-store";
 import { planTimelineTailFetch } from "@/timeline/timeline-sync-plan";
+import { buildConversationMarkdown } from "@/timeline/conversation-markdown";
 import { buildProviderCommand } from "@/utils/provider-command-templates";
 
 export interface AgentTabMetadataActions {
   onCopyAgentId: (agentId: string) => Promise<void>;
   onCopyResumeCommand: (agentId: string) => Promise<void>;
+  onCopyConversationMarkdown: (agentId: string) => Promise<void>;
   onReloadAgent: (agentId: string) => Promise<void>;
+}
+
+/** 导出没有任务快照时，退到内存窗口里最后一个 todo 项。 */
+function tasksFromTimelineItems(items: readonly AgentTimelineItem[]): AgentTaskSnapshotItem[] {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    const item = items[index];
+    if (item?.type === "todo") {
+      return Array.from(item.items);
+    }
+  }
+  return [];
 }
 
 /**
@@ -31,6 +46,7 @@ export function useAgentTabMetadataActions({
 }): AgentTabMetadataActions {
   const { t } = useTranslation();
   const toast = useToast();
+  const supportsConversationExport = useHostFeature(serverId, "conversationExport");
 
   const onCopyAgentId = useCallback(
     async (agentId: string) => {
@@ -76,6 +92,54 @@ export function useAgentTabMetadataActions({
     [serverId, toast, t],
   );
 
+  const onCopyConversationMarkdown = useCallback(
+    async (agentId: string) => {
+      if (!agentId) return;
+      if (!client || !isConnected) {
+        toast.error(t("workspace.terminal.hostDisconnected"));
+        return;
+      }
+      toast.show(t("workspace.tabs.toasts.copyingConversation"), { durationMs: null });
+      try {
+        let items: AgentTimelineItem[];
+        let tasks: AgentTaskSnapshotItem[];
+        // 老 daemon 没有导出能力：只能拿客户端加载过的尾部，复制出来的是残篇。
+        const partial = !supportsConversationExport;
+        if (supportsConversationExport) {
+          const payload = await client.exportAgentConversation(agentId);
+          items = payload.entries.map((entry) => entry.item);
+          tasks = payload.tasks;
+        } else {
+          const page = await client.fetchAgentTimeline(agentId, {
+            direction: "tail",
+            projection: "projected",
+          });
+          items = page.entries.map((entry) => entry.item);
+          tasks = tasksFromTimelineItems(items);
+        }
+        const agentTitle =
+          useSessionStore.getState().sessions[serverId]?.agents.get(agentId)?.title ?? null;
+        const markdown = buildConversationMarkdown(items, tasks, { agentTitle });
+        if (!markdown) {
+          toast.error(t("workspace.tabs.toasts.conversationMarkdownEmpty"));
+          return;
+        }
+        await Clipboard.setStringAsync(markdown);
+        // 回退路径不能假装完整：明确告诉用户只复制了加载过的部分。
+        if (partial) {
+          toast.show(t("workspace.tabs.toasts.conversationMarkdownCopiedPartial"), {
+            variant: "warning",
+          });
+          return;
+        }
+        toast.copied(t("workspace.tabs.toasts.conversationMarkdownCopiedLabel"));
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : t("workspace.tabs.toasts.copyFailed"));
+      }
+    },
+    [client, isConnected, serverId, supportsConversationExport, toast, t],
+  );
+
   const onReloadAgent = useCallback(
     async (agentId: string) => {
       if (!client || !isConnected) {
@@ -108,5 +172,5 @@ export function useAgentTabMetadataActions({
     [client, isConnected, serverId, toast, t],
   );
 
-  return { onCopyAgentId, onCopyResumeCommand, onReloadAgent };
+  return { onCopyAgentId, onCopyResumeCommand, onCopyConversationMarkdown, onReloadAgent };
 }

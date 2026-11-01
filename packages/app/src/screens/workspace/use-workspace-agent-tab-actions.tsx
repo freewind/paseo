@@ -131,6 +131,7 @@ export interface UseWorkspaceAgentTabActionsInput {
 export interface WorkspaceAgentTabActions {
   onCopyResumeCommand: (agentId: string) => Promise<void>;
   onCopyAgentId: (agentId: string) => Promise<void>;
+  onCopyConversationMarkdown: (agentId: string) => Promise<void>;
   onCopyAgentAsNew: (agentId: string) => Promise<void>;
   canCloneAgent: boolean;
   onDeleteAgent: (agentId: string) => Promise<void>;
@@ -219,11 +220,12 @@ export function useWorkspaceAgentTabActions({
 
   const bulkCloseConfirmationLabels = useBulkCloseConfirmationLabels();
 
-  const { onCopyAgentId, onCopyResumeCommand, onReloadAgent } = useAgentTabMetadataActions({
-    serverId,
-    client,
-    isConnected,
-  });
+  const { onCopyAgentId, onCopyResumeCommand, onCopyConversationMarkdown, onReloadAgent } =
+    useAgentTabMetadataActions({
+      serverId,
+      client,
+      isConnected,
+    });
 
   const supportsCloneAgent = useHostFeature(serverId, "agentCloneSession");
   const onDeleteAgent = useCallback(
@@ -414,6 +416,7 @@ export function useWorkspaceAgentTabActions({
     () => ({
       onCopyResumeCommand,
       onCopyAgentId,
+      onCopyConversationMarkdown,
       onCopyAgentAsNew,
       canCloneAgent: supportsCloneAgent,
       onDeleteAgent,
@@ -436,6 +439,7 @@ export function useWorkspaceAgentTabActions({
       onCloseTabsAfter,
       onCloseTabsBefore,
       onCopyAgentId,
+      onCopyConversationMarkdown,
       onCopyAgentAsNew,
       supportsCloneAgent,
       onDeleteAgent,

@@ -31,6 +31,7 @@ import {
   type AgentSlashCommand,
   type AgentSlashCommandKind,
   type AgentStreamEvent,
+  type AgentTaskSnapshotItem,
   type FetchCatalogOptions,
   type SteerActiveTurnOptions,
   type SteerResult,
@@ -654,6 +655,38 @@ function createPiPaseoExtensionFile({
 	    };
 	}
 
+	/**
+	 * 最后一次 todo 工具结果的完整任务快照：导出要比 live 时间线多带依赖、owner 与 metadata。
+	 * 取分支上最后一个 todo 结果（不是历史累积），与扩展里 todo 工具的语义一致。
+	 */
+	function toTodoSnapshot(entries) {
+	  let snapshot = null;
+	  for (const entry of entries) {
+	    const message = entry && entry.type === "message" ? entry.message : null;
+	    if (!message || message.role !== "toolResult" || message.toolName !== "todo") continue;
+	    const details = message.details;
+	    if (!details || !Array.isArray(details.tasks)) continue;
+	    snapshot = details.tasks.map((task) => ({
+	      id: typeof task.id === "number" ? String(task.id) : task.id,
+	      text: task.subject,
+	      ...(task.status ? { status: task.status } : {}),
+	      completed: task.status === "completed",
+	      ...(task.activeForm ? { activeForm: task.activeForm } : {}),
+	      ...(task.description ? { description: task.description } : {}),
+	      ...(Array.isArray(task.blockedBy) ? { blockedBy: task.blockedBy } : {}),
+	      ...(task.owner ? { owner: task.owner } : {}),
+	      ...(task.metadata && typeof task.metadata === "object" ? { metadata: task.metadata } : {}),
+	    }));
+	  }
+	  return snapshot;
+	}
+
+	/** 没有 todo 结果时不带这个字段：老版本的捕获负载形状保持不变。 */
+	function withTodoSnapshot(entries) {
+	  const snapshot = toTodoSnapshot(entries);
+	  return snapshot ? { todoSnapshot: snapshot } : {};
+	}
+
 	function emitEntryCapture(ctx, reason, requestId) {
 	  ctx.ui.notify(
 	    "${PASEO_PI_ENTRY_CAPTURE_MARKER} " +
@@ -664,6 +697,10 @@ function createPiPaseoExtensionFile({
 	        treeEntries: toCapturedUserEntries(ctx.sessionManager.getEntries()),
 	        // The entries getMessages() replays, so the nth one is the nth replayed user message.
 	        contextEntries: toCapturedUserEntries(ctx.sessionManager.buildContextEntries()),
+	        // 导出用的任务快照，跟着每次捕获一起带出，避免导出时再发一次请求。
+	        ...withTodoSnapshot(
+	          typeof ctx.sessionManager.getBranch === "function" ? ctx.sessionManager.getBranch() : [],
+	        ),
 	      }),
 	    "info",
 	  );
@@ -916,6 +953,48 @@ function parseCapturedEntries(value: unknown): PiCapturedEntry[] {
       },
     ];
   });
+}
+
+/** 扩展带来的任务快照：字段不可信的条目直接丢掉，不为半条任务冒风险。 */
+function parseTaskSnapshot(value: unknown): AgentTaskSnapshotItem[] | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const tasks: AgentTaskSnapshotItem[] = [];
+  for (const entry of value) {
+    if (!isRecord(entry)) continue;
+    const text = optionalString(entry.text);
+    if (text === undefined) continue;
+    const status = optionalString(entry.status);
+    const id = optionalString(entry.id);
+    const activeForm = optionalString(entry.activeForm);
+    const description = optionalString(entry.description);
+    const owner = optionalString(entry.owner);
+    const blockedBy = Array.isArray(entry.blockedBy)
+      ? entry.blockedBy.filter(
+          (dependency): dependency is string | number =>
+            typeof dependency === "string" || typeof dependency === "number",
+        )
+      : undefined;
+    const metadata = isRecord(entry.metadata) ? entry.metadata : undefined;
+    tasks.push({
+      text,
+      completed: entry.completed === true,
+      ...(id ? { id } : {}),
+      ...(status === "pending" ||
+      status === "in_progress" ||
+      status === "completed" ||
+      status === "deleted"
+        ? { status }
+        : {}),
+      ...(activeForm ? { activeForm } : {}),
+      ...(description ? { description } : {}),
+      ...(blockedBy && blockedBy.length > 0 ? { blockedBy } : {}),
+      ...(owner ? { owner } : {}),
+      ...(metadata ? { metadata } : {}),
+    });
+  }
+  return tasks;
 }
 
 function isOptionalInputPlaceholder(placeholder: string | undefined): boolean {
@@ -1189,6 +1268,8 @@ export class PiRpcAgentSession implements AgentSession {
   currentLeafOverrideId: string | null | undefined;
   private readonly contextUserEntries: PiCapturedEntry[] = [];
   private readonly treeUserEntriesById = new Map<string, PiCapturedEntry>();
+  /** 最近一次捕获带回来的任务快照；导出时直接用它。 */
+  private conversationTaskSnapshot: AgentTaskSnapshotItem[] | null = null;
   private readonly pendingExtensionResults = new Map<string, PendingExtensionResult>();
   private compactionPromise: Promise<void> | null = null;
   private outOfBandCompactionEmit: ((event: AgentStreamEvent) => void) | null = null;
@@ -1566,6 +1647,13 @@ export class PiRpcAgentSession implements AgentSession {
     if (this.interruptingTurn === interruption) {
       this.interruptingTurn = null;
     }
+  }
+
+  async getConversationTaskSnapshot(): Promise<AgentTaskSnapshotItem[] | null> {
+    // 正在跑的回合会拒绝捕获提示；这时用上一次回合结束时留下的快照，
+    // 仍旧没有就让导出退到时间线里的 todo 项。
+    await this.requestEntryCapture("task-snapshot").catch(() => undefined);
+    return this.conversationTaskSnapshot;
   }
 
   async revertConversation(input: { messageId: string }): Promise<void> {
@@ -2006,6 +2094,10 @@ export class PiRpcAgentSession implements AgentSession {
       treeEntries: parseCapturedEntries(payload.treeEntries),
       contextEntries: parseCapturedEntries(payload.contextEntries),
     });
+    const taskSnapshot = parseTaskSnapshot(payload.todoSnapshot);
+    if (taskSnapshot) {
+      this.conversationTaskSnapshot = taskSnapshot;
+    }
     if (typeof payload.requestId === "string") {
       this.resolveExtensionResult(payload.requestId, undefined);
     }

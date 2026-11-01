@@ -2223,6 +2223,7 @@ function WorkspaceScreenContent({
   const {
     onCopyAgentId: handleCopyAgentId,
     onCopyResumeCommand: handleCopyResumeCommand,
+    onCopyConversationMarkdown: handleCopyConversationMarkdown,
     onReloadAgent: handleReloadAgent,
   } = useAgentTabMetadataActions({ serverId: normalizedServerId, client, isConnected });
 
@@ -3519,6 +3520,7 @@ function WorkspaceScreenContent({
             onCopyResumeCommand={handleCopyResumeCommand}
             onCopyAgentId={handleCopyAgentId}
             onCopyAgentAsNew={handleCopyAgentAsNew}
+            onCopyConversationMarkdown={handleCopyConversationMarkdown}
             onDeleteAgent={handleDeleteAgent}
             canCloneAgent={supportsCloneAgent}
             onCopyTerminalId={handleCopyTerminalId}
@@ -3582,6 +3584,7 @@ function WorkspaceScreenContent({
       handleCloseTabsToRight,
       handleCopyAgentId,
       handleCopyAgentAsNew,
+      handleCopyConversationMarkdown,
       handleDeleteAgent,
       supportsCloneAgent,
       handleCopyBranchName,
@@ -3645,6 +3648,7 @@ function WorkspaceScreenContent({
         onCopyResumeCommand={handleCopyResumeCommand}
         onCopyAgentId={handleCopyAgentId}
         onCopyAgentAsNew={handleCopyAgentAsNew}
+        onCopyConversationMarkdown={handleCopyConversationMarkdown}
         onDeleteAgent={handleDeleteAgent}
         canCloneAgent={supportsCloneAgent}
         onCopyTerminalId={handleCopyTerminalId}
@@ -3684,6 +3688,7 @@ function WorkspaceScreenContent({
     handleCopyResumeCommand,
     handleCopyAgentId,
     handleCopyAgentAsNew,
+    handleCopyConversationMarkdown,
     handleDeleteAgent,
     supportsCloneAgent,
     handleCopyTerminalId,
@@ -3751,6 +3756,7 @@ function WorkspaceScreenContent({
             onCopyResumeCommand={handleCopyResumeCommand}
             onCopyAgentId={handleCopyAgentId}
             onCopyAgentAsNew={handleCopyAgentAsNew}
+            onCopyConversationMarkdown={handleCopyConversationMarkdown}
             onDeleteAgent={handleDeleteAgent}
             canCloneAgent={supportsCloneAgent}
             onCopyTerminalId={handleCopyTerminalId}
@@ -3800,6 +3806,7 @@ function WorkspaceScreenContent({
         onCopyResumeCommand={handleCopyResumeCommand}
         onCopyAgentId={handleCopyAgentId}
         onCopyAgentAsNew={handleCopyAgentAsNew}
+        onCopyConversationMarkdown={handleCopyConversationMarkdown}
         onDeleteAgent={handleDeleteAgent}
         canCloneAgent={supportsCloneAgent}
         onCopyTerminalId={handleCopyTerminalId}
@@ -3845,6 +3852,7 @@ function WorkspaceScreenContent({
     handleCopyResumeCommand,
     handleCopyAgentId,
     handleCopyAgentAsNew,
+    handleCopyConversationMarkdown,
     handleDeleteAgent,
     supportsCloneAgent,
     handleCopyTerminalId,

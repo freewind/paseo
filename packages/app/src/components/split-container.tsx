@@ -74,6 +74,7 @@ interface SplitContainerProps {
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
   onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
+  onCopyConversationMarkdown?: (agentId: string) => Promise<void> | void;
   onDeleteAgent?: (agentId: string) => Promise<void> | void;
   canCloneAgent?: boolean;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
@@ -163,6 +164,7 @@ export function SplitContainer({
   onCopyResumeCommand,
   onCopyAgentId,
   onCopyAgentAsNew,
+  onCopyConversationMarkdown,
   onDeleteAgent,
   canCloneAgent,
   onCopyTerminalId,
@@ -264,6 +266,7 @@ export function SplitContainer({
                 onCopyResumeCommand={onCopyResumeCommand}
                 onCopyAgentId={onCopyAgentId}
                 onCopyAgentAsNew={onCopyAgentAsNew}
+                onCopyConversationMarkdown={onCopyConversationMarkdown}
                 onDeleteAgent={onDeleteAgent}
                 canCloneAgent={canCloneAgent}
                 onCopyTerminalId={onCopyTerminalId}
@@ -399,6 +402,7 @@ function SplitNodeView({
   onCopyResumeCommand,
   onCopyAgentId,
   onCopyAgentAsNew,
+  onCopyConversationMarkdown,
   onDeleteAgent,
   canCloneAgent,
   onCopyTerminalId,
@@ -491,6 +495,7 @@ function SplitNodeView({
             onCopyResumeCommand={onCopyResumeCommand}
             onCopyAgentId={onCopyAgentId}
             onCopyAgentAsNew={onCopyAgentAsNew}
+            onCopyConversationMarkdown={onCopyConversationMarkdown}
             onDeleteAgent={onDeleteAgent}
             canCloneAgent={canCloneAgent}
             onCopyTerminalId={onCopyTerminalId}
@@ -547,6 +552,7 @@ function SplitNodeView({
               onCopyResumeCommand={onCopyResumeCommand}
               onCopyAgentId={onCopyAgentId}
               onCopyAgentAsNew={onCopyAgentAsNew}
+              onCopyConversationMarkdown={onCopyConversationMarkdown}
               onDeleteAgent={onDeleteAgent}
               canCloneAgent={canCloneAgent}
               onCopyTerminalId={onCopyTerminalId}
@@ -611,6 +617,7 @@ const SplitPaneView = memo(function SplitPaneView({
   onCopyResumeCommand,
   onCopyAgentId,
   onCopyAgentAsNew,
+  onCopyConversationMarkdown,
   onDeleteAgent,
   canCloneAgent,
   onCopyTerminalId,
@@ -751,6 +758,7 @@ const SplitPaneView = memo(function SplitPaneView({
             onCopyResumeCommand={onCopyResumeCommand}
             onCopyAgentId={onCopyAgentId}
             onCopyAgentAsNew={onCopyAgentAsNew}
+            onCopyConversationMarkdown={onCopyConversationMarkdown}
             onDeleteAgent={onDeleteAgent}
             canCloneAgent={canCloneAgent}
             onCopyTerminalId={onCopyTerminalId}

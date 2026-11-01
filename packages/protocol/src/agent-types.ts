@@ -377,6 +377,17 @@ export interface AgentTaskItem {
   description?: string;
 }
 
+/**
+ * 导出用的完整任务项。比 live 时间线的任务多带依赖、owner 与 provider metadata，
+ * 还可能有墓碑状态（deleted）：这些都只出现在导出响应里，不进实时时间线。
+ */
+export interface AgentTaskSnapshotItem extends Omit<AgentTaskItem, "status"> {
+  status?: "pending" | "in_progress" | "completed" | "deleted";
+  blockedBy?: Array<string | number>;
+  owner?: string;
+  metadata?: Record<string, unknown>;
+}
+
 export type AgentTimelineItem =
   | { type: "user_message"; text: string; messageId?: string; clientMessageId?: string }
   | { type: "assistant_message"; text: string; messageId?: string }
