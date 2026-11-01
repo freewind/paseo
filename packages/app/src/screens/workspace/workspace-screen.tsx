@@ -68,6 +68,9 @@ import { SplitContainer } from "@/components/split-container";
 import { RetainedPanel } from "@/components/retained-panel";
 import { WorkspaceActions } from "@/git/workspace-actions";
 import { WorkspaceOpenInEditorButton } from "@/workspace/open-in-editor/button";
+import { useOpenFileInEditor } from "@/workspace/open-in-editor/file";
+import { useRevealInFileManager } from "@/workspace/open-in-file-manager/reveal";
+import type { WorkspaceTabFileOpenActions } from "@/screens/workspace/workspace-tab-menu";
 import { WorkspaceScriptsButton } from "@/screens/workspace/scripts";
 import { ImportSessionSheet } from "@/components/import-session-sheet";
 import { useNavigateToImportedAgent } from "@/hooks/use-import-session";
@@ -1066,6 +1069,52 @@ function useLastMainPane(input: {
     lastMainPaneRef.current.paneId = focusedPaneId;
   }
   return lastMainPaneRef;
+}
+
+/**
+ * 桌面标签行与紧凑标签切换器里的文件菜单项。文案带目标名，与文件浏览器菜单同一句；目标不可用
+ * 时（daemon 在远端、没有桌面桥、没有编辑器/文件管理器）两个 hook 都返回 null，这一项就不出现，
+ * 调用处照常接线即可。
+ */
+function useWorkspaceFileOpenActions({
+  serverId,
+  workspaceDescriptor,
+  workspaceDirectory,
+  t,
+}: {
+  serverId: string;
+  workspaceDescriptor: WorkspaceDescriptor | null | undefined;
+  workspaceDirectory: string | null;
+  t: (
+    key: "workspace.fileActions.openIn" | "workspace.fileActions.revealIn",
+    options: { target: string },
+  ) => string;
+}): WorkspaceTabFileOpenActions | undefined {
+  const directory = workspaceDirectory ?? "";
+  const projectId = workspaceDescriptor?.projectId ?? null;
+  const openFileInEditor = useOpenFileInEditor({
+    serverId,
+    workspaceDirectory: directory,
+    projectId,
+  });
+  const revealInFileManager = useRevealInFileManager({ serverId, workspaceDirectory: directory });
+
+  return useMemo(() => {
+    const actions: WorkspaceTabFileOpenActions = {};
+    if (openFileInEditor) {
+      actions.openInEditor = {
+        label: t("workspace.fileActions.openIn", { target: openFileInEditor.targetName }),
+        run: openFileInEditor.open,
+      };
+    }
+    if (revealInFileManager) {
+      actions.reveal = {
+        label: t("workspace.fileActions.revealIn", { target: revealInFileManager.targetName }),
+        run: revealInFileManager.reveal,
+      };
+    }
+    return actions.openInEditor || actions.reveal ? actions : undefined;
+  }, [openFileInEditor, revealInFileManager, t]);
 }
 
 function WorkspaceScreenContent({
@@ -2200,6 +2249,13 @@ function WorkspaceScreenContent({
     },
     [toast, t],
   );
+
+  const fileOpenActions = useWorkspaceFileOpenActions({
+    serverId: normalizedServerId,
+    workspaceDescriptor,
+    workspaceDirectory,
+    t,
+  });
 
   const handleCopyWorkspacePath = useCallback(async () => {
     if (!workspaceDirectory) {
@@ -3438,6 +3494,7 @@ function WorkspaceScreenContent({
             onCopyAgentId={handleCopyAgentId}
             onCopyTerminalId={handleCopyTerminalId}
             onCopyFilePath={handleCopyFilePath}
+            fileOpenActions={fileOpenActions}
             onReloadAgent={handleReloadAgent}
             onRenameTab={handleRenameTab}
             onCloseTab={handleCloseTabById}
@@ -3497,6 +3554,7 @@ function WorkspaceScreenContent({
       handleCopyAgentId,
       handleCopyBranchName,
       handleCopyFilePath,
+      fileOpenActions,
       handleCopyResumeCommand,
       handleCopyTerminalId,
       handleCopyWorkspacePath,
@@ -3556,6 +3614,7 @@ function WorkspaceScreenContent({
         onCopyAgentId={handleCopyAgentId}
         onCopyTerminalId={handleCopyTerminalId}
         onCopyFilePath={handleCopyFilePath}
+        fileOpenActions={fileOpenActions}
         onReloadAgent={handleReloadAgent}
         onRenameTab={handleRenameTab}
         onCloseTabsToLeft={handleCloseTabsToLeftInPane}
@@ -3591,6 +3650,7 @@ function WorkspaceScreenContent({
     handleCopyAgentId,
     handleCopyTerminalId,
     handleCopyFilePath,
+    fileOpenActions,
     handleReloadAgent,
     handleRenameTab,
     handleCloseTabsToLeftInPane,
@@ -3654,6 +3714,7 @@ function WorkspaceScreenContent({
             onCopyAgentId={handleCopyAgentId}
             onCopyTerminalId={handleCopyTerminalId}
             onCopyFilePath={handleCopyFilePath}
+            fileOpenActions={fileOpenActions}
             onReloadAgent={handleReloadAgent}
             onRenameTab={handleRenameTab}
             onCloseTabsToLeft={handleCloseTabsToLeft}
@@ -3699,6 +3760,7 @@ function WorkspaceScreenContent({
         onCopyAgentId={handleCopyAgentId}
         onCopyTerminalId={handleCopyTerminalId}
         onCopyFilePath={handleCopyFilePath}
+        fileOpenActions={fileOpenActions}
         onReloadAgent={handleReloadAgent}
         onRenameTab={handleRenameTab}
         onCloseTabsToLeft={handleCloseTabsToLeftInPane}
@@ -3740,6 +3802,7 @@ function WorkspaceScreenContent({
     handleCopyAgentId,
     handleCopyTerminalId,
     handleCopyFilePath,
+    fileOpenActions,
     handleReloadAgent,
     handleRenameTab,
     handleCloseTabsToLeftInPane,
