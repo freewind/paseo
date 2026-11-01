@@ -87,6 +87,23 @@ export interface PiModel {
   compat?: unknown;
 }
 
+export interface PiSessionEntry {
+  type?: string;
+  id?: string;
+  parentId?: string | null;
+  timestamp?: string;
+  message?: { role?: unknown; responseId?: unknown } & Record<string, unknown>;
+}
+
+/**
+ * `get_entries` 返回整棵追加树：压缩前的历史和用户放弃的分支都在里面。
+ * `leafId` 是会话当前结束所在的条目。
+ */
+export interface PiSessionEntriesResponse {
+  entries?: PiSessionEntry[];
+  leafId?: string | null;
+}
+
 export interface PiSessionState {
   model?: PiModel | null;
   thinkingLevel: PiThinkingLevel;

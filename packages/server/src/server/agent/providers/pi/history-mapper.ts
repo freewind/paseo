@@ -287,6 +287,17 @@ export class PiHistoryMapper {
   }
 }
 
+/**
+ * 重放被 abort signal 截断时抛出。安静结束会把截断的历史报成完整历史，
+ * 调用方会把它当成时间线提交。
+ */
+export class PiHistoryReplayAbortedError extends Error {
+  constructor() {
+    super("Pi history replay aborted");
+    this.name = "PiHistoryReplayAbortedError";
+  }
+}
+
 export async function* streamPiHistory(
   provider: string,
   messages: PiAgentMessage[],
@@ -298,13 +309,13 @@ export async function* streamPiHistory(
 ): AsyncGenerator<AgentStreamEvent> {
   const mapper = new PiHistoryMapper(provider, userEntries, hooks, extensionHost);
   for (const event of mapper.mapMessages(messages)) {
-    if (signal?.aborted) return;
+    if (signal?.aborted) throw new PiHistoryReplayAbortedError();
     if (event) {
       yield event;
     }
   }
   for (const event of await mapper.hydrate()) {
-    if (signal?.aborted) return;
+    if (signal?.aborted) throw new PiHistoryReplayAbortedError();
     yield event;
   }
 }

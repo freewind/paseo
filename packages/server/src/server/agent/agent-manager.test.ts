@@ -4249,8 +4249,11 @@ test("resumeAgentFromPersistence keeps metadata config, applies overrides, and p
       args: ["/tmp/mcp-bridge.mjs", "--socket", "/tmp/paseo.sock"],
     },
   });
+  // 恢复保留记录里的模型。这个 handle 没有模型，所以恢复不能凭空造目录默认值
+  // （那次查询会在恢复路径上多起一个 provider）。
+  expect(resumed.config.model).toBeUndefined();
+  expect(client.lastResumeOverrides).not.toHaveProperty("model");
   expect(client.lastResumeOverrides).toMatchObject({
-    model: "gpt-5.4",
     systemPrompt: "new prompt",
     mcpServers: {
       paseo: {

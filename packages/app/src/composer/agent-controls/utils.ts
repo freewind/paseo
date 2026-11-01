@@ -159,6 +159,8 @@ export function resolveAgentModelSelection(input: {
   configuredModelId: string | null | undefined;
   runtimeThinkingOptionId: string | null | undefined;
   explicitThinkingOptionId: string | null | undefined;
+  /** 记录的模型已失效；不能再拿运行时默认或目录第一项冒充用户选择。 */
+  modelSelectionRequired?: boolean;
 }) {
   const {
     models,
@@ -166,6 +168,7 @@ export function resolveAgentModelSelection(input: {
     configuredModelId,
     runtimeThinkingOptionId,
     explicitThinkingOptionId,
+    modelSelectionRequired,
   } = input;
   const normalizedRuntimeModelId = normalizeModelId(runtimeModelId);
   const normalizedConfiguredModelId = normalizeModelId(configuredModelId);
@@ -177,14 +180,18 @@ export function resolveAgentModelSelection(input: {
     normalizedRuntimeModelId,
   );
   const fallbackModel = getFallbackModel(models);
-  const selectedModel = pickSelectedModel(models, preferredModelId, fallbackModel);
+  const selectedModel = modelSelectionRequired
+    ? null
+    : pickSelectedModel(models, preferredModelId, fallbackModel);
 
-  const { activeModelId, displayModel } = resolveModelDisplay(
-    selectedModel,
-    preferredModelId,
-    fallbackModel,
-    i18n.t("agentControls.model.unknown"),
-  );
+  const { activeModelId, displayModel } = modelSelectionRequired
+    ? { activeModelId: null, displayModel: i18n.t("agentControls.model.select") }
+    : resolveModelDisplay(
+        selectedModel,
+        preferredModelId,
+        fallbackModel,
+        i18n.t("agentControls.model.unknown"),
+      );
 
   const thinkingOptions = selectedModel?.thinkingOptions ?? null;
   const resolvedThinkingId = resolveThinkingId(

@@ -12,6 +12,22 @@ initializing → idle → running → idle (or error → closed)
 
 Each live agent in `AgentManager` carries a `lastStatus` of `initializing`, `idle`, `running`, or `error`. `closed` is the persisted, resumable state for an agent record that has no live provider runtime. State transitions persist to disk and stream to subscribed clients via WebSocket.
 
+## Restore progress
+
+The host snapshot is the only authority for restore progress. A refresh request response
+only acknowledges that the request settled; it never carries the terminal restore
+state. Clients read the restore phase from the agent snapshot and apply it once.
+
+A local request failure or timeout means unknown, not failed. Keep interactive controls
+locked until a host snapshot reports a terminal phase, and do not present the local error
+as permission to retry.
+
+Restored content keeps the model recorded in the session; restore does not fetch the
+provider catalogue to validate it. If an already-cached catalogue proves the model gone,
+the conversation stays readable but cannot send until the user picks a model. Picking a
+model clears the block, and so does a reload that confirms the recorded model is
+selectable again.
+
 ## Runtime residency
 
 An unarchived agent may be `closed` without being deleted or archived. Closing releases its provider

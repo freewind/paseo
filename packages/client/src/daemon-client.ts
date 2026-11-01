@@ -1411,6 +1411,7 @@ export class DaemonClient {
   private waiters: Set<Waiter<unknown>> = new Set();
   private checkoutStatusInFlight: Map<string, Promise<CheckoutStatusPayload>> = new Map();
   private connectionListeners: Set<(status: ConnectionState) => void> = new Set();
+  private refreshAgentInFlight: Map<string, Promise<AgentRefreshedStatusPayload>> = new Map();
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private connectTimeout: ReturnType<typeof setTimeout> | null = null;
   private pendingGenericTransportErrorTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -3627,7 +3628,28 @@ export class DaemonClient {
     return status.agent;
   }
 
+  /**
+   * 同一个 agent 的重复刷新共享一次等待。本地超时只代表这个客户端不再等：恢复仍在
+   * 主机上跑，后一次调用不能再叠一次恢复上去。
+   */
   async refreshAgent(agentId: string, requestId?: string): Promise<AgentRefreshedStatusPayload> {
+    const existing = this.refreshAgentInFlight.get(agentId);
+    if (existing) {
+      return existing;
+    }
+    const promise = this.sendRefreshAgent(agentId, requestId).finally(() => {
+      if (this.refreshAgentInFlight.get(agentId) === promise) {
+        this.refreshAgentInFlight.delete(agentId);
+      }
+    });
+    this.refreshAgentInFlight.set(agentId, promise);
+    return promise;
+  }
+
+  private sendRefreshAgent(
+    agentId: string,
+    requestId?: string,
+  ): Promise<AgentRefreshedStatusPayload> {
     const resolvedRequestId = this.createRequestId(requestId);
     const message = SessionInboundMessageSchema.parse({
       type: "refresh_agent_request",

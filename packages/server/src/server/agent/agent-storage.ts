@@ -75,6 +75,8 @@ const STORED_AGENT_SCHEMA = z.object({
   internal: z.boolean().optional(),
   archivedAt: z.string().nullable().optional(),
   owner: AgentOwnerSchema.optional(),
+  // COMPAT(modelSelectionRequired): added in v0.11.0; absent means "not required".
+  modelSelectionRequired: z.boolean().optional(),
 });
 
 export type SerializableAgentConfig = Pick<

@@ -2,7 +2,7 @@ import equal from "fast-deep-equal";
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
-import type { AgentMemo } from "@getpaseo/protocol/messages";
+import type { AgentMemo, AgentRestoreStatePayload } from "@getpaseo/protocol/messages";
 import type { ViewedTimelineOwner } from "@/timeline/viewed-timeline-sync";
 import type { AgentDirectoryEntry } from "@/types/agent-directory";
 import {
@@ -88,6 +88,10 @@ export interface Agent {
   runtimeInfo?: AgentRuntimeInfo;
   lastUsage?: AgentUsage;
   lastError?: string | null;
+  /** 主机报告的恢复进度；主机没有信号时为 null。 */
+  restoreState?: AgentRestoreStatePayload | null;
+  /** 记录的模型已失效，用户还没选替代模型。 */
+  modelSelectionRequired?: boolean;
   title: string | null;
   cwd: string;
   workspaceId?: string;

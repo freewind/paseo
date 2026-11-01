@@ -60,7 +60,6 @@ import {
   buildConfigOverrides,
   isStoredAgentProviderAvailable,
   resolveStoredAgentUpdatedAt,
-  toAgentPersistenceHandle,
 } from "./persistence-hooks.js";
 import { ensureAgentLoaded, ensureUnarchivedAgentLoaded } from "./agent/agent-loading.js";
 import {
@@ -2148,6 +2147,9 @@ export class Session {
     const storedRecord = await this.agentStorage.get(payload.id);
     payload.title = storedRecord?.title ?? null;
     payload.archivedAt = storedRecord?.archivedAt ?? null;
+    // 活快照与 stored-only 快照投影同一份运行时恢复状态。
+    const restoreState = this.agentManager.getRestoreState(payload.id);
+    if (restoreState) payload.restoreState = restoreState;
     return payload;
   }
 
@@ -4801,37 +4803,15 @@ export class Session {
 
     try {
       await this.restoreOwningWorkspaceForLegacyAgentRefresh(agentId);
-      await unarchiveAgentState(this.agentStorage, this.agentManager, agentId);
-      let snapshot: ManagedAgent;
-      const existing = this.agentManager.getAgent(agentId);
-      if (existing) {
-        await this.interruptAgentIfRunning(agentId);
-        snapshot = await this.agentManager.reloadAgentSession(agentId, undefined, {
-          rehydrateFromDisk: true,
-        });
-      } else {
-        const record = await this.agentStorage.get(agentId);
-        if (!record) {
-          throw new Error(`Agent not found: ${agentId}`);
-        }
-        const registeredProviderIds = this.providerSnapshotManager.listRegisteredProviderIds();
-        if (!isStoredAgentProviderAvailable(record, registeredProviderIds)) {
-          throw new Error(`Agent ${agentId} references unavailable provider '${record.provider}'`);
-        }
-        if (!toAgentPersistenceHandle(registeredProviderIds, record.persistence)) {
-          throw new Error(`Agent ${agentId} cannot be refreshed because it lacks persistence`);
-        }
-        // Share the loader's per-agent in-flight operation with timeline fetches.
-        // Unarchiving publishes the record before provider resume finishes, so
-        // the agent pane can otherwise race this request and resume it twice.
-        snapshot = await ensureAgentLoaded(agentId, {
-          agentManager: this.agentManager,
-          agentStorage: this.agentStorage,
-          broadcastTimeline: true,
-          logger: this.sessionLogger,
-        });
-      }
-      await this.agentManager.hydrateTimelineFromProvider(agentId, { broadcast: true });
+      // 一个生命周期步骤：准备运行时、读历史、再发布取消归档的记录。并发的关闭或
+      // 时间线读取插不进来，读失败则 agent 保持归档、可重试，而不是白屏。
+      const snapshot = await this.agentManager.recoverAgentWithHistory(agentId, {
+        resumeWhenMissing: true,
+        rehydrateFromDisk: true,
+        unarchive: true,
+        resumePurpose: "interactive",
+        broadcastTimeline: true,
+      });
       await this.agentUpdates.forwardLiveAgent(snapshot);
       const timelineSize = this.agentManager.getTimeline(agentId).length;
       if (requestId) {

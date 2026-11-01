@@ -6,6 +6,8 @@ import type {
 } from "../runtime.js";
 import type {
   PiAgentMessage,
+  PiSessionEntriesResponse,
+  PiSessionEntry,
   PiModel,
   PiPromptAck,
   PiRpcSlashCommand,
@@ -277,6 +279,17 @@ export class FakePiSession implements PiRuntimeSession {
     return this.messages;
   }
 
+  async getEntries(): Promise<PiSessionEntriesResponse> {
+    // 真实 RPC 返回追加树加活跃叶子；假实现给一条以最后一条为叶子的直线链，是最小可信形状。
+    const entries: PiSessionEntry[] = this.messages.map((message, index) => ({
+      type: "message",
+      id: `entry-${index + 1}`,
+      parentId: index === 0 ? null : `entry-${index}`,
+      message,
+    }));
+    return { entries, leafId: entries.at(-1)?.id ?? null };
+  }
+
   async getAvailableModels(_timeoutMs?: number | null): Promise<PiModel[]> {
     return this.models;
   }
@@ -376,6 +389,8 @@ export class FakePiSession implements PiRuntimeSession {
           throw this.setSessionNameError;
         }
         return {};
+      case "get_entries":
+        return await this.getEntries();
       default:
         throw new Error(`FakePi request does not implement ${command.type}`);
     }

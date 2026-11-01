@@ -875,6 +875,12 @@ const AgentActiveTurnPayloadSchema = z.object({
   startedAt: z.string().nullable(),
 });
 
+const AgentRestoreStatePayloadSchema = z.object({
+  phase: z.enum(["running", "succeeded", "failed"]),
+  operationId: z.string().optional(),
+  error: z.string().optional(),
+});
+
 export const AgentSnapshotPayloadSchema = z.object({
   id: z.string(),
   provider: AgentProviderSchema,
@@ -897,6 +903,10 @@ export const AgentSnapshotPayloadSchema = z.object({
   runtimeInfo: AgentRuntimeInfoSchema.optional(),
   lastUsage: AgentUsageSchema.optional(),
   lastError: z.string().optional(),
+  // COMPAT(agentRestoreState): added in v0.11.0; absent on older daemons.
+  restoreState: AgentRestoreStatePayloadSchema.optional(),
+  // COMPAT(modelSelectionRequired): added in v0.11.0; absent means "not required".
+  modelSelectionRequired: z.boolean().optional(),
   title: z.string().nullable(),
   labels: z.record(z.string(), z.string()).default({}),
   requiresAttention: z.boolean().optional(),
@@ -909,6 +919,7 @@ export const AgentSnapshotPayloadSchema = z.object({
 });
 
 export type AgentSnapshotPayload = z.infer<typeof AgentSnapshotPayloadSchema>;
+export type AgentRestoreStatePayload = z.infer<typeof AgentRestoreStatePayloadSchema>;
 
 export const AgentListItemPayloadSchema = z.object({
   id: z.string(),
@@ -3956,6 +3967,8 @@ export const ServerInfoStatusPayloadSchema = z
         // COMPAT(workspaceSetupRun): added in v0.8.0, remove gate after 2027-09-02.
         workspaceSetupRun: z.boolean().optional(),
         // COMPAT(metadataPrompts): added in v0.11.0, remove gate after 2027-10-11.
+        // COMPAT(agentRestoreState): added in v0.11.0; remove gate after 2027-10-19.
+        agentRestoreState: z.boolean().optional(),
         metadataPrompts: z.boolean().optional(),
         // COMPAT(workspaceTerminals): added in v0.8.0, remove gate after 2027-09-05.
         workspaceTerminals: z.boolean().optional(),

@@ -13,6 +13,8 @@ export interface SeedAgentTimelineOptions {
   epoch?: string;
   nextSeq?: number;
   timestamp?: string;
+  /** 只有握有完整 provider 历史的调用方才能置 true；空容器本身不算证据。 */
+  historyLoaded?: boolean;
 }
 
 interface AgentTimelineState {
@@ -20,6 +22,7 @@ interface AgentTimelineState {
   projection: TimelineProjection;
   minSeq: number;
   nextSeq: number;
+  historyLoaded: boolean;
 }
 const DEFAULT_TIMELINE_FETCH_LIMIT = 200;
 function cloneRow<T extends AgentTimelineRow>(row: T): T {
@@ -31,6 +34,26 @@ export class InMemoryAgentTimelineStore {
 
   has(agentId: string): boolean {
     return this.states.has(agentId);
+  }
+
+  /**
+   * 这次容器的内容是不是一次读完的历史。`has` 回答的是另一个问题：读失败会留下
+   * 空容器，把这种容器当已加载，下一次就会永远跳过历史。
+   */
+  isHistoryLoaded(agentId: string): boolean {
+    return this.states.get(agentId)?.historyLoaded ?? false;
+  }
+
+  markHistoryLoaded(agentId: string): void {
+    this.requireState(agentId).historyLoaded = true;
+  }
+
+  /**
+   * 行还属于上一个运行时：留在屏幕上，但不再算已加载，新会话必须重放自己的历史。
+   */
+  markHistoryStale(agentId: string): void {
+    const state = this.states.get(agentId);
+    if (state) state.historyLoaded = false;
   }
 
   initialize(agentId: string, options?: SeedAgentTimelineOptions): void {
@@ -45,6 +68,7 @@ export class InMemoryAgentTimelineStore {
       projection,
       minSeq: projection.getRows()[0]?.seqStart ?? 0,
       nextSeq,
+      historyLoaded: options?.historyLoaded ?? false,
     });
   }
 

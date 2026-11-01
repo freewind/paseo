@@ -79,6 +79,8 @@ export function projectAgentSnapshot(agent: Agent): AgentSnapshotPayload {
     ...(agent.runtimeInfo ? { runtimeInfo: agent.runtimeInfo } : {}),
     ...(agent.lastUsage ? { lastUsage: agent.lastUsage } : {}),
     ...(agent.lastError ? { lastError: agent.lastError } : {}),
+    ...(agent.restoreState ? { restoreState: agent.restoreState } : {}),
+    ...(agent.modelSelectionRequired ? { modelSelectionRequired: true } : {}),
     title: agent.title,
     labels: agent.labels,
     requiresAttention: agent.requiresAttention ?? false,
@@ -123,6 +125,10 @@ export function normalizeAgentSnapshot(snapshot: AgentSnapshotPayload, serverId:
     runtimeInfo: snapshot.runtimeInfo,
     lastUsage: snapshot.lastUsage,
     lastError: snapshot.lastError ?? null,
+    // COMPAT(agentRestoreState): 老 daemon 没有这个字段，UI 统一把 null 当“没有信号”。
+    restoreState: snapshot.restoreState ?? null,
+    // COMPAT(modelSelectionRequired): 老 daemon 不带这个字段，表示模型不需要重选。
+    modelSelectionRequired: snapshot.modelSelectionRequired === true,
     title: snapshot.title ?? null,
     cwd: snapshot.cwd,
     workspaceId: snapshot.workspaceId,

@@ -283,6 +283,21 @@ export class ProviderSnapshotManager {
     for (const client of Object.values(this.providerClients)) this.ownedClients.add(client);
   }
 
+  /**
+   * 这个 cwd 已经加载好的目录，没有就返回 null。绝不预热目标、解析缓存 key 或
+   * 询问 provider：调用方不能接受多起一次 provider。
+   */
+  peekCachedCatalog(input: {
+    provider: AgentProvider;
+    cwd: string;
+  }): { models: AgentModelDefinition[] } | null {
+    const snapshotCwd = resolveSnapshotCwd(input.cwd);
+    const key = this.targets.get(snapshotCwd)?.bindings.get(input.provider)?.key;
+    if (!key) return null;
+    const models = this.catalogs.get(key)?.get(input.provider)?.result?.entry.models;
+    return models ? { models } : null;
+  }
+
   getSnapshot(cwd?: string): ProviderSnapshot {
     const target = resolveProviderSnapshotTarget(cwd);
     return this.getSnapshotForTarget(target);

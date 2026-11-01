@@ -59,7 +59,9 @@ import {
   type ImportedTimelineEntry,
   type ImportableProviderSession,
   type ListImportableSessionsOptions,
+  type AgentModelDefinition,
 } from "./agent-sdk-types.js";
+import { filterSelectableAgentModels } from "./agent-sdk-types.js";
 import { buildArchivedAgentRecord, type ArchivedStoredAgentRecord } from "./agent-archive.js";
 import { toStoredAgentRecord } from "./agent-projections.js";
 import type { StoredAgentRecord, AgentStorage } from "./agent-storage.js";
@@ -101,7 +103,12 @@ import {
   type ProviderSubagentStoreEvent,
 } from "./provider-subagents/store.js";
 import { withTimeout } from "../../utils/promise-timeout.js";
-import { extractAttention } from "../persistence-hooks.js";
+import {
+  buildConfigOverrides,
+  extractAttention,
+  extractTimestamps,
+  toAgentPersistenceHandle,
+} from "../persistence-hooks.js";
 
 const RELOAD_SESSION_CLOSE_TIMEOUT_MS = 3_000;
 const INTERRUPT_SESSION_TIMEOUT_MS = 2_000;
@@ -184,6 +191,8 @@ interface NormalizeConfigOptions {
   env?: Record<string, string>;
   /** Defaults to interactive. A history load reads persisted state and runs nothing. */
   purpose?: AgentResumePurpose;
+  /** 记录里的模型已从目录消失时，回退到默认模型；创建会话时不开，保留原样透传。 */
+  ensureModelSelectable?: boolean;
 }
 
 interface TimeoutOptions {
@@ -345,6 +354,14 @@ export interface AgentManagerOptions {
   onWorkspaceStateMayHaveChanged?: (params: { cwd: string }) => void;
   timelineStore?: InMemoryAgentTimelineStore;
   durableTimelineStore?: AgentTimelineStore;
+  /**
+   * 只读已缓存的 provider 目录，绝不预热、解析缓存 key 或启动 provider：恢复只靠它
+   * 确认模型真的失效。
+   */
+  peekProviderCatalog?: (input: {
+    provider: AgentProvider;
+    cwd: string;
+  }) => { models: AgentModelDefinition[] } | null;
   terminalManager?: TerminalManager | null;
   mcpBaseUrl?: string;
   mcpAuthToken?: string;
@@ -445,6 +462,10 @@ interface ManagedAgentBase {
   pendingReplacement: boolean;
   persistence: AgentPersistenceHandle | null;
   historyPrimed: boolean;
+  /**
+   * 缓存目录确认记录里的模型已消失，用户还没选替代。发送被挡住，历史仍可读。
+   */
+  modelSelectionRequired: boolean;
   lastUserMessageAt: Date | null;
   activeTurnId: string | null;
   activeTurnStartedAt: Date | null;
@@ -501,6 +522,28 @@ export type ManagedAgent =
   | ManagedAgentRunning
   | ManagedAgentError
   | ManagedAgentClosed;
+
+/** 最近一次恢复的运行时状态，从不持久化。 */
+export interface AgentRestoreState {
+  phase: "running" | "succeeded" | "failed";
+  operationId: string;
+  error?: string;
+}
+
+interface RestoreOperation {
+  operationId: string;
+  phase: AgentRestoreState["phase"];
+  error?: string;
+  promise?: Promise<ManagedAgent>;
+  /**
+   * 恢复还在跑时另一个调用方带来的意图，读成功后、本次操作结束前合并执行一次，
+   * 这样共享 promise 不会把它的取消归档吞掉。
+   */
+  pendingUnarchive?: { updates?: { workspaceId?: string; labels?: AgentLabelPatch } };
+  pendingRehydrateFromDisk?: boolean;
+  /** 意图应用完，合并窗口关闭。 */
+  intentsConsumed?: boolean;
+}
 
 export interface AgentMetricsSnapshot {
   total: number;
@@ -781,6 +824,11 @@ export class AgentManager {
   private readonly runtimeCleanupIdentities = new WeakMap<AgentSession, object>();
   private readonly collectingRuntimes = new Set<string>();
   private readonly lifecycleMutationTails = new Map<string, Promise<void>>();
+  private readonly restoreOperations = new Map<string, RestoreOperation>();
+  private readonly peekProviderCatalog?: (input: {
+    provider: AgentProvider;
+    cwd: string;
+  }) => { models: AgentModelDefinition[] } | null;
   private readonly agentStreamCoalescer: AgentStreamCoalescer;
   private mcpBaseUrl: string | null;
   private readonly mcpAuthToken: string | null;
@@ -810,6 +858,7 @@ export class AgentManager {
     this.idFactory = options.idFactory ?? (() => randomUUID());
     this.registry = options?.registry;
     this.durableTimelineStore = options?.durableTimelineStore;
+    this.peekProviderCatalog = resolvePeekProviderCatalog(options);
     this.onAgentAttention = options?.onAgentAttention;
     this.onWorkspaceStateMayHaveChanged = options?.onWorkspaceStateMayHaveChanged;
     this.mcpBaseUrl = options?.mcpBaseUrl ?? null;
@@ -1510,16 +1559,18 @@ export class AgentManager {
     // settled before the config is prepared, because a history load reads an archived
     // agent whose working directory may be gone.
     const record = this.registry ? await this.registry.get(resolvedAgentId) : null;
-    const currentResumeOptions = record
-      ? { purpose: record.archivedAt ? ("history" as const) : ("interactive" as const) }
-      : resumeOptions;
-    const purpose = currentResumeOptions?.purpose ?? "interactive";
+    // 明确传入的 purpose 压过记录的归档状态：取消归档要在记录还写着 archived 时
+    // 就按交互会话准备，归档事实要等读成功才清。
+    const purpose = resumeOptions?.purpose ?? (record?.archivedAt ? "history" : "interactive");
+    const currentResumeOptions = { ...resumeOptions, purpose };
 
+    // 恢复内容不该为了校验旧模型多起一个 provider 进程：跳过目录查找，保留会话记录的模型。
     const { storedConfig, launchConfig, paseoToolPolicy } = await this.prepareSessionConfig(
       mergedConfig,
       resolvedAgentId,
-      { purpose },
+      { purpose, ensureModelSelectable: false, skipModelResolution: true },
     );
+    const modelSelectionRequired = this.resolveModelSelectionRequired(storedConfig);
     const client = this.requireClient(handle.provider);
     const available = await client.isAvailable();
     if (!available) {
@@ -1550,9 +1601,12 @@ export class AgentManager {
       currentResumeOptions,
     );
     await this.requireExternalMcpSupport(session, providerLaunchConfig, launchContext);
+    // 屏幕上的行属于刚释放的会话：留着显示，但不算已加载，新会话要重放自己的历史。
+    this.timelineStore.markHistoryStale(resolvedAgentId);
     return this.registerSession(session, storedConfig, resolvedAgentId, {
       ...options,
       persistence: handle,
+      modelSelectionRequired,
       restoring: true,
     });
   }
@@ -1765,6 +1819,12 @@ export class AgentManager {
     const { storedConfig, launchConfig, paseoToolPolicy } = await this.prepareSessionConfig(
       refreshConfig,
       agentId,
+      // 磁盘重建也是恢复：保留记录里的模型，不为用户没要求的目录查询启动 provider。
+      { ensureModelSelectable: !rehydrateFromDisk, skipModelResolution: rehydrateFromDisk },
+    );
+    const modelSelectionRequired = this.resolveReloadModelSelection(
+      storedConfig,
+      rehydrateFromDisk,
     );
     const hadPreviousPaseoToolPolicy = this.paseoToolPolicies.has(agentId);
     const previousPaseoToolPolicy = this.paseoToolPolicies.get(agentId);
@@ -1810,9 +1870,8 @@ export class AgentManager {
       this.assertAcceptingAgentRegistrations();
 
       if (rehydrateFromDisk) {
-        // Wipe the in-memory timeline so registerSession mints a new epoch and
-        // hydrateTimelineFromProvider re-streams the freshly read provider history.
-        this.timelineStore.delete(agentId);
+        // 替换会话要重放自己的历史；屏幕上的行来自刚释放的运行时，先留着但标记未加载。
+        this.timelineStore.markHistoryStale(agentId);
         for (const event of this.providerSubagents.deleteParent(agentId)) {
           this.dispatch({ type: "provider_subagent", event });
         }
@@ -1828,6 +1887,7 @@ export class AgentManager {
         updatedAt: existing.updatedAt,
         lastUserMessageAt: existing.lastUserMessageAt,
         historyPrimed: rehydrateFromDisk ? false : preservedHistoryPrimed,
+        modelSelectionRequired,
         lastUsage: preservedLastUsage,
         lastError: preservedLastError,
         attention: preservedAttention,
@@ -1854,6 +1914,252 @@ export class AgentManager {
           await this.closeUnregisteredSession(session);
         }
       }
+    }
+  }
+
+  /**
+   * 把存储里的 agent 与历史作为一步恢复：准备运行时、读 provider 历史、提交取消归档
+   * 共用同一个 per-agent 队列，并发的关闭、归档或第二次刷新插不进来。
+   *
+   * 恢复期间重复调用共享这次操作，而不是再排一次。结束后的阶段保留在
+   * {@link getRestoreState}，直到下一次恢复替换它。
+   */
+  async recoverAgentWithHistory(
+    agentId: string,
+    options?: {
+      /** 重新从磁盘会话加载活着的运行时，而不是复用它。 */
+      rehydrateFromDisk?: boolean;
+      /** 没有活运行时就从存储记录恢复。 */
+      resumeWhenMissing?: boolean;
+      /** 历史读成功后才提交 archivedAt: null。 */
+      unarchive?: boolean;
+      unarchiveUpdates?: { workspaceId?: string; labels?: AgentLabelPatch };
+      resumePurpose?: AgentResumeSessionOptions["purpose"];
+      broadcastTimeline?: boolean | (() => boolean);
+      overrides?: Partial<AgentSessionConfig>;
+    },
+  ): Promise<ManagedAgent> {
+    const running = this.restoreOperations.get(agentId);
+    if (running?.phase === "running" && running.promise && running.intentsConsumed !== true) {
+      this.mergeRestoreIntent(running, options);
+      return running.promise;
+    }
+
+    const operation: RestoreOperation = { operationId: randomUUID(), phase: "running" };
+    this.restoreOperations.set(agentId, operation);
+    const promise = this.trackAgentRegistrationOperation(
+      this.runLifecycleMutation(agentId, () =>
+        this.recoverAgentWithHistoryUnlocked(agentId, operation, options),
+      ),
+    ).then(
+      (agent) => {
+        operation.phase = "succeeded";
+        this.publishRestoreState(agentId, operation);
+        return agent;
+      },
+      (error: unknown) => {
+        operation.phase = "failed";
+        operation.error = error instanceof Error ? error.message : String(error);
+        this.publishRestoreState(agentId, operation);
+        throw error;
+      },
+    );
+    operation.promise = promise;
+    return promise;
+  }
+
+  /** 最近一次恢复的状态，供快照投影；从不写进 agent 记录。 */
+  getRestoreState(agentId: string): AgentRestoreState | null {
+    const operation = this.restoreOperations.get(agentId);
+    if (!operation) return null;
+    return {
+      phase: operation.phase,
+      operationId: operation.operationId,
+      ...(operation.error ? { error: operation.error } : {}),
+    };
+  }
+
+  /**
+   * 把结束后的阶段推给正在看的人。本地等待已经超时的调用方从快照得知结果，
+   * 不需要再发一次恢复。
+   */
+  private publishRestoreState(agentId: string, operation: RestoreOperation): void {
+    if (this.restoreOperations.get(agentId) !== operation) return;
+    const agent = this.agents.get(agentId);
+    if (agent) {
+      this.emitState(agent);
+      return;
+    }
+    void this.publishStoredRestoreState(agentId);
+  }
+
+  private async publishStoredRestoreState(agentId: string): Promise<void> {
+    try {
+      const record = await this.registry?.get(agentId);
+      if (!record || this.agents.has(agentId)) return;
+      this.dispatchStoredAgentState(record);
+    } catch (error) {
+      this.logger.warn({ err: error, agentId }, "Failed to publish restore state");
+    }
+  }
+
+  private async recoverAgentWithHistoryUnlocked(
+    agentId: string,
+    operation: RestoreOperation,
+    options?: {
+      rehydrateFromDisk?: boolean;
+      resumeWhenMissing?: boolean;
+      unarchive?: boolean;
+      unarchiveUpdates?: { workspaceId?: string; labels?: AgentLabelPatch };
+      resumePurpose?: AgentResumeSessionOptions["purpose"];
+      broadcastTimeline?: boolean | (() => boolean);
+      overrides?: Partial<AgentSessionConfig>;
+    },
+  ): Promise<ManagedAgent> {
+    this.assertAcceptingAgentRegistrations();
+    const registry = this.requireRegistry();
+    const record = await registry.get(agentId);
+    if (!record) {
+      throw new Error(`Agent not found: ${agentId}`);
+    }
+
+    // 读成功之前记录一直保持归档：失败的恢复留下的是可重试的归档状态，而不是半截聊天。
+    const unarchivePending = options?.unarchive === true && record.archivedAt != null;
+    const liveBefore = this.getAgent(agentId);
+    const reuseLoadedRuntime =
+      unarchivePending && liveBefore !== null && liveBefore.historyPrimed === true;
+    if (unarchivePending && !reuseLoadedRuntime) {
+      await this.prepareRuntimeForRestore(agentId, record);
+    }
+
+    let snapshot = this.getAgent(agentId);
+    let runtimeCreated = false;
+    if (!snapshot) {
+      snapshot = await this.resumeAgentFromStoredRecord(agentId, record, options);
+      runtimeCreated = true;
+    } else if (options?.rehydrateFromDisk === true && !reuseLoadedRuntime) {
+      snapshot = await this.reloadAgentSessionInternal(agentId, options.overrides, {
+        rehydrateFromDisk: true,
+      });
+      runtimeCreated = true;
+    }
+
+    try {
+      await this.hydrateTimelineFromProviderUnlocked(agentId, {
+        broadcast: options?.broadcastTimeline ?? false,
+      });
+
+      if (unarchivePending) {
+        await this.commitUnarchive(agentId, record, options?.unarchiveUpdates);
+      }
+      await this.consumeMergedRestoreIntent(agentId, record, operation, unarchivePending);
+    } catch (error) {
+      // 这次创建的运行时不能活过失败：否则记录还是归档，界面却已经是可以发送的输入框。
+      if (runtimeCreated) {
+        await this.closeAgentRuntime(agentId).catch((closeError: unknown) => {
+          this.logger.warn(
+            { err: closeError, agentId },
+            "Failed to close runtime after a failed history restore",
+          );
+        });
+      }
+      throw error;
+    }
+
+    return this.getAgent(agentId) ?? snapshot;
+  }
+
+  /** 释放归档运行时及其原生归档标志，供恢复后的会话重新占用。 */
+  private async prepareRuntimeForRestore(
+    agentId: string,
+    record: StoredAgentRecord,
+  ): Promise<void> {
+    if (this.agents.has(agentId)) await this.closeAgentRuntime(agentId);
+    await this.syncNativeArchiveState(record.provider, record.persistence, "restore");
+  }
+
+  private async resumeAgentFromStoredRecord(
+    agentId: string,
+    record: StoredAgentRecord,
+    options?: {
+      resumeWhenMissing?: boolean;
+      resumePurpose?: AgentResumeSessionOptions["purpose"];
+      overrides?: Partial<AgentSessionConfig>;
+    },
+  ): Promise<ManagedAgent> {
+    if (options?.resumeWhenMissing !== true) {
+      throw new Error(`Agent ${agentId} is not running`);
+    }
+    const handle = toAgentPersistenceHandle(this.getRegisteredProviderIds(), record.persistence);
+    if (!handle) {
+      throw new Error(`Agent ${agentId} cannot be refreshed because it lacks persistence`);
+    }
+    return await this.resumeAgentFromPersistenceInternal(
+      handle,
+      options.overrides ?? buildConfigOverrides(record),
+      agentId,
+      { ...extractTimestamps(record), attention: extractAttention(record) },
+      options.resumePurpose ? { purpose: options.resumePurpose } : undefined,
+    );
+  }
+
+  /**
+   * 记录恢复还在跑时调用方要求了什么。共享 promise 本身只会报成功，不会替它取消归档。
+   */
+  private mergeRestoreIntent(
+    operation: RestoreOperation,
+    options?: {
+      rehydrateFromDisk?: boolean;
+      unarchive?: boolean;
+      unarchiveUpdates?: { workspaceId?: string; labels?: AgentLabelPatch };
+    },
+  ): void {
+    if (operation.intentsConsumed) return;
+    if (options?.unarchive === true && operation.pendingUnarchive === undefined) {
+      operation.pendingUnarchive = { updates: options.unarchiveUpdates };
+    }
+    if (options?.rehydrateFromDisk === true) {
+      operation.pendingRehydrateFromDisk = true;
+    }
+  }
+
+  /**
+   * 读成功后、操作结束前合并执行一次意图。合并进来的磁盘重建已经被这次更新鲜的读取满足，
+   * 再恢复一次只是重复。
+   */
+  private async consumeMergedRestoreIntent(
+    agentId: string,
+    record: StoredAgentRecord,
+    operation: RestoreOperation,
+    unarchiveCommitted: boolean,
+  ): Promise<void> {
+    if (operation.intentsConsumed) return;
+    operation.intentsConsumed = true;
+    const pending = operation.pendingUnarchive;
+    operation.pendingUnarchive = undefined;
+    operation.pendingRehydrateFromDisk = false;
+    if (!pending || unarchiveCommitted) return;
+    const latest = (await this.requireRegistry().get(agentId)) ?? record;
+    if (latest.archivedAt == null) return;
+    await this.commitUnarchive(agentId, latest, pending.updates);
+  }
+
+  private async commitUnarchive(
+    agentId: string,
+    record: StoredAgentRecord,
+    updates?: { workspaceId?: string; labels?: AgentLabelPatch },
+  ): Promise<void> {
+    const registry = this.requireRegistry();
+    const latest = (await registry.get(agentId)) ?? record;
+    await registry.upsert({
+      ...latest,
+      ...(updates?.workspaceId ? { workspaceId: updates.workspaceId } : {}),
+      ...(updates?.labels ? { labels: applyLabelPatch(latest.labels, updates.labels) } : {}),
+      archivedAt: null,
+      updatedAt: new Date().toISOString(),
+    });
+    if (this.getAgent(agentId)) {
+      this.notifyAgentState(agentId);
     }
   }
 
@@ -2253,6 +2559,7 @@ export class AgentManager {
         capabilities: STORED_AGENT_CAPABILITIES,
         config: buildStoredAgentConfig(record),
         runtimeInfo: undefined,
+        modelSelectionRequired: record.modelSelectionRequired === true,
         lifecycle: "closed",
         createdAt: new Date(record.createdAt),
         updatedAt,
@@ -2308,6 +2615,7 @@ export class AgentManager {
     await this.drainSessionEvents(agentId);
 
     agent.config.model = normalizedModelId ?? undefined;
+    agent.modelSelectionRequired = false;
     if (agent.runtimeInfo) {
       agent.runtimeInfo = { ...agent.runtimeInfo, model: normalizedModelId };
     }
@@ -2893,6 +3201,11 @@ export class AgentManager {
       },
       "agent.manager.stream.request",
     );
+    if (existingAgent.modelSelectionRequired) {
+      throw new Error(
+        `Agent ${agentId} needs a model selection before it can run. Pick a model first.`,
+      );
+    }
     if (existingAgent.activeForegroundTurnId || this.runs.hasRun(agentId)) {
       this.logger.trace(
         {
@@ -3537,8 +3850,19 @@ export class AgentManager {
 
   /**
    * Hydrates the runtime timeline from provider history. No-ops if already hydrated.
+   * 在 per-agent 生命周期队列里跑：读进行中不能被并发的关闭或取消归档夺走运行时，
+   * 它们也不能在读的时候开始。
    */
   async hydrateTimelineFromProvider(
+    agentId: string,
+    options?: HydrateTimelineOptions,
+  ): Promise<void> {
+    await this.runLifecycleMutation(agentId, () =>
+      this.hydrateTimelineFromProviderUnlocked(agentId, options),
+    );
+  }
+
+  private async hydrateTimelineFromProviderUnlocked(
     agentId: string,
     options?: HydrateTimelineOptions,
   ): Promise<void> {
@@ -3988,6 +4312,7 @@ export class AgentManager {
       timelineNextSeq?: number;
       persistence?: AgentPersistenceHandle;
       historyPrimed?: boolean;
+      modelSelectionRequired?: boolean;
       lastUsage?: AgentUsage;
       lastError?: string;
       attention?: AttentionState;
@@ -4147,7 +4472,8 @@ export class AgentManager {
       | undefined;
   }): Promise<{ durableTimelineHasRows: boolean }> {
     const { agentId, now, options } = params;
-    const timelineAlreadyPrimed = this.timelineStore.has(agentId);
+    // 容器存在不等于读完：读失败会留下空容器，靠它会永远跳过历史。
+    const timelineAlreadyLoaded = this.timelineStore.isHistoryLoaded(agentId);
     const explicitTimelineSeed = buildExplicitTimelineSeedForRegister(now, options);
     const shouldSeedFromDurable =
       !explicitTimelineSeed && !this.timelineStore.has(agentId) && this.durableTimelineStore;
@@ -4155,11 +4481,15 @@ export class AgentManager {
       ? await this.loadCommittedTimelineSeed(agentId, now)
       : null;
     const durableTimelineHasRows =
-      timelineAlreadyPrimed ||
+      timelineAlreadyLoaded ||
       (durableTimelineSeed != null && (durableTimelineSeed.nextSeq ?? 1) > 1);
     const timelineSeed = explicitTimelineSeed ?? durableTimelineSeed;
     if (timelineSeed || !this.timelineStore.has(agentId)) {
-      this.timelineStore.initialize(agentId, timelineSeed ?? { timestamp: now.toISOString() });
+      this.timelineStore.initialize(agentId, {
+        ...(timelineSeed ?? { timestamp: now.toISOString() }),
+        // 能活到持久 store 的行来自一次读完的读取。
+        historyLoaded: durableTimelineHasRows,
+      });
     }
     if (options?.timelineRows?.length) {
       this.enqueueDurableTimelineBulkInsert(agentId, options.timelineRows);
@@ -4180,6 +4510,7 @@ export class AgentManager {
           lastUserMessageAt?: Date | null;
           labels?: Record<string, string>;
           historyPrimed?: boolean;
+          modelSelectionRequired?: boolean;
           lastUsage?: AgentUsage;
           lastError?: string;
           attention?: AttentionState;
@@ -4220,6 +4551,7 @@ export class AgentManager {
         config,
       ),
       historyPrimed: options?.historyPrimed ?? durableTimelineHasRows,
+      modelSelectionRequired: options?.modelSelectionRequired === true,
       lastUserMessageAt: options?.lastUserMessageAt ?? null,
       lastUsage: options?.lastUsage,
       lastError: options?.lastError,
@@ -4279,6 +4611,7 @@ export class AgentManager {
 
   private discardRetainedAgentState(agentId: string): void {
     this.timelineStore.delete(agentId);
+    this.restoreOperations.delete(agentId);
     this.paseoToolPolicies.delete(agentId);
     this.detachPluginTools(agentId);
     for (const event of this.providerSubagents.deleteParent(agentId)) {
@@ -4558,11 +4891,27 @@ export class AgentManager {
     await this.primeTimelineFromLegacyProviderHistory(agent, broadcast);
   }
 
+  /**
+   * 完整重放拿到手后才丢掉旧行。有行就换新 epoch，让客户端丢掉缓存；空容器保留原 epoch。
+   */
+  private resetTimelineForReplay(agentId: string): void {
+    const hasRows =
+      this.timelineStore.has(agentId) && this.timelineStore.getRows(agentId).length > 0;
+    if (hasRows) {
+      this.timelineStore.delete(agentId);
+    }
+    if (!this.timelineStore.has(agentId)) {
+      this.timelineStore.initialize(agentId, { timestamp: new Date().toISOString() });
+    }
+  }
+
   private async forceHydrateTimelineFromLegacyProviderHistory(
     agent: ActiveManagedAgent,
     broadcast: boolean,
     broadcastTimeline: boolean,
   ): Promise<void> {
+    // 这次强制重放还没成功，先把“已加载”降下来；失败时旧行还在，但不算完成。
+    this.timelineStore.markHistoryStale(agent.id);
     const historyEvents: Extract<AgentStreamEvent, { type: "timeline" }>[] = [];
     const providerSubagentEvents: Extract<AgentStreamEvent, { type: "provider_subagent" }>[] = [];
     for await (const rawEvent of agent.session.streamHistory()) {
@@ -4578,9 +4927,10 @@ export class AgentManager {
 
     this.agentStreamCoalescer.flushAndDiscard(agent.id);
     await this.deleteCommittedTimeline(agent.id);
-    this.timelineStore.delete(agent.id);
-    this.timelineStore.initialize(agent.id, { timestamp: new Date().toISOString() });
+    // 读完之后才替换可见行。读之前就清空，会把失败或中断的重放变成空聊天。
+    this.resetTimelineForReplay(agent.id);
     agent.historyPrimed = true;
+    this.timelineStore.markHistoryLoaded(agent.id);
 
     for (const event of this.providerSubagents.deleteParent(agent.id)) {
       if (broadcast) {
@@ -4622,6 +4972,8 @@ export class AgentManager {
     const historyEvents: Extract<AgentStreamEvent, { type: "timeline" }>[] = [];
     const historySubagentEvents: Extract<AgentStreamEvent, { type: "provider_subagent" }>[] = [];
     agent.historyPrimed = false;
+    // 新一次读开始，旧的“已读完”就不再成立；读失败时保持 false，下一次会重试。
+    this.timelineStore.markHistoryStale(agent.id);
     try {
       // Collect the whole replay before touching either store. A stream that fails
       // halfway then leaves the committed timeline as it was, instead of a partial
@@ -4647,6 +4999,8 @@ export class AgentManager {
     // The replay is the timeline, so drop the rows a previous hydration committed.
     // Keeping them would leave getTimelineRows reading one copy per hydration.
     await this.deleteCommittedTimeline(agent.id);
+    // 完整读已经拿到，才替换屏幕上的旧行。
+    this.resetTimelineForReplay(agent.id);
 
     const timelineEvents: Array<{
       event: Extract<AgentStreamEvent, { type: "timeline" }>;
@@ -4679,6 +5033,7 @@ export class AgentManager {
       }
     }
     agent.historyPrimed = true;
+    this.timelineStore.markHistoryLoaded(agent.id);
 
     if (typeof broadcast !== "function" || !broadcast()) {
       return;
@@ -5665,6 +6020,18 @@ export class AgentManager {
     }
 
     const shouldResolveDefaultModel = options.resolveDefaultModel ?? true;
+    if (shouldResolveDefaultModel && options.ensureModelSelectable === true && normalized.model) {
+      const selectableModels = await this.resolveCatalogSelectableModels(normalized);
+      // null 表示目录取不到（provider 暂时报错）。此时保留请求的模型，不要猜它没了；
+      // 只有目录明确查不到才算失效。
+      if (selectableModels !== null && !modelIsSelectable(normalized.model, selectableModels)) {
+        this.logger.warn(
+          { provider: normalized.provider, model: normalized.model },
+          "Configured model is no longer selectable; falling back to the provider default",
+        );
+        normalized.model = undefined;
+      }
+    }
     if (shouldResolveDefaultModel && !normalized.model) {
       const defaultModelId = await this.resolveDefaultModelId(normalized);
       if (defaultModelId) {
@@ -5700,6 +6067,46 @@ export class AgentManager {
     }
   }
 
+  private async resolveCatalogSelectableModels(
+    config: AgentSessionConfig,
+  ): Promise<AgentModelDefinition[] | null> {
+    const client = this.clients.get(config.provider);
+    if (!client) {
+      return null;
+    }
+    try {
+      const catalog = await client.fetchCatalog({
+        scope: "workspace",
+        cwd: config.cwd,
+        force: false,
+      });
+      return filterSelectableAgentModels(catalog.models);
+    } catch {
+      // 目录取失败（provider 暂时报错或不支持列表）：返回 null 让调用方保留原模型。
+      return null;
+    }
+  }
+
+  /** 磁盘重建保留记录的模型；其它刷新不动这个标志。 */
+  private resolveReloadModelSelection(
+    config: AgentSessionConfig,
+    rehydrateFromDisk: boolean,
+  ): boolean {
+    return rehydrateFromDisk ? this.resolveModelSelectionRequired(config) : false;
+  }
+
+  /**
+   * 只有当已缓存的目录证明配置模型不在了才为 true。目录未知不等于模型丢失，
+   * 恢复也不会为了确认去拉一次目录。
+   */
+  private resolveModelSelectionRequired(config: AgentSessionConfig): boolean {
+    if (!config.model || !this.peekProviderCatalog) return false;
+    const cached = this.peekProviderCatalog({ provider: config.provider, cwd: config.cwd });
+    if (!cached) return false;
+    const selectable = filterSelectableAgentModels(cached.models);
+    return !modelIsSelectable(config.model, selectable);
+  }
+
   private async resolveDefaultModelId(config: AgentSessionConfig): Promise<string | undefined> {
     const client = this.clients.get(config.provider);
     if (!client) {
@@ -5721,11 +6128,19 @@ export class AgentManager {
   private async prepareSessionConfig(
     config: AgentSessionConfig,
     agentId: string,
-    options: { env?: Record<string, string>; purpose?: AgentResumePurpose } = {},
+    options: {
+      env?: Record<string, string>;
+      purpose?: AgentResumePurpose;
+      ensureModelSelectable?: boolean;
+      /** 保持配置模型原样：不取目录，也不回退默认。 */
+      skipModelResolution?: boolean;
+    } = {},
   ): Promise<PreparedSessionConfig> {
     const storedConfig = await this.normalizeConfig(stripInternalPaseoMcpServer(config), {
       env: options.env,
       purpose: options.purpose,
+      ensureModelSelectable: options.ensureModelSelectable,
+      resolveDefaultModel: options.skipModelResolution !== true,
     });
     const paseoToolPolicy = this.paseoToolsEnabled
       ? this.resolvePaseoToolPolicy(storedConfig.provider)
@@ -5983,4 +6398,14 @@ export function commandMayHaveChangedExternalState(command: string): boolean {
     // ahead/behind counts can drift stale until the next refresh.
     /\bgit\s+fetch\b/.test(normalized)
   );
+}
+
+function resolvePeekProviderCatalog(
+  options?: AgentManagerOptions,
+): AgentManagerOptions["peekProviderCatalog"] {
+  return options?.peekProviderCatalog;
+}
+
+function modelIsSelectable(modelId: string, models: readonly AgentModelDefinition[]): boolean {
+  return models.some((model) => model.id === modelId || model.aliases?.includes(modelId));
 }

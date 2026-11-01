@@ -37,6 +37,9 @@ export function asAgentManager(stub: {
   return createStub<SessionOptions["agentManager"]>({
     listProviderSubagentActivity: () => [],
     getRetiredInternalAgent: () => null,
+    // 统一恢复返回 stub 发布的运行时；关心恢复本身的测试会显式替换它。
+    recoverAgentWithHistory: async (agentId: string) =>
+      (stub.getAgent as ((id: string) => unknown) | undefined)?.(agentId) ?? null,
     ...stub,
   });
 }

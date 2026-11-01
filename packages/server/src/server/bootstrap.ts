@@ -1033,6 +1033,8 @@ export async function createPaseoDaemon(
     clients: initialAgentManagerState.clients,
     providerDefinitions: initialAgentManagerState.providerDefinitions,
     registry: agentStorage,
+    // 只读已缓存目录：恢复不能为了校验模型启动 provider。
+    peekProviderCatalog: (input) => providerSnapshotManager.peekCachedCatalog(input),
     appendSystemPrompt: config.appendSystemPrompt,
     onWorkspaceStateMayHaveChanged: ({ cwd }) => {
       workspaceGitService.onWorkspaceStateMayHaveChanged(cwd);

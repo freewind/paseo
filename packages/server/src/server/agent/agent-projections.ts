@@ -106,6 +106,7 @@ export function toStoredAgentRecord(
       : null,
     internal: options?.internal,
     owner: agent.owner,
+    ...(agent.modelSelectionRequired ? { modelSelectionRequired: true } : {}),
   } satisfies StoredAgentRecord;
 }
 
@@ -125,7 +126,9 @@ export function toAgentPayload(
     provider: agent.provider,
     cwd: agent.cwd,
     ...(agent.workspaceId ? { workspaceId: agent.workspaceId } : {}),
-    model: agent.config.model ?? null,
+    // 必须重选但还没选时，模型对外是缺失，不是运行时的默认值。
+    model: agent.modelSelectionRequired ? null : (agent.config.model ?? null),
+    ...(agent.modelSelectionRequired ? { modelSelectionRequired: true } : {}),
     thinkingOptionId,
     effectiveThinkingOptionId,
     ...(runtimeInfo ? { runtimeInfo } : {}),
@@ -237,6 +240,7 @@ export function buildStoredAgentPayload(
     cwd: record.cwd,
     ...(record.workspaceId ? { workspaceId: record.workspaceId } : {}),
     model: record.config?.model ?? null,
+    modelSelectionRequired: record.modelSelectionRequired,
     thinkingOptionId: record.config?.thinkingOptionId ?? null,
     effectiveThinkingOptionId: resolveEffectiveThinkingOptionId({
       runtimeInfo,
@@ -270,7 +274,7 @@ export function toAgentListItemPayload(agent: AgentSnapshotPayload): AgentListIt
     shortId: agent.id.slice(0, 7),
     title: agent.title,
     provider: agent.provider,
-    model: agent.runtimeInfo?.model ?? agent.model,
+    model: agent.modelSelectionRequired ? agent.model : (agent.runtimeInfo?.model ?? agent.model),
     thinkingOptionId: agent.thinkingOptionId,
     effectiveThinkingOptionId: agent.effectiveThinkingOptionId,
     status: agent.status,

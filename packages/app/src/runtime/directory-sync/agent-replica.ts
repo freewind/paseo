@@ -99,13 +99,22 @@ export class AgentDirectoryReplica {
 
   applyDelta(delta: AgentDirectoryDelta): void {
     const before = this.members.has(delta.kind === "remove" ? delta.agentId : delta.agent.id);
+    const previousRestorePhase =
+      delta.kind === "remove"
+        ? undefined
+        : this.storeProjection.get(delta.agent.id)?.restoreState?.phase;
     const result = this.storeProjection.applyDelta(delta);
     if (delta.kind === "remove") {
       this.members.delete(delta.agentId);
       this.advance(delta.agentId);
     } else {
       this.members.add(delta.agent.id);
-      if (!before) this.advance(delta.agent.id);
+      if (!before) {
+        this.advance(delta.agent.id);
+      } else if (previousRestorePhase !== result.agent?.restoreState?.phase) {
+        // 恢复阶段变了：之前发出的读取可能更晚落地，把旧状态写回屏幕，必须作废。
+        this.advance(delta.agent.id);
+      }
     }
     if (result.stoppedRunning) this.onStoppedRunning(result.agentId);
     this.persist(

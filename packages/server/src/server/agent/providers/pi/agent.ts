@@ -84,6 +84,8 @@ import type {
   PiRpcSlashCommand,
   PiRuntimeEvent,
   PiSessionState,
+  PiSessionEntriesResponse,
+  PiSessionEntry,
   PiThinkingLevel,
 } from "./rpc-types.js";
 import { PiUsagePoller, type PiUsagePollScheduler } from "./usage-poller.js";
@@ -234,6 +236,20 @@ function isPiDefinitiveSteerRejection(error: unknown): boolean {
 
 function isPiMissingClearQueueRpc(error: unknown): boolean {
   return toDiagnosticErrorMessage(error) === "Unknown command: clear_queue";
+}
+
+// COMPAT(piGetEntries): added in v0.11.0 for pi binaries without get_entries;
+// remove once the supported pi floor ships it and this fallback can go.
+// 只有二进制明确说没有这个命令才回退。运行时已关闭、断开、超时或其它失败都必须抛出：
+// 把它们当成“没有条目”会把一次失败读报成成功的空历史。
+function isPiMissingGetEntriesRpc(error: unknown): boolean {
+  const message = toDiagnosticErrorMessage(error);
+  if (!message.toLowerCase().includes("get_entries")) {
+    return false;
+  }
+  return /\bunknown\b|\bnot implement(ed)?\b|\bunsupported\b|\bnot supported\b|\bunrecognized\b/i.test(
+    message,
+  );
 }
 
 interface PiRpcAgentSessionOptions {
@@ -931,6 +947,84 @@ function parseExtensionMarkerPayload(
   }
 }
 
+interface PiBranchReplay {
+  messages: PiAgentMessage[];
+  userEntries: PiCapturedUserMessageEntry[];
+}
+
+/**
+ * 会话当前结束所在的分支：叶子的祖先链，从根到叶。
+ *
+ * `get_entries` 返回整棵追加树，里面还有压缩前的历史和用户放弃的分支
+ * （重写过的回答会把旧版本留在树里）。只有从 `leafId` 沿 `parentId` 回到根的链
+ * 才是屏幕上的对话。
+ *
+ * 空叶子是合法的空分支。缺节点、重复 id 或成环说明响应不可信，直接抛错，
+ * 不猜最后一条也不退回整棵树：调用方保留已经有的时间线。
+ */
+export function selectBranchEntries(input: {
+  entries: readonly PiSessionEntry[] | undefined;
+  leafId: string | null;
+}): PiSessionEntry[] {
+  if (input.leafId === null) {
+    if (input.entries?.some((entry) => entry.message)) {
+      throw new Error("Pi returned session entries without an active leaf");
+    }
+    return [];
+  }
+  const byId = new Map<string, PiSessionEntry>();
+  for (const entry of input.entries ?? []) {
+    if (!entry.id) continue;
+    if (byId.has(entry.id)) {
+      throw new Error(`Pi session entries contain duplicate id '${entry.id}'`);
+    }
+    byId.set(entry.id, entry);
+  }
+  const chain: PiSessionEntry[] = [];
+  const visited = new Set<string>();
+  let currentId: string | null = input.leafId;
+  while (currentId !== null) {
+    if (visited.has(currentId)) {
+      throw new Error(`Pi session entry chain contains a cycle at '${currentId}'`);
+    }
+    visited.add(currentId);
+    const entry = byId.get(currentId);
+    if (!entry) {
+      throw new Error(`Pi session entry '${currentId}' is missing from get_entries`);
+    }
+    chain.push(entry);
+    currentId = entry.parentId ?? null;
+  }
+  return chain.toReversed();
+}
+
+function buildBranchReplay(entries: readonly PiSessionEntry[]): PiBranchReplay {
+  const messages: PiAgentMessage[] = [];
+  const userEntries: PiCapturedUserMessageEntry[] = [];
+  for (const entry of entries) {
+    const message = entry.message;
+    if (!message || !isReplayablePiRole(message.role)) continue;
+    const typed = message as PiAgentMessage;
+    messages.push(typed);
+    if (typed.role === "user" && entry.id) {
+      userEntries.push({ id: entry.id, text: getUserMessageText(typed.content) });
+    }
+  }
+  return { messages, userEntries };
+}
+
+function isReplayablePiRole(
+  role: unknown,
+): role is "user" | "custom" | "assistant" | "toolResult" | "bashExecution" {
+  return (
+    role === "user" ||
+    role === "custom" ||
+    role === "assistant" ||
+    role === "toolResult" ||
+    role === "bashExecution"
+  );
+}
+
 function parseCapturedEntries(value: unknown): PiCapturedEntry[] {
   if (!Array.isArray(value)) {
     return [];
@@ -1508,6 +1602,31 @@ export class PiRpcAgentSession implements AgentSession {
 
   async *streamHistory(): AsyncGenerator<AgentStreamEvent> {
     await this.requestEntryCapture("history");
+    // 重放展示完整活跃分支，所以压缩前的历史在恢复或分叉副本里仍然可见；
+    // 模型自己的上下文仍按 Pi 的压缩状态走。
+    let branch: PiSessionEntry[] | null = null;
+    try {
+      branch = await this.requestBranchEntries();
+    } catch (error) {
+      // 只有明确的未知命令才说明二进制没有这个 RPC。运行时关闭或请求失败必须抛出：
+      // 回退会把一次失败读报成成功，调用方会用空重放替换时间线。
+      if (!isPiMissingGetEntriesRpc(error)) {
+        throw error;
+      }
+    }
+    if (branch) {
+      const replay = buildBranchReplay(branch);
+      yield* streamPiHistory(
+        this.provider,
+        replay.messages,
+        replay.userEntries,
+        {},
+        // At most eight 2 MiB child files per replay; later cards retain their summaries.
+        createPiExtensionHost(this.logger, undefined, 16 * 1024 * 1024),
+        this.closeController.signal,
+      );
+      return;
+    }
     yield* streamPiHistory(
       this.provider,
       await this.runtimeSession.getMessages(),
@@ -1517,6 +1636,16 @@ export class PiRpcAgentSession implements AgentSession {
       createPiExtensionHost(this.logger, undefined, 16 * 1024 * 1024),
       this.closeController.signal,
     );
+  }
+
+  /**
+   * 会话当前结束所在分支的条目，根在前。响应带整棵追加树，在这里选出叶子的祖先链。
+   */
+  private async requestBranchEntries(): Promise<PiSessionEntry[]> {
+    const data = (await this.runtimeSession.request({
+      type: "get_entries",
+    })) as PiSessionEntriesResponse;
+    return selectBranchEntries({ entries: data.entries, leafId: data.leafId ?? null });
   }
 
   async getRuntimeInfo(): Promise<AgentRuntimeInfo> {
@@ -2767,7 +2896,7 @@ export class PiRpcAgentClient implements AgentClient {
       throw error;
     }
     try {
-      const initialState = await this.applyResumeModel(runtimeSession, resumeConfig.model);
+      const initialState = await this.applyResumeModel(runtimeSession);
       return new PiRpcAgentSession({
         runtimeSession,
         config: {
@@ -2789,33 +2918,12 @@ export class PiRpcAgentClient implements AgentClient {
     }
   }
 
-  // Pi resumes a session on the model it recorded, or on its default when that model
-  // is gone. Switching afterwards keeps a removed model from blocking the resume.
-  private async applyResumeModel(
-    runtimeSession: PiRuntimeSession,
-    requestedModel: string | undefined,
-  ): Promise<PiSessionState> {
-    const state = await runtimeSession.getState();
-    const reference = parseModelReference(requestedModel ?? null);
-    if (!reference?.provider) {
-      return state;
-    }
-    const { provider, id } = reference;
-    const isRequested = (model: PiModel | null | undefined) =>
-      model?.provider === provider && model.id === id;
-    if (isRequested(state.model)) {
-      return state;
-    }
-    const availableModels = await runtimeSession.getAvailableModels();
-    if (!availableModels.some(isRequested)) {
-      this.logger.warn(
-        { requestedModel, sessionModel: modelToId(state.model) },
-        "Pi resumed on the session's model because the requested model is unavailable",
-      );
-      return state;
-    }
-    await runtimeSession.setModel(provider, id);
-    return runtimeSession.getState();
+  /**
+   * 恢复的 Pi 会话已经在它记录的模型上。恢复内容不该为了校验或切换模型多起
+   * provider 工作：不列模型，也不 setModel。用户明确选择走会话自己的 setModel。
+   */
+  private async applyResumeModel(runtimeSession: PiRuntimeSession): Promise<PiSessionState> {
+    return await runtimeSession.getState();
   }
 
   async fetchCatalog(

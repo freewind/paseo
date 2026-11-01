@@ -51,8 +51,19 @@ export class WorkspaceDirectoryReplica {
     workspaces: Map<string, WorkspaceDescriptor>;
     projects: Map<string, ProjectDescriptor>;
   }): void {
+    // 缓存里的 archivingAt 属于已经没了的 daemon 进程；留着会把每一行钉在“归档中”，
+    // 直到那个 daemon 碰巧再发一次。
     this.replace({
-      workspaces: new Map([...input.workspaces, ...this.workspaces]),
+      workspaces: new Map([
+        ...[...input.workspaces].map(
+          ([id, workspace]) =>
+            [
+              id,
+              workspace.archivingAt === null ? workspace : { ...workspace, archivingAt: null },
+            ] as const,
+        ),
+        ...this.workspaces,
+      ]),
       projects: new Map([...input.projects, ...this.projects]),
     });
     useSessionStore.getState().setHasWorkspaceDirectorySnapshot(this.serverId, true);
@@ -64,7 +75,8 @@ export class WorkspaceDirectoryReplica {
   ): void {
     if (shouldSuppressWorkspaceForLocalArchive({ serverId: this.serverId, workspace })) return;
     if (project) this.setProject(project);
-    this.setWorkspace(workspace);
+    // archivingAt 只在 daemon 内存里活一次归档；缓存可能比它活得久（daemon 中途重启或归档失败）。
+    this.setWorkspace({ ...workspace, archivingAt: null });
   }
 
   commitSnapshot(
