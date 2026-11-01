@@ -373,6 +373,8 @@ export interface AgentTaskItem {
   id?: string;
   status?: "pending" | "in_progress" | "completed";
   activeForm?: string;
+  /** 任务的长正文；可选，多数 provider 只给标题。 */
+  description?: string;
 }
 
 export type AgentTimelineItem =

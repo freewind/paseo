@@ -828,6 +828,7 @@ export interface TodoEntry {
   id?: string;
   status?: "pending" | "in_progress" | "completed";
   activeForm?: string;
+  description?: string;
 }
 
 export type TaskActivity =
@@ -1302,6 +1303,7 @@ function appendTodoList(
     ...(item.id ? { id: item.id } : {}),
     ...(item.status ? { status: item.status } : {}),
     ...(item.activeForm ? { activeForm: item.activeForm } : {}),
+    ...(item.description ? { description: item.description } : {}),
   }));
 
   const previousIndex = state.findLastIndex(
@@ -1545,6 +1547,7 @@ function reduceTimelineEvent(
         id: todo.id,
         status: todo.status,
         activeForm: todo.activeForm,
+        description: todo.description,
       }));
       return appendTodoList(state, event.provider, items, timestamp, timelineCursor);
     }
