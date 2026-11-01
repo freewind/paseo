@@ -1,7 +1,9 @@
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
 import { Button } from "@/components/ui/button";
+import { ScrollView } from "@/components/ui/scroll-view";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
+import type { QuickReply } from "@getpaseo/protocol/messages";
 import type { TFunction } from "i18next";
 import { SquarePen } from "lucide-react-native";
 import React, {
@@ -85,6 +87,14 @@ import {
 } from "@/screens/agent/agent-ready-screen-bottom-anchor";
 import { WorkspaceDraftAgentTab } from "@/composer/draft/workspace-tab";
 import { AgentTracks, hasAgentTracks } from "@/panels/agent-tracks";
+import { QuickRepliesBar } from "@/quick-replies/quick-replies-bar";
+import { QuickRepliesEditor } from "@/quick-replies/quick-replies-editor";
+import { useIsQuickRepliesSupported, useQuickReplies } from "@/quick-replies/use-quick-replies";
+import { composerQuickReplyKey, submitQuickReply } from "@/composer/quick-reply-submit";
+import { QUICK_REPLIES_RAIL_MIN_WIDTH } from "@/quick-replies/layout";
+import { resolveSideRailWidth } from "@/agent-stream/chat-outline/text-rail-model";
+import { resolveContentMaxWidth } from "@/hooks/use-settings";
+import { useContainerWidth } from "@/hooks/use-container-width";
 import { ParentAgentCallout, useParentAgentId } from "@/subagents/parent";
 import { useCreateFlowStore } from "@/stores/create-flow-store";
 import { buildDraftStoreKey, generateDraftId } from "@/stores/draft-keys";
@@ -1136,6 +1146,28 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     rows: subagentRows,
   });
   const hasPluginComposerPills = useHasPluginComposerPills(serverId, workspaceId, agentId);
+  const isCompactFormFactor = useIsCompactFormFactor();
+  const quickReplies = useQuickReplies(serverId);
+  const quickRepliesSupported = useIsQuickRepliesSupported(serverId);
+  const contentMaxWidth = useSettings(resolveContentMaxWidth);
+  const { onLayout: onPaneLayout, width: paneWidth } = useContainerWidth();
+  // 右侧留缝够宽才把常用回复立成常驻面板；不够时改为输入框上方的快捷条。
+  const quickRepliesRailWidth =
+    quickRepliesSupported && showsComposer && !isCompactFormFactor
+      ? resolveSideRailWidth(paneWidth, contentMaxWidth)
+      : null;
+  const showsQuickRepliesRail =
+    quickRepliesRailWidth !== null && quickRepliesRailWidth >= QUICK_REPLIES_RAIL_MIN_WIDTH;
+  const [isQuickRepliesEditorOpen, setIsQuickRepliesEditorOpen] = useState(false);
+  const openQuickRepliesEditor = useCallback(() => setIsQuickRepliesEditorOpen(true), []);
+  const closeQuickRepliesEditor = useCallback(() => setIsQuickRepliesEditorOpen(false), []);
+  const saveQuickReplies = useCallback(
+    (next: QuickReply[]) => {
+      setIsQuickRepliesEditorOpen(false);
+      void quickReplies.saveReplies(next);
+    },
+    [quickReplies],
+  );
   const hasActiveComposer = !agentState.archivedAt && !isArchivingCurrentAgent;
   const parentAgentId = useParentAgentId(serverId, agentId);
   // With a composer the parent is a pill above it; without one, the box takes the composer's place.
@@ -1193,6 +1225,35 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
       composerState,
     ],
   );
+  // 点一条就立即发出：走 composer 登记的同一发送入口，只读、提交中与运行中排队都由它把关。
+  const sendQuickReply = useCallback(
+    (text: string) => {
+      const outcome = submitQuickReply(composerQuickReplyKey(serverId, agentId), text);
+      if (outcome === "sent") {
+        toastApi.show(t("composer.quickReplies.sent"), { variant: "success" });
+      } else if (outcome === "queued") {
+        toastApi.show(t("composer.quickReplies.queued"));
+      }
+    },
+    [agentId, serverId, t, toastApi],
+  );
+  const quickRepliesRail = useMemo(
+    () =>
+      showsQuickRepliesRail ? (
+        <ScrollView
+          style={styles.quickRepliesRailScroll}
+          contentContainerStyle={styles.quickRepliesRailContent}
+          showsVerticalScrollIndicator
+        >
+          <QuickRepliesBar
+            replies={quickReplies.replies}
+            onSelect={sendQuickReply}
+            onEdit={openQuickRepliesEditor}
+          />
+        </ScrollView>
+      ) : null,
+    [sendQuickReply, openQuickRepliesEditor, quickReplies.replies, showsQuickRepliesRail],
+  );
   const parentCallout = parentAgentId ? (
     <ParentAgentCallout serverId={serverId} parentAgentId={parentAgentId} />
   ) : null;
@@ -1231,23 +1292,36 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
           hasAppliedAuthoritativeHistory={hasAppliedAuthoritativeHistory}
           hasActiveComposer={hasActiveComposer}
           hasVisibleAgentTracks={hasVisibleAgentTracks}
+          rightGutter={quickRepliesRail ?? undefined}
           toast={toastApi}
           onOpenWorkspaceFile={onOpenWorkspaceFile}
           onRegenerateUserMessage={onRegenerateUserMessage}
         />
       </RenderProfile>
       {hasActiveComposer ? (
-        <AgentTracks
-          serverId={serverId}
-          workspaceId={workspaceId}
-          agentId={agentId}
-          parentAgentId={parentPillAgentId}
-          subagentRows={subagentRows}
-          tasks={tasks}
-          archiveFinishedStatus={archiveFinishedSubagents.status}
-          onArchiveFinished={archiveFinishedSubagents.archiveFinished}
-          hasPluginComposerPills={hasPluginComposerPills}
-        />
+        <>
+          {quickRepliesSupported && showsComposer && !showsQuickRepliesRail ? (
+            <View style={styles.quickRepliesInline} testID="quick-replies-inline">
+              <QuickRepliesBar
+                replies={quickReplies.replies}
+                onSelect={sendQuickReply}
+                onEdit={openQuickRepliesEditor}
+                showTitle={false}
+              />
+            </View>
+          ) : null}
+          <AgentTracks
+            serverId={serverId}
+            workspaceId={workspaceId}
+            agentId={agentId}
+            parentAgentId={parentPillAgentId}
+            subagentRows={subagentRows}
+            tasks={tasks}
+            archiveFinishedStatus={archiveFinishedSubagents.status}
+            onArchiveFinished={archiveFinishedSubagents.archiveFinished}
+            hasPluginComposerPills={hasPluginComposerPills}
+          />
+        </>
       ) : null}
     </View>
   );
@@ -1288,7 +1362,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
       setText={agentInputDraft.replaceText}
       onRewindComplete={handleRewindComplete}
     >
-      <View style={styles.root}>
+      <View style={styles.root} onLayout={onPaneLayout}>
         {dock}
 
         {isArchivingCurrentAgent ? (
@@ -1298,6 +1372,14 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
             <Text style={styles.archivingSubtitle}>{t("agentPanel.states.archivingSubtitle")}</Text>
           </View>
         ) : null}
+
+        <QuickRepliesEditor
+          visible={isQuickRepliesEditorOpen}
+          mountKey={isQuickRepliesEditorOpen ? "open" : "closed"}
+          replies={quickReplies.replies}
+          onSave={saveQuickReplies}
+          onClose={closeQuickRepliesEditor}
+        />
       </View>
     </RewindComposerRestoreProvider>
   );
@@ -1368,6 +1450,7 @@ const AgentStreamSection = memo(function AgentStreamSection({
   hasAppliedAuthoritativeHistory,
   hasActiveComposer,
   hasVisibleAgentTracks,
+  rightGutter,
   toast,
   onOpenWorkspaceFile,
   onRegenerateUserMessage,
@@ -1381,6 +1464,7 @@ const AgentStreamSection = memo(function AgentStreamSection({
   hasAppliedAuthoritativeHistory: boolean;
   hasActiveComposer: boolean;
   hasVisibleAgentTracks: boolean;
+  rightGutter?: ReactNode;
   toast: ReturnType<typeof useToastHost>["api"];
   onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
   onRegenerateUserMessage?: (input: RegenerateUserMessageInput) => Promise<void>;
@@ -1454,6 +1538,7 @@ const AgentStreamSection = memo(function AgentStreamSection({
       pendingMessageSubmissions={pendingMessageSubmissions}
       turnPresentation={turnPresentation}
       onOpenWorkspaceFile={onOpenWorkspaceFile}
+      rightGutter={rightGutter}
       onRegenerateUserMessage={onRegenerateUserMessage}
     />
   );
@@ -1741,6 +1826,21 @@ const styles = StyleSheet.create((theme) => ({
     flex: 1,
     overflow: "hidden",
     ...(isWeb ? { userSelect: "none" as const } : {}),
+  },
+  // 与输入列同一宽度轨道；面板立不起来时常用回复就住在这里，紧贴输入框上沿。
+  quickRepliesInline: {
+    width: "100%",
+    maxWidth: theme.contentMaxWidth,
+    alignSelf: "center",
+    paddingHorizontal: theme.spacing[2],
+    paddingBottom: theme.spacing[1],
+  },
+  quickRepliesRailScroll: {
+    flex: 1,
+    minHeight: 0,
+  },
+  quickRepliesRailContent: {
+    paddingBottom: theme.spacing[2],
   },
   timelineSyncCalloutRail: {
     width: "100%",

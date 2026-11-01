@@ -78,6 +78,8 @@ import type { RegenerateUserMessageInput } from "@/components/rewind/regenerate-
 import { type StreamSegmentRenderers, type StreamViewportHandle } from "./strategy";
 import { ChatOutlineTextRail } from "@/agent-stream/chat-outline/text-rail";
 import { ChatOutlineRail } from "@/agent-stream/chat-outline/rail";
+import { resolveSideRailWidth } from "@/agent-stream/chat-outline/text-rail-model";
+import { useContainerWidth } from "@/hooks/use-container-width";
 import { useChatOutline } from "@/agent-stream/chat-outline/use-chat-outline";
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
 import { planTimelineTailFetch } from "@/timeline/timeline-sync-plan";
@@ -292,6 +294,8 @@ export interface AgentStreamViewProps {
   bottomOverlayControlClearance?: number;
   toast?: ToastApi | null;
   onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
+  /** 窗格右侧的常驻面板：占满整列高度，宽度预算与大纲栏共用。 */
+  rightGutter?: ReactNode;
   readOnly?: boolean;
   /** 回退删掉某条用户消息后，原样重发它。 */
   onRegenerateUserMessage?: (input: RegenerateUserMessageInput) => Promise<void>;
@@ -356,6 +360,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
       bottomOverlayControlClearance,
       toast,
       onOpenWorkspaceFile,
+      rightGutter,
       readOnly = false,
       onRegenerateUserMessage,
       historyPagination,
@@ -1286,6 +1291,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
                 onJumpToPrompt={chatOutline.jumpToPrompt}
               />
             )}
+            <PanelRightGutter contentMaxWidth={contentMaxWidth}>{rightGutter}</PanelRightGutter>
             {(!isNearBottom || isTimelineDetached) && (
               <View style={scrollToBottomContainerStyle} pointerEvents="box-none">
                 <Animated.View entering={scrollIndicatorFadeIn} exiting={scrollIndicatorFadeOut}>
@@ -1426,6 +1432,7 @@ function agentStreamViewPropsEqual(
   }
   if (left.toast !== right.toast) reasons.push("toast");
   if (left.onOpenWorkspaceFile !== right.onOpenWorkspaceFile) reasons.push("onOpenWorkspaceFile");
+  if (left.rightGutter !== right.rightGutter) reasons.push("rightGutter");
   if (left.readOnly !== right.readOnly) reasons.push("readOnly");
   if (!historyPaginationPropsEqual(left.historyPagination, right.historyPagination)) {
     reasons.push("historyPagination");
@@ -1782,10 +1789,53 @@ function PermissionRequestCard({
   );
 }
 
+/**
+ * 窗格右侧的常驻面板。宽度预算只与大纳栏共用 `resolveSideRailWidth`，窄到没缝时不渲染、
+ * 也不为它留白；竖向范围不共用：大纲是一段缝里的路标，面板是整天立在那里的工具。
+ */
+const PanelRightGutter = memo(function PanelRightGutter({
+  contentMaxWidth,
+  children,
+}: {
+  contentMaxWidth: number;
+  children: ReactNode;
+}) {
+  const { onLayout, width } = useContainerWidth();
+  const railWidth = resolveSideRailWidth(width, contentMaxWidth);
+
+  // 没有面板就不测量、不占位，免得白白多一层绝对定位。
+  if (children == null) return null;
+
+  return (
+    <View style={stylesheet.rightGutterMeasure} pointerEvents="box-none" onLayout={onLayout}>
+      {railWidth === null ? null : (
+        <View
+          style={[stylesheet.rightGutterRail, { width: railWidth }]}
+          testID="agent-panel-right-gutter"
+        >
+          {children}
+        </View>
+      )}
+    </View>
+  );
+});
+
 const stylesheet = StyleSheet.create((theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.colors.surface0,
+  },
+  // 只量宽、不占位；竖向铺满整列，让面板从顶端开始读，而不是浮在对话中段。
+  rightGutterMeasure: {
+    position: "absolute",
+    inset: 0,
+  },
+  rightGutterRail: {
+    position: "absolute",
+    right: theme.spacing[2],
+    top: theme.spacing[4],
+    bottom: theme.spacing[4],
+    zIndex: 2,
   },
   contentWrapper: {
     width: "100%",

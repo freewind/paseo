@@ -2070,6 +2070,8 @@ export class VoiceAssistantWebSocketServer {
         agentTransferWorkspace: true,
         // COMPAT(conversationExport): added in v0.11.0, remove gate after 2027-10-25.
         conversationExport: true,
+        // COMPAT(quickReplies): added in v0.11.0, remove gate after 2027-10-25.
+        quickReplies: true,
         // COMPAT(providerSubagents): added in v0.1.107, remove gate after 2027-01-12.
         providerSubagents: true,
         // COMPAT(projectedSubagentTimeline): added after v0.8.0, remove gates after 2027-03-14; retain advertisement.

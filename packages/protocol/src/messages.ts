@@ -110,6 +110,8 @@ import {
   BrowserAutomationExecuteResponseSchema,
 } from "./browser-automation/rpc-schemas.js";
 import { BrowserAutomationHostCapabilitySchema } from "./browser-automation/capabilities.js";
+import { QuickReplySchema } from "./quick-reply.js";
+export { QuickReplySchema, type QuickReply } from "./quick-reply.js";
 import {
   PaseoConfigRawSchema,
   PaseoLifecycleCommandRawSchema,
@@ -250,6 +252,7 @@ export const MutableDaemonConfigSchema = z
     appendSystemPrompt: z.string().default(""),
     terminalProfiles: z.array(TerminalProfileSchema).optional(),
     agentProfiles: z.array(AgentProfileSchema).optional(),
+    quickReplies: z.array(QuickReplySchema).optional(),
     skills: z.object({ selection: AgentSkillSelectionSchema.optional() }).strict().optional(),
     pluginsEnabled: z.boolean().optional(),
     plugins: z.record(PluginIdSchema, PluginSourceSchema).optional(),
@@ -275,6 +278,7 @@ export const MutableDaemonConfigPatchSchema = z
     appendSystemPrompt: z.string().optional(),
     terminalProfiles: z.array(TerminalProfileSchema).optional(),
     agentProfiles: z.array(AgentProfileSchema).optional(),
+    quickReplies: z.array(QuickReplySchema).optional(),
     pluginsEnabled: z.boolean().optional(),
     plugins: z.record(PluginIdSchema, PluginSourceSchema).optional(),
     features: SpeechSettingsPatchSchema.optional(),
@@ -3887,6 +3891,8 @@ export const ServerInfoStatusPayloadSchema = z
         agentForkSession: z.boolean().optional(),
         // COMPAT(conversationExport): added in v0.11.0, remove gate after 2027-10-25.
         conversationExport: z.boolean().optional(),
+        // COMPAT(quickReplies): added in v0.11.0, remove gate after 2027-10-25.
+        quickReplies: z.boolean().optional(),
         // COMPAT(agentCloneSession): added in v0.11.0, remove gate after 2027-04-05.
         agentCloneSession: z.boolean().optional(),
         // COMPAT(agentTransferWorkspace): added in v0.11.0, remove gate after 2027-10-25.
