@@ -5,6 +5,7 @@ import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import { useShallow } from "zustand/shallow";
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import { type SheetHeader } from "@/components/adaptive-modal-sheet";
+import { useResetWhenPanelInactive } from "@/components/retained-panel";
 import { Combobox, ComboboxItem, type ComboboxOption } from "@/components/ui/combobox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Shortcut } from "@/components/ui/shortcut";
@@ -95,6 +96,13 @@ export function AgentModeControl({
   const openRef = useRef(false);
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  // 隐藏的保留面板会让这个控件继续挂载，而它的弹层渲染在面板之外。在失活那次提交里重置，
+  // 模式列表既不会留在用户切过去的 agent 上，也不会在切回来时重新弹开。
+  useResetWhenPanelInactive(() => {
+    openRef.current = false;
+    setOpen(false);
+    setSearchQuery("");
+  });
 
   const selectedMode = useMemo(() => {
     if (modeOptions.length === 0) return null;

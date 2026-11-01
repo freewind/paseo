@@ -60,6 +60,7 @@ import {
   SheetHeaderView,
   type SheetHeader,
 } from "@/components/adaptive-modal-sheet";
+import { useResetWhenPanelInactive } from "@/components/retained-panel";
 import { FloatingSurface } from "@/components/ui/floating";
 import { useDismissKeyboardOnOpen } from "@/components/ui/keyboard-dismiss";
 import {
@@ -1354,6 +1355,10 @@ export function Combobox({
 
   const [internalOpen, setInternalOpen] = useState(false);
   const { isControlled, isOpen } = resolveControlledOpen(open, internalOpen);
+  // 保留面板隐藏时仍会挂载这个组件，而它的两种呈现都落在面板之外：桌面弹层进浮层根，
+  // 紧凑屏的 sheet 进全局 sheet 栈。要在 web 上 chat 挂起之前关掉，否则遮罩会比面板活得久，
+  // 挡住用户切过去的页面。
+  useResetWhenPanelInactive(() => setInternalOpen(false));
 
   const setOpen = useCallback(
     (nextOpen: boolean) => applySetOpen(isControlled, setInternalOpen, onOpenChange, nextOpen),

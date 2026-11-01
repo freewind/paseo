@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import type { AgentProvider } from "@getpaseo/protocol/agent-types";
 import type { AgentProfilePicker, AgentProfileSeed } from "@/agent-profiles";
+import { useResetWhenPanelInactive } from "@/components/retained-panel";
 import { ComboboxTrigger } from "@/components/ui/combobox-trigger";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Combobox, type ComboboxOption, type ComboboxProps } from "@/components/ui/combobox";
@@ -93,6 +94,9 @@ export function CombinedModelSelector({
   const modelBrowserScrolling = resolveModelBrowserScrolling({ isNative, isCompact });
   const anchorRef = useRef<View>(null);
   const [isOpen, setIsOpen] = useState(false);
+  // 隐藏的保留面板会让这个选择器继续挂载，而它的选择器渲染在面板之外。在失活那次提交里
+  // 关掉，赶在 web 上 chat 挂起之前，这样回到这个 agent 时不会又弹开用户上次留下的选择器。
+  useResetWhenPanelInactive(() => setIsOpen(false));
   const [isContentReady, setIsContentReady] = useState(isWeb);
   const browser = useModelBrowser({
     providers,

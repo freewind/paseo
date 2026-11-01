@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useIsCompactFormFactor } from "@/constants/layout";
 import { isNative } from "@/constants/platform";
 import { useHostReportsUsage } from "@/usage";
+import { useResetWhenPanelInactive } from "@/components/retained-panel";
 import type { Theme } from "@/styles/theme";
 import { ContextWindowDetails } from "./context-window-details";
 import { ContextWindowSheet } from "./context-window-sheet";
@@ -160,6 +161,11 @@ export function ContextWindowMeter({
   // Compact screens open the details in a sheet, which can hold a pressable Refresh.
   const isCompact = useIsCompactFormFactor();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  // 用量指示在聊天面板里，而详情 sheet 走全局 sheet 栈。面板失活时在当次渲染里收起，
+  // 遮罩不会留在目标页。
+  useResetWhenPanelInactive(() => {
+    setIsSheetOpen(false);
+  });
   const openSheet = useCallback(() => setIsSheetOpen(true), []);
   const closeSheet = useCallback(() => setIsSheetOpen(false), []);
   const percentage =

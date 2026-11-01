@@ -9,6 +9,7 @@ import {
   useIsolatedBottomSheetVisibility,
 } from "@/components/ui/isolated-bottom-sheet-modal";
 import { ToolCallSheetModal, useToolCallSheetContextBridge } from "@/components/tool-call-sheet";
+import { RetainedPanelGate } from "@/components/retained-panel";
 import { useToolCallExpansionContextBridge } from "@/tool-calls/expansion-context";
 import type { Theme } from "@/styles/theme";
 
@@ -56,44 +57,48 @@ export function OverviewToolCallGroupSheet({
   }, [children, scrollToLatest, visible]);
 
   return (
-    <ToolCallSheetModal
-      ref={sheetRef}
-      contextBridge={contextBridge}
-      snapPoints={SNAP_POINTS}
-      index={0}
-      enableDynamicSizing={false}
-      onChange={handleSheetChange}
-      onDismiss={handleSheetDismiss}
-      backdropOpacity={0.5}
-      enablePanDownToClose
-    >
-      <View style={styles.container} testID="tool-call-group-sheet">
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <ThemedWrench size={20} uniProps={foregroundMapping} />
-            <Text
-              style={styles.headerTitle}
-              numberOfLines={2}
-              testID="tool-call-group-sheet-summary"
+    // 分组详情打开时是一张走全局 sheet 栈的 sheet，而它是在聊天面板里打开的。面板失活时
+    // 直接把 surface 抽掉，别让遮罩留在目标页；展开状态由聊天那边在失活提交里收起。
+    <RetainedPanelGate>
+      <ToolCallSheetModal
+        ref={sheetRef}
+        contextBridge={contextBridge}
+        snapPoints={SNAP_POINTS}
+        index={0}
+        enableDynamicSizing={false}
+        onChange={handleSheetChange}
+        onDismiss={handleSheetDismiss}
+        backdropOpacity={0.5}
+        enablePanDownToClose
+      >
+        <View style={styles.container} testID="tool-call-group-sheet">
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <ThemedWrench size={20} uniProps={foregroundMapping} />
+              <Text
+                style={styles.headerTitle}
+                numberOfLines={2}
+                testID="tool-call-group-sheet-summary"
+              >
+                {summary}
+              </Text>
+            </View>
+            <Pressable
+              onPress={onClose}
+              style={styles.closeButton}
+              accessibilityRole="button"
+              accessibilityLabel={t("common.actions.close")}
+              testID="tool-call-group-sheet-close"
             >
-              {summary}
-            </Text>
+              <ThemedX size={20} uniProps={foregroundMutedMapping} />
+            </Pressable>
           </View>
-          <Pressable
-            onPress={onClose}
-            style={styles.closeButton}
-            accessibilityRole="button"
-            accessibilityLabel={t("common.actions.close")}
-            testID="tool-call-group-sheet-close"
-          >
-            <ThemedX size={20} uniProps={foregroundMutedMapping} />
-          </Pressable>
+          <BottomSheetScrollView ref={scrollRef} style={styles.content}>
+            <View style={styles.contentContainer}>{children}</View>
+          </BottomSheetScrollView>
         </View>
-        <BottomSheetScrollView ref={scrollRef} style={styles.content}>
-          <View style={styles.contentContainer}>{children}</View>
-        </BottomSheetScrollView>
-      </View>
-    </ToolCallSheetModal>
+      </ToolCallSheetModal>
+    </RetainedPanelGate>
   );
 }
 

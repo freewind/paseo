@@ -67,6 +67,7 @@ import {
   useExpandedToolCallGroups,
 } from "@/tool-calls/expansion-context";
 import { ToolCallSheetProvider } from "@/components/tool-call-sheet";
+import { useResetWhenPanelInactive } from "@/components/retained-panel";
 import { createStreamPresentation } from "./presentation";
 import { OverviewToolCallGroupView } from "@/tool-calls/detail-level/overview/view";
 import { IndentRail } from "@/components/indent-rail";
@@ -371,6 +372,9 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
     );
     const toolCallExpansion = useAgentToolCallExpansion(agentId);
     const expandedToolCallGroups = useExpandedToolCallGroups(toolCallExpansion);
+    // 分组详情在紧凑屏是一张走全局 sheet 栈的 sheet。面板失活时在当次渲染里收起展开的分组，
+    // 遮罩不会留在目标页，回来也不会重新弹开；store 只通知分组订阅者，就是这个组件自己。
+    useResetWhenPanelInactive(() => toolCallExpansion.collapseGroups());
     const [expandedTurnHostIds, setExpandedTurnHostIds] = useState<ReadonlySet<string>>(new Set());
 
     // Get serverId (fallback to agent's serverId if not provided)

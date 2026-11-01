@@ -9,6 +9,7 @@ import {
   IsolatedBottomSheetModal,
   useIsolatedBottomSheetVisibility,
 } from "@/components/ui/isolated-bottom-sheet-modal";
+import { RetainedPanelGate } from "@/components/retained-panel";
 
 // `backgroundStyle` and `handleIndicatorStyle` are style-shaped props the Babel plugin does not
 // track, so the sheet is wrapped rather than reading the theme through a hook.
@@ -47,28 +48,32 @@ export function ContextWindowSheet({
   });
 
   return (
-    <ThemedBottomSheetModal
-      ref={sheetRef}
-      contextBridge={null}
-      // Content-sized rather than fixed snap points: the usage cards stream in one at a time.
-      enableDynamicSizing
-      maxDynamicContentSize={height * 0.8}
-      onChange={handleSheetChange}
-      onDismiss={handleSheetDismiss}
-      backdropOpacity={0.45}
-      enablePanDownToClose
-    >
-      <BottomSheetScrollView
-        contentContainerStyle={scrollContentStyle}
-        showsVerticalScrollIndicator={false}
+    // 用量指示就在聊天面板里，而这张 sheet 走全局 sheet 栈。面板失活时直接把 surface 抽掉，
+    // 别让遮罩留在用户切过去的页面上；打开状态由用量指示那边在失活提交里清掉。
+    <RetainedPanelGate>
+      <ThemedBottomSheetModal
+        ref={sheetRef}
+        contextBridge={null}
+        // Content-sized rather than fixed snap points: the usage cards stream in one at a time.
+        enableDynamicSizing
+        maxDynamicContentSize={height * 0.8}
+        onChange={handleSheetChange}
+        onDismiss={handleSheetDismiss}
+        backdropOpacity={0.45}
+        enablePanDownToClose
       >
-        <View role="dialog" aria-label={header.title}>
-          <SheetHeaderView header={header} onClose={onClose} />
-          {/* The inset sits on a View: a themed contentContainerStyle resolves to nothing on web. */}
-          <View style={styles.body}>{children}</View>
-        </View>
-      </BottomSheetScrollView>
-    </ThemedBottomSheetModal>
+        <BottomSheetScrollView
+          contentContainerStyle={scrollContentStyle}
+          showsVerticalScrollIndicator={false}
+        >
+          <View role="dialog" aria-label={header.title}>
+            <SheetHeaderView header={header} onClose={onClose} />
+            {/* The inset sits on a View: a themed contentContainerStyle resolves to nothing on web. */}
+            <View style={styles.body}>{children}</View>
+          </View>
+        </BottomSheetScrollView>
+      </ThemedBottomSheetModal>
+    </RetainedPanelGate>
   );
 }
 
