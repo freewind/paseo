@@ -9,6 +9,7 @@ import { useStableEvent } from "@/hooks/use-stable-event";
 import { AttachmentLightbox, type ImageLightboxSource } from "@/components/attachment-lightbox";
 import type { Theme } from "@/styles/theme";
 import { isWeb } from "@/constants/platform";
+import { useMarkdownCommentMenu, WebMarkdownCommentMenu } from "@/assistant-comment/markdown-entry";
 import { density, resolveDensity } from "@/styles/density";
 import { MarkdownBlockStack } from "./block-stack";
 import { WEB_RENDERERS } from "./renderers";
@@ -47,6 +48,8 @@ export interface MarkdownRendererProps extends MarkdownImageContext {
   muted?: boolean;
   selectable?: boolean;
   streaming?: boolean;
+  /** 点了评论菜单时回落到这里：没选中文字就引用整条消息。 */
+  commentSource?: string;
   onLinkPress?: (url: string) => unknown;
 }
 
@@ -74,6 +77,7 @@ const MarkdownPart = memo(function MarkdownPart({
   muted = false,
   selectable = true,
   streaming = false,
+  commentSource,
   onLinkPress,
   ...imageContext
 }: MarkdownRendererProps) {
@@ -100,6 +104,10 @@ const MarkdownPart = memo(function MarkdownPart({
     if (url !== PENDING_MARKDOWN_IMAGE) setImage({ type: "uri", uri: url });
   });
   const closeImage = useStableEvent(() => setImage(null));
+  const commentMenu = useMarkdownCommentMenu(commentSource);
+  const openComment = useStableEvent((selected: string | null) => {
+    commentMenu.requestComment(selected);
+  });
   const segments = useMemo(
     () =>
       isWeb ? [{ kind: "markdown", id: "0", source: markdown }] : splitMermaidFences(markdown),
@@ -112,23 +120,31 @@ const MarkdownPart = memo(function MarkdownPart({
           segment.kind === "mermaid" ? (
             <MermaidFence key={`${segment.kind}:${segment.id}`} code={segment.source} />
           ) : (
-            <ThemedMarkdown
+            <WebMarkdownCommentMenu
               key={`${segment.kind}:${segment.id}`}
-              markdown={segment.source}
-              uniProps={pickMarkdownStyle(compact, muted)}
-              flavor="github"
-              selectable={selectable}
-              md4cFlags={MD4C_FLAGS}
-              linkRecognition={linkRecognition}
-              enableTaskListItemToggle={false}
-              enableLinkPreview={false}
-              enableBlockContextMenu={false}
-              // JS reveal owns pacing; native fade animation is a separate experiment.
-              streamingAnimation={false}
-              onLinkPress={pressLink}
-              onImagePress={pressImage}
-              renderers={isWeb ? WEB_RENDERERS : undefined}
-            />
+              enabled={isWeb && commentMenu.enabled}
+              onComment={openComment}
+            >
+              <ThemedMarkdown
+                markdown={segment.source}
+                uniProps={pickMarkdownStyle(compact, muted)}
+                flavor="github"
+                selectable={selectable}
+                md4cFlags={MD4C_FLAGS}
+                linkRecognition={linkRecognition}
+                enableTaskListItemToggle={false}
+                enableLinkPreview={false}
+                // 块级长按评论做不了：上游 enriched-markdown 没有 per-block AST，也没有块级长按容器。
+                // 所以评论入口只能落在原生文本选择菜单和 web 右键菜单上。
+                enableBlockContextMenu={false}
+                contextMenuItems={commentMenu.nativeItems}
+                // JS reveal owns pacing; native fade animation is a separate experiment.
+                streamingAnimation={false}
+                onLinkPress={pressLink}
+                onImagePress={pressImage}
+                renderers={isWeb ? WEB_RENDERERS : undefined}
+              />
+            </WebMarkdownCommentMenu>
           ),
         )}
       </MarkdownBlockStack>

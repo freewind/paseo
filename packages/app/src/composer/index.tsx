@@ -123,7 +123,7 @@ import { resolveActiveSendBehavior } from "./input/state";
 import { useKeyboardActionHandler } from "@/hooks/use-keyboard-action-handler";
 import type { KeyboardActionDefinition } from "@/keyboard/keyboard-action-dispatcher";
 import type { MessageInputKeyboardActionKind } from "@/keyboard/actions";
-import { submitAgentInput } from "@/composer/submit";
+import { submitAgentInput, type AgentInputSubmitResult } from "@/composer/submit";
 import { composerSubmitKey, registerComposerSubmit } from "@/composer/composer-submit";
 import { ComposerRecall } from "@/composer/recall";
 import { createMessageSubmissionWriter } from "@/composer/submission/writer";
@@ -963,6 +963,11 @@ interface ComposerProps {
   autoFocusKey?: string;
   /** Callback to expose a focus function to parent components (desktop only). */
   onFocusInput?: (focus: () => void) => void;
+  /**
+   * 把 composer 自己的发送入口交给宿主，用于宿主自己拼好的文本（例如引用评论）。
+   * 走正常发送路径，附件、排队与草稿清理都和键盘发送一致。
+   */
+  onSubmitNow?: (submitNow: (text: string) => Promise<AgentInputSubmitResult>) => void;
   /** Draft context for listing commands before an agent exists. Omitted for running agents. */
   commandDraft?: DraftCommandTarget;
   /** Called when a message is about to be sent (any path: keyboard, dictation, queued). */
@@ -1271,6 +1276,7 @@ function ComposerContentImpl({
   autoFocus = false,
   autoFocusKey,
   onFocusInput,
+  onSubmitNow,
   commandDraft,
   onMessageSent,
   onComposerHeightChange,
@@ -1701,6 +1707,7 @@ function ComposerContentImpl({
         result,
         outgoingAttachments,
       });
+      return result;
     },
     [
       allowEmptySubmit,
@@ -1719,26 +1726,31 @@ function ComposerContentImpl({
   );
 
   const handleSubmit = useCallback(
-    (payload: MessagePayload, overrides?: { attachments: UserComposerAttachment[] }) => {
+    async (
+      payload: MessagePayload,
+      overrides?: { attachments: UserComposerAttachment[] },
+    ): Promise<AgentInputSubmitResult> => {
       const outgoingAttachments = buildOutgoingAttachments(overrides?.attachments ?? attachments);
       const clientSlashCommand = resolveClientSlashCommand({
         text: payload.text,
         hasAttachments: outgoingAttachments.length > 0,
       });
       if (clientSlashCommand && runClientSlashCommand(clientSlashCommand)) {
-        return;
+        return "submitted";
       }
       const pluginSlashCommand = resolvePluginClientSlashCommand({
         text: payload.text,
         hasAttachments: outgoingAttachments.length > 0,
         commands: pluginClientSlashCommands,
       });
-      if (pluginSlashCommand && runPluginClientSlashCommand(pluginSlashCommand)) return;
+      if (pluginSlashCommand && runPluginClientSlashCommand(pluginSlashCommand)) {
+        return "submitted";
+      }
 
       if (blurOnSubmit) {
         messageInputRef.current?.blur();
       }
-      void sendMessageWithContent(payload.text, outgoingAttachments, payload.forceSend);
+      return sendMessageWithContent(payload.text, outgoingAttachments, payload.forceSend);
     },
     [
       attachments,
@@ -1750,6 +1762,15 @@ function ComposerContentImpl({
       sendMessageWithContent,
     ],
   );
+
+  const submitTextNow = useCallback(
+    (text: string) => handleSubmit({ text, attachments: [], cwd }),
+    [cwd, handleSubmit],
+  );
+
+  useEffect(() => {
+    onSubmitNow?.(submitTextNow);
+  }, [onSubmitNow, submitTextNow]);
 
   const handlePickImage = useCallback(async () => {
     const newImages = await pickAndPersistImages({
