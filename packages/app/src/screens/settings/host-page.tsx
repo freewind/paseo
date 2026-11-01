@@ -23,12 +23,17 @@ import {
 } from "@getpaseo/protocol/terminal-profiles";
 import { AgentProfilesSection } from "@/agent-profiles";
 import { AgentSkillsSection } from "@/agent-skills";
-import { AdaptiveModalSheet, type SheetHeader } from "@/components/adaptive-modal-sheet";
+import {
+  AdaptiveModalSheet,
+  AdaptiveTextInput,
+  type SheetHeader,
+} from "@/components/adaptive-modal-sheet";
 import { SettingsTextAreaCard } from "@/components/settings-textarea";
 import { Alert as InlineAlert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, type StatusBadgeVariant } from "@/components/ui/status-badge";
 import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/contexts/toast-context";
 import {
   ProfileDraft,
   TerminalProfileEditModal,
@@ -389,9 +394,13 @@ export function HostSettingsPage({
 
 function ConnectionsSection({ host }: { host: HostProfile }) {
   const { t } = useTranslation();
-  const { removeConnection } = useHostMutations();
+  const toast = useToast();
+  const { removeConnection, setPreferredConnection, updateConnection, duplicateConnection } =
+    useHostMutations();
   const snapshot = useHostRuntimeSnapshot(host.serverId);
   const probeByConnectionId = snapshot?.probeByConnectionId ?? new Map();
+  const activeConnectionId = snapshot?.activeConnectionId ?? null;
+  const [editingConnection, setEditingConnection] = useState<HostConnection | null>(null);
   const [pendingRemoveConnection, setPendingRemoveConnection] = useState<{
     connectionId: string;
     title: string;
@@ -410,6 +419,38 @@ function ConnectionsSection({ host }: { host: HostProfile }) {
       });
     },
     [t],
+  );
+
+  // 手动选用只是记下偏好，实际切不切由下一轮探测决定；不可达时仍回退最低延迟。
+  const handleSelectPreferred = useCallback(
+    (connection: HostConnection) => {
+      void setPreferredConnection(host.serverId, connection.id).catch((error) => {
+        console.error("[HostPage] Failed to select connection", error);
+        toast.error(t("settings.host.connections.selectFailed"));
+      });
+    },
+    [host.serverId, setPreferredConnection, t, toast],
+  );
+
+  const handleDuplicate = useCallback(
+    (connection: HostConnection) => {
+      void duplicateConnection(host.serverId, connection.id).catch((error) => {
+        console.error("[HostPage] Failed to duplicate connection", error);
+        toast.error(t("settings.host.connections.duplicateFailed"));
+      });
+    },
+    [duplicateConnection, host.serverId, t, toast],
+  );
+
+  const handleCloseEdit = useCallback(() => setEditingConnection(null), []);
+  const handleSaveEdit = useCallback(
+    (next: HostConnection) => {
+      setEditingConnection(null);
+      void updateConnection({ serverId: host.serverId, connection: next }).catch(() => {
+        toast.error(t("settings.host.connections.updateFailed"));
+      });
+    },
+    [host.serverId, t, toast, updateConnection],
   );
 
   const handleCloseConfirm = useCallback(() => {
@@ -450,11 +491,24 @@ function ConnectionsSection({ host }: { host: HostProfile }) {
               latencyMs={probe?.status === "available" ? probe.latencyMs : undefined}
               latencyLoading={!probe || probe.status === "pending"}
               latencyError={probe?.status === "unavailable"}
+              isActive={activeConnectionId === conn.id}
+              isPreferred={host.preferredConnectionId === conn.id}
               onRemove={handleRequestRemove}
+              onUse={handleSelectPreferred}
+              onEdit={isEditableConnection(conn) ? setEditingConnection : undefined}
+              onDuplicate={handleDuplicate}
             />
           );
         })}
       </View>
+
+      {editingConnection ? (
+        <ConnectionEditSheet
+          connection={editingConnection}
+          onClose={handleCloseEdit}
+          onSave={handleSaveEdit}
+        />
+      ) : null}
 
       {pendingRemoveConnection ? (
         <AdaptiveModalSheet
@@ -495,20 +549,35 @@ function ConnectionsSection({ host }: { host: HostProfile }) {
   );
 }
 
+/** 编辑表单只覆盖直连与远程 SSH；relay、routed、socket、pipe 由别处管理，给它们的表单存不下去。 */
+function isEditableConnection(connection: HostConnection): boolean {
+  return connection.type === "directTcp" || connection.type === "remoteSsh";
+}
+
 function ConnectionRow({
   connection,
   showBorder,
   latencyMs,
   latencyLoading,
   latencyError,
+  isActive,
+  isPreferred,
   onRemove,
+  onUse,
+  onEdit,
+  onDuplicate,
 }: {
   connection: HostConnection;
   showBorder: boolean;
   latencyMs: number | null | undefined;
   latencyLoading: boolean;
   latencyError: boolean;
+  isActive: boolean;
+  isPreferred: boolean;
   onRemove: (connection: HostConnection) => void;
+  onUse: (connection: HostConnection) => void;
+  onEdit?: (connection: HostConnection) => void;
+  onDuplicate: (connection: HostConnection) => void;
 }) {
   const { t } = useTranslation();
   const { theme } = useUnistyles();
@@ -525,6 +594,15 @@ function ConnectionRow({
   const handlePressRemove = useCallback(() => {
     onRemove(connection);
   }, [onRemove, connection]);
+  const handlePressUse = useCallback(() => {
+    onUse(connection);
+  }, [onUse, connection]);
+  const handlePressEdit = useCallback(() => {
+    onEdit?.(connection);
+  }, [onEdit, connection]);
+  const handlePressDuplicate = useCallback(() => {
+    onDuplicate(connection);
+  }, [onDuplicate, connection]);
 
   const rowStyle = useMemo(
     () => [settingsStyles.row, showBorder && settingsStyles.rowBorder],
@@ -538,6 +616,10 @@ function ConnectionRow({
     () => ({ color: theme.colors.destructive }),
     [theme.colors.destructive],
   );
+  const preferredTextStyle = useMemo(
+    () => ({ color: theme.colors.primary }),
+    [theme.colors.primary],
+  );
 
   return (
     <View style={rowStyle}>
@@ -545,8 +627,28 @@ function ConnectionRow({
         <Text style={settingsStyles.rowTitle} numberOfLines={1}>
           {title}
         </Text>
+        {isPreferred || isActive ? (
+          <Text style={isPreferred ? preferredTextStyle : latencyTextStyle} numberOfLines={1}>
+            {isPreferred
+              ? t("settings.host.connections.preferred")
+              : t("settings.host.connections.active")}
+          </Text>
+        ) : null}
       </View>
       <Text style={latencyTextStyle}>{latencyText}</Text>
+      {!isPreferred ? (
+        <Button variant="ghost" size="sm" onPress={handlePressUse}>
+          {t("settings.host.connections.useAction")}
+        </Button>
+      ) : null}
+      {onEdit ? (
+        <Button variant="ghost" size="sm" onPress={handlePressEdit}>
+          {t("settings.host.connections.editAction")}
+        </Button>
+      ) : null}
+      <Button variant="ghost" size="sm" onPress={handlePressDuplicate}>
+        {t("settings.host.connections.duplicateAction")}
+      </Button>
       <Button
         variant="ghost"
         size="sm"
@@ -557,6 +659,156 @@ function ConnectionRow({
       </Button>
     </View>
   );
+}
+
+const NO_SSH_PORT = "";
+/** 端口留空时按 daemon 默认端口写回，和新建连接时的默认一致。 */
+const DEFAULT_DAEMON_PORT_TEXT = "6767";
+
+/**
+ * 编辑一条非 relay 连接：直连改主机/端口/TLS，远程 SSH 改主机与两个端口。连接 id 保持
+ * 不变，因此首选关系与历史都还在；要新 id 用「复制连接」。
+ */
+function ConnectionEditSheet({
+  connection,
+  onClose,
+  onSave,
+}: {
+  connection: HostConnection;
+  onClose: () => void;
+  onSave: (connection: HostConnection) => void;
+}) {
+  const { t } = useTranslation();
+  const [draft, setDraft] = useState(() => draftFromConnection(connection));
+  const header = useMemo<SheetHeader>(
+    () => ({ title: t("settings.host.connections.editTitle") }),
+    [t],
+  );
+  const setField = useCallback((field: keyof ConnectionDraft, value: string | boolean) => {
+    setDraft((current) => ({ ...current, [field]: value }));
+  }, []);
+  const setHostField = useCallback((value: string) => setField("host", value), [setField]);
+  const setPortField = useCallback((value: string) => setField("port", value), [setField]);
+  const setSshPortField = useCallback((value: string) => setField("sshPort", value), [setField]);
+  const setUseTlsField = useCallback((value: boolean) => setField("useTls", value), [setField]);
+
+  const canSave = (() => {
+    if (!draft.host.trim()) return false;
+    if (draft.port && !isValidPortText(draft.port)) return false;
+    if (connection.type === "remoteSsh") {
+      if (draft.sshPort && !isValidPortText(draft.sshPort)) return false;
+    }
+    return true;
+  })();
+
+  const handleSave = useCallback(() => {
+    if (!canSave) return;
+    if (connection.type === "directTcp") {
+      onSave({
+        ...connection,
+        endpoint: `${draft.host.trim()}:${normalizePortText(draft.port)}`,
+        useTls: draft.useTls,
+      });
+      return;
+    }
+    if (connection.type === "remoteSsh") {
+      onSave({
+        ...connection,
+        host: draft.host.trim(),
+        ...(draft.sshPort ? { sshPort: Number(draft.sshPort) } : {}),
+        ...(draft.port ? { daemonPort: Number(draft.port) } : {}),
+      });
+    }
+  }, [canSave, connection, draft, onSave]);
+
+  return (
+    <AdaptiveModalSheet header={header} visible onClose={onClose} testID="connection-edit-modal">
+      <View style={styles.editForm}>
+        <AdaptiveTextInput
+          initialValue={draft.host}
+          onChangeText={setHostField}
+          placeholder={t("settings.host.connections.editHost")}
+          testID="connection-edit-host"
+        />
+        <AdaptiveTextInput
+          initialValue={draft.port}
+          onChangeText={setPortField}
+          placeholder={t("settings.host.connections.editPort")}
+          keyboardType="number-pad"
+          testID="connection-edit-port"
+        />
+        {connection.type === "remoteSsh" ? (
+          <AdaptiveTextInput
+            initialValue={draft.sshPort}
+            onChangeText={setSshPortField}
+            placeholder={t("settings.host.connections.editSshPort")}
+            keyboardType="number-pad"
+            testID="connection-edit-ssh-port"
+          />
+        ) : null}
+        {connection.type === "directTcp" ? (
+          <View style={styles.editCheckboxRow}>
+            <Text style={settingsStyles.rowTitle}>{t("settings.host.connections.editUseTls")}</Text>
+            <Switch
+              value={draft.useTls}
+              onValueChange={setUseTlsField}
+              testID="connection-edit-use-tls"
+            />
+          </View>
+        ) : null}
+        <View style={styles.confirmActions}>
+          <Button variant="secondary" size="sm" style={FLEX_1_STYLE} onPress={onClose}>
+            {t("common.actions.cancel")}
+          </Button>
+          <Button
+            size="sm"
+            style={FLEX_1_STYLE}
+            onPress={handleSave}
+            disabled={!canSave}
+            testID="connection-edit-save"
+          >
+            {t("settings.host.connections.saveAction")}
+          </Button>
+        </View>
+      </View>
+    </AdaptiveModalSheet>
+  );
+}
+
+interface ConnectionDraft {
+  host: string;
+  port: string;
+  sshPort: string;
+  useTls: boolean;
+}
+
+function draftFromConnection(connection: HostConnection): ConnectionDraft {
+  if (connection.type === "directTcp") {
+    const [host = "", port = ""] = connection.endpoint.split(":");
+    return { host, port, sshPort: NO_SSH_PORT, useTls: connection.useTls ?? false };
+  }
+  if (connection.type === "remoteSsh") {
+    return {
+      host: connection.host,
+      port: connection.daemonPort != null ? String(connection.daemonPort) : "",
+      sshPort: connection.sshPort != null ? String(connection.sshPort) : "",
+      useTls: false,
+    };
+  }
+  return { host: "", port: "", sshPort: NO_SSH_PORT, useTls: false };
+}
+
+function isValidPortText(value: string): boolean {
+  if (!value) return true;
+  const port = Number(value);
+  return Number.isInteger(port) && port > 0 && port <= 65535;
+}
+
+function normalizePortText(value: string): string {
+  const port = Number(value);
+  return Number.isInteger(port) && port > 0 && port <= 65535
+    ? String(port)
+    : DEFAULT_DAEMON_PORT_TEXT;
 }
 
 function RestartDaemonCard({ host }: { host: HostProfile }) {
@@ -1784,6 +2036,15 @@ const styles = StyleSheet.create((theme) => ({
   },
   connectionError: {
     marginBottom: theme.spacing[6],
+  },
+  editForm: {
+    gap: 12,
+    padding: 16,
+  },
+  editCheckboxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   connectionLatency: {
     fontSize: theme.fontSize.base,

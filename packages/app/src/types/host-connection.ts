@@ -81,6 +81,11 @@ export interface HostProfile {
   lifecycle: HostLifecycle;
   connections: HostConnection[];
   preferredConnectionId: string | null;
+  /**
+   * 这条 preferred 是用户手动选的，而不是「插入时默认的第一条」。只有它为 true 时，探测周期
+   * 才让首选压过按延迟的自适应切换；缺省即沿用上游的延迟选路。
+   */
+  preferredConnectionExplicit?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -271,6 +276,7 @@ function hasProfileChanged(input: {
   createdAt: string;
   label: string;
   preferredConnectionId: string;
+  preferredConnectionExplicit?: boolean;
   lifecycle: HostLifecycle;
   connections: HostConnection[];
 }): boolean {
@@ -282,6 +288,7 @@ function hasProfileChanged(input: {
     input.createdAt !== previous.createdAt ||
     input.label !== previous.label ||
     input.preferredConnectionId !== previous.preferredConnectionId ||
+    input.preferredConnectionExplicit !== previous.preferredConnectionExplicit ||
     !hostLifecycleEquals(previous.lifecycle, input.lifecycle) ||
     connections.length !== previous.connections.length ||
     connections.some((candidate, index) => {
@@ -355,6 +362,11 @@ export function upsertHostConnectionInProfiles(input: {
     nextConnections.some((connection) => connection.id === prev.preferredConnectionId)
       ? prev.preferredConnectionId
       : normalizedConnection.id;
+  // 首选被换掉说明是自动挑的，不再算用户手动选择。
+  const nextPreferredConnectionExplicit =
+    prev.preferredConnectionExplicit && nextPreferredConnectionId === prev.preferredConnectionId
+      ? true
+      : undefined;
   const nextCreatedAt = matchedProfiles.reduce(
     (earliest, daemon) => (daemon.createdAt < earliest ? daemon.createdAt : earliest),
     prev.createdAt,
@@ -367,6 +379,7 @@ export function upsertHostConnectionInProfiles(input: {
     createdAt: nextCreatedAt,
     label: nextLabel,
     preferredConnectionId: nextPreferredConnectionId,
+    preferredConnectionExplicit: nextPreferredConnectionExplicit,
     lifecycle: nextLifecycle,
     connections: nextConnections,
   });
@@ -383,6 +396,8 @@ export function upsertHostConnectionInProfiles(input: {
     lifecycle: nextLifecycle,
     connections: nextConnections,
     preferredConnectionId: nextPreferredConnectionId,
+    // 显式赋值而不是条件展开：prev 上的旧标记必须能被清掉（JSON 序列化会丢掉 undefined）。
+    preferredConnectionExplicit: nextPreferredConnectionExplicit,
     createdAt: nextCreatedAt,
     updatedAt: now,
   };
@@ -524,6 +539,7 @@ const StoredHostProfileSchema = z.strictObject({
   lifecycle: z.strictObject({}).optional(),
   connections: z.array(StoredHostConnectionSchema).min(1),
   preferredConnectionId: z.string().nullable().optional(),
+  preferredConnectionExplicit: z.boolean().optional(),
   createdAt: z.string().datetime({ offset: true }).optional(),
   updatedAt: z.string().datetime({ offset: true }).optional(),
 });
@@ -627,6 +643,9 @@ export function normalizeStoredHostProfile(entry: unknown): HostProfile | null {
     lifecycle: defaultLifecycle(),
     connections,
     preferredConnectionId,
+    ...(record.preferredConnectionExplicit && preferredConnectionId
+      ? { preferredConnectionExplicit: true }
+      : {}),
     createdAt: record.createdAt ?? now,
     updatedAt: record.updatedAt ?? now,
   };

@@ -13,6 +13,11 @@ export type ConnectionProbeState =
 export interface SelectBestConnectionInput {
   candidates: ConnectionCandidate[];
   probeByConnectionId: Map<string, ConnectionProbeState>;
+  /**
+   * 用户手动选定的连接。可达就直接用它；没选、选的不是候选、或选的不可达，一律退回最低
+   * 延迟，免得一个死连接把应用困在连不上的状态。
+   */
+  preferredConnectionId?: string | null;
 }
 
 function getAvailableLatency(input: {
@@ -27,6 +32,15 @@ export function selectBestConnection(input: SelectBestConnectionInput): string |
   const { candidates, probeByConnectionId } = input;
   if (candidates.length === 0) {
     return null;
+  }
+
+  const preferred = input.preferredConnectionId;
+  if (
+    preferred &&
+    candidates.some((candidate) => candidate.connectionId === preferred) &&
+    getAvailableLatency({ connectionId: preferred, probeByConnectionId }) !== null
+  ) {
+    return preferred;
   }
 
   let bestConnectionId: string | null = null;

@@ -1029,6 +1029,7 @@ export class HostRuntimeController {
         const nextConnectionId = selectBestConnection({
           candidates: buildConnectionCandidates(this.host),
           probeByConnectionId,
+          preferredConnectionId: this.host.preferredConnectionId,
         });
         if (nextConnectionId) {
           await this.switchToConnection({
@@ -1050,6 +1051,7 @@ export class HostRuntimeController {
         const nextConnectionId = selectBestConnection({
           candidates: buildConnectionCandidates(this.host),
           probeByConnectionId,
+          preferredConnectionId: this.host.preferredConnectionId,
         });
         if (nextConnectionId && nextConnectionId !== currentActiveConnectionId) {
           await this.switchToConnection({
@@ -1063,6 +1065,16 @@ export class HostRuntimeController {
       }
 
       if (!activeProbe || activeProbe.status !== "available") {
+        return;
+      }
+
+      if (
+        await this.applyPinnedConnection({
+          currentActiveConnectionId,
+          probeByConnectionId,
+          expectedProbeVersion: requestVersion,
+        })
+      ) {
         return;
       }
 
@@ -1368,6 +1380,34 @@ export class HostRuntimeController {
       };
     }
     return { agentDirectoryStatus: "idle", agentDirectoryError: null };
+  }
+
+  /**
+   * 用户手动选定且可达时，它就是选路目标：没在用它就切过去，正在用它就不再按延迟漂移。
+   * preferred 在新增连接时会被自动填成第一条，那种默认值不算手动选择，仍走延迟自适应；
+   * 首选不可达时也走延迟自适应，免得被死连接困住。返回 true 表示这轮周期已经处理完。
+   */
+  private async applyPinnedConnection(input: {
+    currentActiveConnectionId: string;
+    probeByConnectionId: Map<string, ConnectionProbeState>;
+    expectedProbeVersion: number;
+  }): Promise<boolean> {
+    const preferredConnectionId = this.host.preferredConnectionId;
+    if (this.host.preferredConnectionExplicit !== true || !preferredConnectionId) {
+      return false;
+    }
+    if (input.probeByConnectionId.get(preferredConnectionId)?.status !== "available") {
+      return false;
+    }
+    this.switchCandidateConnectionId = null;
+    this.switchCandidateHitCount = 0;
+    if (preferredConnectionId !== input.currentActiveConnectionId) {
+      await this.switchToConnection({
+        connectionId: preferredConnectionId,
+        expectedProbeVersion: input.expectedProbeVersion,
+      });
+    }
+    return true;
   }
 
   private async switchToConnection(input: {
@@ -2272,12 +2312,17 @@ export class HostRuntimeStore {
         if (remaining.length === 0) {
           return null;
         }
-        const preferred =
-          daemon.preferredConnectionId === connectionId
-            ? (remaining[0]?.id ?? null)
-            : daemon.preferredConnectionId;
+        const removedPreferred = daemon.preferredConnectionId === connectionId;
+        const preferred = removedPreferred
+          ? (remaining[0]?.id ?? null)
+          : daemon.preferredConnectionId;
+        // 首选被移除后剩下的第一条是自动挑的，手动选定标记也要一起清掉。
+        const { preferredConnectionExplicit, ...rest } = daemon;
         return {
-          ...daemon,
+          ...rest,
+          ...(!removedPreferred && preferredConnectionExplicit
+            ? { preferredConnectionExplicit }
+            : {}),
           connections: remaining,
           preferredConnectionId: preferred,
           updatedAt: now,
@@ -2286,6 +2331,58 @@ export class HostRuntimeStore {
       .filter((entry): entry is HostProfile => entry !== null);
     this.setHostsAndSync(next);
     await this.persistHosts();
+  }
+
+  /** 记住用户选定的连接，并立即重新探测，让切换在当次就发生而不是等下一轮。 */
+  async setPreferredConnection(serverId: string, connectionId: string): Promise<void> {
+    const host = this.hosts.find((candidate) => candidate.serverId === serverId);
+    if (!host) return;
+    if (!host.connections.some((connection) => connection.id === connectionId)) return;
+    // 同一条连接可能只是从「自动默认」变成「手动选定」，所以要把标记一起比对。
+    if (host.preferredConnectionId === connectionId && host.preferredConnectionExplicit === true) {
+      return;
+    }
+    const now = new Date().toISOString();
+    const next = this.hosts.map((candidate) =>
+      candidate.serverId === serverId
+        ? {
+            ...candidate,
+            preferredConnectionId: connectionId,
+            preferredConnectionExplicit: true,
+            updatedAt: now,
+          }
+        : candidate,
+    );
+    this.setHostsAndSync(next);
+    await this.persistHosts();
+    await this.runProbeCycleNow().catch(() => undefined);
+  }
+
+  /** 改现有连接的地址。连接 id 不变，所以首选关系、历史与凭据都继续对得上。 */
+  async updateConnection(input: { serverId: string; connection: HostConnection }): Promise<void> {
+    const host = this.hosts.find((candidate) => candidate.serverId === input.serverId);
+    if (!host) return;
+    if (!host.connections.some((connection) => connection.id === input.connection.id)) return;
+    await this.upsertHostConnection({
+      serverId: input.serverId,
+      connection: input.connection,
+      existingClient: this.getClient(input.serverId) ?? undefined,
+    });
+    await this.runProbeCycleNow().catch(() => undefined);
+  }
+
+  /** 复制一条连接：内容照抄，id 重新生成（id 是身份，不能两条连接共用一个）。 */
+  async duplicateConnection(serverId: string, connectionId: string): Promise<void> {
+    const host = this.hosts.find((candidate) => candidate.serverId === serverId);
+    const source = host?.connections.find((connection) => connection.id === connectionId);
+    if (!host || !source) return;
+    const copy: HostConnection = { ...source, id: `${source.type}:${crypto.randomUUID()}` };
+    await this.upsertHostConnection({
+      serverId,
+      connection: copy,
+      existingClient: this.getClient(serverId) ?? undefined,
+    });
+    await this.runProbeCycleNow().catch(() => undefined);
   }
 
   private async upsertHostConnection(input: {
@@ -3037,6 +3134,9 @@ export interface HostMutations {
   setHostBadgeDisplay: (serverId: string, badgeDisplay: HostBadgeDisplay) => Promise<void>;
   removeHost: (serverId: string) => Promise<void>;
   removeConnection: (serverId: string, connectionId: string) => Promise<void>;
+  setPreferredConnection: (serverId: string, connectionId: string) => Promise<void>;
+  updateConnection: (input: { serverId: string; connection: HostConnection }) => Promise<void>;
+  duplicateConnection: (serverId: string, connectionId: string) => Promise<void>;
 }
 
 export function useHostMutations(): HostMutations {
@@ -3053,6 +3153,11 @@ export function useHostMutations(): HostMutations {
         store.setHostBadgeDisplay(serverId, badgeDisplay),
       removeHost: (serverId) => store.removeHost(serverId),
       removeConnection: (serverId, connectionId) => store.removeConnection(serverId, connectionId),
+      setPreferredConnection: (serverId, connectionId) =>
+        store.setPreferredConnection(serverId, connectionId),
+      updateConnection: (input) => store.updateConnection(input),
+      duplicateConnection: (serverId, connectionId) =>
+        store.duplicateConnection(serverId, connectionId),
     }),
     [store],
   );
