@@ -18,6 +18,7 @@ export interface WorkspaceTabMenuLabels {
   closeOthers: string;
   reloadAgent: string;
   reloadAgentTooltip: string;
+  markAsUnread: string;
   close: string;
 }
 
@@ -34,6 +35,7 @@ export const DEFAULT_WORKSPACE_TAB_MENU_LABELS: WorkspaceTabMenuLabels = {
   closeOthers: i18n.t("workspace.tabs.menu.closeOthers"),
   reloadAgent: i18n.t("workspace.tabs.menu.reloadAgent"),
   reloadAgentTooltip: i18n.t("workspace.tabs.menu.reloadAgentTooltip"),
+  markAsUnread: i18n.t("workspace.tabs.menu.markAsUnread"),
   close: i18n.t("workspace.tabs.menu.close"),
 };
 
@@ -51,6 +53,7 @@ export type WorkspaceTabMenuEntry =
         | "pencil"
         | "external-link"
         | "folder-open"
+        | "circle"
         | "x";
       hint?: string;
       tooltip?: string;
@@ -101,6 +104,8 @@ interface BuildWorkspaceTabMenuEntriesInput {
   onCloseTabsBefore: (tabId: string) => Promise<void> | void;
   onCloseTabsAfter: (tabId: string) => Promise<void> | void;
   onCloseOtherTabs: (tabId: string) => Promise<void> | void;
+  onMarkAsUnread?: (agentId: string) => Promise<void> | void;
+  canMarkAsUnread?: boolean;
   labels?: WorkspaceTabMenuLabels;
 }
 
@@ -119,6 +124,8 @@ interface BuildWorkspaceDesktopTabActionsInput {
   onCloseTabsToLeft: (tabId: string) => Promise<void> | void;
   onCloseTabsToRight: (tabId: string) => Promise<void> | void;
   onCloseOtherTabs: (tabId: string) => Promise<void> | void;
+  onMarkAsUnread?: (agentId: string) => Promise<void> | void;
+  canMarkAsUnread?: (agentId: string) => boolean;
   labels?: WorkspaceTabMenuLabels;
 }
 
@@ -207,6 +214,8 @@ export function buildWorkspaceTabMenuEntries(
     onCloseTabsAfter,
     onCloseOtherTabs,
     fileOpenActions,
+    onMarkAsUnread,
+    canMarkAsUnread = false,
   } = input;
   const labels = input.labels ?? DEFAULT_WORKSPACE_TAB_MENU_LABELS;
   const isFirstTab = index === 0;
@@ -359,6 +368,18 @@ export function buildWorkspaceTabMenuEntries(
         void onReloadAgent(agentId);
       },
     });
+    if (canMarkAsUnread && onMarkAsUnread) {
+      entries.push({
+        kind: "item",
+        key: "mark-as-unread",
+        label: labels.markAsUnread,
+        icon: "circle",
+        testID: `${menuTestIDBase}-mark-as-unread`,
+        onSelect: () => {
+          void onMarkAsUnread(agentId);
+        },
+      });
+    }
   }
   entries.push({
     kind: "item",
@@ -398,6 +419,11 @@ export function buildWorkspaceDesktopTabActions(
       onCloseOtherTabs: input.onCloseOtherTabs,
       labels: input.labels,
       fileOpenActions: input.fileOpenActions,
+      onMarkAsUnread: input.onMarkAsUnread,
+      canMarkAsUnread:
+        input.tab.target.kind === "agent" && input.canMarkAsUnread
+          ? input.canMarkAsUnread(input.tab.target.agentId)
+          : false,
     }),
     closeButtonTestId: getCloseButtonTestId(input.tab),
   };

@@ -12,6 +12,7 @@ import {
   type WorkspaceTabPresentation,
 } from "@/screens/workspace/workspace-tab-presentation";
 import { useFilePanelOpenWithMenu } from "@/file-panels";
+import { useAgentReadState } from "@/hooks/use-agent-read-state";
 import { MobileTabTrailingAccessory } from "@/screens/workspace/workspace-tab-trailing-accessory";
 import {
   buildWorkspaceTabMenuEntries,
@@ -187,6 +188,12 @@ function MobileWorkspaceTabOption({
   onCloseOtherTabs: (tabId: string) => Promise<void> | void;
 }) {
   const { t } = useTranslation();
+  const agentId = tab.target.kind === "agent" ? tab.target.agentId : "";
+  const unreadState = useAgentReadState({
+    serverId: normalizedServerId,
+    workspaceId: normalizedWorkspaceId,
+    agentId,
+  });
   const tabMenuLabels = useMemo<WorkspaceTabMenuLabels>(
     () => ({
       copyResumeCommand: t("workspace.tabs.menu.copyResumeCommand"),
@@ -201,6 +208,7 @@ function MobileWorkspaceTabOption({
       closeOthers: t("workspace.tabs.menu.closeOthers"),
       reloadAgent: t("workspace.tabs.menu.reloadAgent"),
       reloadAgentTooltip: t("workspace.tabs.menu.reloadAgentTooltip"),
+      markAsUnread: t("workspace.tabs.menu.markAsUnread"),
       close: t("workspace.tabs.menu.close"),
     }),
     [t],
@@ -223,6 +231,8 @@ function MobileWorkspaceTabOption({
     onCloseTabsBefore: onCloseTabsAbove,
     onCloseTabsAfter: onCloseTabsBelow,
     onCloseOtherTabs,
+    onMarkAsUnread: unreadState.markUnread,
+    canMarkAsUnread: unreadState.canMarkUnread,
     labels: tabMenuLabels,
   });
 

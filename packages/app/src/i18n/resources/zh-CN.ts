@@ -664,6 +664,9 @@ export const zhCN: TranslationResources = {
     },
     tabs: {
       loading: "正在加载...",
+      agentUnread: {
+        hostUpgradeRequired: "请更新主机以设置 Agent 未读。",
+      },
       modified: "未保存的更改",
       loadingAgentTitle: "正在加载 Agent 标题",
       fallback: {
@@ -695,6 +698,7 @@ export const zhCN: TranslationResources = {
         moveToMain: "移至主面板",
         reloadAgent: "重新加载 Agent",
         reloadAgentTooltip: "重新加载 Agent 以更新 skills、MCPs 或登录状态。",
+        markAsUnread: "设置成未读",
         close: "关闭",
         renameTerminal: "重命名 Terminal",
         renameAgent: "重命名 Agent",

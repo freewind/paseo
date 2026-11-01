@@ -336,6 +336,9 @@ export type ViewedTimelineStatus = "ready" | "pending" | "error" | "retrying";
 
 export interface ViewedTimelineUiBridge {
   replaceVisibleAgentIds(sourceId: string, agentIds: string[]): void;
+  releaseVisibleAgent(agentId: string): void;
+  /** 请求失败时把 release 撤销，否则这个 agent 在用户一直看着的情况下再也不会被标成已读。 */
+  restoreVisibleAgent(agentId: string): void;
   subscribe(listener: () => void): () => void;
   getAgentTimelineStatus(agentId: string): ViewedTimelineStatus;
   getAgentTimelineError(agentId: string): string | null;
@@ -519,7 +522,11 @@ export function createViewedTimelineSync(ports: ViewedTimelineSyncPorts): Viewed
   // only closing the tab or ending the session takes it out.
   let openedAgentIds: string[] = [];
 
-  const visibleAgentIds = () => normalizeAgentIds([...sources.values()].flat());
+  const releasedVisibleAgentIds = new Set<string>();
+  const visibleAgentIds = () =>
+    normalizeAgentIds([...sources.values()].flat()).filter(
+      (agentId) => !releasedVisibleAgentIds.has(agentId),
+    );
 
   const rememberOpenedAgentIds = (agentIds: string[]) => {
     if (agentIds.length === 0) return;
@@ -854,11 +861,24 @@ export function createViewedTimelineSync(ports: ViewedTimelineSyncPorts): Viewed
     },
     replaceVisibleAgentIds(sourceId, agentIds) {
       const normalized = normalizeAgentIds(agentIds);
+      for (const agentId of releasedVisibleAgentIds) {
+        if (!normalized.includes(agentId)) releasedVisibleAgentIds.delete(agentId);
+      }
       if (normalized.length === 0) sources.delete(sourceId);
       else sources.set(sourceId, normalized);
       rememberOpenedAgentIds(normalized);
       publishVisibleMembership();
       startAcknowledgedCatchUps();
+    },
+    releaseVisibleAgent(agentId) {
+      if (!visibleAgentIds().includes(agentId)) return;
+      releasedVisibleAgentIds.add(agentId);
+      openedAgentIds = openedAgentIds.filter((id) => id !== agentId);
+      publishVisibleMembership();
+    },
+    restoreVisibleAgent(agentId) {
+      if (!releasedVisibleAgentIds.delete(agentId)) return;
+      publishVisibleMembership();
     },
     setActive(nextActive) {
       if (active === nextActive) return;

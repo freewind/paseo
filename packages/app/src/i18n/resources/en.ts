@@ -665,6 +665,9 @@ export const en = {
     },
     tabs: {
       loading: "Loading...",
+      agentUnread: {
+        hostUpgradeRequired: "Update the host to mark this agent as unread.",
+      },
       modified: "Unsaved changes",
       loadingAgentTitle: "Loading agent title",
       fallback: {
@@ -696,6 +699,7 @@ export const en = {
         moveToMain: "Move to main panel",
         reloadAgent: "Reload agent",
         reloadAgentTooltip: "Reload agent to update skills, MCPs or login status.",
+        markAsUnread: "Mark as unread",
         close: "Close",
         renameTerminal: "Rename terminal",
         renameAgent: "Rename agent",

@@ -2,6 +2,9 @@ import { useCallback, useMemo, type ReactElement } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useToast } from "@/contexts/toast-context";
+import { useHostFeature } from "@/runtime/host-features";
+import { markWorkspaceUnread } from "@/workspace/mark-unread";
+import { canMarkAgentUnread } from "@/workspace/agent-unread-policy";
 import { useHostRuntimeIsConnected } from "@/runtime/host-runtime";
 import { resolveCloseAgentTabPolicy } from "@/subagents/close-tab-policy";
 import { useArchiveAgent } from "@/hooks/use-archive-agent";
@@ -55,6 +58,8 @@ export interface WorkspaceAgentTabActions {
   onCloseTabsBefore: (tabId: string) => Promise<void>;
   onCloseTabsAfter: (tabId: string) => Promise<void>;
   onCloseOtherTabs: (tabId: string) => Promise<void>;
+  onMarkAsUnread: (agentId: string) => Promise<void>;
+  canMarkAsUnread: (agentId: string) => boolean;
   /** 由持有这个 hook 的列表渲染一次，弹窗才不会每行重复。 */
   renameModal: ReactElement | null;
 }
@@ -95,6 +100,29 @@ export function useWorkspaceAgentTabActions({
       closeTab: closeWorkspaceTab,
     }),
     [closeWorkspaceTab, hideWorkspaceAgent, unpinWorkspaceAgent],
+  );
+
+  // 老 daemon 不认识按 agent 标记，入口整体隐藏，而不是点了再报错。
+  const supportsAgentUnread = useHostFeature(serverId, "workspaceMarkUnreadAgentTarget");
+  const canMarkAsUnread = useCallback(
+    (agentId: string) => {
+      const session = useSessionStore.getState().sessions[serverId];
+      const agent = session?.agents.get(agentId) ?? session?.agentDetails.get(agentId) ?? null;
+      return supportsAgentUnread && canMarkAgentUnread({ session, agent, workspaceId });
+    },
+    [serverId, supportsAgentUnread, workspaceId],
+  );
+  const onMarkAsUnread = useCallback(
+    async (agentId: string) => {
+      try {
+        await markWorkspaceUnread(serverId, workspaceId, agentId);
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : t("workspace.terminal.hostDisconnected"),
+        );
+      }
+    },
+    [serverId, t, toast, workspaceId],
   );
 
   const { renamingTab, handleRenameTab, handleRenameModalSubmit, handleRenameModalClose } =
@@ -286,10 +314,14 @@ export function useWorkspaceAgentTabActions({
       onCloseTabsBefore,
       onCloseTabsAfter,
       onCloseOtherTabs,
+      onMarkAsUnread,
+      canMarkAsUnread,
       renameModal,
     }),
     [
       handleRenameTab,
+      onMarkAsUnread,
+      canMarkAsUnread,
       onCloseOtherTabs,
       onCloseTab,
       onCloseTabsAfter,

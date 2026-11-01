@@ -69,6 +69,8 @@ export const SidebarWorkspaceAgentList = memo(function SidebarWorkspaceAgentList
           onCloseTabsBefore: actions.onCloseTabsBefore,
           onCloseTabsAfter: actions.onCloseTabsAfter,
           onCloseOtherTabs: actions.onCloseOtherTabs,
+          onMarkAsUnread: actions.onMarkAsUnread,
+          canMarkAsUnread: row.target.kind === "agent" && actions.canMarkAsUnread(row.agentId),
         }),
       ),
     [actions, isCompactLayout, rows],

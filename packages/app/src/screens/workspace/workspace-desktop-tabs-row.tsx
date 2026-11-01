@@ -16,6 +16,7 @@ import {
   CopyX,
   ArrowLeftToLine,
   ArrowRightToLine,
+  Circle,
   Copy,
   ExternalLink,
   FolderOpen,
@@ -60,6 +61,7 @@ import {
   type WorkspaceTabPresentation,
 } from "@/screens/workspace/workspace-tab-presentation";
 import { buildDeterministicWorkspaceTabId } from "@/workspace-tabs/identity";
+import { useAgentReadState } from "@/hooks/use-agent-read-state";
 import {
   buildWorkspaceDesktopTabActions,
   type WorkspaceDesktopTabActions,
@@ -134,6 +136,7 @@ const ThemedArrowRightToLine = withUnistyles(ArrowRightToLine);
 const ThemedCopyX = withUnistyles(CopyX);
 const ThemedPencil = withUnistyles(Pencil);
 const ThemedExternalLink = withUnistyles(ExternalLink);
+const ThemedCircle = withUnistyles(Circle);
 const ThemedFolderOpen = withUnistyles(FolderOpen);
 const ThemedPlus = withUnistyles(Plus);
 const ThemedColumns2 = withUnistyles(Columns2);
@@ -443,6 +446,8 @@ function TabContextMenuItem({
         return <ThemedExternalLink size={16} uniProps={mutedColorMapping} />;
       case "folder-open":
         return <ThemedFolderOpen size={16} uniProps={mutedColorMapping} />;
+      case "circle":
+        return <ThemedCircle size={16} uniProps={mutedColorMapping} />;
       case "x":
         return <ThemedX size={16} uniProps={mutedColorMapping} />;
       default:
@@ -1134,6 +1139,7 @@ function ResolvedWorkspaceDesktopTabsRow({
       closeOthers: t("workspace.tabs.menu.closeOthers"),
       reloadAgent: t("workspace.tabs.menu.reloadAgent"),
       reloadAgentTooltip: t("workspace.tabs.menu.reloadAgentTooltip"),
+      markAsUnread: t("workspace.tabs.menu.markAsUnread"),
       close: t("workspace.tabs.menu.close"),
     }),
     [t],
@@ -1525,6 +1531,8 @@ function ResolvedDesktopTabChip({
   showDropIndicatorAfter: boolean;
 }) {
   const { t } = useTranslation();
+  const agentId = item.tab.target.kind === "agent" ? item.tab.target.agentId : "";
+  const unreadState = useAgentReadState({ serverId, workspaceId, agentId });
   const presentation = item.presentation;
   const resolvedTab = useMemo(
     () =>
@@ -1543,6 +1551,8 @@ function ResolvedDesktopTabChip({
         onCloseTabsToLeft,
         onCloseTabsToRight,
         onCloseOtherTabs,
+        onMarkAsUnread: unreadState.markUnread,
+        canMarkAsUnread: () => unreadState.canMarkUnread,
         labels,
       }),
     [
@@ -1556,6 +1566,8 @@ function ResolvedDesktopTabChip({
       onCopyTerminalId,
       onCopyFilePath,
       fileOpenActions,
+      unreadState.canMarkUnread,
+      unreadState.markUnread,
       onCopyResumeCommand,
       labels,
       onReloadAgent,
