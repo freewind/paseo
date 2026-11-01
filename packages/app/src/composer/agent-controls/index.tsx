@@ -45,6 +45,7 @@ import {
   type AgentModeControlValue,
 } from "@/composer/agent-controls/mode-control";
 import { AdaptiveModalSheet, type SheetHeader } from "@/components/adaptive-modal-sheet";
+import { useResetWhenPanelInactive } from "@/components/retained-panel";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type {
   AgentFeature,
@@ -510,6 +511,12 @@ function ControlledAgentControls({
   const { fontScale } = useWindowDimensions();
   const [activeSheet, setActiveSheet] = useState<ActiveSheet>(null);
   const [openSelector, setOpenSelector] = useState<AgentControlSelector | null>(null);
+  // 隐藏的保留面板会让这些控件继续挂载，而它们打开的选择器与 sheet 都渲染在面板之外。
+  // 在失活那次提交里重置，任何浮层都不会越过这次 tab 切换；web 上 chat 晚一个 commit 才挂起。
+  useResetWhenPanelInactive(() => {
+    setOpenSelector(null);
+    setActiveSheet(null);
+  });
   const initialDensity: ComposerControlDensity = isCompact ? "tight" : "full";
   const [density, setDensity] = useState<ComposerControlDensity>(initialDensity);
   const densityRef = useRef<ComposerControlDensity>(initialDensity);

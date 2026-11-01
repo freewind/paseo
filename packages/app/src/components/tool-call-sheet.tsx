@@ -11,6 +11,7 @@ import {
   type ContextBridge,
   useIsolatedBottomSheetVisibility,
 } from "@/components/ui/isolated-bottom-sheet-modal";
+import { RetainedPanelGate, useResetWhenPanelInactive } from "@/components/retained-panel";
 import type { ToolCallIconComponent } from "@/utils/tool-call-icon";
 import { ToolCallDetailsContent } from "./tool-call-details";
 
@@ -100,6 +101,9 @@ export function ToolCallSheetProvider({ children }: ToolCallSheetProviderProps) 
   const closeToolCall = useCallback(() => {
     setIsSheetOpen(false);
   }, []);
+  // 这个 provider 就在聊天面板里，而 sheet 走全局 sheet 栈。面板失活时在当次渲染里关掉，
+  // 否则 web 上 chat 挂起后遮罩会留在用户切过去的页面上。
+  useResetWhenPanelInactive(closeToolCall);
 
   const {
     sheetRef: bottomSheetRef,
@@ -123,19 +127,21 @@ export function ToolCallSheetProvider({ children }: ToolCallSheetProviderProps) 
   return (
     <ToolCallSheetContext.Provider value={contextValue}>
       {children}
-      <ToolCallSheetModal
-        ref={bottomSheetRef}
-        contextBridge={null}
-        snapPoints={snapPoints}
-        index={0}
-        enableDynamicSizing={false}
-        onChange={handleSheetChange}
-        onDismiss={handleToolCallSheetDismiss}
-        backdropOpacity={0.5}
-        enablePanDownToClose
-      >
-        {sheetData && <ToolCallSheetContent data={sheetData} onClose={closeToolCall} />}
-      </ToolCallSheetModal>
+      <RetainedPanelGate>
+        <ToolCallSheetModal
+          ref={bottomSheetRef}
+          contextBridge={null}
+          snapPoints={snapPoints}
+          index={0}
+          enableDynamicSizing={false}
+          onChange={handleSheetChange}
+          onDismiss={handleToolCallSheetDismiss}
+          backdropOpacity={0.5}
+          enablePanDownToClose
+        >
+          {sheetData && <ToolCallSheetContent data={sheetData} onClose={closeToolCall} />}
+        </ToolCallSheetModal>
+      </RetainedPanelGate>
     </ToolCallSheetContext.Provider>
   );
 }

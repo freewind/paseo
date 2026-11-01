@@ -61,6 +61,16 @@ export function createToolCallExpansion() {
       expandedGroups = createExpandedGroups();
       for (const listener of groupListeners) listener();
     },
+    /**
+     * 收起所有展开的分组，不动单个调用的展开状态。保留面板失活时用：它只通知分组订阅者
+     * （即持有该 store 的那个组件自己），不会在渲染期间更新其它组件。
+     */
+    collapseGroups() {
+      if (groups.size === 0) return;
+      groups.clear();
+      expandedGroups = createExpandedGroups();
+      for (const listener of groupListeners) listener();
+    },
   };
 }
 

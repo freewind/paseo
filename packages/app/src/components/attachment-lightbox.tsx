@@ -13,6 +13,7 @@ import { WindowChromeRootRegion } from "@/utils/desktop-window";
 import { ZoomableImage } from "@/components/zoomable-viewport/image";
 import type { ViewportSize } from "@/components/zoomable-viewport/geometry";
 import { useGlobalWebOverlayLayer, useWebOverlayRegistration } from "@/lib/overlay-root";
+import { useRetainedPanelActive } from "@/components/retained-panel";
 
 export type ImageLightboxSource =
   | { type: "attachment"; metadata: AttachmentMetadata }
@@ -69,7 +70,10 @@ export function AttachmentLightbox({ source, onClose }: AttachmentLightboxProps)
 
   const handleImageError = useCallback(() => setErrored(true), []);
 
-  if (!source) {
+  // 图片预览用 RN Modal：web 上是 body 下的 portal，native 上是独立 Dialog 窗口。两者都不在
+  // 聊天面板里，面板失活隐藏时它们仍会盖在用户切过去的页面上，所以在失活那次渲染里直接不渲染。
+  const panelActive = useRetainedPanelActive();
+  if (!source || !panelActive) {
     return null;
   }
 

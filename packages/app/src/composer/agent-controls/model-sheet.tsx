@@ -5,6 +5,7 @@ import { StyleSheet } from "react-native-unistyles";
 import type { AgentProvider } from "@getpaseo/protocol/agent-types";
 import type { AgentProfilePicker, AgentProfileSeed } from "@/agent-profiles";
 import { AdaptiveModalSheet } from "@/components/adaptive-modal-sheet";
+import { useResetWhenPanelInactive } from "@/components/retained-panel";
 import { ComboboxTrigger } from "@/components/ui/combobox-trigger";
 import { useProviderIcon } from "@/components/provider-icons";
 import { ModelBrowser, useModelBrowser } from "@/components/model-browser";
@@ -105,6 +106,12 @@ export function CompactModelSheet({
   });
   const [isOpen, setIsOpen] = useState(false);
   const [isModelBrowserOpen, setIsModelBrowserOpen] = useState(false);
+  // 隐藏的保留面板会让这个 sheet 继续挂载，而两层 sheet 都渲染在面板之外。在失活那次提交里
+  // 重置，赶在 web 上 chat 挂起之前，选择器不会稍后重新盖到这个 agent 上，也不会把遮罩留在目标页。
+  useResetWhenPanelInactive(() => {
+    setIsOpen(false);
+    setIsModelBrowserOpen(false);
+  });
   const availableProviders = useMemo(() => {
     if (canSwitchProvider) return providers;
     const fixedProvider =
