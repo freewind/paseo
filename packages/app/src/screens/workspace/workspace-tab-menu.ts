@@ -49,6 +49,8 @@ export type WorkspaceTabMenuEntry =
         | "arrow-right-to-line"
         | "copy-x"
         | "pencil"
+        | "external-link"
+        | "folder-open"
         | "x";
       hint?: string;
       tooltip?: string;
@@ -67,12 +69,28 @@ export type WorkspaceTabMenuEntry =
       key: string;
     };
 
+/** 文件标签菜单里由调用方准备好的一项：文案已含目标名，目标不可用时 run 是空操作。 */
+interface WorkspaceTabFileOpenAction {
+  label: string;
+  run: (filePath: string) => void;
+}
+
+export interface WorkspaceTabFileOpenActions {
+  openInEditor?: WorkspaceTabFileOpenAction;
+  reveal?: WorkspaceTabFileOpenAction;
+}
+
 interface BuildWorkspaceTabMenuEntriesInput {
   surface: WorkspaceTabMenuSurface;
   tab: WorkspaceTabDescriptor;
   index: number;
   tabCount: number;
   menuTestIDBase: string;
+  /**
+   * 文件标签多出来的两项。label 已含目标名（与文件浏览器菜单同一句文案），run 在目标不可用
+   * 时是空操作：调用方照常传，缺哪项就不出哪个菜单项。
+   */
+  fileOpenActions?: WorkspaceTabFileOpenActions;
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
@@ -90,6 +108,7 @@ interface BuildWorkspaceDesktopTabActionsInput {
   tab: WorkspaceTabDescriptor;
   index: number;
   tabCount: number;
+  fileOpenActions?: WorkspaceTabFileOpenActions;
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
@@ -187,6 +206,7 @@ export function buildWorkspaceTabMenuEntries(
     onCloseTabsBefore,
     onCloseTabsAfter,
     onCloseOtherTabs,
+    fileOpenActions,
   } = input;
   const labels = input.labels ?? DEFAULT_WORKSPACE_TAB_MENU_LABELS;
   const isFirstTab = index === 0;
@@ -236,6 +256,20 @@ export function buildWorkspaceTabMenuEntries(
 
   if (tab.target.kind === "file") {
     const filePath = tab.target.path;
+    // 顺序与文件浏览器菜单一致：打开方式在前，复制路径居中，「在文件管理器中显示」紧跟其后。
+    const openInEditor = fileOpenActions?.openInEditor;
+    if (openInEditor) {
+      entries.push({
+        kind: "item",
+        key: "open-in-editor",
+        label: openInEditor.label,
+        icon: "external-link",
+        testID: `${menuTestIDBase}-open-in-editor`,
+        onSelect: () => {
+          openInEditor.run(filePath);
+        },
+      });
+    }
     entries.push({
       kind: "item",
       key: "copy-file-path",
@@ -246,6 +280,19 @@ export function buildWorkspaceTabMenuEntries(
         void onCopyFilePath(filePath);
       },
     });
+    const reveal = fileOpenActions?.reveal;
+    if (reveal) {
+      entries.push({
+        kind: "item",
+        key: "reveal-file",
+        label: reveal.label,
+        icon: "folder-open",
+        testID: `${menuTestIDBase}-reveal-file`,
+        onSelect: () => {
+          reveal.run(filePath);
+        },
+      });
+    }
     entries.push({ kind: "file-panel-open-with", key: "file-panel-open-with" });
   }
 
@@ -350,6 +397,7 @@ export function buildWorkspaceDesktopTabActions(
       onCloseTabsAfter: input.onCloseTabsToRight,
       onCloseOtherTabs: input.onCloseOtherTabs,
       labels: input.labels,
+      fileOpenActions: input.fileOpenActions,
     }),
     closeButtonTestId: getCloseButtonTestId(input.tab),
   };

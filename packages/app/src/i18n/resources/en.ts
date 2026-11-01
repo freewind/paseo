@@ -572,6 +572,7 @@ export const en = {
         renameFailed: "Failed to rename entry",
         duplicateFailed: "Failed to duplicate entry",
         revealFailed: "Failed to reveal entry",
+        openInEditorFailed: "Failed to open in editor",
         deleteFailed: "Failed to delete entry",
       },
       draft: {

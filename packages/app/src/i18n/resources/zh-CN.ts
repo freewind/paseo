@@ -572,6 +572,7 @@ export const zhCN: TranslationResources = {
         renameFailed: "重命名条目失败",
         duplicateFailed: "复制条目失败",
         revealFailed: "显示条目失败",
+        openInEditorFailed: "在编辑器中打开失败",
         deleteFailed: "删除条目失败",
       },
       draft: {
