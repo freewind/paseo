@@ -500,6 +500,15 @@ function forwardSessionCopy<Input>(
     provider,
   });
 }
+
+/** 复制/分叉都会拿到 provider 句柄：统一换回内层 provider，再把结果标回外层。 */
+function forwardSessionCopies(provider: AgentProvider, inner: AgentClient) {
+  return {
+    forkSession: forwardSessionCopy(provider, inner, inner.forkSession?.bind(inner)),
+    cloneSession: forwardSessionCopy(provider, inner, inner.cloneSession?.bind(inner)),
+  };
+}
+
 function wrapClientProvider(
   provider: AgentProvider,
   inner: AgentClient,
@@ -626,8 +635,7 @@ function wrapClientProvider(
     unarchiveNativeSession: unarchiveNativeSession
       ? async (handle) => await unarchiveNativeSession({ ...handle, provider: inner.provider })
       : undefined,
-    forkSession: forwardSessionCopy(provider, inner, inner.forkSession?.bind(inner)),
-    cloneSession: forwardSessionCopy(provider, inner, inner.cloneSession?.bind(inner)),
+    ...forwardSessionCopies(provider, inner),
     getCatalogCacheKey: inner.getCatalogCacheKey?.bind(inner),
     isAvailable: (signal, options) => inner.isAvailable(signal, options),
     getDiagnostic: inner.getDiagnostic?.bind(inner),

@@ -24,6 +24,7 @@ interface ExplorerSidebarDockProps extends Pick<
   | "onCopyAgentId"
   | "onCopyAgentAsNew"
   | "canCloneAgent"
+  | "onDeleteAgent"
   | "onCopyTerminalId"
   | "onCopyFilePath"
   | "fileOpenActions"
@@ -68,6 +69,7 @@ export function ExplorerSidebarDock({
   onCopyResumeCommand,
   onCopyAgentId,
   onCopyAgentAsNew,
+  onDeleteAgent,
   canCloneAgent,
   onCopyTerminalId,
   onCopyFilePath,
@@ -139,6 +141,7 @@ export function ExplorerSidebarDock({
                 onCopyResumeCommand={onCopyResumeCommand}
                 onCopyAgentId={onCopyAgentId}
                 onCopyAgentAsNew={onCopyAgentAsNew}
+                onDeleteAgent={onDeleteAgent}
                 canCloneAgent={canCloneAgent}
                 onCopyTerminalId={onCopyTerminalId}
                 onCopyFilePath={onCopyFilePath}

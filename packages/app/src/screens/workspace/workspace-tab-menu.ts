@@ -19,6 +19,8 @@ export interface WorkspaceTabMenuLabels {
   closeOthers: string;
   reloadAgent: string;
   reloadAgentTooltip: string;
+  deleteAgent: string;
+  deleteAgentTooltip: string;
   close: string;
 }
 
@@ -36,6 +38,8 @@ export const DEFAULT_WORKSPACE_TAB_MENU_LABELS: WorkspaceTabMenuLabels = {
   closeOthers: i18n.t("workspace.tabs.menu.closeOthers"),
   reloadAgent: i18n.t("workspace.tabs.menu.reloadAgent"),
   reloadAgentTooltip: i18n.t("workspace.tabs.menu.reloadAgentTooltip"),
+  deleteAgent: i18n.t("workspace.tabs.menu.deleteAgent"),
+  deleteAgentTooltip: i18n.t("workspace.tabs.menu.deleteAgentTooltip"),
   close: i18n.t("workspace.tabs.menu.close"),
 };
 
@@ -53,6 +57,7 @@ export type WorkspaceTabMenuEntry =
         | "pencil"
         | "external-link"
         | "folder-open"
+        | "trash-2"
         | "x";
       hint?: string;
       tooltip?: string;
@@ -106,6 +111,7 @@ interface BuildWorkspaceTabMenuEntriesInput {
   onCloseTabsBefore: (tabId: string) => Promise<void> | void;
   onCloseTabsAfter: (tabId: string) => Promise<void> | void;
   onCloseOtherTabs: (tabId: string) => Promise<void> | void;
+  onDeleteAgent?: (agentId: string) => Promise<void> | void;
   labels?: WorkspaceTabMenuLabels;
 }
 
@@ -127,6 +133,7 @@ interface BuildWorkspaceDesktopTabActionsInput {
   onCloseTabsToLeft: (tabId: string) => Promise<void> | void;
   onCloseTabsToRight: (tabId: string) => Promise<void> | void;
   onCloseOtherTabs: (tabId: string) => Promise<void> | void;
+  onDeleteAgent?: (agentId: string) => Promise<void> | void;
   labels?: WorkspaceTabMenuLabels;
 }
 
@@ -217,6 +224,7 @@ export function buildWorkspaceTabMenuEntries(
     onCloseTabsAfter,
     onCloseOtherTabs,
     fileOpenActions,
+    onDeleteAgent,
   } = input;
   const labels = input.labels ?? DEFAULT_WORKSPACE_TAB_MENU_LABELS;
   const isFirstTab = index === 0;
@@ -381,6 +389,21 @@ export function buildWorkspaceTabMenuEntries(
         void onReloadAgent(agentId);
       },
     });
+    // 删除不可逆，单独用一条分隔线与上方的可恢复操作隔开。
+    if (onDeleteAgent) {
+      entries.push({ kind: "separator", key: "delete-separator" });
+      entries.push({
+        kind: "item",
+        key: "delete-agent",
+        label: labels.deleteAgent,
+        icon: "trash-2",
+        tooltip: labels.deleteAgentTooltip,
+        testID: `${menuTestIDBase}-delete-agent`,
+        onSelect: () => {
+          void onDeleteAgent(agentId);
+        },
+      });
+    }
   }
   entries.push({
     kind: "item",
@@ -422,6 +445,7 @@ export function buildWorkspaceDesktopTabActions(
       onCloseOtherTabs: input.onCloseOtherTabs,
       labels: input.labels,
       fileOpenActions: input.fileOpenActions,
+      onDeleteAgent: input.onDeleteAgent,
     }),
     closeButtonTestId: getCloseButtonTestId(input.tab),
   };

@@ -67,6 +67,7 @@ export const SidebarWorkspaceAgentList = memo(function SidebarWorkspaceAgentList
           onCloseTabsBefore: actions.onCloseTabsBefore,
           onCloseTabsAfter: actions.onCloseTabsAfter,
           onCloseOtherTabs: actions.onCloseOtherTabs,
+          onDeleteAgent: actions.onDeleteAgent,
         }),
       ),
     [actions, isCompactLayout, rows],

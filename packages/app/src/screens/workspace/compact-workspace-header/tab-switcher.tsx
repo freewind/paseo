@@ -135,6 +135,7 @@ interface MobileWorkspaceTabSwitcherProps {
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
   onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
+  onDeleteAgent?: (agentId: string) => Promise<void> | void;
   canCloneAgent?: boolean;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
@@ -159,6 +160,7 @@ function MobileWorkspaceTabOption({
   onCopyResumeCommand,
   onCopyAgentId,
   onCopyAgentAsNew,
+  onDeleteAgent,
   canCloneAgent,
   onCopyTerminalId,
   onCopyFilePath,
@@ -181,6 +183,7 @@ function MobileWorkspaceTabOption({
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
   onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
+  onDeleteAgent?: (agentId: string) => Promise<void> | void;
   canCloneAgent?: boolean;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
@@ -208,6 +211,8 @@ function MobileWorkspaceTabOption({
       closeOthers: t("workspace.tabs.menu.closeOthers"),
       reloadAgent: t("workspace.tabs.menu.reloadAgent"),
       reloadAgentTooltip: t("workspace.tabs.menu.reloadAgentTooltip"),
+      deleteAgent: t("workspace.tabs.menu.deleteAgent"),
+      deleteAgentTooltip: t("workspace.tabs.menu.deleteAgentTooltip"),
       close: t("workspace.tabs.menu.close"),
     }),
     [t],
@@ -222,6 +227,7 @@ function MobileWorkspaceTabOption({
     onCopyResumeCommand,
     onCopyAgentId,
     onCopyAgentAsNew,
+    onDeleteAgent,
     canCloneAgent,
     onCopyTerminalId,
     onCopyFilePath,
@@ -302,6 +308,7 @@ export const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitch
   onCopyResumeCommand,
   onCopyAgentId,
   onCopyAgentAsNew,
+  onDeleteAgent,
   canCloneAgent,
   onCopyTerminalId,
   onCopyFilePath,
@@ -427,6 +434,7 @@ export const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitch
           onCopyResumeCommand={onCopyResumeCommand}
           onCopyAgentId={onCopyAgentId}
           onCopyAgentAsNew={onCopyAgentAsNew}
+          onDeleteAgent={onDeleteAgent}
           canCloneAgent={canCloneAgent}
           onCopyTerminalId={onCopyTerminalId}
           onCopyFilePath={onCopyFilePath}
@@ -449,6 +457,7 @@ export const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitch
       onCopyResumeCommand,
       onCopyAgentId,
       onCopyAgentAsNew,
+      onDeleteAgent,
       canCloneAgent,
       onCopyTerminalId,
       onCopyFilePath,

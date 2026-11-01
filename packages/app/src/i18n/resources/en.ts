@@ -357,6 +357,13 @@ export const en = {
       runningAgent: "This agent is still running. Archiving it will stop the agent.",
       archive: "Archive",
     },
+    deleteSheet: {
+      delete: "Delete permanently",
+      confirmTitle: "Delete this session permanently?",
+      confirmMessage:
+        "{{agent}} and its provider session file will be deleted. This cannot be undone.",
+      failed: "Failed to delete the session",
+    },
   },
   message: {
     diagram: {
@@ -702,6 +709,9 @@ export const en = {
         moveToMain: "Move to main panel",
         reloadAgent: "Reload agent",
         reloadAgentTooltip: "Reload agent to update skills, MCPs or login status.",
+        deleteAgent: "Delete conversation",
+        deleteAgentTooltip:
+          "Delete this conversation from Paseo permanently. The provider's own session record is not affected.",
         close: "Close",
         renameTerminal: "Rename terminal",
         renameAgent: "Rename agent",

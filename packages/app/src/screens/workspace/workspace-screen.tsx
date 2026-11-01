@@ -10,6 +10,7 @@ import type { LayoutChangeEvent } from "react-native";
 import { ExplorerSidebarDock } from "@/screens/workspace/explorer-sidebar";
 import { useAgentTabMetadataActions } from "@/screens/workspace/use-agent-tab-metadata-actions";
 import { copyAgentAsNewTab } from "@/screens/workspace/use-workspace-agent-tab-actions";
+import { useDeleteAgent } from "@/hooks/use-delete-agent";
 import { useCloseTabs } from "@/screens/workspace/use-close-tabs";
 import { useBulkCloseConfirmationLabels } from "@/screens/workspace/use-bulk-close-confirmation-labels";
 import { removeAgentTabWithLayoutCleanup } from "@/screens/workspace/agent-tab-cleanup";
@@ -2226,6 +2227,13 @@ function WorkspaceScreenContent({
   } = useAgentTabMetadataActions({ serverId: normalizedServerId, client, isConnected });
 
   const supportsCloneAgent = useHostFeature(normalizedServerId, "agentCloneSession");
+  const { deleteAgent } = useDeleteAgent();
+  const handleDeleteAgent = useCallback(
+    async (agentId: string) => {
+      await deleteAgent({ serverId: normalizedServerId, agentId });
+    },
+    [deleteAgent, normalizedServerId],
+  );
   const handleCopyAgentAsNew = useCallback(
     async (agentId: string) => {
       await copyAgentAsNewTab({
@@ -3511,6 +3519,7 @@ function WorkspaceScreenContent({
             onCopyResumeCommand={handleCopyResumeCommand}
             onCopyAgentId={handleCopyAgentId}
             onCopyAgentAsNew={handleCopyAgentAsNew}
+            onDeleteAgent={handleDeleteAgent}
             canCloneAgent={supportsCloneAgent}
             onCopyTerminalId={handleCopyTerminalId}
             onCopyFilePath={handleCopyFilePath}
@@ -3573,6 +3582,7 @@ function WorkspaceScreenContent({
       handleCloseTabsToRight,
       handleCopyAgentId,
       handleCopyAgentAsNew,
+      handleDeleteAgent,
       supportsCloneAgent,
       handleCopyBranchName,
       handleCopyFilePath,
@@ -3635,6 +3645,7 @@ function WorkspaceScreenContent({
         onCopyResumeCommand={handleCopyResumeCommand}
         onCopyAgentId={handleCopyAgentId}
         onCopyAgentAsNew={handleCopyAgentAsNew}
+        onDeleteAgent={handleDeleteAgent}
         canCloneAgent={supportsCloneAgent}
         onCopyTerminalId={handleCopyTerminalId}
         onCopyFilePath={handleCopyFilePath}
@@ -3673,6 +3684,7 @@ function WorkspaceScreenContent({
     handleCopyResumeCommand,
     handleCopyAgentId,
     handleCopyAgentAsNew,
+    handleDeleteAgent,
     supportsCloneAgent,
     handleCopyTerminalId,
     handleCopyFilePath,
@@ -3739,6 +3751,7 @@ function WorkspaceScreenContent({
             onCopyResumeCommand={handleCopyResumeCommand}
             onCopyAgentId={handleCopyAgentId}
             onCopyAgentAsNew={handleCopyAgentAsNew}
+            onDeleteAgent={handleDeleteAgent}
             canCloneAgent={supportsCloneAgent}
             onCopyTerminalId={handleCopyTerminalId}
             onCopyFilePath={handleCopyFilePath}
@@ -3787,6 +3800,7 @@ function WorkspaceScreenContent({
         onCopyResumeCommand={handleCopyResumeCommand}
         onCopyAgentId={handleCopyAgentId}
         onCopyAgentAsNew={handleCopyAgentAsNew}
+        onDeleteAgent={handleDeleteAgent}
         canCloneAgent={supportsCloneAgent}
         onCopyTerminalId={handleCopyTerminalId}
         onCopyFilePath={handleCopyFilePath}
@@ -3831,6 +3845,7 @@ function WorkspaceScreenContent({
     handleCopyResumeCommand,
     handleCopyAgentId,
     handleCopyAgentAsNew,
+    handleDeleteAgent,
     supportsCloneAgent,
     handleCopyTerminalId,
     handleCopyFilePath,
