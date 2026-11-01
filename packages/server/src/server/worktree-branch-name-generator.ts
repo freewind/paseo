@@ -11,6 +11,7 @@ import {
   type StructuredGenerationDaemonConfig,
 } from "./agent/structured-generation-providers.js";
 import { buildAgentBranchNameSeed } from "./agent/prompt-attachments.js";
+import { METADATA_PROMPT_DEFAULTS } from "@getpaseo/protocol/metadata-prompts";
 import { buildMetadataPrompt } from "../utils/build-metadata-prompt.js";
 import type { WorkspaceGitService } from "./workspace-git-service.js";
 import type { ProviderSnapshotManager } from "./agent/provider-snapshot-manager.js";
@@ -65,18 +66,12 @@ async function buildPrompt(
       {
         configKey: "title",
         label: "Title style",
-        default: [
-          "An actionable task label: requested operation + concrete target + strongest distinguishing anchor (sentence case, max 80 characters).",
-          "Preserve explicit identifiers such as PR or issue numbers, file paths, packages, components, commands, and quoted names when they distinguish the task.",
-          "Aim for about 4 words, but never drop a part needed to understand or distinguish the task.",
-          'Example: "Refactor PR #2638 Playwright specs".',
-        ].join("\n"),
+        default: METADATA_PROMPT_DEFAULTS.title,
       },
       {
         configKey: "branchName",
         label: "Branch style",
-        default:
-          "A short task-shaped slug preserving the operation, target, and explicit identifier when present.",
+        default: METADATA_PROMPT_DEFAULTS.branchName,
       },
     ],
     after: "Return JSON only with fields 'title' and 'branch'.",

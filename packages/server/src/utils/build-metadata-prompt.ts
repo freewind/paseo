@@ -1,7 +1,9 @@
 import { readPaseoConfig } from "./paseo-config-file.js";
 import { type PaseoMetadataGeneration } from "@getpaseo/protocol/paseo-config-schema";
 
-export type MetadataConfigKey = "title" | "branchName" | "commitMessage" | "pullRequest";
+import type { MetadataPromptKey } from "@getpaseo/protocol/metadata-prompts";
+
+export type MetadataConfigKey = MetadataPromptKey;
 
 export interface RepoRootResolver {
   resolveRepoRoot: (cwd: string) => Promise<string>;
