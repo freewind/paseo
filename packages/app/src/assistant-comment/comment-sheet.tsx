@@ -30,6 +30,8 @@ export interface CommentRequest {
 }
 
 interface CommentSheetProps {
+  /** comment 附加到输入框；memo 直接存成备忘。 */
+  variant?: "comment" | "memo";
   request: CommentRequest | null;
   onCancel: () => void;
   /** 附加到输入框；引文由调用方拼进去。 */
@@ -62,7 +64,14 @@ function useEnterSubmit(onSubmit: () => void, onSendNow?: () => void) {
   );
 }
 
-export function CommentSheet({ request, onCancel, onSubmit, onSendNow }: CommentSheetProps) {
+export function CommentSheet({
+  variant = "comment",
+  request,
+  onCancel,
+  onSubmit,
+  onSendNow,
+}: CommentSheetProps) {
+  const isMemo = variant === "memo";
   const [retained, setRetained] = useState<CommentRequest | null>(request);
   const [text, setText] = useState("");
 
@@ -80,7 +89,8 @@ export function CommentSheet({ request, onCancel, onSubmit, onSendNow }: Comment
   }, [onCancel]);
 
   const trimmed = text.trim();
-  const canSubmit = trimmed.length > 0;
+  // 备忘可以只保存引文；评论没有正文就没有可附加的内容。
+  const canSubmit = isMemo || trimmed.length > 0;
 
   const handleSubmit = useCallback(() => {
     if (!canSubmit) return;
@@ -93,11 +103,14 @@ export function CommentSheet({ request, onCancel, onSubmit, onSendNow }: Comment
     onSendNow?.(trimmed);
   }, [onSendNow, trimmed]);
 
-  const handleKeyPress = useEnterSubmit(handleSubmit, handleSendNow);
+  const handleKeyPress = useEnterSubmit(handleSubmit, isMemo ? undefined : handleSendNow);
 
   const { t } = useTranslation();
-  const header = useMemo<SheetHeader>(() => ({ title: t("comment.sheet.title") }), [t]);
-  const placeholder = t("comment.sheet.placeholder");
+  const header = useMemo<SheetHeader>(
+    () => ({ title: isMemo ? t("agentMemos.sheetTitle") : t("comment.sheet.title") }),
+    [isMemo, t],
+  );
+  const placeholder = isMemo ? t("agentMemos.sheetPlaceholder") : t("comment.sheet.placeholder");
 
   const footer = useMemo(
     () =>
@@ -110,21 +123,23 @@ export function CommentSheet({ request, onCancel, onSubmit, onSendNow }: Comment
             variant="default"
             disabled={!canSubmit}
             onPress={handleSubmit}
-            testID="assistant-comment-attach"
+            testID={isMemo ? "assistant-memo-submit" : "assistant-comment-attach"}
           >
-            {t("comment.sheet.attach")}
+            {isMemo ? t("common.actions.add") : t("comment.sheet.attach")}
           </Button>
-          <Button
-            variant="secondary"
-            disabled={!canSubmit}
-            onPress={handleSendNow}
-            testID="assistant-comment-send"
-          >
-            {t("comment.sheet.sendNow")}
-          </Button>
+          {isMemo ? null : (
+            <Button
+              variant="secondary"
+              disabled={!canSubmit}
+              onPress={handleSendNow}
+              testID="assistant-comment-send"
+            >
+              {t("comment.sheet.sendNow")}
+            </Button>
+          )}
         </View>
       ) : null,
-    [canSubmit, close, handleSendNow, handleSubmit, retained, t],
+    [canSubmit, close, handleSendNow, handleSubmit, isMemo, retained, t],
   );
 
   return (

@@ -265,6 +265,18 @@ explains their authority. An update prepares a new directory before replacing th
 removing the previous version. Old record fields are accepted at the store boundary and ignored;
 there is no startup migration or persistent update policy.
 
+### Agent memos
+
+`agent-memos.json` is daemon-owned, keyed by agent id: `{ version: 1, memosByAgentId }`. Each memo
+carries `id`, `text`, `createdAt`, optional `updatedAt`, optional `completed`, and optional
+`images`. Images are inline base64 (`{ data, mimeType }`) rather than attachment ids, so any client
+renders a memo without a file lookup; the store rejects non-images and enforces per-image,
+per-memo and per-agent byte budgets because the whole file is rewritten on every mutation.
+
+Every memo RPC answers with the full list for that agent, so clients replace rather than merge.
+`completed` is absent on older records and means open. Fetching an agent may include `memos`; an
+absent field means the list is unchanged, not empty.
+
 ### Profile lists
 
 `terminalProfiles` and `agentProfiles` are both whole-list fields: a config patch replaces the

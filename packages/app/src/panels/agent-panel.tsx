@@ -5,7 +5,11 @@ import { Button } from "@/components/ui/button";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
-import type { QuickReply } from "@getpaseo/protocol/messages";
+import { AgentMemosRail } from "@/agent-memos/agent-memos-rail";
+import { AgentMemosSheet } from "@/agent-memos/agent-memos-sheet";
+import { useAgentMemoPanel } from "@/agent-memos/use-agent-memo-panel";
+import { useHostFeature } from "@/runtime/host-features";
+import type { AgentMemo, QuickReply } from "@getpaseo/protocol/messages";
 import type { TFunction } from "i18next";
 import { SquarePen } from "lucide-react-native";
 import React, {
@@ -301,6 +305,11 @@ function storeFetchedAgentDetail(input: {
       next.set(hydrated.id, hydrated);
       return next;
     });
+  }
+
+  // 缺省表示“没有变化”，不能当成空列表清掉本地缓存。
+  if (input.result.memos) {
+    store.setAgentMemos(input.serverId, hydrated.id, input.result.memos);
   }
 
   store.setPendingPermissions(input.serverId, (previous) => {
@@ -1077,6 +1086,44 @@ function ChatAgentContent({
   );
 }
 
+const PaneRightGutter = memo(function PaneRightGutter({
+  memosSupported,
+  showsQuickReplies,
+  serverId,
+  agentId,
+  onMemoAppend,
+  replies,
+  onQuickReply,
+  onEditReplies,
+}: {
+  memosSupported: boolean;
+  showsQuickReplies: boolean;
+  serverId: string;
+  agentId: string;
+  onMemoAppend: (memo: AgentMemo) => void;
+  replies: QuickReply[];
+  onQuickReply: (text: string) => void;
+  onEditReplies: () => void;
+}) {
+  if (!memosSupported && !showsQuickReplies) {
+    return null;
+  }
+  return (
+    <ScrollView
+      style={styles.quickRepliesRailScroll}
+      contentContainerStyle={styles.quickRepliesRailContent}
+      showsVerticalScrollIndicator
+    >
+      {memosSupported ? (
+        <AgentMemosRail serverId={serverId} agentId={agentId} onAppendToComposer={onMemoAppend} />
+      ) : null}
+      {showsQuickReplies ? (
+        <QuickRepliesBar replies={replies} onSelect={onQuickReply} onEdit={onEditReplies} />
+      ) : null}
+    </ScrollView>
+  );
+});
+
 const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   serverId,
   workspaceId,
@@ -1174,12 +1221,15 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   const parentAgentId = useParentAgentId(serverId, agentId);
   // With a composer the parent is a pill above it; without one, the box takes the composer's place.
   const parentPillAgentId = showsComposer ? parentAgentId : null;
+  // 紧凑布局没有右侧留缝：备忘退到轨道入口 + 弹层。
+  const hasMemosEntry = useHostFeature(serverId, "agentMemos") && isCompactFormFactor;
   const hasVisibleAgentTracks = hasAgentTracks({
     parentAgentId: parentPillAgentId,
     subagentRows,
     tasks,
     archiveFinishedStatus: archiveFinishedSubagents.status,
     hasPluginComposerPills,
+    hasMemosEntry,
   });
   const rawAgentInputDraft = useAgentInputDraft({
     draftKey: buildDraftStoreKey({
@@ -1239,23 +1289,47 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     },
     [agentId, serverId, t, toastApi],
   );
-  const quickRepliesRail = useMemo(
-    () =>
-      showsQuickRepliesRail ? (
-        <ScrollView
-          style={styles.quickRepliesRailScroll}
-          contentContainerStyle={styles.quickRepliesRailContent}
-          showsVerticalScrollIndicator
-        >
-          <QuickRepliesBar
-            replies={quickReplies.replies}
-            onSelect={sendQuickReply}
-            onEdit={openQuickRepliesEditor}
-          />
-        </ScrollView>
-      ) : null,
-    [sendQuickReply, openQuickRepliesEditor, quickReplies.replies, showsQuickRepliesRail],
+  const {
+    memosSupported,
+    isMemosSheetOpen,
+    openMemosSheet,
+    closeMemosSheet,
+    appendMemoToComposer,
+    addSelectionToMemo,
+  } = useAgentMemoPanel({
+    serverId,
+    agentId,
+    isCompactFormFactor,
+    agentInputDraft,
+    toastApi,
+    t,
+  });
+  // 右缝里两件事：备忘在上（可滚动），常用回复贴底。
+  const rightGutter = useMemo(
+    () => (
+      <PaneRightGutter
+        memosSupported={memosSupported}
+        showsQuickReplies={showsQuickRepliesRail}
+        serverId={serverId}
+        agentId={agentId}
+        onMemoAppend={appendMemoToComposer}
+        replies={quickReplies.replies}
+        onQuickReply={sendQuickReply}
+        onEditReplies={openQuickRepliesEditor}
+      />
+    ),
+    [
+      agentId,
+      appendMemoToComposer,
+      memosSupported,
+      openQuickRepliesEditor,
+      quickReplies.replies,
+      sendQuickReply,
+      serverId,
+      showsQuickRepliesRail,
+    ],
   );
+
   const composerSubmitNowRef = useRef<((text: string) => Promise<AgentInputSubmitResult>) | null>(
     null,
   );
@@ -1319,6 +1393,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
       <RenderProfile id={`AgentStreamSection:${agentId}`}>
         <CommentableAgentStreamSection
           onCommentCommit={handleCommentCommit}
+          onAddToMemo={addSelectionToMemo}
+          memoEnabled={memosSupported}
           commentEnabled={showsComposer}
           streamViewRef={streamViewRef}
           serverId={serverId}
@@ -1329,7 +1405,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
           hasAppliedAuthoritativeHistory={hasAppliedAuthoritativeHistory}
           hasActiveComposer={hasActiveComposer}
           hasVisibleAgentTracks={hasVisibleAgentTracks}
-          rightGutter={quickRepliesRail ?? undefined}
+          rightGutter={rightGutter ?? undefined}
           toast={toastApi}
           onOpenWorkspaceFile={onOpenWorkspaceFile}
           onRegenerateUserMessage={onRegenerateUserMessage}
@@ -1357,6 +1433,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
             archiveFinishedStatus={archiveFinishedSubagents.status}
             onArchiveFinished={archiveFinishedSubagents.archiveFinished}
             hasPluginComposerPills={hasPluginComposerPills}
+            hasMemosEntry={hasMemosEntry}
+            onOpenAgentMemos={openMemosSheet}
           />
         </>
       ) : null}
@@ -1410,6 +1488,13 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
           </View>
         ) : null}
 
+        <AgentMemosSheet
+          visible={isMemosSheetOpen}
+          serverId={serverId}
+          agentId={agentId}
+          onAppendToComposer={appendMemoToComposer}
+          onClose={closeMemosSheet}
+        />
         <QuickRepliesEditor
           visible={isQuickRepliesEditorOpen}
           mountKey={isQuickRepliesEditorOpen ? "open" : "closed"}
@@ -1583,6 +1668,8 @@ const AgentStreamSection = memo(function AgentStreamSection({
 
 type CommentableAgentStreamSectionProps = React.ComponentProps<typeof AgentStreamSection> & {
   onCommentCommit: (input: { blockText: string; comment: string; sendNow: boolean }) => void;
+  onAddToMemo?: (blockText: string) => void;
+  memoEnabled?: boolean;
   /** 没有输入框可附加时（workspace sheet）不挂评论入口。 */
   commentEnabled: boolean;
 };
@@ -1590,6 +1677,8 @@ type CommentableAgentStreamSectionProps = React.ComponentProps<typeof AgentStrea
 /** 把评论入口挂在会话面板上：屏幕外（sheet、只读）没有 provider，markdown 里也就不出现评论菜单。 */
 function CommentableAgentStreamSection({
   onCommentCommit,
+  onAddToMemo,
+  memoEnabled = false,
   commentEnabled,
   ...props
 }: CommentableAgentStreamSectionProps) {
@@ -1597,7 +1686,10 @@ function CommentableAgentStreamSection({
     return <AgentStreamSection {...props} />;
   }
   return (
-    <AssistantCommentProvider onCommit={onCommentCommit}>
+    <AssistantCommentProvider
+      onCommit={onCommentCommit}
+      onAddToMemo={memoEnabled ? onAddToMemo : undefined}
+    >
       <AgentStreamSection {...props} />
     </AssistantCommentProvider>
   );

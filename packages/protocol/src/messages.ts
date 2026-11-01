@@ -42,6 +42,7 @@ import { TerminalActivitySchema } from "./terminal-activity.js";
 import { CLIENT_CAPS } from "./client-capabilities.js";
 import { AGENT_LIFECYCLE_STATUSES } from "./agent-lifecycle.js";
 import { MAX_EXPLICIT_AGENT_TITLE_CHARS } from "./agent-title-limits.js";
+import { AGENT_MEMO_MAX_CHARS } from "./agent-memo-limits.js";
 import { AgentProviderSchema } from "./provider-manifest.js";
 import { ProviderPaseoToolsPolicySchema } from "./provider-config.js";
 import { TOOL_CALL_ICON_NAMES } from "./agent-types.js";
@@ -1255,10 +1256,11 @@ export const ChangeRequestCheckoutSourceSchema = z.object({
   projectPath: z.string().optional(),
 });
 
-const ImageAttachmentSchema = z.object({
+export const ImageAttachmentSchema = z.object({
   data: z.string(), // base64 encoded image
   mimeType: z.string(), // e.g., "image/jpeg", "image/png"
 });
+export type ImageAttachment = z.infer<typeof ImageAttachmentSchema>;
 
 export const ActiveTurnBehaviorSchema = z.enum(["interrupt", "steer"]);
 export type ActiveTurnBehavior = z.infer<typeof ActiveTurnBehaviorSchema>;
@@ -1625,6 +1627,100 @@ export const AgentTimelineAppendRequestSchema = z.object({
     kind: z.string(),
     version: z.number().int().positive(),
     data: JsonWireValueSchema,
+  }),
+});
+
+// 备忘由 daemon 持有：换一个客户端也看到同一份列表。顺序按创建时间，id 由服务端发。
+export const AgentMemoSchema = z.object({
+  id: z.string(),
+  text: z.string().min(1).max(AGENT_MEMO_MAX_CHARS),
+  createdAt: z.string(),
+  // 每次修改都会盖一次；它记录“最后被改动的时间”，不是排序依据。
+  updatedAt: z.string().optional(),
+  // 旧记录没有这个字段，缺省视为未完成。
+  completed: z.boolean().optional(),
+  // 内联 base64，与聊天图片同一形状：客户端不需要 daemon 文件路径或下载接口。
+  images: z.array(ImageAttachmentSchema).optional(),
+});
+export type AgentMemo = z.infer<typeof AgentMemoSchema>;
+
+export const AgentMemoAddRequestSchema = z.object({
+  type: z.literal("agent.memo.add.request"),
+  requestId: z.string(),
+  agentId: z.string(),
+  text: z.string().trim().min(1).max(AGENT_MEMO_MAX_CHARS),
+  images: z.array(ImageAttachmentSchema).optional(),
+});
+
+export const AgentMemoAddResponseSchema = z.object({
+  type: z.literal("agent.memo.add.response"),
+  payload: z.object({
+    requestId: z.string(),
+    agentId: z.string(),
+    memo: AgentMemoSchema.nullable(),
+    memos: z.array(AgentMemoSchema),
+    error: z.string().nullable(),
+  }),
+});
+
+export const AgentMemoUpdateRequestSchema = z.object({
+  type: z.literal("agent.memo.update.request"),
+  requestId: z.string(),
+  agentId: z.string(),
+  memoId: z.string(),
+  text: z.string().trim().min(1).max(AGENT_MEMO_MAX_CHARS),
+  // 带上就整份替换图片；省略表示保持原图不动。
+  images: z.array(ImageAttachmentSchema).optional(),
+});
+
+export const AgentMemoUpdateResponseSchema = z.object({
+  type: z.literal("agent.memo.update.response"),
+  payload: z.object({
+    requestId: z.string(),
+    agentId: z.string(),
+    memoId: z.string(),
+    memo: AgentMemoSchema.nullable(),
+    memos: z.array(AgentMemoSchema),
+    error: z.string().nullable(),
+  }),
+});
+
+export const AgentMemoDeleteRequestSchema = z.object({
+  type: z.literal("agent.memo.delete.request"),
+  requestId: z.string(),
+  agentId: z.string(),
+  memoId: z.string(),
+});
+
+export const AgentMemoDeleteResponseSchema = z.object({
+  type: z.literal("agent.memo.delete.response"),
+  payload: z.object({
+    requestId: z.string(),
+    agentId: z.string(),
+    memoId: z.string(),
+    memos: z.array(AgentMemoSchema),
+    error: z.string().nullable(),
+  }),
+});
+
+// 完成状态单独一条 RPC：update 的 text 是必填，勾选框不该为了翻一个标志编造文本。
+export const AgentMemoSetCompletedRequestSchema = z.object({
+  type: z.literal("agent.memo.set_completed.request"),
+  requestId: z.string(),
+  agentId: z.string(),
+  memoId: z.string(),
+  completed: z.boolean(),
+});
+
+export const AgentMemoSetCompletedResponseSchema = z.object({
+  type: z.literal("agent.memo.set_completed.response"),
+  payload: z.object({
+    requestId: z.string(),
+    agentId: z.string(),
+    memoId: z.string(),
+    memo: AgentMemoSchema.nullable(),
+    memos: z.array(AgentMemoSchema),
+    error: z.string().nullable(),
   }),
 });
 
@@ -3436,6 +3532,10 @@ export const SessionInboundMessageSchema = z.discriminatedUnion("type", [
   PluginRemoveRequestSchema,
   PluginRpcInvokeRequestSchema,
   AgentTimelineAppendRequestSchema,
+  AgentMemoAddRequestSchema,
+  AgentMemoUpdateRequestSchema,
+  AgentMemoDeleteRequestSchema,
+  AgentMemoSetCompletedRequestSchema,
   AgentSkillsGetStatusRequestSchema,
   AgentSkillsReconcileRequestSchema,
   AgentSkillsUninstallRequestSchema,
@@ -3891,6 +3991,12 @@ export const ServerInfoStatusPayloadSchema = z
         agentForkSession: z.boolean().optional(),
         // COMPAT(conversationExport): added in v0.11.0, remove gate after 2027-10-25.
         conversationExport: z.boolean().optional(),
+        // COMPAT(agentMemos): added in v0.11.0, remove gate after 2027-05-05.
+        agentMemos: z.boolean().optional(),
+        // COMPAT(agentMemoCompletion): added in v0.11.0, remove gate after 2027-05-05.
+        agentMemoCompletion: z.boolean().optional(),
+        // COMPAT(agentMemoImages): added in v0.11.0, remove gate after 2027-05-05.
+        agentMemoImages: z.boolean().optional(),
         // COMPAT(quickReplies): added in v0.11.0, remove gate after 2027-10-25.
         quickReplies: z.boolean().optional(),
         // COMPAT(agentCloneSession): added in v0.11.0, remove gate after 2027-04-05.
@@ -4841,6 +4947,9 @@ export const FetchAgentResponseMessageSchema = z.object({
     requestId: z.string(),
     agent: AgentSnapshotPayloadSchema.nullable(),
     project: ProjectPlacementPayloadSchema.nullable().optional(),
+    // COMPAT(agentMemosOnFetch): added in v0.11.0, remove gate after 2027-05-05.
+    // 缺省表示“没有变化”，不能当成空列表清掉本地已有备忘。
+    memos: z.array(AgentMemoSchema).optional(),
     error: z.string().nullable(),
   }),
 });
@@ -7166,6 +7275,10 @@ export const SessionOutboundMessageSchema = z.discriminatedUnion("type", [
   PluginRemoveResponseSchema,
   PluginRpcInvokeResponseSchema,
   AgentTimelineAppendResponseSchema,
+  AgentMemoAddResponseSchema,
+  AgentMemoUpdateResponseSchema,
+  AgentMemoDeleteResponseSchema,
+  AgentMemoSetCompletedResponseSchema,
   AgentSkillsGetStatusResponseSchema,
   AgentSkillsReconcileResponseSchema,
   AgentSkillsUninstallResponseSchema,

@@ -24,6 +24,7 @@ import { monitorEventLoopDelay } from "node:perf_hooks";
 import type { AgentManager, AgentMetricsSnapshot } from "./agent/agent-manager.js";
 import type { AgentStorage } from "./agent/agent-storage.js";
 import type { DownloadTokenStore } from "./file-download/token-store.js";
+import { AgentMemoStore } from "./agent/agent-memo-store.js";
 import type { TerminalManager } from "../terminal/terminal-manager.js";
 import type pino from "pino";
 import type { ProjectRegistry, WorkspaceRegistry } from "./workspace-registry.js";
@@ -543,8 +544,18 @@ function requireWebSocketServices(params: {
 /**
  * WebSocket server that only accepts sockets + parses/forwards messages to the session layer.
  */
+/** 注入的 store 优先；测试直接构造服务器时用一个未初始化的本地 store（读到空列表）。 */
+function resolveAgentMemoStore(
+  injected: AgentMemoStore | undefined,
+  paseoHome: string,
+  logger: pino.Logger,
+): AgentMemoStore {
+  return injected ?? new AgentMemoStore(paseoHome, logger);
+}
+
 export class VoiceAssistantWebSocketServer {
   private readonly logger: pino.Logger;
+  private readonly agentMemoStore: AgentMemoStore;
   private readonly wss: WebSocketServer;
   private readonly hostLinks = new Map<WebSocketLike, DaemonLinkEndpoint>();
   private readonly pendingConnections: Map<WebSocketLike, PendingConnection> = new Map();
@@ -688,7 +699,9 @@ export class VoiceAssistantWebSocketServer {
     pluginRuntime?: SessionOptions["pluginRuntime"],
     orchestrationSkills?: SessionOptions["orchestrationSkills"],
     workspaceLabelService?: WorkspaceLabelService,
+    agentMemoStore?: AgentMemoStore,
   ) {
+    this.agentMemoStore = resolveAgentMemoStore(agentMemoStore, paseoHome, logger);
     this.logger = logger.child({ module: "websocket-server" });
     this.workspaceSetupRuntime = workspaceSetupRuntime;
     this.advertiseDaemonStatusRpc = wsConfig.daemonStatusRpc !== false;
@@ -1600,6 +1613,7 @@ export class VoiceAssistantWebSocketServer {
       worktreesRoot: this.worktreesRoot,
       agentManager: this.agentManager,
       agentStorage: this.agentStorage,
+      agentMemoStore: this.agentMemoStore,
       messageReceipts: this.messageReceipts,
       agentMessages: this.agentMessages,
       creationService: this.creationService,
@@ -2072,6 +2086,12 @@ export class VoiceAssistantWebSocketServer {
         conversationExport: true,
         // COMPAT(quickReplies): added in v0.11.0, remove gate after 2027-10-25.
         quickReplies: true,
+        // COMPAT(agentMemos): added in v0.11.0, remove gate after 2027-05-05.
+        agentMemos: true,
+        // COMPAT(agentMemoCompletion): added in v0.11.0, remove gate after 2027-05-05.
+        agentMemoCompletion: true,
+        // COMPAT(agentMemoImages): added in v0.11.0, remove gate after 2027-05-05.
+        agentMemoImages: true,
         // COMPAT(providerSubagents): added in v0.1.107, remove gate after 2027-01-12.
         providerSubagents: true,
         // COMPAT(projectedSubagentTimeline): added after v0.8.0, remove gates after 2027-03-14; retain advertisement.
