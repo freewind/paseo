@@ -143,6 +143,19 @@ export const en = {
     enableWrap: "Wrap long lines",
     disableWrap: "Scroll long lines",
   },
+  comment: {
+    menu: {
+      item: "Comment",
+      title: "Comment",
+    },
+    sheet: {
+      title: "Add a comment",
+      quote: "Quoting",
+      placeholder: "Write your comment",
+      attach: "Attach",
+      sendNow: "Send now",
+    },
+  },
   composer: {
     quickReplies: {
       title: "Quick replies",

@@ -1,4 +1,6 @@
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
+import { AssistantCommentProvider, buildCommentDraftText } from "@/assistant-comment";
+import type { AgentInputSubmitResult } from "@/composer/submit";
 import { Button } from "@/components/ui/button";
 import { ScrollView } from "@/components/ui/scroll-view";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -1254,6 +1256,38 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
       ) : null,
     [sendQuickReply, openQuickRepliesEditor, quickReplies.replies, showsQuickRepliesRail],
   );
+  const composerSubmitNowRef = useRef<((text: string) => Promise<AgentInputSubmitResult>) | null>(
+    null,
+  );
+  const handleComposerSubmitNow = useCallback(
+    (submitNow: (text: string) => Promise<AgentInputSubmitResult>) => {
+      composerSubmitNowRef.current = submitNow;
+    },
+    [],
+  );
+  const handleCommentCommit = useCallback(
+    ({ blockText, comment, sendNow }: { blockText: string; comment: string; sendNow: boolean }) => {
+      const nextText = buildCommentDraftText({
+        existingText: textSource.getSnapshot(),
+        blockText,
+        comment,
+      });
+      const submitNow = composerSubmitNowRef.current;
+      if (sendNow && submitNow) {
+        // 不先写进草稿：提交会清空输入框，这次替换会在清空之后落地，把文字又放回去。
+        // 只有提交根本没开始（如宿主离线返回 noop）时，才回退到草稿。
+        void submitNow(nextText).then((result) => {
+          if (result === "noop") {
+            replaceText(nextText);
+          }
+          return undefined;
+        });
+        return;
+      }
+      replaceText(nextText);
+    },
+    [replaceText, textSource],
+  );
   const parentCallout = parentAgentId ? (
     <ParentAgentCallout serverId={serverId} parentAgentId={parentAgentId} />
   ) : null;
@@ -1270,6 +1304,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
         agentInputDraft={agentInputDraft}
         editingSession={composerEditingSession}
         onAttentionInputFocus={onAttentionInputFocus}
+        onSubmitNow={handleComposerSubmitNow}
         onAttentionPromptSend={onAttentionPromptSend}
         onComposerHeightChange={handleComposerHeightChange}
         onMessageSent={handleMessageSent}
@@ -1282,7 +1317,9 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     <View style={animatedStaticStyles.content}>
       {showsComposer ? null : <SheetAgentFacts serverId={serverId} agentId={agentId} />}
       <RenderProfile id={`AgentStreamSection:${agentId}`}>
-        <AgentStreamSection
+        <CommentableAgentStreamSection
+          onCommentCommit={handleCommentCommit}
+          commentEnabled={showsComposer}
           streamViewRef={streamViewRef}
           serverId={serverId}
           workspaceId={workspaceId}
@@ -1544,6 +1581,28 @@ const AgentStreamSection = memo(function AgentStreamSection({
   );
 });
 
+type CommentableAgentStreamSectionProps = React.ComponentProps<typeof AgentStreamSection> & {
+  onCommentCommit: (input: { blockText: string; comment: string; sendNow: boolean }) => void;
+  /** 没有输入框可附加时（workspace sheet）不挂评论入口。 */
+  commentEnabled: boolean;
+};
+
+/** 把评论入口挂在会话面板上：屏幕外（sheet、只读）没有 provider，markdown 里也就不出现评论菜单。 */
+function CommentableAgentStreamSection({
+  onCommentCommit,
+  commentEnabled,
+  ...props
+}: CommentableAgentStreamSectionProps) {
+  if (!commentEnabled) {
+    return <AgentStreamSection {...props} />;
+  }
+  return (
+    <AssistantCommentProvider onCommit={onCommentCommit}>
+      <AgentStreamSection {...props} />
+    </AssistantCommentProvider>
+  );
+}
+
 const AgentComposerSection = memo(function AgentComposerSection({
   agentId,
   serverId,
@@ -1555,6 +1614,7 @@ const AgentComposerSection = memo(function AgentComposerSection({
   agentInputDraft,
   editingSession,
   onAttentionInputFocus,
+  onSubmitNow,
   onAttentionPromptSend,
   onComposerHeightChange,
   onMessageSent,
@@ -1569,6 +1629,7 @@ const AgentComposerSection = memo(function AgentComposerSection({
   agentInputDraft: AgentInputDraft;
   editingSession: ComposerEditingSession;
   onAttentionInputFocus: () => void;
+  onSubmitNow: (submitNow: (text: string) => Promise<AgentInputSubmitResult>) => void;
   onAttentionPromptSend: () => void;
   onComposerHeightChange: (height: number) => void;
   onMessageSent: () => void;
@@ -1593,6 +1654,7 @@ const AgentComposerSection = memo(function AgentComposerSection({
       agentInputDraft={agentInputDraft}
       editingSession={editingSession}
       onAttentionInputFocus={onAttentionInputFocus}
+      onSubmitNow={onSubmitNow}
       onAttentionPromptSend={onAttentionPromptSend}
       onComposerHeightChange={onComposerHeightChange}
       onMessageSent={onMessageSent}
@@ -1609,6 +1671,7 @@ function ActiveAgentComposer({
   agentInputDraft,
   editingSession,
   onAttentionInputFocus,
+  onSubmitNow,
   onAttentionPromptSend,
   onComposerHeightChange,
   onMessageSent,
@@ -1621,6 +1684,7 @@ function ActiveAgentComposer({
   agentInputDraft: AgentInputDraft;
   editingSession: ComposerEditingSession;
   onAttentionInputFocus: () => void;
+  onSubmitNow: (submitNow: (text: string) => Promise<AgentInputSubmitResult>) => void;
   onAttentionPromptSend: () => void;
   onComposerHeightChange: (height: number) => void;
   onMessageSent: () => void;
@@ -1720,6 +1784,7 @@ function ActiveAgentComposer({
         autoFocusKey={String(agentInputDraft.attachmentFocusRequestId)}
         isSubmitLoading={isSubmitLoading}
         onAttentionInputFocus={onAttentionInputFocus}
+        onSubmitNow={onSubmitNow}
         onAttentionPromptSend={onAttentionPromptSend}
         onComposerHeightChange={onComposerHeightChange}
         onMessageSent={onMessageSent}

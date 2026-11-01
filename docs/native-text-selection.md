@@ -2,6 +2,14 @@
 
 Keep completed assistant prose in one native text view so selection crosses paragraphs, headings and lists. The shared [Markdown renderer](markdown-renderer.md) owns that view.
 
+## Comment quoting
+
+Comment quoting reads the selection through `packages/app/modules/paseo-text-selection`, not through
+the renderer. A selection menu callback carries the selected text, but the quote must survive the
+same menu closing, so the read is synchronous: the module hops to the main thread, waits at most
+500ms, and returns `null` when the thread is blocked. JS cannot time out a synchronous native
+call, so the deadline lives in Kotlin, and `null` falls back to the whole message.
+
 ## Android inverted chat
 
 Keep selection visibility handling in `modules/paseo-scroll`. Android's visibility

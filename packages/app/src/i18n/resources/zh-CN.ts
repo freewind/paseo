@@ -146,6 +146,19 @@ export const zhCN: TranslationResources = {
     enableWrap: "自动换行长行",
     disableWrap: "滚动长行",
   },
+  comment: {
+    menu: {
+      item: "评论",
+      title: "评论",
+    },
+    sheet: {
+      title: "添加评论",
+      quote: "引用",
+      placeholder: "写下你的评论",
+      attach: "附加",
+      sendNow: "直接发送",
+    },
+  },
   composer: {
     quickReplies: {
       title: "常用回复",
