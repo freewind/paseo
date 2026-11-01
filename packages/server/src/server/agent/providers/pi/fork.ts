@@ -22,7 +22,8 @@ interface PiSessionHeaderLine {
  */
 export async function forkPiSessionFile(input: {
   sessionFile: string;
-  upToEntryId: string;
+  /** 省略时整条活跃分支都复制：Pi 顺序追加，最后一条就是当前叶子。 */
+  upToEntryId?: string;
 }): Promise<{ sessionId: string; sessionFile: string }> {
   const content = await readFile(input.sessionFile, "utf8");
   const lines = content.split("\n");
@@ -33,10 +34,14 @@ export async function forkPiSessionFile(input: {
     return value && typeof value.id === "string" ? [value] : [];
   });
 
-  const target = resolveForkTarget(entries, input.upToEntryId);
-  const chain = entryChainTo(entries, target);
+  const target = input.upToEntryId
+    ? resolveForkTarget(entries, input.upToEntryId)
+    : entries.at(-1)?.id;
+  const chain = target ? entryChainTo(entries, target) : [];
   if (chain.length === 0) {
-    throw new Error(`Pi fork target ${input.upToEntryId} was not found in the session file`);
+    throw new Error(
+      `Pi fork target ${input.upToEntryId ?? "active leaf"} was not found in the session file`,
+    );
   }
 
   const sessionId = randomUUID();

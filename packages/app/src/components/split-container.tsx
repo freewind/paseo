@@ -73,6 +73,8 @@ interface SplitContainerProps {
   onCloseTab: (tabId: string) => Promise<void> | void;
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
+  onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
+  canCloneAgent?: boolean;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
   fileOpenActions?: WorkspaceTabFileOpenActions;
@@ -159,6 +161,8 @@ export function SplitContainer({
   onCloseTab,
   onCopyResumeCommand,
   onCopyAgentId,
+  onCopyAgentAsNew,
+  canCloneAgent,
   onCopyTerminalId,
   onCopyFilePath,
   fileOpenActions,
@@ -257,6 +261,8 @@ export function SplitContainer({
                 onCloseTab={onCloseTab}
                 onCopyResumeCommand={onCopyResumeCommand}
                 onCopyAgentId={onCopyAgentId}
+                onCopyAgentAsNew={onCopyAgentAsNew}
+                canCloneAgent={canCloneAgent}
                 onCopyTerminalId={onCopyTerminalId}
                 onCopyFilePath={onCopyFilePath}
                 fileOpenActions={fileOpenActions}
@@ -389,6 +395,8 @@ function SplitNodeView({
   onCloseTab,
   onCopyResumeCommand,
   onCopyAgentId,
+  onCopyAgentAsNew,
+  canCloneAgent,
   onCopyTerminalId,
   onCopyFilePath,
   fileOpenActions,
@@ -478,6 +486,8 @@ function SplitNodeView({
             onCloseTab={onCloseTab}
             onCopyResumeCommand={onCopyResumeCommand}
             onCopyAgentId={onCopyAgentId}
+            onCopyAgentAsNew={onCopyAgentAsNew}
+            canCloneAgent={canCloneAgent}
             onCopyTerminalId={onCopyTerminalId}
             onCopyFilePath={onCopyFilePath}
             fileOpenActions={fileOpenActions}
@@ -531,6 +541,8 @@ function SplitNodeView({
               onCloseTab={onCloseTab}
               onCopyResumeCommand={onCopyResumeCommand}
               onCopyAgentId={onCopyAgentId}
+              onCopyAgentAsNew={onCopyAgentAsNew}
+              canCloneAgent={canCloneAgent}
               onCopyTerminalId={onCopyTerminalId}
               onCopyFilePath={onCopyFilePath}
               fileOpenActions={fileOpenActions}
@@ -592,6 +604,8 @@ const SplitPaneView = memo(function SplitPaneView({
   onCloseTab,
   onCopyResumeCommand,
   onCopyAgentId,
+  onCopyAgentAsNew,
+  canCloneAgent,
   onCopyTerminalId,
   onCopyFilePath,
   fileOpenActions,
@@ -729,6 +743,8 @@ const SplitPaneView = memo(function SplitPaneView({
             onCloseTab={onCloseTab}
             onCopyResumeCommand={onCopyResumeCommand}
             onCopyAgentId={onCopyAgentId}
+            onCopyAgentAsNew={onCopyAgentAsNew}
+            canCloneAgent={canCloneAgent}
             onCopyTerminalId={onCopyTerminalId}
             onCopyFilePath={onCopyFilePath}
             fileOpenActions={fileOpenActions}

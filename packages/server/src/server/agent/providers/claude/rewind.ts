@@ -10,7 +10,7 @@ import {
 export interface ClaudeRewindSdk {
   forkSession(
     sessionId: string,
-    options: { upToMessageId: string; transcriptPath: string },
+    options: { upToMessageId?: string; transcriptPath: string },
   ): Promise<{ sessionId: string }>;
 }
 

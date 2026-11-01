@@ -815,6 +815,14 @@ export interface AgentClient {
     handle: AgentPersistenceHandle,
     input: { upToMessageId: string },
   ): Promise<AgentPersistenceHandle>;
+  /**
+   * 把会话完整的活跃分支复制成一份新的持久化会话，不切边界。不能在离线状态下复制的
+   * provider 必须省略这个方法；调用方据此显示为不可用，而不是退回到有损的摘要。
+   */
+  cloneSession?(
+    handle: AgentPersistenceHandle,
+    input: { leafEntryId?: string },
+  ): Promise<AgentPersistenceHandle>;
   getDiagnostic?(): Promise<{ diagnostic: string }>;
   /**
    * Archive a durable native session (best-effort). Runtime release belongs to AgentSession.close().

@@ -1681,6 +1681,31 @@ export class ClaudeAgentClient implements AgentClient {
     };
   }
 
+  /** 不给边界时 SDK 复制整份转录，正好是「完整复制」要的语义。 */
+  async cloneSession(
+    handle: AgentPersistenceHandle,
+    _input: { leafEntryId?: string },
+  ): Promise<AgentPersistenceHandle> {
+    if (!handle.sessionId) {
+      throw new Error("Cannot copy: persistence handle has no sessionId");
+    }
+    const cwd = typeof handle.metadata?.cwd === "string" ? handle.metadata.cwd : null;
+    if (!cwd) {
+      throw new Error("Cannot copy: persistence handle has no cwd");
+    }
+    const transcriptPath = await claudeTranscriptPath({
+      cwd,
+      sessionId: handle.sessionId,
+      configDir: claudeConfigDir(this.buildProviderEnv()),
+    });
+    const copy = await this.rewindSdk.forkSession(handle.sessionId, { transcriptPath });
+    return {
+      ...handle,
+      sessionId: copy.sessionId,
+      nativeHandle: copy.sessionId,
+    };
+  }
+
   async getCatalogCacheKey(_options: FetchCatalogOptions): Promise<string> {
     // This client discovers through host configuration, independent of project cwd.
     return "host";

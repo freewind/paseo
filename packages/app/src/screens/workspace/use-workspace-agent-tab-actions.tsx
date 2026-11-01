@@ -3,7 +3,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useToast } from "@/contexts/toast-context";
 import { useHostFeature } from "@/runtime/host-features";
+import type { TFunction } from "i18next";
+import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
+import type { ToastApi } from "@/components/toast-host";
 import { markWorkspaceUnread } from "@/workspace/mark-unread";
+import { navigateToWorkspace } from "@/stores/navigation-active-workspace-store";
 import { canMarkAgentUnread } from "@/workspace/agent-unread-policy";
 import { useHostRuntimeIsConnected } from "@/runtime/host-runtime";
 import { resolveCloseAgentTabPolicy } from "@/subagents/close-tab-policy";
@@ -12,7 +16,10 @@ import { useSessionStore } from "@/stores/session-store";
 import { useWorkspaceLayoutStore } from "@/stores/workspace-layout-store";
 import { confirmDialog } from "@/utils/confirm-dialog";
 import { buildWorkspaceTabPersistenceKey } from "@/workspace-tabs/model";
-import { type SidebarWorkspaceAgentRow } from "@/components/sidebar/sidebar-workspace-agent-rows";
+import {
+  agentTabLabel,
+  type SidebarWorkspaceAgentRow,
+} from "@/components/sidebar/sidebar-workspace-agent-rows";
 import { useAgentTabMetadataActions } from "@/screens/workspace/use-agent-tab-metadata-actions";
 import type { WorkspaceTabDescriptor } from "@/screens/workspace/workspace-tabs-types";
 import { useBulkCloseConfirmationLabels } from "@/screens/workspace/use-bulk-close-confirmation-labels";
@@ -36,6 +43,77 @@ const NO_TERMINALS_QUERY_KEY: readonly unknown[] = ["workspace-agent-tab-rename"
 /** 列表里没有带未保存内容的面板，批量关闭的「未保存」集合恒为空。 */
 const NO_MODIFIED_TAB_IDS: ReadonlySet<string> = new Set();
 
+/** 本地 24 小时制 `HH:mm`：后缀要固定形状，不走 locale 格式。 */
+function formatClockTime(): string {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+}
+
+/**
+ * 副本沿用源会话标题并加上生成时间，标签栏里才分得清原件与副本。只是展示用，
+ * 改名失败就保持原名，不阻塞导航。
+ */
+async function nameClonedAgent(input: {
+  client: DaemonClient;
+  serverId: string;
+  sourceAgentId: string;
+  newAgentId: string;
+}): Promise<void> {
+  const session = useSessionStore.getState().sessions[input.serverId];
+  const source =
+    session?.agents?.get(input.sourceAgentId) ??
+    session?.agentDetails?.get(input.sourceAgentId) ??
+    null;
+  const base = agentTabLabel(source?.title, "");
+  if (!base) return;
+  await input.client
+    .updateAgent(input.newAgentId, { name: `${base} · ${formatClockTime()}` })
+    .catch(() => undefined);
+}
+
+/**
+ * 复制整段会话成新标签：标签菜单在桌面标签行、侧栏和移动切换器里都出现，行为只能有一份。
+ * 复制不需要回合边界，也不改源 agent。
+ */
+export async function copyAgentAsNewTab(input: {
+  agentId: string;
+  client: DaemonClient | null;
+  isConnected: boolean;
+  supportsClone: boolean;
+  serverId: string;
+  workspaceId: string;
+  toast: ToastApi;
+  t: TFunction;
+}): Promise<void> {
+  if (!input.agentId) return;
+  if (!input.client || !input.isConnected) {
+    input.toast.error(input.t("workspace.terminal.hostDisconnected"));
+    return;
+  }
+  if (!input.supportsClone) {
+    input.toast.error(input.t("workspace.tabs.toasts.cloneUnavailable"));
+    return;
+  }
+  try {
+    const copy = await input.client.cloneAgent(input.agentId);
+    void nameClonedAgent({
+      client: input.client,
+      serverId: input.serverId,
+      sourceAgentId: input.agentId,
+      newAgentId: copy.newAgentId,
+    });
+    navigateToWorkspace({
+      serverId: input.serverId,
+      workspaceId: copy.newWorkspaceId ?? input.workspaceId,
+      target: { kind: "agent", agentId: copy.newAgentId },
+    });
+  } catch (error) {
+    input.toast.error(
+      error instanceof Error ? error.message : input.t("workspace.tabs.toasts.cloneFailed"),
+    );
+  }
+}
+
 type BulkCloseTitleKey = "closeTabsLeftTitle" | "closeTabsRightTitle" | "closeOtherTabsTitle";
 
 export interface UseWorkspaceAgentTabActionsInput {
@@ -52,6 +130,8 @@ export interface UseWorkspaceAgentTabActionsInput {
 export interface WorkspaceAgentTabActions {
   onCopyResumeCommand: (agentId: string) => Promise<void>;
   onCopyAgentId: (agentId: string) => Promise<void>;
+  onCopyAgentAsNew: (agentId: string) => Promise<void>;
+  canCloneAgent: boolean;
   onReloadAgent: (agentId: string) => Promise<void>;
   onRenameTab: (tab: WorkspaceTabDescriptor) => void;
   onCloseTab: (tabId: string) => Promise<void>;
@@ -141,6 +221,23 @@ export function useWorkspaceAgentTabActions({
     client,
     isConnected,
   });
+
+  const supportsCloneAgent = useHostFeature(serverId, "agentCloneSession");
+  const onCopyAgentAsNew = useCallback(
+    async (agentId: string) => {
+      await copyAgentAsNewTab({
+        agentId,
+        client,
+        isConnected,
+        supportsClone: supportsCloneAgent,
+        serverId,
+        workspaceId,
+        toast,
+        t,
+      });
+    },
+    [client, isConnected, serverId, supportsCloneAgent, t, toast, workspaceId],
+  );
 
   const closeWorkspaceTabWithCleanup = useCallback(
     (tabId: string, agentId: string) => {
@@ -308,6 +405,8 @@ export function useWorkspaceAgentTabActions({
     () => ({
       onCopyResumeCommand,
       onCopyAgentId,
+      onCopyAgentAsNew,
+      canCloneAgent: supportsCloneAgent,
       onReloadAgent,
       onRenameTab: handleRenameTab,
       onCloseTab,
@@ -327,6 +426,8 @@ export function useWorkspaceAgentTabActions({
       onCloseTabsAfter,
       onCloseTabsBefore,
       onCopyAgentId,
+      onCopyAgentAsNew,
+      supportsCloneAgent,
       onCopyResumeCommand,
       onReloadAgent,
       renameModal,
