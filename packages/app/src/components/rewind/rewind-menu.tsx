@@ -1,7 +1,7 @@
 import { memo, useCallback, useMemo, useState, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
-import { FileText, Layers, MessageSquare, Undo2 } from "lucide-react-native";
+import { FileText, Layers, MessageSquare, RefreshCw, Undo2 } from "lucide-react-native";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import {
   DropdownMenu,
@@ -22,6 +22,10 @@ interface RewindMenuProps {
   onRewind: (input: { mode: RewindMode; rewoundText: string }) => Promise<void> | void;
   isPending?: boolean;
   testID?: string;
+  /** 回退后原样重发这条消息；不可用时为 undefined。 */
+  onRegenerate?: () => Promise<void> | void;
+  /** 回合进行中时仍显示但不可选，菜单不会在鼠标底下消失。 */
+  isRegenerateDisabled?: boolean;
 }
 
 function getIcon(mode: RewindMode, color: string): ReactElement {
@@ -41,6 +45,8 @@ export const RewindMenu = memo(function RewindMenu({
   onRewind,
   isPending: isPendingProp = false,
   testID = "rewind-menu",
+  onRegenerate,
+  isRegenerateDisabled = false,
 }: RewindMenuProps) {
   const { theme } = useUnistyles();
   const { t } = useTranslation();
@@ -81,6 +87,17 @@ export const RewindMenu = memo(function RewindMenu({
     [isLocked, onRewind, rewoundText],
   );
 
+  const regenerateLeading = useMemo(
+    () => <RefreshCw size={16} color={theme.colors.foreground} />,
+    [theme.colors.foreground],
+  );
+
+  const handleRegenerateSelect = useCallback(async () => {
+    if (!onRegenerate || isLocked || isRegenerateDisabled) return;
+    setIsOpen(false);
+    await onRegenerate();
+  }, [isLocked, isRegenerateDisabled, onRegenerate]);
+
   const triggerStyle = useCallback(
     () => [styles.trigger, isLocked ? styles.triggerDisabled : null],
     [isLocked],
@@ -95,7 +112,7 @@ export const RewindMenu = memo(function RewindMenu({
     [t],
   );
 
-  if (items.length === 0) {
+  if (items.length === 0 && !onRegenerate) {
     return null;
   }
 
@@ -140,6 +157,17 @@ export const RewindMenu = memo(function RewindMenu({
             {item.label}
           </DropdownMenuItem>
         ))}
+        {onRegenerate ? (
+          <DropdownMenuItem
+            closeOnSelect={false}
+            disabled={isLocked || isRegenerateDisabled}
+            leading={regenerateLeading}
+            onSelect={handleRegenerateSelect}
+            testID="rewind-menu-regenerate"
+          >
+            {t("rewind.actions.regenerate")}
+          </DropdownMenuItem>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );

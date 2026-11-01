@@ -12,6 +12,7 @@ import { MarkdownRenderer } from "@/components/markdown/renderer";
 import { useRetainedPanelActive } from "@/components/retained-panel";
 import { RewindMenu, type RewindMode } from "@/components/rewind/rewind-menu";
 import { useRewindAgentMutation } from "@/components/rewind/use-rewind-agent-mutation";
+import type { RegenerateUserMessageInput } from "@/components/rewind/regenerate-user-message";
 import { TaskListRow } from "@/components/task-list-row";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useIsCompactFormFactor } from "@/constants/layout";
@@ -107,6 +108,10 @@ interface UserMessageProps {
   isLastInGroup?: boolean;
   isPending?: boolean;
   disableOuterSpacing?: boolean;
+  /** 回退删掉这条消息后原样重发；不可用时为 undefined。 */
+  onRegenerate?: (input: RegenerateUserMessageInput) => Promise<void>;
+  /** 回合进行中：入口仍显示但不可选。 */
+  isRegenerateDisabled?: boolean;
 }
 
 const MessageOuterSpacingContext = createContext(false);
@@ -391,6 +396,23 @@ function UserMessageImagePill({ image, onOpen, accessibilityLabel }: UserMessage
 
 const MESSAGE_TEXT_DATASET = { messageText: "true" };
 
+/** 只有已落定的消息、且宿主能重发时才提供「重新回答」。 */
+function resolveCanRegenerate(input: {
+  onRegenerate: UserMessageProps["onRegenerate"];
+  messageId: string | undefined;
+  isPending: boolean;
+}): boolean {
+  return Boolean(input.onRegenerate && input.messageId && !input.isPending);
+}
+
+/** 回合进行中时保持入口可见，只把它变灰，读起来是「暂时不行」而不是「消失了」。 */
+function resolveRegenerateDisabled(
+  isRegenerateDisabled: boolean,
+  isRegenerating: boolean,
+): boolean {
+  return isRegenerateDisabled || isRegenerating;
+}
+
 export const UserMessage = memo(function UserMessage({
   sender,
   serverId,
@@ -406,6 +428,8 @@ export const UserMessage = memo(function UserMessage({
   isLastInGroup = true,
   isPending = false,
   disableOuterSpacing,
+  onRegenerate,
+  isRegenerateDisabled = false,
 }: UserMessageProps) {
   const isCompact = useIsCompactFormFactor();
   const { t } = useTranslation();
@@ -421,11 +445,28 @@ export const UserMessage = memo(function UserMessage({
   const hasImages = images.length > 0;
   const hasAttachments = attachments.length > 0;
   const showTrailingRow = !isPending && hasText && (isCompact || isNative || isHovered);
+  const canRegenerate = resolveCanRegenerate({ onRegenerate, messageId, isPending });
   const formattedTimestamp = useMemo(
     () => formatMessageTimestamp(new Date(timestamp)),
     [timestamp],
   );
   const rewindMutation = useRewindAgentMutation({ serverId, agentId, client, messageId });
+  const [isRegenerating, setIsRegenerating] = useState(false);
+
+  const handleRegenerate = useCallback(async () => {
+    if (!onRegenerate || !messageId || isRegenerating) return;
+    setIsRegenerating(true);
+    try {
+      // 先回退，只有回退成功才重发：失败时不会出现「消息还在又发一遍」。
+      await rewindMutation.rewindAgent({ mode: "conversation", rewoundText: "" });
+      await onRegenerate({ text: message, images, attachments });
+    } catch {
+      // 回退失败由 rewind mutation 提示，重发失败由 agent-panel 提示；这里只负责收尾状态，
+      // 不再往上抛，免得变成未处理的 rejection。
+    } finally {
+      setIsRegenerating(false);
+    }
+  }, [onRegenerate, messageId, isRegenerating, rewindMutation, message, images, attachments]);
 
   const handlePointerEnter = useCallback(() => setIsHovered(true), []);
   const handlePointerLeave = useCallback(() => setIsHovered(false), []);
@@ -534,6 +575,11 @@ export const UserMessage = memo(function UserMessage({
                 isPending={rewindMutation.isPending}
                 rewoundText={message}
                 onRewind={handleRewind}
+                onRegenerate={canRegenerate ? handleRegenerate : undefined}
+                isRegenerateDisabled={resolveRegenerateDisabled(
+                  isRegenerateDisabled,
+                  isRegenerating,
+                )}
               />
             ) : null}
             <TurnCopyButton
