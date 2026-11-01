@@ -253,6 +253,8 @@ function selectForkContextRows(input: {
     };
   }
 
+  // 历史复制路径沿用 AgentManager.forkAgent 的同一条规则：游标 epoch 对不上当前
+  // 时间线，说明这个位置已随压缩或重置失效，不能拿来截断要复制进新会话的历史。
   if (
     input.cursorBoundary &&
     input.cursorBoundary.cursor.epoch !== input.cursorBoundary.timelineEpoch

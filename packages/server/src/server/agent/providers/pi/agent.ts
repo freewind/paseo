@@ -72,6 +72,7 @@ import {
   type PiExtensionEventOutput,
 } from "./extensions/index.js";
 import { revertPiConversation } from "./rewind.js";
+import { forkPiSessionFile } from "./fork.js";
 import { listPiImportableSessions, readPiImportSessionConfig } from "./session-descriptor.js";
 import type { PiRuntime, PiRuntimeSession, PiStartSessionInput } from "./runtime.js";
 import type {
@@ -2583,6 +2584,26 @@ export class PiRpcAgentClient implements AgentClient {
       paseoExtension?.cleanup();
       throw error;
     }
+  }
+
+  /**
+   * 在边界处复制 Pi 的持久化会话，不改源：副本是一个新会话文件，管理层可把它恢复成新 agent id，
+   * 连工具调用与结果一起带过去。边界收条目 id、responseId 与历史回放的生成 id。
+   */
+  async forkSession(
+    handle: AgentPersistenceHandle,
+    input: { upToMessageId: string },
+  ): Promise<AgentPersistenceHandle> {
+    const sessionFile = handle.nativeHandle;
+    if (!sessionFile) {
+      throw new Error("Pi fork requires a native session file handle");
+    }
+    const fork = await forkPiSessionFile({ sessionFile, upToEntryId: input.upToMessageId });
+    return {
+      ...handle,
+      sessionId: fork.sessionId,
+      nativeHandle: fork.sessionFile,
+    };
   }
 
   async resumeSession(

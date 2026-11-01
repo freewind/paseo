@@ -5,7 +5,7 @@ import type {
   DaemonClient,
 } from "@getpaseo/client/internal/daemon-client";
 import type { WorkspaceComposerAttachment } from "@/attachments/types";
-import type { AssistantForkTarget } from "@/components/assistant-fork-menu";
+import type { AssistantForkMode, AssistantForkTarget } from "@/components/assistant-fork-menu";
 import type { ToastApi } from "@/components/toast-host";
 import type { AgentScreenAgent } from "@/hooks/use-agent-screen-state-machine";
 import { useStableEvent } from "@/hooks/use-stable-event";
@@ -55,6 +55,7 @@ export interface ForkAgentRequest {
   agentId: string;
   agent: ForkAgentSource;
   workspaceId?: string;
+  mode: AssistantForkMode;
   target: AssistantForkTarget;
   boundary?: ForkAgentBoundary;
 }
@@ -131,68 +132,109 @@ export function useForkAgent(
   const router = useRouter();
   const client = useSessionStore((state) => state.sessions[serverId]?.client ?? null);
   const supportsAgentForkContext = useHostFeature(serverId, "agentForkContext") && !readOnly;
+  const supportsAgentForkSession = useHostFeature(serverId, "agentForkSession") && !readOnly;
 
-  return useStableEvent(async ({ agentId, agent, workspaceId, target, boundary }) => {
+  return useStableEvent(async (request) => {
     try {
-      if (!supportsAgentForkContext) {
-        toast?.error(t("message.actions.forkUnavailable"));
+      if (request.mode === "session") {
+        await forkSession(request);
         return;
       }
-      if (!client) {
-        throw new Error(t("workspace.terminal.hostDisconnected"));
-      }
-      const draftSetup = buildForkDraftSetup(agent);
-      const prepareForkDraft = async () => {
-        const draftId = generateDraftId();
-        const payload = await client.buildAgentForkContext(agentId, boundary);
-        const attachment = buildChatHistoryAttachment({
-          draftId,
-          serverId,
-          agentId,
-          payload,
-          missingAttachmentMessage: t("message.actions.forkFailed"),
-        });
-        useWorkspaceAttachmentsStore.getState().setWorkspaceAttachments({
-          scopeKey: buildDraftWorkspaceAttachmentScopeKey(draftId),
-          attachments: [attachment],
-        });
-        return draftId;
-      };
-
-      if (target === "tab") {
-        if (!workspaceId) {
-          throw new Error(t("message.actions.forkMissingWorkspace"));
-        }
-        const draftId = await prepareForkDraft();
-        navigateToWorkspace({
-          serverId,
-          workspaceId,
-          target: buildForkDraftTabTarget(draftSetup, draftId),
-        });
-        return;
-      }
-
-      const draftId = await prepareForkDraft();
-      const sourceDirectory =
-        agent.projectPlacement?.checkout?.cwd?.trim() || agent.cwd.trim() || undefined;
-      if (draftSetup) {
-        useWorkspaceDraftSubmissionStore.getState().setDraftSetup({
-          draftId,
-          setup: draftSetup,
-          sourceDirectory,
-        });
-      }
-      router.push(
-        buildNewWorkspaceRoute({
-          serverId,
-          sourceDirectory,
-          displayName: agent.projectPlacement?.projectName,
-          projectId: agent.projectPlacement?.projectKey,
-          draftId,
-        }),
-      );
+      await forkContext(request);
     } catch (error) {
       toast?.error(toErrorMessage(error) || t("message.actions.forkFailed"));
     }
   });
+
+  /**
+   * 分支 provider 自己的会话。结果已经在宿主上存在，所以标签页直接指向返回的
+   * agent——不留草稿，也不带附件。
+   */
+  async function forkSession(request: ForkAgentRequest): Promise<void> {
+    const { agentId, workspaceId, target, boundary } = request;
+    if (!supportsAgentForkSession) {
+      toast?.error(t("message.actions.forkUnavailable"));
+      return;
+    }
+    if (!client) {
+      throw new Error(t("workspace.terminal.hostDisconnected"));
+    }
+    const fork = await client.forkAgent(agentId, {
+      ...(boundary?.boundaryCursor ? { boundaryCursor: boundary.boundaryCursor } : {}),
+      ...(boundary?.boundaryMessageId ? { boundaryMessageId: boundary.boundaryMessageId } : {}),
+      targetWorkspace: target === "workspace" ? "new" : "same",
+    });
+    // 新工作区的分叉会带回一个客户端还没见过的工作区，所以按响应里的 id 导航，不用源工作区的。
+    const resolvedWorkspaceId = fork.newWorkspaceId ?? (target === "tab" ? workspaceId : undefined);
+    if (!resolvedWorkspaceId) {
+      throw new Error(t("message.actions.forkMissingWorkspace"));
+    }
+    navigateToWorkspace({
+      serverId,
+      workspaceId: resolvedWorkspaceId,
+      target: { kind: "agent", agentId: fork.newAgentId },
+    });
+  }
+
+  /** 把整理过的历史当成 composer 附件，起一个新 agent。 */
+  async function forkContext(request: ForkAgentRequest): Promise<void> {
+    const { agentId, agent, workspaceId, target, boundary } = request;
+    if (!supportsAgentForkContext) {
+      toast?.error(t("message.actions.forkUnavailable"));
+      return;
+    }
+    if (!client) {
+      throw new Error(t("workspace.terminal.hostDisconnected"));
+    }
+    const draftSetup = buildForkDraftSetup(agent);
+    const prepareForkDraft = async () => {
+      const draftId = generateDraftId();
+      const payload = await client.buildAgentForkContext(agentId, boundary);
+      const attachment = buildChatHistoryAttachment({
+        draftId,
+        serverId,
+        agentId,
+        payload,
+        missingAttachmentMessage: t("message.actions.forkFailed"),
+      });
+      useWorkspaceAttachmentsStore.getState().setWorkspaceAttachments({
+        scopeKey: buildDraftWorkspaceAttachmentScopeKey(draftId),
+        attachments: [attachment],
+      });
+      return draftId;
+    };
+
+    if (target === "tab") {
+      if (!workspaceId) {
+        throw new Error(t("message.actions.forkMissingWorkspace"));
+      }
+      const draftId = await prepareForkDraft();
+      navigateToWorkspace({
+        serverId,
+        workspaceId,
+        target: buildForkDraftTabTarget(draftSetup, draftId),
+      });
+      return;
+    }
+
+    const draftId = await prepareForkDraft();
+    const sourceDirectory =
+      agent.projectPlacement?.checkout?.cwd?.trim() || agent.cwd.trim() || undefined;
+    if (draftSetup) {
+      useWorkspaceDraftSubmissionStore.getState().setDraftSetup({
+        draftId,
+        setup: draftSetup,
+        sourceDirectory,
+      });
+    }
+    router.push(
+      buildNewWorkspaceRoute({
+        serverId,
+        sourceDirectory,
+        displayName: agent.projectPlacement?.projectName,
+        projectId: agent.projectPlacement?.projectKey,
+        draftId,
+      }),
+    );
+  }
 }

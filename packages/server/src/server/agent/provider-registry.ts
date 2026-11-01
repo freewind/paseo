@@ -494,6 +494,7 @@ function wrapClientProvider(
   const listFeatures = inner.listFeatures?.bind(inner);
   const archiveNativeSession = inner.archiveNativeSession?.bind(inner);
   const unarchiveNativeSession = inner.unarchiveNativeSession?.bind(inner);
+  const forkSession = inner.forkSession?.bind(inner);
   const configuredModelIds = [...profileModels, ...additionalModels].map((model) => model.id);
 
   return {
@@ -606,6 +607,13 @@ function wrapClientProvider(
       : undefined,
     unarchiveNativeSession: unarchiveNativeSession
       ? async (handle) => await unarchiveNativeSession({ ...handle, provider: inner.provider })
+      : undefined,
+    // 分叉出的 handle 要带外层 provider 回来，管理层才能按当前注册项恢复副本。
+    forkSession: forkSession
+      ? async (handle, input) => ({
+          ...(await forkSession({ ...handle, provider: inner.provider }, input)),
+          provider,
+        })
       : undefined,
     getCatalogCacheKey: inner.getCatalogCacheKey?.bind(inner),
     isAvailable: (signal, options) => inner.isAvailable(signal, options),

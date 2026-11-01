@@ -3,6 +3,24 @@
 本项目是 [getpaseo/paseo](https://github.com/getpaseo/paseo) 的 fork（`freewind/paseo`）。
 通用开发规范、架构说明、平台约定一律以 [CLAUDE.md](CLAUDE.md) 和 `docs/` 为准，本文件只写 fork 自己的约束。
 
+## 上游文档
+
+`docs/`、`CLAUDE.md`、`README.md` 这类由上游维护的文档一律不改。
+fork 需要补充说明时，写进本文件的对应小节，用中文。
+
+## 术语补充
+
+上游 `docs/glossary.md` 的词条不改，fork 需要补充的说明写在这里。
+
+### Fork
+
+启动一个全新的 agent 会话，内容取自另一个会话里更早的某个位置，源会话照常运行。两种模式，一个菜单。
+
+- **复制历史**（`agent.fork_context`，看 `agentForkContext`）：把筛选过的聊天历史作为 `chat_history` 附件放进一个草稿，不碰 provider 自己的会话。
+- **会话分叉**（`agent.fork.request` → `AgentManager.forkAgent`，看 `agentForkSession`）：让 provider 在边界处切一份自己的会话，用新的 agent id 继续，工具调用与结果都还在，prompt 缓存也不冷。只有实现 `forkSession` 的 provider 能做；其它 provider 上这一组菜单整个不显示。
+
+两种模式都给两个目的地：当前工作区的新标签，或新工作区。会话分叉在新工作区里指向源 agent 的目录。
+
 ## 分支结构
 
 只有一条开发分支：
@@ -245,6 +263,10 @@ rebase 停下来只是第一类问题，另两类根本不会表现为冲突，�
 - **不修改"上游规定的规则限制"。** `.oxlintrc.json`、各 `tsconfig`、格式化配置里的规则与例外清单都属
   上游，不新增、不删除、不放宽。规则报错就改代码，不给自己开例外。
 - **中文内容避免产生歧义。** 需要时用双引号标记重点。
+- **没有被外部引用的代码不要加 `export`。** 判断标准是全仓库搜索，测试文件算使用者。
+  整理代码时这类残留太多，导出面只留真正对外的：靠规则卡住，不靠人每次记得回收，也不靠事后搜。
+- **`type` / `interface` 只在一处使用时不要专门定义，直接内联到使用处。**
+  类型内联不产生执行逻辑，少一个名字更直接；函数内联会把实现摊进调用方，反而更难读，所以只对类型要求内联。
 
 ## 平台支持
 
