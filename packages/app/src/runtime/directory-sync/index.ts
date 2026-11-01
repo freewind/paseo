@@ -157,6 +157,7 @@ export class DirectorySync {
   private revision = 0;
   private workspaceRevision = 0;
   private readonly routeDemandIds = new Set<string>();
+  private readonly workspaceRouteRefreshes = new Set<string>();
   private readonly fullDemandSources = new Set<object>();
   private readonly scriptStatusDemand = new Map<object, string>();
   private demandRefresh: Promise<void> | null = null;
@@ -257,6 +258,7 @@ export class DirectorySync {
     this.releaseSubscriptions();
     this.releaseScriptStatusEvents();
     this.fullDemandSources.clear();
+    this.workspaceRouteRefreshes.clear();
     this.routeDemandIds.clear();
     workspaceLabels.disconnect(this.serverId);
   }
@@ -418,6 +420,18 @@ export class DirectorySync {
 
   async prepareWorkspaceRoute(workspaceId: string): Promise<void> {
     await this.loadCachedWorkspace(workspaceId);
+    // 缓存只回答本机见过的 workspace。路由直接指向一个 daemon 认识、但缓存里没有的 workspace
+    // 时必须问一次 host，否则这屏拿不到 descriptor，所有依赖目录的界面都不可用。
+    const session = useSessionStore.getState().sessions[this.serverId];
+    if (!session || session.workspaces.has(workspaceId)) return;
+    if (this.workspaceRouteRefreshes.has(workspaceId)) return;
+    if (!this.getOnlineConnection()) return;
+    this.workspaceRouteRefreshes.add(workspaceId);
+    try {
+      await this.refreshWorkspacesInternal({ subscribe: true }, false);
+    } catch {
+      this.workspaceRouteRefreshes.delete(workspaceId);
+    }
   }
 
   private async loadCachedWorkspace(workspaceId: string): Promise<void> {
