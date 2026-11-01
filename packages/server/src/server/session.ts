@@ -49,6 +49,7 @@ import type {
 } from "../terminal/terminal-manager.js";
 import { TerminalSessionController } from "../terminal/terminal-session-controller.js";
 import type { TerminalActivity } from "@getpaseo/protocol/terminal-activity";
+import type { AgentTaskSnapshotItem } from "@getpaseo/protocol/agent-types";
 import type { BinaryFrame } from "@getpaseo/protocol/binary-frames/index";
 import { CursorError } from "./pagination/cursor.js";
 import { SortablePager, type SortSpec } from "./pagination/sortable-pager.js";
@@ -111,6 +112,7 @@ import type {
   AgentTimelineCursor,
   AgentTimelineFetchDirection,
   AgentTimelineFetchResult,
+  AgentTimelineRow,
   ManagedAgent,
 } from "./agent/agent-manager.js";
 import { createAgentCommand } from "./agent/create-agent/create.js";
@@ -368,6 +370,17 @@ function agentDirectorySearchQuery(request: AgentDirectoryRequestMessage): strin
   if (request.type !== "fetch_agent_history_request") return "";
   return request.search?.trim() ?? "";
 }
+/** 老 provider 没有任务快照时，退到时间线里最后一个 todo 项的列表。 */
+function lastTimelineTasks(rows: readonly AgentTimelineRow[]): AgentTaskSnapshotItem[] {
+  for (let index = rows.length - 1; index >= 0; index -= 1) {
+    const item = rows[index]?.item;
+    if (item?.type === "todo") {
+      return Array.from(item.items);
+    }
+  }
+  return [];
+}
+
 type FetchAgentsRequestFilter = NonNullable<FetchAgentsRequestMessage["filter"]>;
 type FetchAgentsRequestSort = NonNullable<FetchAgentsRequestMessage["sort"]>[number];
 type FetchAgentsResponsePayload = Extract<
@@ -2794,6 +2807,8 @@ export class Session {
         return this.handleAgentTimelineSearchRequest(msg, source);
       case "agent.timeline.list_prompts.request":
         return this.handleAgentTimelineListPromptsRequest(msg, source);
+      case "agent.conversation.export.request":
+        return this.handleAgentConversationExportRequest(msg, source);
       case "agent.provider_subagents.list.request":
         return this.handleProviderSubagentListRequest(msg);
       case "agent.provider_subagents.timeline.get.request":
@@ -7999,6 +8014,70 @@ export class Session {
             epoch: "",
             locations: [],
             nextCursor: null,
+            error: error instanceof Error ? error.message : String(error),
+          },
+        },
+        source,
+      );
+    }
+  }
+
+  private async handleAgentConversationExportRequest(
+    msg: Extract<SessionInboundMessage, { type: "agent.conversation.export.request" }>,
+    source?: object,
+  ): Promise<void> {
+    try {
+      const snapshot = await ensureAgentLoaded(msg.agentId, {
+        agentManager: this.agentManager,
+        agentStorage: this.agentStorage,
+        logger: this.sessionLogger,
+      });
+      const rows = await this.agentManager.getConversationExportRows(msg.agentId);
+      const providerTasks = snapshot.session?.getConversationTaskSnapshot
+        ? await snapshot.session.getConversationTaskSnapshot()
+        : null;
+      const tasks = providerTasks ?? lastTimelineTasks(rows);
+      const { epoch } = this.agentManager.fetchTimeline(msg.agentId, {
+        direction: "tail",
+        limit: 1,
+      });
+      this.emitForSource(
+        {
+          type: "agent.conversation.export.response",
+          payload: {
+            requestId: msg.requestId,
+            agentId: msg.agentId,
+            epoch,
+            // 导出行已按 seq 定序，导出不需要 cursor 或折叠：每条占一个 seq。
+            entries: rows.map((row) => ({
+              provider: snapshot.provider,
+              item: row.item,
+              timestamp: row.timestamp,
+              seqStart: row.seq,
+              seqEnd: row.seq,
+              sourceSeqRanges: [],
+              collapsed: [],
+            })),
+            tasks,
+            error: null,
+          },
+        },
+        source,
+      );
+    } catch (error) {
+      this.sessionLogger.error(
+        { err: error, agentId: msg.agentId },
+        "Failed to handle agent.conversation.export.request",
+      );
+      this.emitForSource(
+        {
+          type: "agent.conversation.export.response",
+          payload: {
+            requestId: msg.requestId,
+            agentId: msg.agentId,
+            epoch: "",
+            entries: [],
+            tasks: [],
             error: error instanceof Error ? error.message : String(error),
           },
         },

@@ -118,6 +118,7 @@ type BulkCloseTitleKey = "closeTabsLeftTitle" | "closeTabsRightTitle" | "closeOt
 interface WorkspaceAgentTabActions {
   onCopyResumeCommand: (agentId: string) => Promise<void>;
   onCopyAgentId: (agentId: string) => Promise<void>;
+  onCopyConversationMarkdown?: (agentId: string) => Promise<void>;
   onCopyAgentAsNew: (agentId: string) => Promise<void>;
   canCloneAgent: boolean;
   onDeleteAgent: (agentId: string) => Promise<void>;
@@ -190,13 +191,16 @@ export function useWorkspaceAgentTabActions({
 
   const bulkCloseConfirmationLabels = useBulkCloseConfirmationLabels();
 
-  const { onCopyAgentId, onCopyResumeCommand, onReloadAgent } = useAgentTabMetadataActions({
-    serverId,
-    client,
-    isConnected,
-  });
+  const { onCopyAgentId, onCopyResumeCommand, onCopyConversationMarkdown, onReloadAgent } =
+    useAgentTabMetadataActions({
+      serverId,
+      client,
+      isConnected,
+    });
 
   const supportsCloneAgent = useHostFeature(serverId, "agentCloneSession");
+  // 没有导出能力的老 daemon 不提供这一项，而不是退化成只复制已加载的尾巴。
+  const supportsConversationExport = useHostFeature(serverId, "conversationExport");
   const onDeleteAgent = useCallback(
     async (agentId: string) => {
       await deleteAgent({ serverId, agentId });
@@ -385,6 +389,9 @@ export function useWorkspaceAgentTabActions({
     () => ({
       onCopyResumeCommand,
       onCopyAgentId,
+      onCopyConversationMarkdown: supportsConversationExport
+        ? onCopyConversationMarkdown
+        : undefined,
       onCopyAgentAsNew,
       canCloneAgent: supportsCloneAgent,
       onDeleteAgent,
@@ -403,8 +410,10 @@ export function useWorkspaceAgentTabActions({
       onCloseTabsAfter,
       onCloseTabsBefore,
       onCopyAgentId,
+      onCopyConversationMarkdown,
       onCopyAgentAsNew,
       supportsCloneAgent,
+      supportsConversationExport,
       onDeleteAgent,
       onCopyResumeCommand,
       onReloadAgent,

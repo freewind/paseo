@@ -6,7 +6,9 @@ import { useToast } from "@/contexts/toast-context";
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
 import { useSessionStore } from "@/stores/session-store";
 import { planTimelineTailFetch } from "@/timeline/timeline-sync-plan";
+import { buildConversationMarkdown } from "@/timeline/conversation-markdown";
 import { buildProviderCommand } from "@/utils/provider-command-templates";
+
 
 /**
  * tab 的复制与重载动作，tab 栏和侧栏共用这一份。
@@ -25,6 +27,7 @@ export function useAgentTabMetadataActions({
 }): {
   onCopyAgentId: (agentId: string) => Promise<void>;
   onCopyResumeCommand: (agentId: string) => Promise<void>;
+  onCopyConversationMarkdown: (agentId: string) => Promise<void>;
   onReloadAgent: (agentId: string) => Promise<void>;
 } {
   const { t } = useTranslation();
@@ -74,6 +77,34 @@ export function useAgentTabMetadataActions({
     [serverId, toast, t],
   );
 
+  const onCopyConversationMarkdown = useCallback(
+    async (agentId: string) => {
+      if (!agentId) return;
+      if (!client || !isConnected) {
+        toast.error(t("workspace.terminal.hostDisconnected"));
+        return;
+      }
+      toast.show(t("workspace.tabs.toasts.copyingConversation"), { durationMs: null });
+      try {
+        const payload = await client.exportAgentConversation(agentId);
+        const items = payload.entries.map((entry) => entry.item);
+        const tasks = payload.tasks;
+        const agentTitle =
+          useSessionStore.getState().sessions[serverId]?.agents.get(agentId)?.title ?? null;
+        const markdown = buildConversationMarkdown(items, tasks, { agentTitle });
+        if (!markdown) {
+          toast.error(t("workspace.tabs.toasts.conversationMarkdownEmpty"));
+          return;
+        }
+        await Clipboard.setStringAsync(markdown);
+        toast.copied(t("workspace.tabs.toasts.conversationMarkdownCopiedLabel"));
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : t("workspace.tabs.toasts.copyFailed"));
+      }
+    },
+    [client, isConnected, serverId, toast, t],
+  );
+
   const onReloadAgent = useCallback(
     async (agentId: string) => {
       if (!client || !isConnected) {
@@ -106,5 +137,5 @@ export function useAgentTabMetadataActions({
     [client, isConnected, serverId, toast, t],
   );
 
-  return { onCopyAgentId, onCopyResumeCommand, onReloadAgent };
+  return { onCopyAgentId, onCopyResumeCommand, onCopyConversationMarkdown, onReloadAgent };
 }

@@ -299,6 +299,7 @@ import type {
   ToolCallTimelineItem,
   AgentUsage,
   JsonValue,
+  AgentTaskSnapshotItem,
 } from "./agent-types.js";
 
 // WebSocket payloads have already crossed JSON serialization. Keeping this as
@@ -1964,6 +1965,25 @@ export const AgentTimelineListPromptsRequestMessageSchema = z.object({
   requestId: z.string(),
 });
 
+/** 导出用的完整任务快照项：live 时间线刻意不带依赖、owner 与 metadata，这里一并带上。 */
+export const ConversationTaskItemSchema: z.ZodType<AgentTaskSnapshotItem, unknown> = z.object({
+  text: z.string(),
+  completed: z.boolean(),
+  id: z.string().optional(),
+  status: z.enum(["pending", "in_progress", "completed", "deleted"]).optional(),
+  activeForm: z.string().optional(),
+  description: z.string().optional(),
+  blockedBy: z.array(z.union([z.string(), z.number()])).optional(),
+  owner: z.string().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const AgentConversationExportRequestMessageSchema = z.object({
+  type: z.literal("agent.conversation.export.request"),
+  agentId: z.string(),
+  requestId: z.string(),
+});
+
 export const ProviderSubagentListRequestMessageSchema = z.object({
   type: z.literal("agent.provider_subagents.list.request"),
   parentAgentId: z.string(),
@@ -3416,6 +3436,7 @@ export const SessionInboundMessageSchema = z.discriminatedUnion("type", [
   FetchAgentTimelineRequestMessageSchema,
   AgentTimelineSearchRequestMessageSchema,
   AgentTimelineListPromptsRequestMessageSchema,
+  AgentConversationExportRequestMessageSchema,
   ProviderSubagentListRequestMessageSchema,
   ProviderSubagentTimelineRequestMessageSchema,
   SetAgentTimelineSubscriptionRequestMessageSchema,
@@ -3834,6 +3855,8 @@ export const ServerInfoStatusPayloadSchema = z
         agentForkContextCursor: z.boolean().optional(),
         // COMPAT(agentForkSession): added in v0.11.0, remove gate after 2027-04-05.
         agentForkSession: z.boolean().optional(),
+        // COMPAT(conversationExport): added in v0.11.0, remove gate after 2027-10-25.
+        conversationExport: z.boolean().optional(),
         // COMPAT(agentCloneSession): added in v0.11.0, remove gate after 2027-04-05.
         agentCloneSession: z.boolean().optional(),
         // COMPAT(providerSubagents): added in v0.1.107, remove gate after 2027-01-12.
@@ -4867,6 +4890,18 @@ export const AgentTimelineListPromptsResponseMessageSchema = z.object({
         preview: z.string(),
       }),
     ),
+    error: z.string().nullable(),
+  }),
+});
+
+export const AgentConversationExportResponseMessageSchema = z.object({
+  type: z.literal("agent.conversation.export.response"),
+  payload: z.object({
+    requestId: z.string(),
+    agentId: z.string(),
+    epoch: z.string(),
+    entries: z.array(AgentTimelineEntryPayloadSchema),
+    tasks: z.array(ConversationTaskItemSchema),
     error: z.string().nullable(),
   }),
 });
@@ -7149,6 +7184,7 @@ export const SessionOutboundMessageSchema = z.discriminatedUnion("type", [
   AgentTimelineReplacementMessageSchema,
   AgentTimelineSearchResponseMessageSchema,
   AgentTimelineListPromptsResponseMessageSchema,
+  AgentConversationExportResponseMessageSchema,
   ProviderSubagentListResponseMessageSchema,
   ProviderSubagentTimelineResponseMessageSchema,
   ProviderSubagentUpdateMessageSchema,
@@ -7379,6 +7415,9 @@ export type FetchAgentTimelineResponseMessage = z.infer<
 >;
 export type AgentTimelineListPromptsResponseMessage = z.infer<
   typeof AgentTimelineListPromptsResponseMessageSchema
+>;
+export type AgentConversationExportResponseMessage = z.infer<
+  typeof AgentConversationExportResponseMessageSchema
 >;
 export type AgentForkContextResponseMessage = z.infer<typeof AgentForkContextResponseMessageSchema>;
 export type AgentForkResponseMessage = z.infer<typeof AgentForkResponseMessageSchema>;

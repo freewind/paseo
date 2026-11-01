@@ -57,6 +57,7 @@ export const SidebarWorkspaceAgentList = memo(function SidebarWorkspaceAgentList
           onCopyResumeCommand: actions.onCopyResumeCommand,
           onCopyAgentId: actions.onCopyAgentId,
           onCopyAgentAsNew: actions.onCopyAgentAsNew,
+          onCopyConversationMarkdown: actions.onCopyConversationMarkdown,
           canCloneAgent: actions.canCloneAgent,
           // 不可达：列表只放 agent tab，菜单对它们不提供这几项。
           onCopyTerminalId: noopAsync,

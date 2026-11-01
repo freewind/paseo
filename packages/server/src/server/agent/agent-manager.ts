@@ -3,6 +3,7 @@ import type { AgentToolResult } from "@getpaseo/plugin/server";
 import type { RuntimeCleanupCandidate } from "./idle-runtime-cleanup/index.js";
 import { ensureAgentLoaded } from "./agent-loading.js";
 import { projectTimelineRows } from "./timeline-projection.js";
+import { mergeTimelineRowsForExport } from "./agent-timeline-export.js";
 import type { PluginLifecycle } from "../plugins/lifecycle/index.js";
 import { describeHookAgent, publishAgentStream } from "../plugins/lifecycle/index.js";
 import type { PluginSessionOpenRequest } from "@getpaseo/plugin/server";
@@ -1291,6 +1292,25 @@ export class AgentManager {
   getTimeline(id: string): AgentTimelineItem[] {
     this.requireAgent(id);
     return this.timelineStore.getItems(id);
+  }
+
+  /**
+   * 导出用的整段会话行：持久化的已提交行加上内存里尚未落盘的行，按 seq 去重升序。
+   * 不能只读 durable（会丢掉正在跑的回合），也不能只读内存（daemon 重启后历史被截断）。
+   */
+  async getConversationExportRows(id: string): Promise<AgentTimelineRow[]> {
+    this.requireAgent(id);
+    // 导出前先把排队中的持久化写完：否则合并边界上的那一行可能比内存里的旧一个 chunk，
+    // 而它又因为 seq 不大于 maxDurableSeq 被丢弃，导出尾部就会少一段文本。
+    await this.flush();
+    const durableRows = this.durableTimelineStore
+      ? projectTimelineRows({
+          rows: await this.durableTimelineStore.getCommittedRows(id),
+          mode: "projected",
+        }).map((entry) => Object.assign({}, entry, { seq: entry.seqEnd }))
+      : [];
+    const liveRows = this.timelineStore.has(id) ? this.timelineStore.getRows(id) : [];
+    return mergeTimelineRowsForExport({ durableRows, liveRows });
   }
 
   async getTimelineRows(id: string): Promise<AgentTimelineRow[]> {

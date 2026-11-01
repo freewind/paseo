@@ -20,6 +20,8 @@ const INBOUND_PERMISSION = {
   "agent.fork.request": "workspace.write",
   "agent.clone.request": "workspace.write",
   "agent.fork_context.request": "workspace.read",
+  // 导出是读操作：能读 workspace 的人本来就能看到整段历史，所以不抬到 workspace.write。
+  "agent.conversation.export.request": "workspace.read",
   "agent.provider_subagents.list.request": "workspace.read",
   "agent.provider_subagents.timeline.get.request": "workspace.read",
   "agent.rewind.request": "workspace.write",
@@ -247,6 +249,7 @@ const OUTBOUND_PERMISSION = {
   "agent.detach.response": "workspace.write",
   "agent.fork.response": "workspace.write",
   "agent.clone.response": "workspace.write",
+  "agent.conversation.export.response": "workspace.read",
   "agent.fork_context.response": "workspace.read",
   "agent.provider_subagents.list.response": "workspace.read",
   "agent.provider_subagents.timeline.get.response": "workspace.read",

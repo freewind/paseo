@@ -4,6 +4,7 @@ import type {
   AgentFeatureToggle,
   AgentProviderNotice,
   AgentTaskItem,
+  AgentTaskSnapshotItem,
   JsonValue,
   ProviderOptions,
   ToolPolicy,
@@ -18,6 +19,7 @@ export type {
   AgentFeatureToggle,
   AgentProviderNotice,
   AgentTaskItem,
+  AgentTaskSnapshotItem,
 };
 
 export type AgentProvider = string;
@@ -719,6 +721,11 @@ export interface AgentSession {
   setModel?(modelId: string | null): Promise<void>;
   setThinkingOption?(thinkingOptionId: string | null): Promise<void | AgentProviderNotice>;
   setFeature?(featureId: string, value: unknown): Promise<void>;
+  /**
+   * provider 的完整任务快照（含依赖、owner、metadata 与墓碑），只给会话导出用。
+   * 没有时返回 null，导出退到实时时间线里最后一个 todo 项。
+   */
+  getConversationTaskSnapshot?(): Promise<AgentTaskSnapshotItem[] | null>;
   revertConversation?(input: { messageId: string }): Promise<void>;
   revertFiles?(input: { messageId: string }): Promise<void>;
   revertBoth?(input: { messageId: string }): Promise<void>;

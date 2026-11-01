@@ -9,6 +9,7 @@ export interface WorkspaceTabMenuLabels {
   copyResumeCommand: string;
   copyAgentId: string;
   copyAgentAsNew: string;
+  copyConversationMarkdown: string;
   copyTerminalId: string;
   copyFilePath: string;
   rename: string;
@@ -28,6 +29,7 @@ export const DEFAULT_WORKSPACE_TAB_MENU_LABELS: WorkspaceTabMenuLabels = {
   copyResumeCommand: i18n.t("workspace.tabs.menu.copyResumeCommand"),
   copyAgentId: i18n.t("workspace.tabs.menu.copyAgentId"),
   copyAgentAsNew: i18n.t("workspace.tabs.menu.copyAgentAsNewConversation"),
+  copyConversationMarkdown: i18n.t("workspace.tabs.menu.copyConversationMarkdown"),
   copyTerminalId: i18n.t("workspace.tabs.menu.copyTerminalId"),
   copyFilePath: i18n.t("workspace.tabs.menu.copyFilePath"),
   rename: i18n.t("workspace.tabs.menu.rename"),
@@ -103,6 +105,8 @@ interface BuildWorkspaceTabMenuEntriesInput {
   /** 整会话复制成新对话，只在宿主声明 agentCloneSession 时出现。 */
   onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
   canCloneAgent?: boolean;
+  /** 复制整段会话为 Markdown；老 daemon 没有导出能力时动作自己退到内存尾部。 */
+  onCopyConversationMarkdown?: (agentId: string) => Promise<void> | void;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
@@ -125,6 +129,8 @@ interface BuildWorkspaceDesktopTabActionsInput {
   /** 整会话复制成新对话，只在宿主声明 agentCloneSession 时出现。 */
   onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
   canCloneAgent?: boolean;
+  /** 复制整段会话为 Markdown；老 daemon 没有导出能力时动作自己退到内存尾部。 */
+  onCopyConversationMarkdown?: (agentId: string) => Promise<void> | void;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
@@ -215,6 +221,7 @@ export function buildWorkspaceTabMenuEntries(
     onCopyAgentId,
     onCopyAgentAsNew,
     canCloneAgent = false,
+    onCopyConversationMarkdown,
     onCopyTerminalId,
     onCopyFilePath,
     onReloadAgent,
@@ -264,6 +271,18 @@ export function buildWorkspaceTabMenuEntries(
         testID: `${menuTestIDBase}-copy-agent-as-new`,
         onSelect: () => {
           void onCopyAgentAsNew(agentId);
+        },
+      });
+    }
+    if (onCopyConversationMarkdown) {
+      entries.push({
+        kind: "item",
+        key: "copy-conversation-markdown",
+        label: labels.copyConversationMarkdown,
+        icon: "copy",
+        testID: `${menuTestIDBase}-copy-conversation-markdown`,
+        onSelect: () => {
+          void onCopyConversationMarkdown(agentId);
         },
       });
     }
@@ -435,6 +454,7 @@ export function buildWorkspaceDesktopTabActions(
       onCopyAgentId: input.onCopyAgentId,
       onCopyAgentAsNew: input.onCopyAgentAsNew,
       canCloneAgent: input.canCloneAgent,
+      onCopyConversationMarkdown: input.onCopyConversationMarkdown,
       onCopyTerminalId: input.onCopyTerminalId,
       onCopyFilePath: input.onCopyFilePath,
       onReloadAgent: input.onReloadAgent,
