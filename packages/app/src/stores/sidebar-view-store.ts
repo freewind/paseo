@@ -60,7 +60,7 @@ interface SidebarViewStoreState {
    * The project list is narrowed by the host filter and is empty before any host connects, so
    * reconciling against it would silently destroy the filter on every cold start and every
    * host-filter change. Stale keys are resolved away at read time instead — see
-   * `resolveActiveProjectFilters`.
+   * `resolveProjectVisibility`.
    */
   projectFilters: string[];
   labelFilter: SidebarLabelFilter;

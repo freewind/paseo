@@ -18,8 +18,12 @@ import { useSidebarOrderStore } from "@/stores/sidebar-order-store";
 import type { SidebarShortcutModel } from "@/utils/sidebar-shortcuts";
 import { buildSidebarProjection } from "./sidebar-projection";
 import type { SidebarProjectIconTarget } from "@/utils/sidebar-project-row-model";
-import { filterWorkspacesByLabels, type SidebarWorkspaceGroup } from "./sidebar-labels";
-import { filterWorkspacesByProjects, resolveActiveProjectFilters } from "./sidebar-project-filter";
+import { type SidebarWorkspaceGroup } from "./sidebar-labels";
+import {
+  filterSidebarProjects,
+  filterSidebarWorkspaces,
+  resolveProjectVisibility,
+} from "./sidebar-filter-model";
 import {
   hasAuthoritativeWorkspaceLabelCatalog,
   useWorkspaceLabelProjection,
@@ -84,15 +88,16 @@ export function SidebarModelProvider({
     reconcileLabelFilter(availableLabelNames);
   }, [availableLabelNames, hasAuthoritativeLabelCatalog, reconcileLabelFilter]);
   const hasActiveLabelFilter = hasActiveSidebarLabelFilter(labelFilter);
-  const resolvedProjectFilters = useMemo(
+  const projectVisibility = useMemo(
     () =>
-      resolveActiveProjectFilters(
+      resolveProjectVisibility({
         projectFilters,
-        new Set(list.projects.map((project) => project.viewKey)),
-      ),
+        availableViewKeys: new Set(list.projects.map((project) => project.viewKey)),
+      }),
     [projectFilters, list.projects],
   );
-  const hasActiveProjectFilter = resolvedProjectFilters.length > 0;
+  const resolvedProjectFilters =
+    projectVisibility.kind === "selected" ? projectVisibility.keys : EMPTY_PROJECT_FILTERS;
   // The project filter is deliberately absent from this gate. It reads `projectViewKey`, which
   // lives on the project and the placement, so it can narrow the project list without hydrating
   // anything; the label filter reads `labels`, which only exists on an entry. Hydration opens a
@@ -104,13 +109,11 @@ export function SidebarModelProvider({
     active !== false || needsWorkspaceEntries,
   );
   const filteredWorkspaceEntriesByKey = useMemo(() => {
-    const byProject = filterWorkspacesByProjects({
+    const filtered = filterSidebarWorkspaces({
       workspaces: [...workspaceEntriesByKey.values()],
       projectFilters: resolvedProjectFilters,
-    });
-    const filtered = filterWorkspacesByLabels({
-      workspaces: byProject.filter((workspace) => showBackground || !workspace.background),
-      ...labelFilter,
+      labelFilter,
+      showBackground,
     });
     return new Map(filtered.map((workspace) => [workspace.workspaceKey, workspace]));
   }, [showBackground, labelFilter, resolvedProjectFilters, workspaceEntriesByKey]);
@@ -122,31 +125,17 @@ export function SidebarModelProvider({
   // project itself, so a project you filtered TO survives even with no workspaces — it still owns
   // a header row you can create your first workspace under. The label filter can only ask about
   // workspaces, so a project it empties has nothing left to show.
-  const filteredProjects = useMemo(() => {
-    let projects = list.projects;
-    if (hasActiveProjectFilter) {
-      const included = new Set(resolvedProjectFilters);
-      projects = projects.filter((project) => included.has(project.viewKey));
-    }
-    if (hasActiveLabelFilter || !showBackground) {
-      projects = projects.flatMap((project) => {
-        const workspaces = project.workspaces.filter((workspace) =>
-          visibleWorkspaceKeys.has(workspace.workspaceKey),
-        );
-        return workspaces.length > 0 || (!hasActiveLabelFilter && project.workspaces.length === 0)
-          ? [workspaces.length === project.workspaces.length ? project : { ...project, workspaces }]
-          : [];
-      });
-    }
-    return projects;
-  }, [
-    showBackground,
-    hasActiveLabelFilter,
-    hasActiveProjectFilter,
-    resolvedProjectFilters,
-    list.projects,
-    visibleWorkspaceKeys,
-  ]);
+  const filteredProjects = useMemo(
+    () =>
+      filterSidebarProjects({
+        projects: list.projects,
+        visibility: projectVisibility,
+        hasActiveLabelFilter,
+        showBackground,
+        visibleWorkspaceKeys,
+      }),
+    [showBackground, hasActiveLabelFilter, projectVisibility, list.projects, visibleWorkspaceKeys],
+  );
   const pinnedKeys = usePinnedSidebarKeys(filteredProjects);
   const projectionInput = useMemo(
     () => ({
@@ -211,3 +200,5 @@ export function useSidebarModel(): SidebarModel {
   if (!model) throw new Error("SidebarModelProvider is required");
   return model;
 }
+
+const EMPTY_PROJECT_FILTERS: readonly string[] = [];
