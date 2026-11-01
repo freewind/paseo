@@ -157,6 +157,9 @@ export class DirectorySync {
   private revision = 0;
   private workspaceRevision = 0;
   private readonly routeDemandIds = new Set<string>();
+  // 抢到标记的调用成功后不会把它删掉，标记保留到 dispose()，所以一个实例内同一 workspace
+  // 只自动补拉一次；连接恢复不清这个集合，要再补拉只能等实例重建。
+  private readonly workspaceRouteRefreshes = new Set<string>();
   private readonly fullDemandSources = new Set<object>();
   private readonly scriptStatusDemand = new Map<object, string>();
   private demandRefresh: Promise<void> | null = null;
@@ -257,6 +260,7 @@ export class DirectorySync {
     this.releaseSubscriptions();
     this.releaseScriptStatusEvents();
     this.fullDemandSources.clear();
+    this.workspaceRouteRefreshes.clear();
     this.routeDemandIds.clear();
     workspaceLabels.disconnect(this.serverId);
   }
@@ -418,6 +422,24 @@ export class DirectorySync {
 
   async prepareWorkspaceRoute(workspaceId: string): Promise<void> {
     await this.loadCachedWorkspace(workspaceId);
+    // 缓存只回答本机见过的 workspace。路由直接指向一个 daemon 认识、但缓存里没有的 workspace
+    // 时必须问一次 host，否则这屏拿不到 descriptor，所有依赖目录的界面都不可用。
+    // 拉完不校验 workspace 是否真到了，也不在本地拼一个 descriptor：host 没返回就让这屏
+    // 这次打不开，好过本地猜出一个 daemon 并不存在的 workspace。
+    const session = useSessionStore.getState().sessions[this.serverId];
+    if (!session || session.workspaces.has(workspaceId)) return;
+    // 多个界面会同时进入同一路由，标记挡住重复的全量快照。
+    if (this.workspaceRouteRefreshes.has(workspaceId)) return;
+    // 离线判断必须留在打标记之前：refreshWorkspacesInternal 离线时直接返回、不抛错，
+    // 这次调用既不成功也进不了 catch，留下的标记永远删不掉。
+    if (!this.getOnlineConnection()) return;
+    this.workspaceRouteRefreshes.add(workspaceId);
+    try {
+      await this.refreshWorkspacesInternal({ subscribe: true }, false);
+    } catch {
+      // 失败移除标记，下次进同一路由还能重试。
+      this.workspaceRouteRefreshes.delete(workspaceId);
+    }
   }
 
   private async loadCachedWorkspace(workspaceId: string): Promise<void> {
