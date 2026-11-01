@@ -26,7 +26,9 @@ import { useActiveWorkspaceSelection } from "@/stores/navigation-active-workspac
 import { type SidebarWorkspaceEntry } from "@/hooks/use-sidebar-workspaces-list";
 import type { StatusBucket } from "@/hooks/sidebar-status-view-model";
 import type { SidebarWorkspaceGroup } from "@/components/sidebar/sidebar-labels";
-import { SidebarFilterEmptyState } from "@/components/sidebar/empty-states";
+import { SidebarFilteredListEmptyState } from "@/components/sidebar/sidebar-name-search-empty-state";
+import { useSidebarNameSearch } from "@/components/sidebar/sidebar-model";
+import type { MatchRange } from "@getpaseo/protocol/search/text-match";
 import type { HostBadgeModel } from "@/hosts/appearance";
 import { isWeb as platformIsWeb, isNative as platformIsNative } from "@/constants/platform";
 import { useIsCompactFormFactor } from "@/constants/layout";
@@ -174,15 +176,24 @@ export function SidebarStatusWorkspaceList({
     (state) => state.collapsedWorkspaceGroupKeys,
   );
   const pinnedCollapsed = useSidebarCollapsedSectionsStore((state) => state.collapsedPinned);
+  // 搜索是结果模式：命中的行必须可见，所以查询期间置顶区与每个状态分组都展开，
+  // 存储的收起状态在清空查询后恢复。
+  const { active: nameSearchActive } = useSidebarNameSearch();
+  const effectivePinnedCollapsed = nameSearchActive ? false : pinnedCollapsed;
+  const effectiveCollapsedWorkspaceGroupKeys = nameSearchActive
+    ? EMPTY_SECTION_KEYS
+    : collapsedWorkspaceGroupKeys;
   const togglePinnedCollapsed = useSidebarCollapsedSectionsStore(
     (state) => state.togglePinnedCollapsed,
   );
   const {
-    visibleItems: visiblePinnedWorkspaces,
+    visibleItems: limitedPinnedWorkspaces,
     expanded: pinnedWorkspacesExpanded,
-    canToggle: canTogglePinnedWorkspaces,
+    canToggle: limitedCanTogglePinnedWorkspaces,
     toggleExpanded: togglePinnedWorkspacesExpanded,
   } = useLimitedSidebarGroup(pinnedWorkspaces);
+  const visiblePinnedWorkspaces = nameSearchActive ? pinnedWorkspaces : limitedPinnedWorkspaces;
+  const canTogglePinnedWorkspaces = nameSearchActive ? false : limitedCanTogglePinnedWorkspaces;
 
   const statusShortcutIndex = showShortcutBadges
     ? shortcutIndexByWorkspaceKey
@@ -224,15 +235,16 @@ export function SidebarStatusWorkspaceList({
   );
   const content = (
     <>
+      {listHeaderComponent}
       {pinnedWorkspaces.length > 0 ? (
         <View style={styles.pinnedSection} testID="sidebar-pinned-section">
           <SidebarSectionHeader
             title={t("sidebar.pinned.title")}
-            collapsed={pinnedCollapsed}
+            collapsed={effectivePinnedCollapsed}
             onToggle={togglePinnedCollapsed}
             testID="sidebar-pinned-section-header"
           />
-          {pinnedCollapsed ? null : (
+          {effectivePinnedCollapsed ? null : (
             <>
               <DraggableList
                 testID="sidebar-pinned-list"
@@ -257,13 +269,12 @@ export function SidebarStatusWorkspaceList({
           )}
         </View>
       ) : null}
-      {listHeaderComponent}
       {sidebarFilterEmpty ? (
-        <SidebarFilterEmptyState />
+        <SidebarFilteredListEmptyState />
       ) : (
         <StatusGroupList
           groups={groups}
-          collapsedWorkspaceGroupKeys={collapsedWorkspaceGroupKeys}
+          collapsedWorkspaceGroupKeys={effectiveCollapsedWorkspaceGroupKeys}
           projectIconByProjectViewKey={projectIconByProjectViewKey}
           shortcutIndex={statusShortcutIndex}
           showShortcutBadges={showShortcutBadges}
@@ -531,6 +542,8 @@ function StatusGroupIcon({ bucket }: { bucket: StatusBucket }) {
       return <ThemedCircleCheck uniProps={mutedGroupIconProps} />;
   }
 }
+
+const EMPTY_SECTION_KEYS: ReadonlySet<string> = new Set();
 
 const StatusWorkspaceRow = memo(function StatusWorkspaceRow({
   workspace,
@@ -827,6 +840,10 @@ function StatusWorkspaceRowInnerContent({
 }: StatusWorkspaceRowInnerProps & {
   dragInteraction?: ReturnType<typeof useLongPressDragInteraction>;
 }) {
+  const { active: nameSearchActiveNow, matches: nameSearchMatches } = useSidebarNameSearch();
+  const nameHighlightRanges: readonly MatchRange[] | undefined = nameSearchActiveNow
+    ? nameSearchMatches.workspaces.get(workspace.workspaceKey)?.ranges
+    : undefined;
   const isCompact = useIsCompactFormFactor();
   const isTouchPlatform = platformIsNative || isCompact;
   const [isPressed, setIsPressed] = useState(false);
@@ -944,6 +961,7 @@ function StatusWorkspaceRowInnerContent({
                   shortcutNumber={shortcutNumber}
                   showShortcutBadge={showShortcutBadge}
                   reserveIdleStatusIndicatorSpace={reserveIdleStatusIndicatorSpace}
+                  nameHighlightRanges={nameHighlightRanges}
                 >
                   {renderSlot ? (
                     <StatusWorkspaceActionSlot

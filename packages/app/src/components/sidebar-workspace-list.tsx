@@ -113,10 +113,7 @@ import {
   SidebarWorkspaceTrailingActionSlot,
 } from "@/components/sidebar/sidebar-workspace-row-content";
 import { useOpenKebabMenuVisibility } from "@/components/sidebar/use-open-kebab-menu-visibility";
-import {
-  SidebarFilterEmptyState,
-  SidebarProjectEmptyState,
-} from "@/components/sidebar/empty-states";
+import { SidebarProjectEmptyState } from "@/components/sidebar/empty-states";
 import { selectWorkspaceServiceSummary } from "@/components/sidebar/workspace-meta-row";
 import {
   SidebarWorkspaceTrailingContent,
@@ -153,6 +150,9 @@ import { getDesktopHost } from "@/desktop/host";
 import { OpenInFileManagerMenuItem } from "@/workspace/open-in-file-manager/menu-item";
 import { useLocalDaemonServerId } from "@/hooks/use-is-local-daemon";
 import type { HostBadgeModel } from "@/hosts/appearance";
+import { useSidebarNameSearch } from "@/components/sidebar/sidebar-model";
+import { HighlightedText } from "@/components/ui/highlighted-text";
+import { SidebarFilteredListEmptyState } from "@/components/sidebar/sidebar-name-search-empty-state";
 import { useHostBadges } from "@/hosts/use-host-badges";
 import { useSidebarRowItems } from "@/components/sidebar/display-preferences/model";
 import { PullRequestStateIcon } from "@/git/pull-request-state-icon";
@@ -162,6 +162,7 @@ const workspaceKeyExtractor = (workspace: SidebarWorkspacePlacement) => workspac
 const projectViewKeyExtractor = (project: SidebarProjectEntry) => project.viewKey;
 
 const WORKSPACE_STATUS_DOT_WIDTH = 14;
+const noop = () => {};
 const ThemedExternalLink = withUnistyles(ExternalLink);
 const ThemedLoadingSpinner = withUnistyles(LoadingSpinner);
 const ThemedPlus = withUnistyles(Plus);
@@ -235,8 +236,8 @@ interface SidebarWorkspaceListProps {
   onAddProject?: () => void;
   onImportSession?: () => void;
   listFooterComponent?: ReactElement | null;
-  // Rendered inside the scroll area, below the Pinned section and above the workspace
-  // list. Holds the "Workspaces" section header so pinned items sit above it.
+  // Rendered inside the scroll area, above the Pinned section, so the search box that replaces
+  // the "Workspaces" section title sits at the top of the sidebar.
   listHeaderComponent?: ReactElement | null;
   /** Gesture ref for coordinating with parent gestures (e.g., sidebar close) */
   parentGestureRef?: MutableRefObject<GestureType | undefined>;
@@ -851,6 +852,13 @@ function NewWorkspaceGhostRow({
   );
 }
 
+/** 项目名命中时的区间；不搜索或没命中时为 null。抽出来只为让行组件少一个分支。 */
+function useProjectNameHighlight(projectViewKey: string) {
+  const { active, matches } = useSidebarNameSearch();
+  if (!active) return null;
+  return matches.projects.find((kept) => kept.projectViewKey === projectViewKey)?.matchedRanges;
+}
+
 function ProjectHeaderRow({
   project,
   displayName,
@@ -876,6 +884,7 @@ function ProjectHeaderRow({
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
+  const projectHighlightRanges = useProjectNameHighlight(project.viewKey);
   const isMobileBreakpoint = useIsCompactFormFactor();
   const localDaemonServerId = useLocalDaemonServerId();
   const projectPath = resolveSidebarProjectLocalPath(project, localDaemonServerId);
@@ -959,9 +968,12 @@ function ProjectHeaderRow({
         />
 
         <View style={styles.projectTitleGroup}>
-          <Text style={styles.projectTitle} numberOfLines={1}>
-            {displayName}
-          </Text>
+          <HighlightedText
+            text={displayName}
+            ranges={projectHighlightRanges ?? undefined}
+            style={styles.projectTitle}
+            numberOfLines={1}
+          />
         </View>
       </View>
       <ProjectRowTrailingActions
@@ -1080,6 +1092,10 @@ function WorkspaceRowInner({
   onTogglePin,
   reserveIdleStatusIndicatorSpace = true,
 }: WorkspaceRowInnerProps) {
+  const { active: nameSearchActive, matches: nameSearchMatches } = useSidebarNameSearch();
+  const nameHighlightRanges = nameSearchActive
+    ? nameSearchMatches.workspaces.get(workspace.workspaceKey)?.ranges
+    : undefined;
   const isCompact = useIsCompactFormFactor();
   const [isPressed, setIsPressed] = useState(false);
   const isTouchPlatform = platformIsNative || isCompact;
@@ -1181,6 +1197,7 @@ function WorkspaceRowInner({
                   shortcutNumber={shortcutNumber}
                   showShortcutBadge={showShortcutBadge}
                   reserveIdleStatusIndicatorSpace={reserveIdleStatusIndicatorSpace}
+                  nameHighlightRanges={nameHighlightRanges}
                 >
                   <WorkspaceRowRightGroup
                     workspace={workspace}
@@ -1598,16 +1615,21 @@ function ProjectBlock({
   supportsPinningByServerId: ReadonlyMap<string, boolean>;
   onToggleWorkspacePin: ToggleSidebarWorkspacePin;
 }) {
+  const { active: nameSearchActive } = useSidebarNameSearch();
+  // 搜索是结果模式：命中的行必须可见，所以查询期间项目一律展开，收起状态在清空查询后恢复。
+  const effectiveCollapsed = nameSearchActive ? false : collapsed;
   const visibilityPolicy = useMemo(
     () => createWorkspaceVisibilityPolicy<SidebarWorkspacePlacement>(workspaceEntriesByKey),
     [workspaceEntriesByKey],
   );
   const {
-    visibleItems: visibleWorkspaces,
+    visibleItems: limitedWorkspaces,
     expanded: workspacesExpanded,
-    canToggle: canToggleWorkspaces,
+    canToggle: limitedCanToggleWorkspaces,
     toggleExpanded: toggleWorkspacesExpanded,
   } = useLimitedSidebarGroup(project.workspaces, visibilityPolicy);
+  const visibleWorkspaces = nameSearchActive ? project.workspaces : limitedWorkspaces;
+  const canToggleWorkspaces = nameSearchActive ? false : limitedCanToggleWorkspaces;
   const activeServerId = activeWorkspaceSelection?.serverId ?? null;
   const activeHostStatus = useHostRuntimeConnectionStatus(activeServerId ?? "");
   const preferredServerId = activeHostStatus === "online" ? activeServerId : null;
@@ -1615,18 +1637,18 @@ function ProjectBlock({
     () =>
       buildSidebarProjectRowModel({
         project,
-        collapsed,
+        collapsed: effectiveCollapsed,
         supportsMultiplicityByServerId,
         preferredServerId,
       }),
-    [collapsed, preferredServerId, project, supportsMultiplicityByServerId],
+    [effectiveCollapsed, preferredServerId, project, supportsMultiplicityByServerId],
   );
 
   // Collapsed rows hide their workspace rows, so the project row carries the most urgent
   // status among them; expanded rows leave the signal to the child rows themselves.
   const aggregateStatusBucket = useSidebarProjectStatusBucket({
     workspaces: project.workspaces,
-    enabled: collapsed,
+    enabled: effectiveCollapsed,
   });
 
   const active = isProjectSelectedByRoute({
@@ -1764,7 +1786,7 @@ function ProjectBlock({
   }, [onToggleCollapsed, project.viewKey]);
 
   let projectChildren = null;
-  if (!collapsed) {
+  if (!effectiveCollapsed) {
     if (project.workspaces.length > 0) {
       projectChildren = (
         <>
@@ -1824,8 +1846,8 @@ function ProjectBlock({
         iconDataUri={iconDataUri}
         statusBucket={aggregateStatusBucket}
         selected={false}
-        chevron={rowModel.chevron}
-        onPress={handleToggleCollapsed}
+        chevron={nameSearchActive ? null : rowModel.chevron}
+        onPress={nameSearchActive ? noop : handleToggleCollapsed}
         worktreeTarget={
           rowModel.trailingAction.kind === "new_workspace" ? rowModel.trailingAction.target : null
         }
@@ -2487,6 +2509,18 @@ function ProjectModeList({
 
   const content = (
     <>
+      {/* The header carries the display menu, which is the only way back out of a filter, so it
+        stays for as long as a filter is what emptied the list. It is absent only when the
+        sidebar is genuinely empty, where a section heading would sit over nothing.
+        Every filter that can empty this branch needs a term here: a project filter pinned to a
+        project whose chats are all pinned leaves `unpinnedProjects` empty, and without its term
+        the header would go with it, taking the only route back to the filter page. */}
+      {unpinnedProjects.length > 0 ||
+      hasActiveHostFilter ||
+      hasActiveProjectFilter ||
+      sidebarFilterEmpty
+        ? listHeaderComponent
+        : null}
       {pinnedChats.length > 0 ? (
         <View style={styles.pinnedSection} testID="sidebar-pinned-section">
           <SidebarSectionHeader
@@ -2522,19 +2556,7 @@ function ProjectModeList({
           )}
         </View>
       ) : null}
-      {/* The header carries the display menu, which is the only way back out of a filter, so it
-        stays for as long as a filter is what emptied the list. It is absent only when the
-        sidebar is genuinely empty, where a section heading would sit over nothing.
-        Every filter that can empty this branch needs a term here: a project filter pinned to a
-        project whose chats are all pinned leaves `unpinnedProjects` empty, and without its term
-        the header would go with it, taking the only route back to the filter page. */}
-      {unpinnedProjects.length > 0 ||
-      hasActiveHostFilter ||
-      hasActiveProjectFilter ||
-      sidebarFilterEmpty
-        ? listHeaderComponent
-        : null}
-      {sidebarFilterEmpty ? <SidebarFilterEmptyState /> : projectBody}
+      {sidebarFilterEmpty ? <SidebarFilteredListEmptyState /> : projectBody}
       {listFooterComponent}
     </>
   );

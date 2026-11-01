@@ -37,6 +37,8 @@ describe("sidebar view store", () => {
       groupMode: "project",
       hostFilters: [],
       projectFilters: [],
+
+      nonEmptyProjectsOnly: false,
       labelFilter: { labels: [] },
     });
   });
@@ -91,6 +93,8 @@ describe("sidebar view store", () => {
       groupMode: "status",
       hostFilters: [],
       projectFilters: [],
+
+      nonEmptyProjectsOnly: false,
       labelFilter: { labels: [] },
       projectScrollOffset: 0,
       statusScrollOffset: 0,
@@ -109,6 +113,8 @@ describe("sidebar view store", () => {
       groupMode: "status",
       hostFilters: ["host-a"],
       projectFilters: [],
+
+      nonEmptyProjectsOnly: false,
       labelFilter: { labels: [] },
       projectScrollOffset: 0,
       statusScrollOffset: 0,
@@ -127,6 +133,8 @@ describe("sidebar view store", () => {
       groupMode: "status",
       hostFilters: ["host-a", "host-b"],
       projectFilters: [],
+
+      nonEmptyProjectsOnly: false,
       labelFilter: { labels: [] },
       projectScrollOffset: 0,
       statusScrollOffset: 0,
@@ -213,6 +221,8 @@ describe("sidebar view store", () => {
       groupMode: "status",
       hostFilters: ["host-a"],
       projectFilters: ["project-a"],
+
+      nonEmptyProjectsOnly: false,
       labelFilter: { labels: ["urgent"] },
     });
 
@@ -222,6 +232,8 @@ describe("sidebar view store", () => {
       groupMode: "status",
       hostFilters: ["host-a"],
       projectFilters: [],
+
+      nonEmptyProjectsOnly: false,
       labelFilter: { labels: ["urgent"] },
     });
   });
@@ -234,6 +246,8 @@ describe("sidebar view store", () => {
         groupMode: "project",
         hostFilters: ["host-a"],
         projectFilters: ["project-a", "project-b"],
+
+        nonEmptyProjectsOnly: false,
       }),
     ).toEqual({
       workspaceSort: "created",
@@ -241,6 +255,8 @@ describe("sidebar view store", () => {
       groupMode: "project",
       hostFilters: ["host-a"],
       projectFilters: ["project-a", "project-b"],
+
+      nonEmptyProjectsOnly: false,
       labelFilter: { labels: [] },
       projectScrollOffset: 0,
       statusScrollOffset: 0,
@@ -254,6 +270,8 @@ describe("sidebar view store", () => {
       groupMode: "project",
       hostFilters: [],
       projectFilters: [],
+
+      nonEmptyProjectsOnly: false,
       labelFilter: { labels: [] },
       projectScrollOffset: 0,
       statusScrollOffset: 0,

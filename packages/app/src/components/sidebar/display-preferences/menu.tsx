@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
   useState,
   type ComponentType,
@@ -182,6 +183,13 @@ export function SidebarDisplayPreferencesMenu(): ReactElement {
   );
 
   const showHostFilter = hosts.length > 1;
+  // 主机筛选的控件只在一个以上主机时出现。控件消失后残留的筛选会继续收窄列表，用户却找不到
+  // 关掉它的地方，所以这时直接清空。
+  useEffect(() => {
+    if (!showHostFilter && preferences.hostFilters.length > 0) {
+      preferences.clearHostFilters();
+    }
+  }, [showHostFilter, preferences]);
   // One project is the whole sidebar, so filtering to it is a no-op with a menu row attached.
   const showProjectFilter = allProjects.length > 1;
   // Nothing to filter by means no row at all. The active-filter half is not redundant: the merged
@@ -363,7 +371,7 @@ export function SidebarDisplayPreferencesMenu(): ReactElement {
               {showHostFilter ? null : <MenuSeparator />}
               <MenuSubTrigger
                 id="projectFilter"
-                indicator={resolvedProjectFilters.length > 0}
+                indicator={resolvedProjectFilters.length > 0 || preferences.nonEmptyProjectsOnly}
                 testID="sidebar-display-project-filter"
               >
                 {t("sidebar.display.projectFilter.label")}
@@ -689,16 +697,29 @@ function ProjectFilterPage({
   const iconTargets = useMemo(() => resolveSidebarProjectIconTargets(projects), [projects]);
   // Shares TanStack's cache with the sidebar's own call, so this subscribes rather than refetches.
   const iconByProjectViewKey = useProjectIcons({ projects: iconTargets });
+  // 页面不关闭，所以这一行自己切换状态，而不是只能打开。
+  const toggleNonEmptyProjectsOnly = useCallback(
+    () => preferences.setNonEmptyProjectsOnly(!preferences.nonEmptyProjectsOnly),
+    [preferences],
+  );
 
   return (
     <>
       <MenuItem
-        selected={resolvedProjectFilters.length === 0}
+        selected={resolvedProjectFilters.length === 0 && !preferences.nonEmptyProjectsOnly}
         closeOnSelect={false}
         onSelect={preferences.clearProjectFilters}
         testID="sidebar-project-filter-all"
       >
         {t("sidebar.display.projectFilter.all")}
+      </MenuItem>
+      <MenuItem
+        selected={preferences.nonEmptyProjectsOnly}
+        closeOnSelect={false}
+        onSelect={toggleNonEmptyProjectsOnly}
+        testID="sidebar-project-filter-non-empty"
+      >
+        {t("sidebar.display.projectFilter.nonEmpty")}
       </MenuItem>
       {projects.map((project) => (
         <ProjectFilterItem
@@ -706,7 +727,9 @@ function ProjectFilterPage({
           viewKey={project.viewKey}
           label={project.projectName}
           iconDataUri={iconByProjectViewKey.get(project.viewKey) ?? null}
-          selected={resolvedProjectFilters.includes(project.viewKey)}
+          selected={
+            !preferences.nonEmptyProjectsOnly && resolvedProjectFilters.includes(project.viewKey)
+          }
           onToggle={preferences.toggleProjectFilter}
         />
       ))}

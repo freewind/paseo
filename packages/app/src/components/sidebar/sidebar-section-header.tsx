@@ -11,12 +11,15 @@ import { density } from "@/styles/density";
  * collapses from its title; children sit at the trailing edge as its actions. */
 export function SidebarSectionHeader({
   title,
+  renderTitle,
   collapsed,
   onToggle,
   testID,
   children,
 }: {
   title: string;
+  /** 用自定义内容替换标题文本；给需要输入框的标题头用。 */
+  renderTitle?: () => ReactNode;
   collapsed?: boolean;
   onToggle?: () => void;
   testID?: string;
@@ -24,20 +27,36 @@ export function SidebarSectionHeader({
 }) {
   return (
     <View style={styles.header}>
-      {onToggle ? (
-        <CollapsibleTitle
-          title={title}
-          collapsed={collapsed ?? false}
-          onToggle={onToggle}
-          testID={testID}
-        />
+      {renderTitle ? (
+        <View style={styles.titleContent}>{renderTitle()}</View>
       ) : (
-        <Text style={styles.title} testID={testID}>
-          {title}
-        </Text>
+        renderDefaultTitle({ title, collapsed, onToggle, testID })
       )}
       {children ? <View style={styles.actions}>{children}</View> : null}
     </View>
+  );
+}
+
+function renderDefaultTitle(input: {
+  title: string;
+  collapsed?: boolean;
+  onToggle?: () => void;
+  testID?: string;
+}): ReactNode {
+  if (input.onToggle) {
+    return (
+      <CollapsibleTitle
+        title={input.title}
+        collapsed={input.collapsed ?? false}
+        onToggle={input.onToggle}
+        testID={input.testID}
+      />
+    );
+  }
+  return (
+    <Text style={styles.title} testID={input.testID}>
+      {input.title}
+    </Text>
   );
 }
 
@@ -80,6 +99,9 @@ function CollapsibleTitle({
 }
 
 const styles = StyleSheet.create((theme) => ({
+  titleContent: {
+    flex: 1,
+  },
   header: {
     minHeight: density.rowHeight,
     flexDirection: "row",

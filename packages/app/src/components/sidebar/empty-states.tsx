@@ -6,7 +6,7 @@ import { StyleSheet } from "react-native-unistyles";
 import { Button } from "@/components/ui/button";
 import { useSidebarViewStore } from "@/stores/sidebar-view-store";
 
-function SidebarEmptyStateCard({
+export function SidebarEmptyStateCard({
   testID,
   title,
   description,

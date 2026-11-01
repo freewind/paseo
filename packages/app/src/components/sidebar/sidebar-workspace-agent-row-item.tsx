@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { StyleSheet } from "react-native-unistyles";
 import { PressHighlight } from "@/components/ui/press-highlight";
@@ -8,12 +8,16 @@ import { SidebarStatusSlot } from "@/components/sidebar/sidebar-status-slot";
 import { MobileTabTrailingAccessory } from "@/screens/workspace/workspace-tab-trailing-accessory";
 import type { WorkspaceTabMenuEntry } from "@/screens/workspace/workspace-tab-menu";
 import type { SidebarWorkspaceAgentRow } from "@/components/sidebar/sidebar-workspace-agent-rows";
+import { HighlightedText } from "@/components/ui/highlighted-text";
+import type { MatchRange } from "@getpaseo/protocol/search/text-match";
 import type { SidebarStateBucket } from "@/utils/sidebar-agent-state";
 
 interface SidebarWorkspaceAgentRowItemProps {
   row: SidebarWorkspaceAgentRow;
   isActive: boolean;
   label: string;
+  /** 名称搜索命中标题时的区间；不搜索或没命中时不传。 */
+  highlightRanges?: readonly MatchRange[];
   /** agent 自身状态，与 tab 栏图标的读法一致。 */
   statusBucket: SidebarStateBucket | null;
   menuEntries: WorkspaceTabMenuEntry[];
@@ -24,6 +28,7 @@ export const SidebarWorkspaceAgentRowItem = memo(function SidebarWorkspaceAgentR
   row,
   isActive,
   label,
+  highlightRanges,
   statusBucket,
   menuEntries,
   onOpenAgent,
@@ -55,13 +60,13 @@ export const SidebarWorkspaceAgentRowItem = memo(function SidebarWorkspaceAgentR
           bucket={statusBucket}
           testID={`sidebar-workspace-agent-status-${row.tabId}`}
         />
-        <Text
+        <HighlightedText
+          text={label}
+          ranges={highlightRanges}
           numberOfLines={1}
           style={[styles.label, isActive && styles.labelActive]}
           testID={`sidebar-workspace-agent-title-${row.tabId}`}
-        >
-          {label}
-        </Text>
+        />
       </PressHighlight>
       <MobileTabTrailingAccessory
         menuTestIDBase={`sidebar-workspace-agent-menu-${row.tabId}`}
