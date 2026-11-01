@@ -75,6 +75,7 @@ import { IndentRail } from "@/components/indent-rail";
 import { TurnSummaryLine } from "./turn-collapse/summary-line";
 import { type AgentStreamRenderModel, buildAgentStreamRenderModel } from "./model";
 import { resolveStreamRenderStrategy } from "./strategy-resolver";
+import type { RegenerateUserMessageInput } from "@/components/rewind/regenerate-user-message";
 import { type StreamSegmentRenderers, type StreamViewportHandle } from "./strategy";
 import { ChatOutlineTextRail } from "@/agent-stream/chat-outline/text-rail";
 import { ChatOutlineTextList } from "@/agent-stream/chat-outline/text-rail-list";
@@ -295,6 +296,8 @@ export interface AgentStreamViewProps {
   onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
   onChatOutlineAvailabilityChange?: (available: boolean) => void;
   readOnly?: boolean;
+  /** 回退删掉某条用户消息后，原样重发它。 */
+  onRegenerateUserMessage?: (input: RegenerateUserMessageInput) => Promise<void>;
   historyPagination?: {
     hasOlder: boolean;
     isLoadingOlder: boolean;
@@ -447,6 +450,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
       onOpenWorkspaceFile,
       onChatOutlineAvailabilityChange,
       readOnly = false,
+      onRegenerateUserMessage,
       historyPagination,
     },
     ref,
@@ -854,6 +858,12 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
               item.clientMessageId !== undefined &&
               pendingClientMessageIds.has(item.clientMessageId)
             }
+            // 直接传顶层回调，不在这里包一层：payload 由消息行自己按当前 props 组，
+            // 回调身份保持不变，菜单项不会因为多余的重渲染而换身份。
+            // 只读转录本来就不能回退，所以那边完全不提供；回合进行中保留入口但置灰，
+            // 免得菜单在指针底下消失。
+            onRegenerate={readOnly ? undefined : onRegenerateUserMessage}
+            isRegenerateDisabled={isTurnActive}
           />
         );
         if (!collapsedTurn) {
@@ -874,6 +884,9 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
         pendingClientMessageIds,
         resolvedServerId,
         setTurnExpanded,
+        onRegenerateUserMessage,
+        readOnly,
+        isTurnActive,
       ],
     );
 

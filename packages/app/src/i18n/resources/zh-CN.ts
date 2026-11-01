@@ -1916,12 +1916,14 @@ export const zhCN: TranslationResources = {
     tooltip: "回退到此消息",
     warning: "此操作无法撤销",
     actions: {
+      regenerate: "重新回答",
       conversation: "回退对话",
       files: "回退文件",
       both: "回退对话和文件",
     },
     errors: {
       failed: "回退 agent 失败",
+      regenerateFailed: "已回退，但重新发送失败",
     },
   },
   diffViewer: {

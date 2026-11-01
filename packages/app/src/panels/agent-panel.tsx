@@ -42,6 +42,10 @@ import { getActiveMessageSubmissions } from "@/composer/submission/model";
 import { RewindComposerRestoreProvider } from "@/components/rewind/composer-restore";
 import { useAgentDescriptor } from "@/agent-presentation";
 import { useToastHost, type ToastApi, type ToastState } from "@/components/toast-host";
+import {
+  regenerateUserMessage,
+  type RegenerateUserMessageInput,
+} from "@/components/rewind/regenerate-user-message";
 import type { WorkspaceComposerAttachment } from "@/attachments/types";
 import { useWorkspaceAttachmentScopeKey } from "@/attachments/workspace-attachments-store";
 import { COMPACT_CONTENT_WIDTH, useIsCompactFormFactor } from "@/constants/layout";
@@ -886,6 +890,25 @@ function ChatAgentContent({
     streamViewRef.current?.scrollToBottom("rewind");
   }, []);
 
+  const handleRegenerateUserMessage = useCallback(
+    async (input: RegenerateUserMessageInput) => {
+      const supportsForgeAttachments =
+        useSessionStore.getState().sessions[serverId]?.serverInfo?.features?.forgeSearch === true;
+      try {
+        await regenerateUserMessage(
+          { client, serverId, agentId: agentId ?? null, supportsForgeAttachments },
+          input,
+        );
+      } catch {
+        // 回退本身失败会由 rewind mutation 弹提示；这里只兜重发失败，免得按钮点了没反应。
+        toastApi.error(t("rewind.errors.regenerateFailed"));
+        return;
+      }
+      streamViewRef.current?.scrollToBottom("message-sent");
+    },
+    [client, serverId, agentId, toastApi, t],
+  );
+
   const retryAgentLoad = useCallback(() => {
     setMissingAgentState({ kind: "idle" });
     if (!agentId || !viewedTimelineSync) return;
@@ -1042,6 +1065,7 @@ function ChatAgentContent({
       onAttentionInputFocus={attentionController.clearOnInputFocus}
       onAttentionPromptSend={attentionController.clearOnPromptSend}
       onOpenWorkspaceFile={onOpenWorkspaceFile}
+      onRegenerateUserMessage={handleRegenerateUserMessage}
     />
   );
 }
@@ -1072,6 +1096,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   onAttentionInputFocus,
   onAttentionPromptSend,
   onOpenWorkspaceFile,
+  onRegenerateUserMessage,
 }: {
   serverId: string;
   workspaceId: string;
@@ -1098,6 +1123,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   onAttentionInputFocus: () => void;
   onAttentionPromptSend: () => void;
   onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
+  onRegenerateUserMessage?: (input: RegenerateUserMessageInput) => Promise<void>;
 }) {
   const { t } = useTranslation();
   // The workspace sheet is for looking; Open as tab brings the agent back with its composer.
@@ -1220,6 +1246,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
           onChatOutlineAvailabilityChange={setHasTextOutline}
           toast={toastApi}
           onOpenWorkspaceFile={onOpenWorkspaceFile}
+          onRegenerateUserMessage={onRegenerateUserMessage}
         />
       </RenderProfile>
       {hasOutlineEntry ? <ComposerTrackBar><SideRailSheetTrigger icon={List} accessibilityLabel={t("agentStream.chatOutline.title")} onPress={openChatOutline} /></ComposerTrackBar> : null}
@@ -1360,6 +1387,7 @@ const AgentStreamSection = memo(function AgentStreamSection({
   onChatOutlineAvailabilityChange,
   toast,
   onOpenWorkspaceFile,
+  onRegenerateUserMessage,
 }: {
   streamViewRef: React.RefObject<AgentStreamViewHandle | null>;
   serverId: string;
@@ -1373,6 +1401,7 @@ const AgentStreamSection = memo(function AgentStreamSection({
   onChatOutlineAvailabilityChange: (available: boolean) => void;
   toast: ReturnType<typeof useToastHost>["api"];
   onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
+  onRegenerateUserMessage?: (input: RegenerateUserMessageInput) => Promise<void>;
 }) {
   const isCompactFormFactor = useIsCompactFormFactor();
   const hasWorkspaceDiffStat = useWorkspaceHasDiffStat(serverId, workspaceId);
@@ -1444,6 +1473,7 @@ const AgentStreamSection = memo(function AgentStreamSection({
       turnPresentation={turnPresentation}
       onOpenWorkspaceFile={onOpenWorkspaceFile}
       onChatOutlineAvailabilityChange={onChatOutlineAvailabilityChange}
+      onRegenerateUserMessage={onRegenerateUserMessage}
     />
   );
 });
