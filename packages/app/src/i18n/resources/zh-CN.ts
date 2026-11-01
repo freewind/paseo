@@ -68,6 +68,7 @@ export const zhCN: TranslationResources = {
       search: "搜索",
       select: "选择",
       selectAll: "全选",
+      manage: "管理",
     },
     placeholders: {
       search: "搜索...",
@@ -147,6 +148,15 @@ export const zhCN: TranslationResources = {
     disableWrap: "滚动长行",
   },
   composer: {
+    quickReplies: {
+      title: "常用回复",
+      editTitle: "编辑常用回复",
+      add: "新增回复",
+      delete: "删除回复",
+      placeholder: "回复内容",
+      sent: "常用回复已发送",
+      queued: "Agent 正在运行，回复已加入队列。",
+    },
     readAloud: { start: "开启此对话朗读", stop: "关闭此对话朗读" },
     placeholders: {
       desktop: "给 Agent 发消息，标记 @files，或使用 /commands 和 /skills",

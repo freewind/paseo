@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { useContainerWidth } from "@/hooks/use-container-width";
 import { useIsCompactFormFactor } from "@/constants/layout";
+import { shouldShowQuickRepliesRail } from "@/quick-replies/layout";
 import { resolveSideRailWidth } from "./text-rail-model";
 import type { ChatOutlineTextRailProps } from "./text-rail";
 import { ChatOutlineTextList } from "./text-rail-list";
@@ -23,8 +24,13 @@ export const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
     return <View style={styles.panelMeasure} pointerEvents="box-none" onLayout={onLayout} />;
   }
 
+  const showRail = shouldShowQuickRepliesRail({
+    enabled: true,
+    compact,
+    paneWidth: panelWidth,
+    contentMaxWidth,
+  });
   const textRailWidth = resolveSideRailWidth(panelWidth, contentMaxWidth);
-  const showRail = !compact && textRailWidth !== null && textRailWidth >= 180;
 
   return (
     <View style={styles.panelMeasure} pointerEvents="box-none" onLayout={onLayout}>

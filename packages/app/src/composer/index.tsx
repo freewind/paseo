@@ -124,6 +124,10 @@ import { useKeyboardActionHandler } from "@/hooks/use-keyboard-action-handler";
 import type { KeyboardActionDefinition } from "@/keyboard/keyboard-action-dispatcher";
 import type { MessageInputKeyboardActionKind } from "@/keyboard/actions";
 import { submitAgentInput } from "@/composer/submit";
+import {
+  composerQuickReplyKey,
+  registerComposerQuickReplySubmit,
+} from "@/composer/composer-submit";
 import { ComposerRecall } from "@/composer/recall";
 import { createMessageSubmissionWriter } from "@/composer/submission/writer";
 import { ComposerKeyboardScopeProvider, useComposerKeyboardScope } from "@/composer/keyboard-scope";
@@ -2395,6 +2399,21 @@ function ComposerContentImpl({
     isProcessing || isSubmitLoading || isUploadingFile || pendingNativeImagePastes > 0;
   const isSubmitDisabled =
     isSubmitLoadingVisible || (waitForForgeAutoAttachOnSubmit && isForgeResolving);
+
+  // 常用回复走发送按钮同一条 `handleSubmit`；只读与提交中在这里先拦，运行中交给
+  // `submitAgentInput` 排队，所以快捷条不需要自己判断这些状态。
+  useEffect(
+    () =>
+      registerComposerQuickReplySubmit(composerQuickReplyKey(serverId, agentId), (text) => {
+        if (readOnly || isSubmitDisabled) {
+          return "blocked";
+        }
+        const queued = isAgentRunning;
+        handleSubmit({ text, attachments: [], cwd });
+        return queued ? "queued" : "sent";
+      }),
+    [agentId, cwd, handleSubmit, isAgentRunning, isSubmitDisabled, readOnly, serverId],
+  );
 
   // Disable drops while submitting/uploading: the submit path clears and restores attachments,
   // so a drop in that window would be lost or land on a locked draft. `disabled` hides the

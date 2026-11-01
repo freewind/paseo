@@ -25,6 +25,16 @@ pullRequest?: { instructions?: string }
 
 取值优先级从高到低：项目 `paseo.json` 的 `metadataGeneration.<key>.instructions`、daemon 配置、内置默认。项目文件优先，因为它随仓库走、和代码一起 review。内置默认放在 `packages/protocol/src/metadata-prompts.ts`，daemon 提示词与设置页占位符读同一份定义。
 
+### 常用回复
+
+`agents.quickReplies` 是整列表字段，元素是 `{ id, text }`，数组顺序就是显示顺序。
+
+写入即存：拖拽排序就是换一个新数组，daemon 收到什么就存什么，不按单条合并。
+
+缺省与 `[]` 都不显示回复；`[]` 是用户把回复全删了之后的状态。
+
+界面用 `server_info.features.quickReplies` 决定是否提供这块功能，老 daemon 上整块不出现。
+
 ## 术语补充
 
 上游 `docs/glossary.md` 的词条不改，fork 需要补充的说明写在这里。

@@ -64,6 +64,7 @@ export const en = {
       search: "Search",
       select: "Select",
       selectAll: "Select all",
+      manage: "Manage",
     },
     placeholders: {
       search: "Search...",
@@ -143,6 +144,15 @@ export const en = {
     disableWrap: "Scroll long lines",
   },
   composer: {
+    quickReplies: {
+      title: "Quick replies",
+      editTitle: "Edit quick replies",
+      add: "Add reply",
+      delete: "Delete reply",
+      placeholder: "Reply text",
+      sent: "Quick reply sent",
+      queued: "Agent is running. Your reply was queued.",
+    },
     readAloud: {
       start: "Start reading this conversation aloud",
       stop: "Stop reading this conversation aloud",

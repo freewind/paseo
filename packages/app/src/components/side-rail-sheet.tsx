@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react-native";
 import { withUnistyles } from "react-native-unistyles";
 import { AdaptiveModalSheet } from "@/components/adaptive-modal-sheet";
@@ -6,6 +6,29 @@ import { ToolbarButton } from "@/components/ui/pane-content-toolbar";
 import { ICON_SIZE, type Theme } from "@/styles/theme";
 
 const mutedIconMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
+
+export function SideRailSheetButton({
+  icon: Icon,
+  accessibilityLabel,
+  children,
+}: {
+  icon: LucideIcon;
+  accessibilityLabel: string;
+  children: (actions: { close: () => void }) => ReactNode;
+}) {
+  const [visible, setVisible] = useState(false);
+  const open = useCallback(() => setVisible(true), []);
+  const close = useCallback(() => setVisible(false), []);
+
+  return (
+    <>
+      <SideRailSheetTrigger icon={Icon} accessibilityLabel={accessibilityLabel} onPress={open} />
+      <SideRailSheet accessibilityLabel={accessibilityLabel} visible={visible} onClose={close}>
+        {children({ close })}
+      </SideRailSheet>
+    </>
+  );
+}
 
 export function SideRailSheetTrigger({
   icon: Icon,

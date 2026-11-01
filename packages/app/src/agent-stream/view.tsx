@@ -81,6 +81,7 @@ import { ChatOutlineTextRail } from "@/agent-stream/chat-outline/text-rail";
 import { ChatOutlineTextList } from "@/agent-stream/chat-outline/text-rail-list";
 import { SideRailSheet } from "@/components/side-rail-sheet";
 import { ChatOutlineRail } from "@/agent-stream/chat-outline/rail";
+import { RightGutter } from "@/components/right-gutter";
 import { useChatOutline } from "@/agent-stream/chat-outline/use-chat-outline";
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
 import { planTimelineTailFetch } from "@/timeline/timeline-sync-plan";
@@ -296,6 +297,8 @@ export interface AgentStreamViewProps {
   bottomOverlayControlClearance?: number;
   toast?: ToastApi | null;
   onOpenWorkspaceFile?: (request: WorkspaceFileOpenRequest) => void;
+  /** 窗格右侧的常驻面板：占满整列高度，宽度预算与大纲栏共用。 */
+  rightGutter?: ReactNode;
   onChatOutlineAvailabilityChange?: (available: boolean) => void;
   readOnly?: boolean;
   /** 回退删掉某条用户消息后，原样重发它。 */
@@ -450,6 +453,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
       bottomOverlayControlClearance,
       toast,
       onOpenWorkspaceFile,
+      rightGutter,
       onChatOutlineAvailabilityChange,
       readOnly = false,
       onRegenerateUserMessage,
@@ -1403,6 +1407,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
               onClose={closeChatOutline}
               enabled={outline.worded}
             />
+            <RightGutter contentMaxWidth={contentMaxWidth}>{rightGutter}</RightGutter>
             {(!isNearBottom || isTimelineDetached) && (
               <View style={scrollToBottomContainerStyle} pointerEvents="box-none">
                 <Animated.View entering={scrollIndicatorFadeIn} exiting={scrollIndicatorFadeOut}>
@@ -1543,6 +1548,7 @@ function agentStreamViewPropsEqual(
   }
   if (left.toast !== right.toast) reasons.push("toast");
   if (left.onOpenWorkspaceFile !== right.onOpenWorkspaceFile) reasons.push("onOpenWorkspaceFile");
+  if (left.rightGutter !== right.rightGutter) reasons.push("rightGutter");
   if (left.onChatOutlineAvailabilityChange !== right.onChatOutlineAvailabilityChange) {
     reasons.push("onChatOutlineAvailabilityChange");
   }

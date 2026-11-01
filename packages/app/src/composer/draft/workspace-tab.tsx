@@ -1,14 +1,22 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Keyboard, ScrollView, StyleSheet as RNStyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
+import { MessageSquareText } from "lucide-react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { ComposerDock } from "@/composer/dock";
-import { useContainerWidthBelow } from "@/hooks/use-container-width";
+import { useContainerWidth, useContainerWidthBelow } from "@/hooks/use-container-width";
 import invariant from "tiny-invariant";
 import { Composer } from "@/composer";
 import { useComposerEditingSession, useComposerFullscreen } from "@/composer/editing-session";
 import { FileDropZone } from "@/components/file-drop/file-drop-zone";
+import { RightGutter } from "@/components/right-gutter";
 import { ComposerImportPill } from "@/composer/draft/import-pill";
+import { SideRailSheetButton } from "@/components/side-rail-sheet";
+import { QuickRepliesRightRail } from "@/quick-replies/right-rail";
+import { shouldShowQuickRepliesRail } from "@/quick-replies/layout";
+import { QuickRepliesEditor } from "@/quick-replies/quick-replies-editor";
+import { useIsQuickRepliesSupported, useQuickReplies } from "@/quick-replies/use-quick-replies";
+import type { QuickReply } from "@getpaseo/protocol/messages";
 import { COMPOSER_PILL_CLEARANCE } from "@/composer/pill-styles";
 import { AgentStreamView } from "@/agent-stream/view";
 import { composerWorkspaceAttachment } from "@/composer/attachments/workspace";
@@ -48,7 +56,7 @@ import {
   type WorkspaceDraftTabSetup,
 } from "@/workspace-tabs/model";
 import { openWorkspaceChanges } from "@/workspace-tabs/open-supporting-view";
-import { useSettings } from "@/hooks/use-settings";
+import { resolveContentMaxWidth, useSettings } from "@/hooks/use-settings";
 
 const EMPTY_PENDING_PERMISSIONS = new Map();
 const DRAFT_CAPABILITIES: AgentCapabilityFlags = {
@@ -292,6 +300,8 @@ function resolveImportPillPress(
   return onOpenImportSheet ?? null;
 }
 
+// 草稿标签页把创建流程、输入框与右栏撑在一个函数里，拆开反而要把十几项状态上下传一遍。
+// oxlint-disable-next-line complexity
 export function WorkspaceDraftAgentTab({
   serverId,
   workspaceId,
@@ -304,6 +314,18 @@ export function WorkspaceDraftAgentTab({
   onOpenImportSheet,
 }: WorkspaceDraftAgentTabProps) {
   const { t } = useTranslation();
+  const quickReplies = useQuickReplies(serverId);
+  const quickRepliesSupported = useIsQuickRepliesSupported(serverId);
+  const [isQuickRepliesEditorOpen, setIsQuickRepliesEditorOpen] = useState(false);
+  const openQuickRepliesEditor = useCallback(() => setIsQuickRepliesEditorOpen(true), []);
+  const closeQuickRepliesEditor = useCallback(() => setIsQuickRepliesEditorOpen(false), []);
+  const saveQuickReplies = useCallback(
+    (next: QuickReply[]) => {
+      setIsQuickRepliesEditorOpen(false);
+      void quickReplies.saveReplies(next);
+    },
+    [quickReplies],
+  );
   const client = useHostRuntimeClient(serverId);
   const isConnected = useHostRuntimeIsConnected(serverId);
   const workspaceFields = useWorkspaceFields(serverId, workspaceId, (w) => ({
@@ -387,6 +409,14 @@ export function WorkspaceDraftAgentTab({
   }, [pendingCreateAttempt]);
   const allowsEmptyAutoSubmit = pendingAutoSubmit?.allowEmptyText === true;
   const isCompactFormFactor = useIsCompactFormFactor();
+  const contentMaxWidth = useSettings(resolveContentMaxWidth);
+  const { onLayout: onPaneLayout, width: paneWidth } = useContainerWidth();
+  const showsQuickRepliesRail = shouldShowQuickRepliesRail({
+    enabled: quickRepliesSupported,
+    compact: isCompactFormFactor,
+    paneWidth,
+    contentMaxWidth,
+  });
   const editingSession = useComposerEditingSession("chat");
   const isComposerFullscreen = useComposerFullscreen(editingSession);
   const { onLayout: onInputAreaLayout, isBelow: isCompactComposerLayout } = useContainerWidthBelow(
@@ -493,6 +523,15 @@ export function WorkspaceDraftAgentTab({
       onCreated(result);
     },
   });
+  // 草稿里点常用回复与正式会话同义：这条文本就是首条消息，直接建 agent 并发送。
+  const sendQuickReply = useCallback(
+    (text: string) => {
+      void handleCreateFromInput({ text, attachments: [], cwd: composerState.workingDir }).catch(
+        () => undefined,
+      );
+    },
+    [composerState.workingDir, handleCreateFromInput],
+  );
   const turnPresentation = useMemo(
     () => resolveTurnPresentation(TURN_LIVENESS_IDLE, pendingMessageSubmissions.length > 0),
     [pendingMessageSubmissions],
@@ -600,6 +639,37 @@ export function WorkspaceDraftAgentTab({
     }),
     [composerState.agentControls, handleDropdownCloseFocus, isSubmitting],
   );
+  const quickRepliesEntry =
+    quickRepliesSupported && !showsQuickRepliesRail && !draftAgent ? (
+      <View style={styles.quickRepliesEntry}>
+        <SideRailSheetButton
+          icon={MessageSquareText}
+          accessibilityLabel={t("composer.quickReplies.title")}
+        >
+          {({ close }) => {
+            // 关闭动作来自当前弹层，回调必须在这里绑定。
+            // oxlint-disable-next-line react-perf/jsx-no-new-function-as-prop
+            function selectReply(text: string) {
+              close();
+              sendQuickReply(text);
+            }
+            // oxlint-disable-next-line react-perf/jsx-no-new-function-as-prop
+            function editReplies() {
+              close();
+              openQuickRepliesEditor();
+            }
+            return (
+              <QuickRepliesRightRail
+                replies={quickReplies.replies}
+                onSelect={selectReply}
+                onEdit={editReplies}
+              />
+            );
+          }}
+        </SideRailSheetButton>
+      </View>
+    ) : null;
+
   const dockContent = (
     <View style={styles.contentContainer}>
       {isSubmitting && draftAgent ? (
@@ -631,43 +701,65 @@ export function WorkspaceDraftAgentTab({
 
   return (
     <FileDropZone style={styles.container}>
-      <ComposerDock fullscreen={isComposerFullscreen}>
-        {dockContent}
-        <View style={animatedStaticStyles.inputAreaWrapper} onLayout={onInputAreaLayout}>
-          {importPillPress && !isComposerFullscreen ? (
-            <View style={styles.importPillRow}>
-              <View style={styles.importPillContent}>
-                <ComposerImportPill onPress={importPillPress} />
+      <View style={styles.root} onLayout={onPaneLayout}>
+        <ComposerDock fullscreen={isComposerFullscreen}>
+          {dockContent}
+          <View style={animatedStaticStyles.inputAreaWrapper} onLayout={onInputAreaLayout}>
+            {(importPillPress && !isComposerFullscreen) ||
+            (quickRepliesSupported && !showsQuickRepliesRail && !draftAgent) ? (
+              <View style={styles.importPillRow}>
+                <View style={styles.importPillContent}>
+                  {importPillPress && !isComposerFullscreen ? (
+                    <ComposerImportPill onPress={importPillPress} />
+                  ) : null}
+                  {quickRepliesEntry}
+                </View>
               </View>
-            </View>
+            ) : null}
+            <Composer
+              agentId={tabId}
+              serverId={serverId}
+              workspaceId={workspaceId}
+              isPaneFocused={isPaneFocused}
+              onSubmitMessage={handleCreateFromInput}
+              isSubmitLoading={isSubmitting}
+              blurOnSubmit={true}
+              textSource={draftInput.textSource}
+              onChangeText={draftInput.editText}
+              textReplacement={draftInput.textReplacement}
+              attachments={draftInput.attachments}
+              attachmentScopeKeys={attachmentScopeKeys}
+              onOpenWorkspaceAttachment={handleOpenWorkspaceAttachment}
+              onChangeAttachments={draftInput.setAttachments}
+              cwd={composerState.workingDir}
+              clearDraft={draftInput.clear}
+              editingSession={editingSession}
+              autoFocus={shouldAutoFocusWorkspaceDraftComposer({ isPaneFocused, isSubmitting })}
+              autoFocusKey={String(draftInput.attachmentFocusRequestId)}
+              onFocusInput={handleFocusInputCallback}
+              commandDraft={composerState.commandDraft}
+              agentControls={composerAgentControls}
+              isCompactLayout={isCompactComposerLayout}
+            />
+          </View>
+        </ComposerDock>
+        <RightGutter contentMaxWidth={contentMaxWidth}>
+          {quickRepliesSupported && showsQuickRepliesRail && !draftAgent ? (
+            <QuickRepliesRightRail
+              replies={quickReplies.replies}
+              onSelect={sendQuickReply}
+              onEdit={openQuickRepliesEditor}
+            />
           ) : null}
-          <Composer
-            agentId={tabId}
-            serverId={serverId}
-            workspaceId={workspaceId}
-            isPaneFocused={isPaneFocused}
-            onSubmitMessage={handleCreateFromInput}
-            isSubmitLoading={isSubmitting}
-            blurOnSubmit={true}
-            textSource={draftInput.textSource}
-            onChangeText={draftInput.editText}
-            textReplacement={draftInput.textReplacement}
-            attachments={draftInput.attachments}
-            attachmentScopeKeys={attachmentScopeKeys}
-            onOpenWorkspaceAttachment={handleOpenWorkspaceAttachment}
-            onChangeAttachments={draftInput.setAttachments}
-            cwd={composerState.workingDir}
-            clearDraft={draftInput.clear}
-            editingSession={editingSession}
-            autoFocus={shouldAutoFocusWorkspaceDraftComposer({ isPaneFocused, isSubmitting })}
-            autoFocusKey={String(draftInput.attachmentFocusRequestId)}
-            onFocusInput={handleFocusInputCallback}
-            commandDraft={composerState.commandDraft}
-            agentControls={composerAgentControls}
-            isCompactLayout={isCompactComposerLayout}
-          />
-        </View>
-      </ComposerDock>
+        </RightGutter>
+        <QuickRepliesEditor
+          visible={isQuickRepliesEditorOpen}
+          mountKey={isQuickRepliesEditorOpen ? "open" : "closed"}
+          replies={quickReplies.replies}
+          onSave={saveQuickReplies}
+          onClose={closeQuickRepliesEditor}
+        />
+      </View>
     </FileDropZone>
   );
 }
@@ -686,6 +778,13 @@ const styles = StyleSheet.create((theme) => ({
     flex: 1,
     width: "100%",
     backgroundColor: theme.colors.surface0,
+  },
+  root: {
+    flex: 1,
+    position: "relative",
+  },
+  quickRepliesEntry: {
+    marginLeft: "auto",
   },
   contentContainer: {
     flex: 1,
