@@ -6,6 +6,7 @@ import {
 } from "./agent/finish-subscriptions/index.js";
 import { createWorkspaceRuntimeStore } from "./workspace-runtime-store/index.js";
 import type { PluginRegistries } from "@getpaseo/protocol/plugin-registry";
+import { METADATA_PROMPT_KEYS } from "@getpaseo/protocol/metadata-prompts";
 import { describeHookWorkspace } from "./plugins/lifecycle/index.js";
 import express from "express";
 import { createServer as createHTTPServer, type IncomingMessage, type ServerResponse } from "http";
@@ -471,6 +472,10 @@ export interface PaseoDaemonConfig {
       model?: string;
       thinkingOptionId?: string;
     }>;
+    title?: { instructions?: string };
+    branchName?: { instructions?: string };
+    commitMessage?: { instructions?: string };
+    pullRequest?: { instructions?: string };
   };
   providerOverrides?: Record<string, ProviderOverride>;
   log?: PersistedConfig["log"];
@@ -569,6 +574,19 @@ function resolveReloadEnv(config: PaseoDaemonConfig): NodeJS.ProcessEnv {
   return config.configReload?.env ?? process.env;
 }
 
+function buildInitialMetadataGenerationConfig(
+  metadataGeneration: PaseoDaemonConfig["metadataGeneration"],
+): NonNullable<MutableDaemonConfig["metadataGeneration"]> {
+  const next: NonNullable<MutableDaemonConfig["metadataGeneration"]> = {
+    providers: metadataGeneration?.providers ?? [],
+  };
+  for (const key of METADATA_PROMPT_KEYS) {
+    const entry = metadataGeneration?.[key];
+    if (entry !== undefined) next[key] = entry;
+  }
+  return next;
+}
+
 function createInitialMutableDaemonConfig(config: ResolvedDaemonSettings): MutableDaemonConfig {
   const providers = config.providerOverrides ?? {};
 
@@ -588,9 +606,7 @@ function createInitialMutableDaemonConfig(config: ResolvedDaemonSettings): Mutab
       : {}),
     browserTools: { enabled: config.browserToolsEnabled ?? false },
     providers,
-    metadataGeneration: {
-      providers: config.metadataGeneration?.providers ?? [],
-    },
+    metadataGeneration: buildInitialMetadataGenerationConfig(config.metadataGeneration),
     autoArchiveAfterMerge: config.autoArchiveAfterMerge ?? false,
     enableTerminalAgentHooks: config.enableTerminalAgentHooks ?? false,
     idleRuntimeCleanup: config.idleRuntimeCleanup !== false,

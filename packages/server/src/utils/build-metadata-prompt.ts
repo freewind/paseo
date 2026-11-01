@@ -27,19 +27,39 @@ export interface BuildMetadataPromptOptions {
   after: string;
   trailing?: string;
   workspaceGitService?: RepoRootResolver;
+  /**
+   * 全局设置里的覆盖值：优先于内置默认，但输给仓库里的 paseo.json。
+   *
+   * 存在这一层是因为 paseo.json 要随仓库提交和 review，而主机级覆盖让人只改本机就能调措辞，
+   * 不动仓库文件。
+   */
+  daemonOverrides?: Partial<Record<MetadataConfigKey, string>>;
 }
 
 export async function buildMetadataPrompt(options: BuildMetadataPromptOptions): Promise<string> {
   const overrides = await readProjectMetadataOverrides(options);
   const styleBlocks = options.styles.map((section) =>
-    renderStyleSection(section, overrides?.[section.configKey]?.instructions),
+    renderStyleSection(
+      section,
+      overrides?.[section.configKey]?.instructions,
+      options.daemonOverrides?.[section.configKey],
+    ),
   );
   const head = [options.contract, ...styleBlocks, options.after].join("\n\n");
   return options.trailing ? `${head}\n\n${options.trailing}` : head;
 }
 
-function renderStyleSection(section: MetadataStyleSection, override: string | undefined): string {
-  const body = isNonEmptyString(override) ? override.trim() : section.default;
+function renderStyleSection(
+  section: MetadataStyleSection,
+  projectOverride: string | undefined,
+  daemonOverride: string | undefined,
+): string {
+  let body = section.default;
+  if (isNonEmptyString(projectOverride)) {
+    body = projectOverride.trim();
+  } else if (isNonEmptyString(daemonOverride)) {
+    body = daemonOverride.trim();
+  }
   return section.label ? `${section.label}:\n${body}` : body;
 }
 
