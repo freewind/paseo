@@ -13,6 +13,7 @@ import {
   type StructuredGenerationDaemonConfig,
 } from "../../agent/structured-generation-providers.js";
 import type { WorkspaceGitService } from "../../workspace-git-service.js";
+import { METADATA_PROMPT_DEFAULTS } from "@getpaseo/protocol/metadata-prompts";
 import {
   buildMetadataPrompt,
   type MetadataConfigKey,
@@ -149,7 +150,7 @@ export function createGitMetadataGenerator(deps: {
         maxPatchChars: MAX_COMMIT_PATCH_CHARS,
         contract: "Write a concise git commit message for the changes below.",
         styleConfigKey: "commitMessage",
-        styleDefault: "Concise, imperative mood, no trailing period.",
+        styleDefault: METADATA_PROMPT_DEFAULTS.commitMessage,
         jsonFieldsHint: "Return JSON only with a single field 'message'.",
       });
       const result = await generateOrFallback(
@@ -172,7 +173,7 @@ export function createGitMetadataGenerator(deps: {
         maxPatchChars: MAX_PULL_REQUEST_PATCH_CHARS,
         contract: "Write a pull request title and body for the changes below.",
         styleConfigKey: "pullRequest",
-        styleDefault: "Clear, descriptive title; body explaining what changed and why.",
+        styleDefault: METADATA_PROMPT_DEFAULTS.pullRequest,
         jsonFieldsHint: "Return JSON only with fields 'title' and 'body'.",
       });
       return generateOrFallback(
