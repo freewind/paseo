@@ -2049,6 +2049,37 @@ export const AgentCloneResponseMessageSchema = z.object({
   }),
 });
 
+/**
+ * 把已有 agent 挪到另一个工作区：同一个 agent id、同一个 provider 会话、同一段历史，
+ * 只改 workspaceId 归属与执行 cwd。正在跑的回合会被拒绝。
+ *
+ * 目标二选一：`targetWorkspaceId` 指向已存在的工作区；`newWorkspace` 让 daemon 在项目根目录
+ * 新建一个目录型工作区再移动（不建 worktree）。两者都必须且只能给一个。
+ */
+export const AgentTransferWorkspaceRequestMessageSchema = z.object({
+  type: z.literal("agent.transfer_workspace.request"),
+  requestId: z.string(),
+  agentId: z.string(),
+  targetWorkspaceId: z.string().optional(),
+  newWorkspace: z
+    .object({
+      projectId: z.string(),
+      title: z.string().optional(),
+    })
+    .optional(),
+});
+
+export const AgentTransferWorkspaceResponseMessageSchema = z.object({
+  type: z.literal("agent.transfer_workspace.response"),
+  payload: z.object({
+    requestId: z.string(),
+    agentId: z.string(),
+    /** 移动完成后 agent 所在的工作区；失败时为空。 */
+    workspaceId: z.string().nullable(),
+    error: z.string().nullable(),
+  }),
+});
+
 export const SetAgentModeRequestMessageSchema = z.object({
   type: z.literal("set_agent_mode_request"),
   agentId: z.string(),
@@ -3443,6 +3474,7 @@ export const SessionInboundMessageSchema = z.discriminatedUnion("type", [
   AgentForkContextRequestMessageSchema,
   AgentForkRequestMessageSchema,
   AgentCloneRequestMessageSchema,
+  AgentTransferWorkspaceRequestMessageSchema,
   SetAgentModeRequestMessageSchema,
   SetAgentModelRequestMessageSchema,
   SetAgentThinkingRequestMessageSchema,
@@ -3859,6 +3891,8 @@ export const ServerInfoStatusPayloadSchema = z
         conversationExport: z.boolean().optional(),
         // COMPAT(agentCloneSession): added in v0.11.0, remove gate after 2027-04-05.
         agentCloneSession: z.boolean().optional(),
+        // COMPAT(agentTransferWorkspace): added in v0.11.0, remove gate after 2027-10-25.
+        agentTransferWorkspace: z.boolean().optional(),
         // COMPAT(providerSubagents): added in v0.1.107, remove gate after 2027-01-12.
         providerSubagents: z.boolean().optional(),
         // COMPAT(projectedSubagentTimeline): added after v0.8.0, remove gates after 2027-03-14; retain wire field.
@@ -7193,6 +7227,7 @@ export const SessionOutboundMessageSchema = z.discriminatedUnion("type", [
   AgentForkContextResponseMessageSchema,
   AgentForkResponseMessageSchema,
   AgentCloneResponseMessageSchema,
+  AgentTransferWorkspaceResponseMessageSchema,
   CancelAgentResponseMessageSchema,
   ClearAgentAttentionResponseMessageSchema,
   WorkspaceCreateResponseSchema,
@@ -7422,6 +7457,9 @@ export type AgentConversationExportResponseMessage = z.infer<
 export type AgentForkContextResponseMessage = z.infer<typeof AgentForkContextResponseMessageSchema>;
 export type AgentForkResponseMessage = z.infer<typeof AgentForkResponseMessageSchema>;
 export type AgentCloneResponseMessage = z.infer<typeof AgentCloneResponseMessageSchema>;
+export type AgentTransferWorkspaceResponseMessage = z.infer<
+  typeof AgentTransferWorkspaceResponseMessageSchema
+>;
 export type CancelAgentResponseMessage = z.infer<typeof CancelAgentResponseMessageSchema>;
 export type SendAgentMessageResponseMessage = z.infer<typeof SendAgentMessageResponseMessageSchema>;
 export type SetVoiceModeResponseMessage = z.infer<typeof SetVoiceModeResponseMessageSchema>;

@@ -7,6 +7,7 @@ export type WorkspaceTabMenuSurface = "desktop" | "mobile";
 
 export interface WorkspaceTabMenuLabels {
   copyResumeCommand: string;
+  moveToWorkspace: string;
   copyAgentId: string;
   copyAgentAsNew: string;
   copyConversationMarkdown: string;
@@ -27,6 +28,7 @@ export interface WorkspaceTabMenuLabels {
 
 export const DEFAULT_WORKSPACE_TAB_MENU_LABELS: WorkspaceTabMenuLabels = {
   copyResumeCommand: i18n.t("workspace.tabs.menu.copyResumeCommand"),
+  moveToWorkspace: i18n.t("workspace.tabs.menu.moveToWorkspace"),
   copyAgentId: i18n.t("workspace.tabs.menu.copyAgentId"),
   copyAgentAsNew: i18n.t("workspace.tabs.menu.copyAgentAsNewConversation"),
   copyConversationMarkdown: i18n.t("workspace.tabs.menu.copyConversationMarkdown"),
@@ -59,6 +61,7 @@ export type WorkspaceTabMenuEntry =
         | "pencil"
         | "external-link"
         | "folder-open"
+        | "folder-input"
         | "trash-2"
         | "x";
       hint?: string;
@@ -105,6 +108,8 @@ interface BuildWorkspaceTabMenuEntriesInput {
   /** 整会话复制成新对话，只在宿主声明 agentCloneSession 时出现。 */
   onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
   canCloneAgent?: boolean;
+  /** 把这个 agent 挪到别的工作区；只在宿主声明 agentTransferWorkspace 时出现。 */
+  onMoveAgentToWorkspace?: (agentId: string) => void;
   /** 复制整段会话为 Markdown；老 daemon 没有导出能力时动作自己退到内存尾部。 */
   onCopyConversationMarkdown?: (agentId: string) => Promise<void> | void;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
@@ -129,6 +134,8 @@ interface BuildWorkspaceDesktopTabActionsInput {
   /** 整会话复制成新对话，只在宿主声明 agentCloneSession 时出现。 */
   onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
   canCloneAgent?: boolean;
+  /** 把这个 agent 挪到别的工作区；只在宿主声明 agentTransferWorkspace 时出现。 */
+  onMoveAgentToWorkspace?: (agentId: string) => void;
   /** 复制整段会话为 Markdown；老 daemon 没有导出能力时动作自己退到内存尾部。 */
   onCopyConversationMarkdown?: (agentId: string) => Promise<void> | void;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
@@ -221,6 +228,7 @@ export function buildWorkspaceTabMenuEntries(
     onCopyAgentId,
     onCopyAgentAsNew,
     canCloneAgent = false,
+    onMoveAgentToWorkspace,
     onCopyConversationMarkdown,
     onCopyTerminalId,
     onCopyFilePath,
@@ -271,6 +279,18 @@ export function buildWorkspaceTabMenuEntries(
         testID: `${menuTestIDBase}-copy-agent-as-new`,
         onSelect: () => {
           void onCopyAgentAsNew(agentId);
+        },
+      });
+    }
+    if (onMoveAgentToWorkspace) {
+      entries.push({
+        kind: "item",
+        key: "move-to-workspace",
+        label: labels.moveToWorkspace,
+        icon: "folder-input",
+        testID: `${menuTestIDBase}-move-to-workspace`,
+        onSelect: () => {
+          onMoveAgentToWorkspace(agentId);
         },
       });
     }
@@ -454,6 +474,7 @@ export function buildWorkspaceDesktopTabActions(
       onCopyAgentId: input.onCopyAgentId,
       onCopyAgentAsNew: input.onCopyAgentAsNew,
       canCloneAgent: input.canCloneAgent,
+      onMoveAgentToWorkspace: input.onMoveAgentToWorkspace,
       onCopyConversationMarkdown: input.onCopyConversationMarkdown,
       onCopyTerminalId: input.onCopyTerminalId,
       onCopyFilePath: input.onCopyFilePath,

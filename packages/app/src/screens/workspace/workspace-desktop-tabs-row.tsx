@@ -20,6 +20,7 @@ import {
   Copy,
   ExternalLink,
   FolderOpen,
+  FolderInput,
   Pencil,
   RotateCw,
   Columns2,
@@ -134,6 +135,7 @@ const ThemedArrowLeftToLine = withUnistyles(ArrowLeftToLine);
 const ThemedArrowRightToLine = withUnistyles(ArrowRightToLine);
 const ThemedCopyX = withUnistyles(CopyX);
 const ThemedPencil = withUnistyles(Pencil);
+const ThemedFolderInput = withUnistyles(FolderInput);
 const ThemedExternalLink = withUnistyles(ExternalLink);
 const ThemedTrash2 = withUnistyles(Trash2);
 const ThemedFolderOpen = withUnistyles(FolderOpen);
@@ -441,6 +443,8 @@ function TabContextMenuItem({
         return <ThemedCopyX size={16} uniProps={mutedColorMapping} />;
       case "pencil":
         return <ThemedPencil size={16} uniProps={mutedColorMapping} />;
+      case "folder-input":
+        return <ThemedFolderInput size={16} uniProps={mutedColorMapping} />;
       case "external-link":
         return <ThemedExternalLink size={16} uniProps={mutedColorMapping} />;
       case "folder-open":
@@ -546,6 +550,7 @@ export interface WorkspaceDesktopTabsRowProps {
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
   onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
+  onMoveAgentToWorkspace?: (agentId: string) => Promise<void> | void;
   onCopyConversationMarkdown?: (agentId: string) => Promise<void> | void;
   onDeleteAgent?: (agentId: string) => Promise<void> | void;
   canCloneAgent?: boolean;
@@ -1050,6 +1055,7 @@ function ResolvedWorkspaceDesktopTabsRow({
   onCopyResumeCommand,
   onCopyAgentId,
   onCopyAgentAsNew,
+  onMoveAgentToWorkspace,
   onCopyConversationMarkdown,
   onDeleteAgent,
   canCloneAgent,
@@ -1135,6 +1141,7 @@ function ResolvedWorkspaceDesktopTabsRow({
   const tabMenuLabels = useMemo<WorkspaceTabMenuLabels>(
     () => ({
       copyResumeCommand: t("workspace.tabs.menu.copyResumeCommand"),
+      moveToWorkspace: t("workspace.tabs.menu.moveToWorkspace"),
       copyAgentId: t("workspace.tabs.menu.copyAgentId"),
       copyAgentAsNew: t("workspace.tabs.menu.copyAgentAsNewConversation"),
       copyConversationMarkdown: t("workspace.tabs.menu.copyConversationMarkdown"),
@@ -1332,6 +1339,7 @@ function ResolvedWorkspaceDesktopTabsRow({
           onCopyResumeCommand={onCopyResumeCommand}
           onCopyAgentId={onCopyAgentId}
           onCopyAgentAsNew={onCopyAgentAsNew}
+          onMoveAgentToWorkspace={onMoveAgentToWorkspace}
           onCopyConversationMarkdown={onCopyConversationMarkdown}
           onDeleteAgent={onDeleteAgent}
           canCloneAgent={canCloneAgent}
@@ -1370,6 +1378,7 @@ function ResolvedWorkspaceDesktopTabsRow({
       onCloseTabsToRight,
       onCopyAgentId,
       onCopyAgentAsNew,
+      onMoveAgentToWorkspace,
       onCopyConversationMarkdown,
       onDeleteAgent,
       canCloneAgent,
@@ -1500,6 +1509,7 @@ function ResolvedDesktopTabChip({
   onCopyResumeCommand,
   onCopyAgentId,
   onCopyAgentAsNew,
+  onMoveAgentToWorkspace,
   onCopyConversationMarkdown,
   onDeleteAgent,
   canCloneAgent,
@@ -1533,6 +1543,7 @@ function ResolvedDesktopTabChip({
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
   onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
+  onMoveAgentToWorkspace?: (agentId: string) => Promise<void> | void;
   onCopyConversationMarkdown?: (agentId: string) => Promise<void> | void;
   onDeleteAgent?: (agentId: string) => Promise<void> | void;
   canCloneAgent?: boolean;
@@ -1567,6 +1578,7 @@ function ResolvedDesktopTabChip({
         onCopyResumeCommand,
         onCopyAgentId,
         onCopyAgentAsNew,
+        onMoveAgentToWorkspace,
         onCopyConversationMarkdown,
         onDeleteAgent,
         canCloneAgent,
@@ -1590,6 +1602,7 @@ function ResolvedDesktopTabChip({
       onCloseTabsToRight,
       onCopyAgentId,
       onCopyAgentAsNew,
+      onMoveAgentToWorkspace,
       onCopyConversationMarkdown,
       onDeleteAgent,
       canCloneAgent,

@@ -2066,6 +2066,8 @@ export class VoiceAssistantWebSocketServer {
         agentForkSession: true,
         // COMPAT(agentCloneSession): added in v0.11.0, remove gate after 2027-04-05.
         agentCloneSession: true,
+        // COMPAT(agentTransferWorkspace): added in v0.11.0, remove gate after 2027-10-25.
+        agentTransferWorkspace: true,
         // COMPAT(conversationExport): added in v0.11.0, remove gate after 2027-10-25.
         conversationExport: true,
         // COMPAT(providerSubagents): added in v0.1.107, remove gate after 2027-01-12.

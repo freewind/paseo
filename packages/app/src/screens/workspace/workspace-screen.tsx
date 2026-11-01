@@ -1,4 +1,10 @@
 import { useHostFeature } from "@/runtime/host-features";
+import { useAgentTransferWorkspace } from "@/screens/workspace/use-agent-transfer-workspace";
+import {
+  buildWorkspaceTabMenuEntries,
+  type WorkspaceTabMenuEntry,
+} from "@/screens/workspace/workspace-tab-menu";
+import { WorkspaceHeaderContextMenu } from "@/screens/workspace/workspace-header-context-menu";
 import {
   AssistantFileLinkResolverProvider,
   createInlinePathOpener,
@@ -487,6 +493,10 @@ export const WorkspaceScreen = memo(function WorkspaceScreen({
 });
 
 interface WorkspaceHeaderTitleBarProps {
+  /** 聚焦的 agent 标签决定头部右键菜单；没有时菜单不出现。 */
+  headerMenuEntries: WorkspaceTabMenuEntry[];
+  headerMenuTestID: string;
+  showHeaderMenu: boolean;
   isLoading: boolean;
   title: string;
   subtitle: string;
@@ -512,6 +522,60 @@ interface WorkspaceHeaderTitleBarProps {
   onArchive?: () => void;
   isArchiving?: boolean;
   archiveLabel?: string;
+}
+
+function isAgentTransferEnabled(supported: boolean, connected: boolean): boolean {
+  return supported && connected;
+}
+
+function resolveActiveTabTargetKind(tab: WorkspaceTabDescriptor | null): string | null {
+  if (!tab) return null;
+  return tab.target.kind;
+}
+
+function shouldShowHeaderMenu(input: {
+  isLoading: boolean;
+  activeTabTargetKind: string | null;
+  menuEntryCount: number;
+}): boolean {
+  if (input.isLoading) return false;
+  if (input.activeTabTargetKind !== "agent") return false;
+  return input.menuEntryCount > 0;
+}
+
+function WorkspaceHeaderContextMenuOrTitle({
+  showMenu,
+  menuEntries,
+  testID,
+  title,
+  subtitle,
+  isSubtitleDistinct,
+  serverId,
+}: {
+  showMenu: boolean;
+  menuEntries: WorkspaceTabMenuEntry[];
+  testID: string;
+  title: string;
+  subtitle: string;
+  isSubtitleDistinct: boolean;
+  serverId: string;
+}) {
+  const content = (
+    <View style={styles.headerTitleTextGroup}>
+      <ScreenTitle testID="workspace-header-title">{title}</ScreenTitle>
+      <WorkspaceHeaderProjectRow
+        subtitle={subtitle}
+        isSubtitleDistinct={isSubtitleDistinct}
+        serverId={serverId}
+      />
+    </View>
+  );
+  if (!showMenu) return content;
+  return (
+    <WorkspaceHeaderContextMenu menuEntries={menuEntries} testID={testID}>
+      {content}
+    </WorkspaceHeaderContextMenu>
+  );
 }
 
 function WorkspaceHeaderTitleBar({
@@ -540,6 +604,9 @@ function WorkspaceHeaderTitleBar({
   onArchive,
   isArchiving,
   archiveLabel,
+  headerMenuEntries,
+  headerMenuTestID,
+  showHeaderMenu,
 }: WorkspaceHeaderTitleBarProps) {
   return (
     <View style={styles.headerTitleContainer}>
@@ -548,14 +615,15 @@ function WorkspaceHeaderTitleBar({
           <View style={styles.headerTitleSkeleton} />
         </View>
       ) : (
-        <View style={styles.headerTitleTextGroup}>
-          <ScreenTitle testID="workspace-header-title">{title}</ScreenTitle>
-          <WorkspaceHeaderProjectRow
-            subtitle={subtitle}
-            isSubtitleDistinct={isSubtitleDistinct}
-            serverId={normalizedServerId}
-          />
-        </View>
+        <WorkspaceHeaderContextMenuOrTitle
+          showMenu={showHeaderMenu}
+          menuEntries={headerMenuEntries}
+          testID={headerMenuTestID}
+          title={title}
+          subtitle={subtitle}
+          isSubtitleDistinct={isSubtitleDistinct}
+          serverId={normalizedServerId}
+        />
       )}
       <View style={styles.compactHeaderMenuCluster}>
         <WorkspaceHeaderMenuDesktop
@@ -2228,6 +2296,14 @@ function WorkspaceScreenContent({
   } = useAgentTabMetadataActions({ serverId: normalizedServerId, client, isConnected });
 
   const supportsCloneAgent = useHostFeature(normalizedServerId, "agentCloneSession");
+  const supportsAgentTransferWorkspace = useHostFeature(
+    normalizedServerId,
+    "agentTransferWorkspace",
+  );
+  const { onMoveAgentToWorkspace, transferWorkspaceModal } = useAgentTransferWorkspace({
+    serverId: normalizedServerId,
+    enabled: isAgentTransferEnabled(supportsAgentTransferWorkspace, isConnected),
+  });
   const { deleteAgent } = useDeleteAgent();
   const handleDeleteAgent = useCallback(
     async (agentId: string) => {
@@ -3390,6 +3466,36 @@ function WorkspaceScreenContent({
       `${WORKSPACE_FLOATING_PANEL_PORTAL_HOST_PREFIX}:${normalizedServerId}:${normalizedWorkspaceId}`,
     [normalizedServerId, normalizedWorkspaceId],
   );
+  const headerMenuEntries = activeTabDescriptor
+    ? buildWorkspaceTabMenuEntries({
+        surface: isMobile ? "mobile" : "desktop",
+        tab: activeTabDescriptor,
+        index: tabs.findIndex((tab) => tab.tabId === activeTabDescriptor?.tabId),
+        tabCount: tabs.length,
+        menuTestIDBase: "workspace-header-title-menu",
+        onCopyResumeCommand: handleCopyResumeCommand,
+        onCopyAgentId: handleCopyAgentId,
+        onCopyConversationMarkdown: handleCopyConversationMarkdown,
+        onCopyAgentAsNew: handleCopyAgentAsNew,
+        canCloneAgent: supportsCloneAgent,
+        onMoveAgentToWorkspace,
+        onCopyTerminalId: handleCopyTerminalId,
+        onCopyFilePath: handleCopyFilePath,
+        onReloadAgent: handleReloadAgent,
+        onRenameTab: handleRenameTab,
+        onCloseTab: handleCloseTabById,
+        onCloseTabsBefore: handleCloseTabsToLeft,
+        onCloseTabsAfter: handleCloseTabsToRight,
+        onCloseOtherTabs: handleCloseOtherTabs,
+        onDeleteAgent: handleDeleteAgent,
+      })
+    : [];
+  const showHeaderMenu = shouldShowHeaderMenu({
+    isLoading: isWorkspaceHeaderLoading,
+    activeTabTargetKind: resolveActiveTabTargetKind(activeTabDescriptor),
+    menuEntryCount: headerMenuEntries.length,
+  });
+
   const renderWorkspaceScreenHeader = useCallback(
     () =>
       showScreenHeader ? (
@@ -3427,6 +3533,9 @@ function WorkspaceScreenContent({
                   isPinned={isWorkspacePinned}
                   onArchive={workspaceDescriptor ? handleArchive : undefined}
                   isArchiving={isArchiving}
+                  headerMenuEntries={headerMenuEntries}
+                  headerMenuTestID="workspace-header-title-menu"
+                  showHeaderMenu={showHeaderMenu}
                   archiveLabel={archiveLabel}
                 />
               </>
@@ -3473,6 +3582,8 @@ function WorkspaceScreenContent({
       workspaceHeaderSubtitle,
       workspaceHeaderTitle,
       isWorkspaceHeaderSubtitleDistinct,
+      headerMenuEntries,
+      showHeaderMenu,
     ],
   );
   const compactHeaderScripts = useMemo(
@@ -3520,6 +3631,7 @@ function WorkspaceScreenContent({
             onCopyResumeCommand={handleCopyResumeCommand}
             onCopyAgentId={handleCopyAgentId}
             onCopyAgentAsNew={handleCopyAgentAsNew}
+            onMoveAgentToWorkspace={onMoveAgentToWorkspace}
             onCopyConversationMarkdown={handleCopyConversationMarkdown}
             onDeleteAgent={handleDeleteAgent}
             canCloneAgent={supportsCloneAgent}
@@ -3585,6 +3697,7 @@ function WorkspaceScreenContent({
       handleCopyAgentId,
       handleCopyAgentAsNew,
       handleCopyConversationMarkdown,
+      onMoveAgentToWorkspace,
       handleDeleteAgent,
       supportsCloneAgent,
       handleCopyBranchName,
@@ -3648,6 +3761,7 @@ function WorkspaceScreenContent({
         onCopyResumeCommand={handleCopyResumeCommand}
         onCopyAgentId={handleCopyAgentId}
         onCopyAgentAsNew={handleCopyAgentAsNew}
+        onMoveAgentToWorkspace={onMoveAgentToWorkspace}
         onCopyConversationMarkdown={handleCopyConversationMarkdown}
         onDeleteAgent={handleDeleteAgent}
         canCloneAgent={supportsCloneAgent}
@@ -3689,6 +3803,7 @@ function WorkspaceScreenContent({
     handleCopyAgentId,
     handleCopyAgentAsNew,
     handleCopyConversationMarkdown,
+    onMoveAgentToWorkspace,
     handleDeleteAgent,
     supportsCloneAgent,
     handleCopyTerminalId,
@@ -3756,6 +3871,7 @@ function WorkspaceScreenContent({
             onCopyResumeCommand={handleCopyResumeCommand}
             onCopyAgentId={handleCopyAgentId}
             onCopyAgentAsNew={handleCopyAgentAsNew}
+            onMoveAgentToWorkspace={onMoveAgentToWorkspace}
             onCopyConversationMarkdown={handleCopyConversationMarkdown}
             onDeleteAgent={handleDeleteAgent}
             canCloneAgent={supportsCloneAgent}
@@ -3806,6 +3922,7 @@ function WorkspaceScreenContent({
         onCopyResumeCommand={handleCopyResumeCommand}
         onCopyAgentId={handleCopyAgentId}
         onCopyAgentAsNew={handleCopyAgentAsNew}
+        onMoveAgentToWorkspace={onMoveAgentToWorkspace}
         onCopyConversationMarkdown={handleCopyConversationMarkdown}
         onDeleteAgent={handleDeleteAgent}
         canCloneAgent={supportsCloneAgent}
@@ -3853,6 +3970,7 @@ function WorkspaceScreenContent({
     handleCopyAgentId,
     handleCopyAgentAsNew,
     handleCopyConversationMarkdown,
+    onMoveAgentToWorkspace,
     handleDeleteAgent,
     supportsCloneAgent,
     handleCopyTerminalId,
@@ -3963,6 +4081,7 @@ function WorkspaceScreenContent({
           onSubmit={handleRenameModalSubmit}
           onClose={handleRenameModalClose}
         />
+        {transferWorkspaceModal}
       </View>
     </RenderProfile>
   );

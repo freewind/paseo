@@ -191,6 +191,13 @@ interface TimeoutOptions {
   onLateError?: (error: unknown) => void;
 }
 
+function resolveReloadWorkspaceId(
+  currentWorkspaceId: string | undefined,
+  options?: { workspaceId?: string },
+): string | undefined {
+  return options?.workspaceId ?? currentWorkspaceId;
+}
+
 function formatProviderList(providers: readonly string[]): string {
   return providers.length > 0 ? providers.join(", ") : "none";
 }
@@ -1654,10 +1661,45 @@ export class AgentManager {
     );
   }
 
+  /**
+   * 把 agent 挪到另一个工作区：只改归属 workspaceId，cwd、provider 会话与时间戳一律不动。
+   * 所以不重建会话、不需要回滚，有回合在跑时也能直接改；代价是这个 agent 仍按原目录执行命令。
+   */
+  moveAgentToWorkspace(
+    agentId: string,
+    target: { workspaceId: string },
+  ): Promise<ManagedAgent> {
+    return this.trackAgentRegistrationOperation(
+      this.runLifecycleMutation(agentId, () => this.moveAgentToWorkspaceInternal(agentId, target)),
+    );
+  }
+
+  private async moveAgentToWorkspaceInternal(
+    agentId: string,
+    target: { workspaceId: string },
+  ): Promise<ManagedAgent> {
+    this.assertAcceptingAgentRegistrations();
+    const existing = this.requireSessionAgent(agentId);
+    if (existing.workspaceId === target.workspaceId) {
+      return existing;
+    }
+
+    const registry = this.requireRegistry();
+    const record = await registry.get(agentId);
+    if (!record) {
+      throw new Error(`Agent not found: ${agentId}`);
+    }
+    // 只写归属，连 updatedAt 都不动：移动不是会话里的活动。
+    await registry.upsert({ ...record, workspaceId: target.workspaceId });
+    existing.workspaceId = target.workspaceId;
+    this.notifyAgentState(agentId);
+    return existing;
+  }
+
   private async reloadAgentSessionInternal(
     agentId: string,
     overrides?: Partial<AgentSessionConfig>,
-    options?: { rehydrateFromDisk?: boolean },
+    options?: { rehydrateFromDisk?: boolean; workspaceId?: string },
   ): Promise<ManagedAgent> {
     this.assertAcceptingAgentRegistrations();
     let existing = this.requireSessionAgent(agentId);
@@ -1666,6 +1708,8 @@ export class AgentManager {
       existing = this.requireSessionAgent(agentId);
     }
     const rehydrateFromDisk = options?.rehydrateFromDisk ?? false;
+    // 移动会话时归属已经写进记录，本次重建要用新值，不能沿用旧的内存状态。
+    const workspaceId = resolveReloadWorkspaceId(existing.workspaceId, options);
     const preservedHistoryPrimed = existing.historyPrimed;
     const preservedLastUsage = existing.lastUsage;
     const preservedLastError = existing.lastError;
@@ -1693,7 +1737,7 @@ export class AgentManager {
       {
         reason: "refresh",
         purpose: "interactive",
-        workspaceId: existing.workspaceId,
+        workspaceId,
         title: await this.resolveInitialPersistedTitle(agentId, existing.config, null),
         labels: existing.labels,
       },
@@ -1738,7 +1782,7 @@ export class AgentManager {
       handedToRegistration = true;
       return this.registerSession(session, storedConfig, agentId, {
         labels: existing.labels,
-        workspaceId: existing.workspaceId,
+        workspaceId,
         owner: existing.owner,
         createdAt: existing.createdAt,
         updatedAt: existing.updatedAt,

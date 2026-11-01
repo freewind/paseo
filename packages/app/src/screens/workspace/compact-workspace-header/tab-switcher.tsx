@@ -135,6 +135,7 @@ interface MobileWorkspaceTabSwitcherProps {
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
   onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
+  onMoveAgentToWorkspace?: (agentId: string) => Promise<void> | void;
   onCopyConversationMarkdown?: (agentId: string) => Promise<void> | void;
   onDeleteAgent?: (agentId: string) => Promise<void> | void;
   canCloneAgent?: boolean;
@@ -161,6 +162,7 @@ function MobileWorkspaceTabOption({
   onCopyResumeCommand,
   onCopyAgentId,
   onCopyAgentAsNew,
+  onMoveAgentToWorkspace,
   onCopyConversationMarkdown,
   onDeleteAgent,
   canCloneAgent,
@@ -185,6 +187,7 @@ function MobileWorkspaceTabOption({
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
   onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
+  onMoveAgentToWorkspace?: (agentId: string) => Promise<void> | void;
   onCopyConversationMarkdown?: (agentId: string) => Promise<void> | void;
   onDeleteAgent?: (agentId: string) => Promise<void> | void;
   canCloneAgent?: boolean;
@@ -202,6 +205,7 @@ function MobileWorkspaceTabOption({
   const tabMenuLabels = useMemo<WorkspaceTabMenuLabels>(
     () => ({
       copyResumeCommand: t("workspace.tabs.menu.copyResumeCommand"),
+      moveToWorkspace: t("workspace.tabs.menu.moveToWorkspace"),
       copyAgentId: t("workspace.tabs.menu.copyAgentId"),
       copyAgentAsNew: t("workspace.tabs.menu.copyAgentAsNewConversation"),
       copyConversationMarkdown: t("workspace.tabs.menu.copyConversationMarkdown"),
@@ -231,6 +235,7 @@ function MobileWorkspaceTabOption({
     onCopyResumeCommand,
     onCopyAgentId,
     onCopyAgentAsNew,
+    onMoveAgentToWorkspace,
     onCopyConversationMarkdown,
     onDeleteAgent,
     canCloneAgent,
@@ -313,6 +318,7 @@ export const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitch
   onCopyResumeCommand,
   onCopyAgentId,
   onCopyAgentAsNew,
+  onMoveAgentToWorkspace,
   onCopyConversationMarkdown,
   onDeleteAgent,
   canCloneAgent,
@@ -440,6 +446,7 @@ export const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitch
           onCopyResumeCommand={onCopyResumeCommand}
           onCopyAgentId={onCopyAgentId}
           onCopyAgentAsNew={onCopyAgentAsNew}
+          onMoveAgentToWorkspace={onMoveAgentToWorkspace}
           onCopyConversationMarkdown={onCopyConversationMarkdown}
           onDeleteAgent={onDeleteAgent}
           canCloneAgent={canCloneAgent}
@@ -464,6 +471,7 @@ export const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitch
       onCopyResumeCommand,
       onCopyAgentId,
       onCopyAgentAsNew,
+      onMoveAgentToWorkspace,
       onCopyConversationMarkdown,
       onDeleteAgent,
       canCloneAgent,
