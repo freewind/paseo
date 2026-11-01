@@ -25,6 +25,9 @@ import { DropdownTrigger } from "@/components/ui/dropdown-trigger";
 import { useIsCompactFormFactor } from "@/constants/layout";
 import { settingsStyles } from "@/styles/settings";
 import { ControlSizeProvider } from "@/components/ui/control-size";
+import { HighlightedText } from "@/components/ui/highlighted-text";
+import { settingsHighlightRanges } from "@/screens/settings/settings-search-index";
+import { useSettingsSearchQuery } from "@/stores/settings-search-store";
 import { useSettingsRowLayout } from "./row-density";
 export { SettingsGroup } from "./headings/settings-group";
 export { SettingsSection } from "./headings/settings-section";
@@ -66,18 +69,24 @@ export function SettingsRow({
 }: AppSettingsRowProps) {
   const compact = useIsCompactFormFactor();
   const layout = useSettingsRowLayout();
+  const searchQuery = useSettingsSearchQuery();
   const rowStyle = useMemo(() => [layout.row, compact && styles.compactRow], [compact, layout]);
   const accessoryTitleStyle = useMemo(() => [layout.title, styles.accessoryLabel], [layout]);
+  // 索引里登记的行名与这里显示的是同一段文案，用同一套 substring 规则标出命中。
+  const labelRanges = useMemo(
+    () => settingsHighlightRanges(searchQuery, label),
+    [searchQuery, label],
+  );
   return (
     <View style={rowStyle} testID={testID}>
       <View style={styles.label}>
         {labelAccessory ? (
           <View style={styles.labelRow}>
-            <Text style={accessoryTitleStyle}>{label}</Text>
+            <HighlightedText text={label} ranges={labelRanges} style={accessoryTitleStyle} />
             {labelAccessory}
           </View>
         ) : (
-          <Text style={layout.title}>{label}</Text>
+          <HighlightedText text={label} ranges={labelRanges} style={layout.title} />
         )}
         {typeof hint === "string" ? <Text style={layout.hint}>{hint}</Text> : hint}
         {error ? (
