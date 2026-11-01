@@ -177,9 +177,19 @@ const StructuredGenerationProviderConfigSchema = z
   })
   .strict();
 
+const MetadataInstructionsConfigSchema = z
+  .object({
+    instructions: z.string().optional(),
+  })
+  .strict();
+
 const AgentMetadataGenerationSchema = z
   .object({
     providers: z.array(StructuredGenerationProviderConfigSchema).optional(),
+    title: MetadataInstructionsConfigSchema.optional(),
+    branchName: MetadataInstructionsConfigSchema.optional(),
+    commitMessage: MetadataInstructionsConfigSchema.optional(),
+    pullRequest: MetadataInstructionsConfigSchema.optional(),
   })
   .strict();
 

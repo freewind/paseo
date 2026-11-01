@@ -232,7 +232,12 @@ snapshot so a mixed edit can apply its live subset and still name the paths that
     // `extends` (one of the built-ins or `"acp"`) and `label`. See `provider-launch-config.ts`.
     providers: Record<providerId, ProviderOverride>,
     metadataGeneration: {
-      providers: [{ provider, model?, thinkingOptionId? }]
+      providers: [{ provider, model?, thinkingOptionId? }],
+      // Style overrides; empty means the built-in default. See "Metadata prompt overrides".
+      title?: { instructions?: string },
+      branchName?: { instructions?: string },
+      commitMessage?: { instructions?: string },
+      pullRequest?: { instructions?: string }
     }
   },
   pluginsEnabled: boolean,
@@ -312,6 +317,12 @@ session is created, resumed, imported, or reloaded, so configuration changes aff
 session rather than an already-running one.
 
 `agents.metadataGeneration.providers` selects the models for daemon-side metadata tasks: commit messages, PR text, branch names, and generated titles. An empty list is Automatic; a non-empty list is Manual and only those models are tried. See [public-docs/metadata-generation.md](../public-docs/metadata-generation.md#how-a-model-is-chosen).
+
+### Metadata prompt overrides
+
+`agents.metadataGeneration.<title|branchName|commitMessage|pullRequest>.instructions` overrides the style guidance for that artifact. Written from the host's Metadata generation settings page, which shows the built-in default as the placeholder; an empty value means "use the built-in default", not "generate with an empty prompt".
+
+Style resolution, highest first: the project's `paseo.json` `metadataGeneration.<key>.instructions`, then the daemon value, then the built-in default. The project file wins because it ships with the repository and is reviewed with it. Built-in defaults live in `packages/protocol/src/metadata-prompts.ts` so the daemon prompts and the settings-page placeholders read one definition.
 
 ### Git process limits
 

@@ -27,19 +27,34 @@ export interface BuildMetadataPromptOptions {
   after: string;
   trailing?: string;
   workspaceGitService?: RepoRootResolver;
+  /** 全局设置里的覆盖值：优先于内置默认，但输给仓库里的 paseo.json。 */
+  daemonOverrides?: Partial<Record<MetadataConfigKey, string>>;
 }
 
 export async function buildMetadataPrompt(options: BuildMetadataPromptOptions): Promise<string> {
   const overrides = await readProjectMetadataOverrides(options);
   const styleBlocks = options.styles.map((section) =>
-    renderStyleSection(section, overrides?.[section.configKey]?.instructions),
+    renderStyleSection(
+      section,
+      overrides?.[section.configKey]?.instructions,
+      options.daemonOverrides?.[section.configKey],
+    ),
   );
   const head = [options.contract, ...styleBlocks, options.after].join("\n\n");
   return options.trailing ? `${head}\n\n${options.trailing}` : head;
 }
 
-function renderStyleSection(section: MetadataStyleSection, override: string | undefined): string {
-  const body = isNonEmptyString(override) ? override.trim() : section.default;
+function renderStyleSection(
+  section: MetadataStyleSection,
+  projectOverride: string | undefined,
+  daemonOverride: string | undefined,
+): string {
+  let body = section.default;
+  if (isNonEmptyString(projectOverride)) {
+    body = projectOverride.trim();
+  } else if (isNonEmptyString(daemonOverride)) {
+    body = daemonOverride.trim();
+  }
   return section.label ? `${section.label}:\n${body}` : body;
 }
 

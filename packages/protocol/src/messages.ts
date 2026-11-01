@@ -183,9 +183,19 @@ const MutableStructuredGenerationProviderSchema = z
   })
   .passthrough();
 
+const MetadataInstructionsSchema = z
+  .object({
+    instructions: z.string().optional(),
+  })
+  .passthrough();
+
 const MutableMetadataGenerationConfigSchema = z
   .object({
     providers: z.array(MutableStructuredGenerationProviderSchema).default([]),
+    title: MetadataInstructionsSchema.optional(),
+    branchName: MetadataInstructionsSchema.optional(),
+    commitMessage: MetadataInstructionsSchema.optional(),
+    pullRequest: MetadataInstructionsSchema.optional(),
   })
   .passthrough();
 
@@ -3720,6 +3730,8 @@ export const ServerInfoStatusPayloadSchema = z
         workspaceLabels: z.boolean().optional(),
         // COMPAT(workspaceSetupRun): added in v0.8.0, remove gate after 2027-09-02.
         workspaceSetupRun: z.boolean().optional(),
+        // COMPAT(metadataPrompts): added in v0.11.0, remove gate after 2027-10-11.
+        metadataPrompts: z.boolean().optional(),
         // COMPAT(workspaceTerminals): added in v0.8.0, remove gate after 2027-09-05.
         workspaceTerminals: z.boolean().optional(),
         // COMPAT(checkoutForgeSetAutoMerge): added in v0.2.0-beta.1. Remove the

@@ -2360,6 +2360,16 @@ export const zhCN: TranslationResources = {
       modelHint: "只使用此模型。如果失败，Paseo 不会尝试其他模型",
       docs: "文档",
       saveError: "无法更新元数据生成设置",
+      promptsSection: "提示词覆盖",
+      promptsHint: "留空即使用内置提示词。仓库里的 paseo.json 仍然优先于这里的设置。",
+      promptSave: "保存",
+      promptSaving: "保存中...",
+      prompt: {
+        title: "标题提示词",
+        branchName: "分支名提示词",
+        commitMessage: "提交信息提示词",
+        pullRequest: "拉取请求提示词",
+      },
     },
     voice: {
       offline: "连接到此主机以配置语音。",

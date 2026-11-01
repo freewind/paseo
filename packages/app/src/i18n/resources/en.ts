@@ -2461,6 +2461,17 @@ export const en = {
       modelHint: "Only this model is used. If it fails, Paseo does not try another model",
       docs: "Docs",
       saveError: "Unable to update metadata generation",
+      promptsSection: "Prompt overrides",
+      promptsHint:
+        "Leave a box empty to use the built-in prompt. A repo's paseo.json still wins over these.",
+      promptSave: "Save",
+      promptSaving: "Saving...",
+      prompt: {
+        title: "Title prompt",
+        branchName: "Branch name prompt",
+        commitMessage: "Commit message prompt",
+        pullRequest: "Pull request prompt",
+      },
     },
     voice: {
       offline: "Connect to this host to configure voice.",

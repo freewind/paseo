@@ -97,8 +97,9 @@ export function createGitMetadataGenerator(deps: {
   workspaceGitService: GitMetadataDiffSource;
   generation: StructuredTextGeneration;
   logger: GitMetadataLogger;
+  readDaemonConfig: () => StructuredGenerationDaemonConfig;
 }): GitMetadataGenerator {
-  const { workspaceGitService, generation, logger } = deps;
+  const { workspaceGitService, generation, logger, readDaemonConfig } = deps;
 
   async function generateOrFallback<T>(
     request: StructuredTextGenerationRequest<T>,
@@ -127,11 +128,16 @@ export function createGitMetadataGenerator(deps: {
     const diff = await workspaceGitService.getCheckoutDiff(input.cwd, input.diffOptions);
     const fileList = renderFileList(diff.structured);
     const patch = truncatePatch(diff.diff, input.maxPatchChars);
+    const daemonInstructions =
+      readDaemonConfig().metadataGeneration?.[input.styleConfigKey]?.instructions;
     return buildMetadataPrompt({
       cwd: input.cwd,
       workspaceGitService,
       contract: input.contract,
       styles: [{ configKey: input.styleConfigKey, default: input.styleDefault }],
+      daemonOverrides: daemonInstructions?.trim()
+        ? { [input.styleConfigKey]: daemonInstructions }
+        : undefined,
       after: [
         input.jsonFieldsHint,
         "",
