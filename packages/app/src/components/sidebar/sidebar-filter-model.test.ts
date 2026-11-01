@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { SidebarWorkspaceEntry } from "@/hooks/use-sidebar-workspaces-list";
-import { filterWorkspacesByProjects, resolveActiveProjectFilters } from "./sidebar-project-filter";
+import { filterWorkspacesByProjects, resolveProjectVisibility } from "./sidebar-filter-model";
 
 function workspace(workspaceId: string, projectViewKey: string): SidebarWorkspaceEntry {
   return {
@@ -32,26 +32,32 @@ function workspace(workspaceId: string, projectViewKey: string): SidebarWorkspac
   };
 }
 
-describe("resolveActiveProjectFilters", () => {
+const allKeys = new Set(["alpha", "beta"]);
+
+describe("resolveProjectVisibility", () => {
   test("reads an empty stored filter as every project", () => {
-    expect(resolveActiveProjectFilters([], new Set(["alpha", "beta"]))).toEqual([]);
+    expect(resolveProjectVisibility({ projectFilters: [], availableViewKeys: allKeys })).toEqual({
+      kind: "all",
+    });
   });
 
   test("keeps only the keys that still name a project it can see", () => {
-    expect(resolveActiveProjectFilters(["alpha", "gone"], new Set(["alpha", "beta"]))).toEqual([
-      "alpha",
-    ]);
-    expect(resolveActiveProjectFilters(["alpha", "beta"], new Set(["alpha", "beta"]))).toEqual([
-      "alpha",
-      "beta",
-    ]);
+    expect(
+      resolveProjectVisibility({
+        projectFilters: ["alpha", "gone"],
+        availableViewKeys: allKeys,
+      }),
+    ).toEqual({ kind: "selected", keys: ["alpha"] });
   });
 
-  // Nothing deletes the stored keys, so a filter naming only projects on a host that has not
-  // connected yet must go inert rather than blank the sidebar. It comes back with the host.
+  // 存储的键永不删除：只命中未连接主机的筛选必须失效而不是清空侧栏。
   test("goes inert instead of matching nothing", () => {
-    expect(resolveActiveProjectFilters(["alpha"], new Set(["beta"]))).toEqual([]);
-    expect(resolveActiveProjectFilters(["alpha"], new Set())).toEqual([]);
+    expect(
+      resolveProjectVisibility({ projectFilters: ["alpha"], availableViewKeys: new Set(["beta"]) }),
+    ).toEqual({ kind: "all" });
+    expect(
+      resolveProjectVisibility({ projectFilters: ["alpha"], availableViewKeys: new Set() }),
+    ).toEqual({ kind: "all" });
   });
 });
 
