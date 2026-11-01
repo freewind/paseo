@@ -10,6 +10,7 @@ import { type PressableStateCallbackType } from "react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import {
   Archive,
+  ArchiveRestore,
   Circle,
   CircleCheck,
   Copy,
@@ -23,6 +24,7 @@ import {
 import { isWeb } from "@/constants/platform";
 import { getForgePresentation, normalizeForge } from "@/git/forge";
 import { useCreateWorkspaceAgent } from "@/hooks/use-create-workspace-agent";
+import { useRestoreLastArchivedAgent } from "@/hooks/use-restore-last-archived-agent";
 import { useAppSettings } from "@/hooks/use-settings";
 import type { SidebarWorkspaceEntry } from "@/hooks/use-sidebar-workspaces-list";
 import { densityIconProps } from "@/styles/density";
@@ -63,6 +65,7 @@ const foregroundMutedColorMapping = (theme: Theme) => ({
 const ThemedMoreVertical = withUnistyles(MoreVertical);
 const ThemedCopy = withUnistyles(Copy);
 const ThemedArchive = withUnistyles(Archive);
+const ThemedArchiveRestore = withUnistyles(ArchiveRestore);
 const ThemedCircle = withUnistyles(Circle);
 const ThemedPencil = withUnistyles(Pencil);
 const ThemedCircleCheck = withUnistyles(CircleCheck);
@@ -79,6 +82,9 @@ const markAsReadLeadingIcon = (
 );
 const markAsUnreadLeadingIcon = <ThemedCircle size={14} uniProps={foregroundMutedColorMapping} />;
 const archiveLeadingIcon = <ThemedArchive size={14} uniProps={foregroundMutedColorMapping} />;
+const restoreLastArchivedAgentLeadingIcon = (
+  <ThemedArchiveRestore size={14} uniProps={foregroundMutedColorMapping} />
+);
 const pinLeadingIcon = <ThemedPin size={14} uniProps={foregroundMutedColorMapping} />;
 const unpinLeadingIcon = <ThemedPinOff size={14} uniProps={foregroundMutedColorMapping} />;
 
@@ -159,6 +165,8 @@ function SidebarWorkspaceMenuItems({
   const { t } = useTranslation();
   const closeMenu = useDropdownMenuClose();
   const onCreateAgent = useCreateWorkspaceAgent({ serverId, workspaceId });
+  // 放在内容组件里：菜单打开才挂载，不会为每个工作区行常驻一个 store 订阅。
+  const restoreLastArchivedAgent = useRestoreLastArchivedAgent({ serverId, workspaceId });
   const handleTogglePin = useCallback(() => {
     if (!onTogglePin) return;
     // 先关菜单，免得固定开关的乐观状态叠在它上面。
@@ -277,6 +285,16 @@ function SidebarWorkspaceMenuItems({
           onSelect={handleArchive}
         >
           {archiveLabel ?? t("sidebar.workspace.actions.archive")}
+        </WorkspaceMenuItem>
+      ) : null}
+      {restoreLastArchivedAgent ? (
+        <WorkspaceMenuItem
+          surface={surface}
+          testID={`sidebar-workspace-menu-restore-last-archived-agent-${workspaceKey}`}
+          leading={restoreLastArchivedAgentLeadingIcon}
+          onSelect={restoreLastArchivedAgent}
+        >
+          {t("sidebar.workspace.actions.restoreLastArchivedAgent")}
         </WorkspaceMenuItem>
       ) : null}
     </>
