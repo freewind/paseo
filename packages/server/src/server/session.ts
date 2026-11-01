@@ -2837,6 +2837,8 @@ export class Session {
       }
       case "agent.fork_context.request":
         return this.handleAgentForkContextRequest(msg);
+      case "agent.fork.request":
+        return this.handleAgentForkRequest(msg, source);
       default:
         return undefined;
     }
@@ -8243,6 +8245,89 @@ export class Session {
         },
       });
     }
+  }
+
+  private async handleAgentForkRequest(
+    msg: Extract<SessionInboundMessage, { type: "agent.fork.request" }>,
+    source?: object,
+  ): Promise<void> {
+    const respond = (payload: {
+      newAgentId: string | null;
+      newWorkspaceId?: string;
+      error: string | null;
+    }) => {
+      this.emitForSource(
+        {
+          type: "agent.fork.response",
+          payload: {
+            requestId: msg.requestId,
+            sourceAgentId: msg.sourceAgentId,
+            ...payload,
+          },
+        },
+        source,
+      );
+    };
+    // 新工作区先建好才能把分叉放进去；分叉失败时它只是残留，归档掉而不是留在侧栏里。
+    let newWorkspaceId: string | undefined;
+    try {
+      const sourceAgent = await ensureAgentLoaded(msg.sourceAgentId, {
+        agentManager: this.agentManager,
+        agentStorage: this.agentStorage,
+        logger: this.sessionLogger,
+      });
+      if (msg.targetWorkspace === "new") {
+        newWorkspaceId = await this.createForkWorkspace(sourceAgent);
+      }
+      const fork = await this.agentManager.forkAgent({
+        sourceAgentId: msg.sourceAgentId,
+        boundaryMessageId: msg.boundaryMessageId,
+        boundaryCursor: msg.boundaryCursor ?? null,
+        workspaceId: newWorkspaceId,
+      });
+      respond({
+        newAgentId: fork.id,
+        ...(newWorkspaceId ? { newWorkspaceId } : {}),
+        error: null,
+      });
+    } catch (error) {
+      if (newWorkspaceId) {
+        await this.archiveWorkspaceRecord(newWorkspaceId).catch((cleanupError: unknown) => {
+          this.sessionLogger.warn(
+            { err: cleanupError, workspaceId: newWorkspaceId },
+            "Failed to archive workspace left behind by a failed fork",
+          );
+        });
+        await this.emitWorkspaceUpdateForWorkspaceId(newWorkspaceId).catch(() => undefined);
+      }
+      this.sessionLogger.error(
+        { err: error, sourceAgentId: msg.sourceAgentId },
+        "Failed to handle agent.fork.request",
+      );
+      respond({
+        newAgentId: null,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * 在源 agent 的目录上再开一个工作区，让分叉跑在原来那份旁边，而不是塞进去。分叉
+   * 归到同一个项目，所以新工作区会出现在侧栏里原来那份的旁边。
+   */
+  private async createForkWorkspace(source: ManagedAgent): Promise<string> {
+    const sourceWorkspace = source.workspaceId
+      ? await this.workspaceRegistry.get(source.workspaceId)
+      : null;
+    const stored = await this.agentStorage.get(source.id);
+    const workspace = await this.workspaceProvisioning.createWorkspaceForDirectory(
+      source.cwd,
+      `${stored?.title ?? "Workspace"} (fork)`,
+      sourceWorkspace?.projectId ?? undefined,
+    );
+    await this.syncWorkspaceGitObserverForWorkspace(workspace);
+    await this.emitCreatedWorkspaceUpdate(await this.describeWorkspaceRecord(workspace));
+    return workspace.workspaceId;
   }
 
   private async prepareAgentMessage(agentId: string, text: string): Promise<void> {

@@ -1,7 +1,11 @@
 import { MessagePreview, MessageSender } from "@/components/user-message";
 import { useStableEvent } from "@/hooks/use-stable-event";
 import { getAgentAttachmentPillContent } from "@/attachments/attachment-pill-content";
-import { AssistantForkMenu, type AssistantForkTarget } from "@/components/assistant-fork-menu";
+import {
+  AssistantForkMenu,
+  type AssistantForkChoice,
+  type AssistantForkTarget,
+} from "@/components/assistant-fork-menu";
 import { AttachmentLightbox, type ImageLightboxSource } from "@/components/attachment-lightbox";
 import {
   AttachmentFrame,
@@ -91,7 +95,7 @@ import { buildToolCallDetailText } from "@/utils/tool-call-detail-text";
 import { ToolCallDetailsContent } from "./tool-call-details";
 import { useToolCallSheet } from "./tool-call-sheet";
 export type { InlinePathTarget } from "@/assistant-file-links";
-export type { AssistantForkTarget };
+export type { AssistantForkChoice, AssistantForkTarget };
 
 interface UserMessageProps {
   sender?: AgentMessage["sender"];
@@ -599,7 +603,8 @@ interface AssistantTurnFooterProps {
   getContent?: () => string;
   completedAt?: Date;
   durationMs?: number | null;
-  onFork?: (target: AssistantForkTarget) => Promise<void> | void;
+  onFork?: (choice: AssistantForkChoice) => Promise<void> | void;
+  supportsSessionFork?: boolean;
 }
 
 const assistantTurnFooterStylesheet = StyleSheet.create((theme) => ({
@@ -644,6 +649,7 @@ export const AssistantTurnFooter = memo(function AssistantTurnFooter({
   completedAt,
   durationMs,
   onFork,
+  supportsSessionFork,
 }: AssistantTurnFooterProps) {
   const { t } = useTranslation();
   const [hovered, setHovered] = useState(false);
@@ -687,8 +693,8 @@ export const AssistantTurnFooter = memo(function AssistantTurnFooter({
     }, TIMESTAMP_REVEAL_MS);
   }, [canSwap]);
   const handleFork = useCallback(
-    (target: AssistantForkTarget) => {
-      return onFork?.(target);
+    (choice: AssistantForkChoice) => {
+      return onFork?.(choice);
     },
     [onFork],
   );
@@ -702,7 +708,9 @@ export const AssistantTurnFooter = memo(function AssistantTurnFooter({
           containerStyle={assistantTurnFooterStylesheet.copyButton}
         />
       ) : null}
-      {canFork ? <AssistantForkMenu onFork={handleFork} /> : null}
+      {canFork ? (
+        <AssistantForkMenu onFork={handleFork} supportsSessionFork={Boolean(supportsSessionFork)} />
+      ) : null}
       {primaryLabel ? (
         <Pressable
           onPress={handlePress}

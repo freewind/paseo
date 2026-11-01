@@ -1650,6 +1650,37 @@ export class ClaudeAgentClient implements AgentClient {
     return session;
   }
 
+  /**
+   * 分叉走已有的 rewind SDK：它在转录目录里复制会话并返回新 session id，源会话与源运行时不动。
+   * 这里只把 provider 侧的句柄接出来，不另写复制逻辑。
+   */
+  async forkSession(
+    handle: AgentPersistenceHandle,
+    input: { upToMessageId: string },
+  ): Promise<AgentPersistenceHandle> {
+    if (!handle.sessionId) {
+      throw new Error("Cannot fork: persistence handle has no sessionId");
+    }
+    const cwd = typeof handle.metadata?.cwd === "string" ? handle.metadata.cwd : null;
+    if (!cwd) {
+      throw new Error("Cannot fork: persistence handle has no cwd");
+    }
+    const transcriptPath = await claudeTranscriptPath({
+      cwd,
+      sessionId: handle.sessionId,
+      configDir: claudeConfigDir(this.buildProviderEnv()),
+    });
+    const fork = await this.rewindSdk.forkSession(handle.sessionId, {
+      upToMessageId: input.upToMessageId,
+      transcriptPath,
+    });
+    return {
+      ...handle,
+      sessionId: fork.sessionId,
+      nativeHandle: fork.sessionId,
+    };
+  }
+
   async getCatalogCacheKey(_options: FetchCatalogOptions): Promise<string> {
     // This client discovers through host configuration, independent of project cwd.
     return "host";

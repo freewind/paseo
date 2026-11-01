@@ -171,6 +171,7 @@ function renderStreamItemWithTurnFooter(input: {
   turnIndent: TurnIndent;
   strategy: TurnContentStrategy;
   supportsTimelineCursor: boolean;
+  supportsSessionFork: boolean;
   onForkAssistantTurn?: AssistantTurnForkHandler;
 }): ReactNode {
   if (!input.content) {
@@ -185,6 +186,7 @@ function renderStreamItemWithTurnFooter(input: {
       timing={footerHost.timing}
       startIndex={footerHost.startIndex}
       supportsTimelineCursor={input.supportsTimelineCursor}
+      supportsSessionFork={input.supportsSessionFork}
       onForkAssistantTurn={input.onForkAssistantTurn}
     />
   ) : null;
@@ -403,6 +405,11 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
       (state) =>
         state.sessions[resolvedServerId]?.serverInfo?.features?.agentForkContextCursor === true,
     );
+    // 会话分叉要宿主能把 provider 会话分支出来；宿主没有这个能力时，菜单只留两条复制历史的旧项。
+    // 只读面板根本不传 fork handler，所以这里不用再判断。
+    const supportsSessionFork = useSessionStore(
+      (state) => state.sessions[resolvedServerId]?.serverInfo?.features?.agentForkSession === true,
+    );
     const supportsChatOutline = useSessionStore(
       (state) =>
         state.sessions[resolvedServerId]?.serverInfo?.features?.agentTimelinePromptIndex === true,
@@ -506,12 +513,13 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
     });
 
     const handleForkAssistantTurn: AssistantTurnForkHandler = useStableEvent(
-      async ({ target, boundary }) => {
+      async ({ choice, boundary }) => {
         await forkAgent({
           agentId,
           agent: context,
           workspaceId: context.workspaceId,
-          target,
+          mode: choice.mode,
+          target: choice.target,
           boundary,
         });
       },
@@ -521,12 +529,13 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
     // projects the whole timeline when neither boundary field is given, so the
     // fork carries everything up to now, including the response still streaming
     // in front of the user.
-    const handleForkInFlightTurn: InFlightTurnForkHandler = useStableEvent(async (target) => {
+    const handleForkInFlightTurn: InFlightTurnForkHandler = useStableEvent(async (choice) => {
       await forkAgent({
         agentId,
         agent: context,
         workspaceId: context.workspaceId,
-        target,
+        mode: choice.mode,
+        target: choice.target,
       });
     });
 
@@ -1023,6 +1032,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
           turnIndent: getTurnIndent(layoutItem),
           strategy: streamRenderStrategy,
           supportsTimelineCursor: supportsAgentForkContextCursor,
+          supportsSessionFork,
           onForkAssistantTurn: readOnly ? undefined : handleForkAssistantTurn,
         });
       },
@@ -1033,6 +1043,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
         renderStreamItemContent,
         streamRenderStrategy,
         supportsAgentForkContextCursor,
+        supportsSessionFork,
       ],
     );
 
@@ -1058,6 +1069,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
             host={bottomTurnFooterHost}
             strategy={streamRenderStrategy}
             supportsTimelineCursor={supportsAgentForkContextCursor}
+            supportsSessionFork={supportsSessionFork}
             onForkAssistantTurn={readOnly ? undefined : handleForkAssistantTurn}
             onForkInFlightTurn={readOnly ? undefined : handleForkInFlightTurn}
           />
@@ -1071,6 +1083,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
         bottomTurnFooterHost,
         streamRenderStrategy,
         supportsAgentForkContextCursor,
+        supportsSessionFork,
       ],
     );
     const renderModel = useMemo<AgentStreamRenderModel>(() => {

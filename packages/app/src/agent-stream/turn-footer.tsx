@@ -13,7 +13,7 @@ import {
   AssistantTurnFooter,
   LiveElapsed,
   STREAM_METADATA_FONT_SIZE,
-  type AssistantForkTarget,
+  type AssistantForkChoice,
 } from "@/components/message";
 import type { TurnFooterHost } from "./layout";
 import { AssistantForkMenu } from "@/components/assistant-fork-menu";
@@ -26,7 +26,7 @@ export const TURN_FOOTER_BOTTOM_SPACING = SPACING[8];
 
 export type TurnContentStrategy = StreamStrategy;
 export type AssistantTurnForkHandler = (input: {
-  target: AssistantForkTarget;
+  choice: AssistantForkChoice;
   boundary: AssistantTurnForkBoundary;
 }) => Promise<void> | void;
 /**
@@ -39,7 +39,7 @@ export type AssistantTurnForkHandler = (input: {
  * Kept separate from `AssistantTurnForkHandler` (whose `boundary` stays
  * required) so the compiler keeps enforcing that completed turns always pin one.
  */
-export type InFlightTurnForkHandler = (target: AssistantForkTarget) => Promise<void> | void;
+export type InFlightTurnForkHandler = (choice: AssistantForkChoice) => Promise<void> | void;
 
 export const TurnFooter = memo(function TurnFooter({
   isRunning,
@@ -47,6 +47,7 @@ export const TurnFooter = memo(function TurnFooter({
   host,
   strategy,
   supportsTimelineCursor,
+  supportsSessionFork,
   onForkAssistantTurn,
   onForkInFlightTurn,
 }: {
@@ -55,6 +56,7 @@ export const TurnFooter = memo(function TurnFooter({
   host: TurnFooterHost | null;
   strategy: TurnContentStrategy;
   supportsTimelineCursor: boolean;
+  supportsSessionFork?: boolean;
   onForkAssistantTurn?: AssistantTurnForkHandler;
   onForkInFlightTurn?: InFlightTurnForkHandler;
 }) {
@@ -78,6 +80,7 @@ export const TurnFooter = memo(function TurnFooter({
       timing={host.timing}
       startIndex={host.startIndex}
       supportsTimelineCursor={supportsTimelineCursor}
+      supportsSessionFork={supportsSessionFork}
       onForkAssistantTurn={onForkAssistantTurn}
     />
   );
@@ -89,6 +92,7 @@ export const CompletedTurnFooterRow = memo(function CompletedTurnFooterRow({
   timing,
   startIndex,
   supportsTimelineCursor,
+  supportsSessionFork,
   onForkAssistantTurn,
 }: {
   strategy: TurnContentStrategy;
@@ -96,6 +100,7 @@ export const CompletedTurnFooterRow = memo(function CompletedTurnFooterRow({
   timing?: TurnTiming;
   startIndex: number;
   supportsTimelineCursor: boolean;
+  supportsSessionFork?: boolean;
   onForkAssistantTurn?: AssistantTurnForkHandler;
 }) {
   return (
@@ -106,6 +111,7 @@ export const CompletedTurnFooterRow = memo(function CompletedTurnFooterRow({
         timing={timing}
         startIndex={startIndex}
         supportsTimelineCursor={supportsTimelineCursor}
+        supportsSessionFork={supportsSessionFork}
         onForkAssistantTurn={onForkAssistantTurn}
       />
     </TurnFooterRow>
@@ -126,7 +132,9 @@ const WorkingIndicator = memo(function WorkingIndicator({
         <ThemedSyncedLoader size={14} uniProps={workingIndicatorColorMapping} />
       </View>
       {/* Match the completed-turn footer: actions precede timing metadata. */}
-      {onForkInFlightTurn ? <AssistantForkMenu onFork={onForkInFlightTurn} /> : null}
+      {onForkInFlightTurn ? (
+        <AssistantForkMenu onFork={onForkInFlightTurn} supportsSessionFork={false} />
+      ) : null}
       {inFlightTurnStartedAt ? (
         <LiveElapsed
           startedAt={inFlightTurnStartedAt}
@@ -162,6 +170,7 @@ function CompletedTurnFooter({
   timing,
   startIndex,
   supportsTimelineCursor,
+  supportsSessionFork,
   onForkAssistantTurn,
 }: {
   strategy: TurnContentStrategy;
@@ -169,6 +178,7 @@ function CompletedTurnFooter({
   timing?: TurnTiming;
   startIndex: number;
   supportsTimelineCursor: boolean;
+  supportsSessionFork?: boolean;
   onForkAssistantTurn?: AssistantTurnForkHandler;
 }) {
   const getContent = useCallback(
@@ -186,11 +196,11 @@ function CompletedTurnFooter({
     supportsTimelineCursor,
   });
   const handleFork = useCallback(
-    (target: AssistantForkTarget) => {
+    (choice: AssistantForkChoice) => {
       if (!boundary) {
         return;
       }
-      return onForkAssistantTurn?.({ target, boundary });
+      return onForkAssistantTurn?.({ choice, boundary });
     },
     [boundary, onForkAssistantTurn],
   );
@@ -201,6 +211,7 @@ function CompletedTurnFooter({
         completedAt={timing?.completedAt}
         durationMs={timing?.durationMs}
         onFork={boundary && onForkAssistantTurn ? handleFork : undefined}
+        supportsSessionFork={supportsSessionFork}
       />
     </View>
   );

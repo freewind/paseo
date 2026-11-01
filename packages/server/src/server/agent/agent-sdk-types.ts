@@ -805,6 +805,16 @@ export interface AgentClient {
    * Returns true if available, false otherwise.
    */
   isAvailable(signal?: AbortSignal, options?: FetchCatalogOptions): Promise<boolean>;
+  /**
+   * 在边界处切一刀，做一份持久化会话的独立副本，源会话不受影响。返回的句柄和别的
+   * 一样可以恢复：对它调用 `resumeAgentFromPersistence` 得到的 agent 带着完整历史。
+   * 不能离线分叉的 provider 必须省略这个方法；调用方据此显示为不可用，而不是退回
+   * 到有损的摘要。
+   */
+  forkSession?(
+    handle: AgentPersistenceHandle,
+    input: { upToMessageId: string },
+  ): Promise<AgentPersistenceHandle>;
   getDiagnostic?(): Promise<{ diagnostic: string }>;
   /**
    * Archive a durable native session (best-effort). Runtime release belongs to AgentSession.close().
