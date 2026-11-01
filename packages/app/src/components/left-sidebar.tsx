@@ -30,6 +30,7 @@ import {
 } from "@/components/sidebar-resize-handle-layout";
 import { HostPicker } from "@/components/hosts/host-picker";
 import { SidebarDisplayPreferencesMenu } from "@/components/sidebar/display-preferences/menu";
+import { SearchField } from "@/components/ui/search-field";
 import { SidebarSeparator } from "@/components/sidebar/sidebar-separator";
 import { SidebarNavRows } from "@/components/sidebar/sidebar-nav-rows";
 import { SidebarFooterIconHighlight } from "@/components/sidebar/sidebar-footer-icon-highlight";
@@ -814,8 +815,26 @@ function DesktopSidebar({
 }
 
 function WorkspacesSectionHeader() {
+  // 标题头自己读 store：稳定元素（下面那个常量）在多次渲染间保持身份，输入内容通过 store 更新，
+  // 不靠 props 传值，列表的 listHeaderComponent 才不会因为新元素而重挂载。
+  const nameSearch = useSidebarViewStore((state) => state.nameSearch);
+  const setNameSearch = useSidebarViewStore((state) => state.setNameSearch);
+  const { t } = useTranslation();
+  const renderSearch = useCallback(
+    () => (
+      <SearchField
+        value={nameSearch}
+        onChangeText={setNameSearch}
+        placeholder={t("sidebar.nameSearch.placeholder")}
+        clearAccessibilityLabel={t("sidebar.nameSearch.clear")}
+        testID="sidebar-name-search"
+        clearTestID="sidebar-name-search-clear"
+      />
+    ),
+    [nameSearch, setNameSearch, t],
+  );
   return (
-    <SidebarSectionHeader title="Workspaces">
+    <SidebarSectionHeader title="Workspaces" renderTitle={renderSearch}>
       <Tooltip delayDuration={300}>
         <TooltipTrigger asChild>
           <View>

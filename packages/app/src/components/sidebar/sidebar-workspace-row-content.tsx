@@ -19,6 +19,8 @@ import {
 } from "@/components/sidebar/workspace-trailing";
 import { useAppSettings } from "@/hooks/use-settings";
 import { resolveSidebarWorkspacePrimaryLabel } from "@/components/sidebar/sidebar-workspace-title";
+import { HighlightedText } from "@/components/ui/highlighted-text";
+import type { MatchRange } from "@getpaseo/protocol/search/text-match";
 import { TrailingActionScrim } from "@/components/ui/trailing-action-scrim";
 import { useWorkspaceLabelDefinitions } from "@/workspace-labels";
 
@@ -81,6 +83,7 @@ export const SidebarWorkspaceRowContent = memo(function SidebarWorkspaceRowConte
   shortcutNumber = null,
   showShortcutBadge = false,
   reserveIdleStatusIndicatorSpace = true,
+  nameHighlightRanges,
   children,
 }: {
   workspace: SidebarWorkspaceEntry;
@@ -98,6 +101,8 @@ export const SidebarWorkspaceRowContent = memo(function SidebarWorkspaceRowConte
   showShortcutBadge?: boolean;
   /** Keep the empty leading slot when the workspace has no active status. */
   reserveIdleStatusIndicatorSpace?: boolean;
+  /** 名称搜索命中该行标题时的区间；不搜索或没命中时不传。 */
+  nameHighlightRanges?: readonly MatchRange[];
   children?: ReactNode;
 }) {
   const {
@@ -140,9 +145,12 @@ export const SidebarWorkspaceRowContent = memo(function SidebarWorkspaceRowConte
         <View style={styles.workspaceContentColumn}>
           <View style={styles.workspaceTitleRow}>
             <View style={sidebarWorkspaceRowStyles.titleWithCount}>
-              <Text style={workspaceBranchTextStyle} numberOfLines={1}>
-                {workspaceLabel}
-              </Text>
+              <HighlightedText
+                text={workspaceLabel}
+                ranges={nameHighlightRanges}
+                style={workspaceBranchTextStyle}
+                numberOfLines={1}
+              />
               {workspace.activeAgentCount >= 2 ? (
                 <Text
                   style={sidebarWorkspaceRowStyles.agentCountText}

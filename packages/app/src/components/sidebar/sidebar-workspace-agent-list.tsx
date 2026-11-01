@@ -12,6 +12,7 @@ import { useWorkspaceLayoutStore } from "@/stores/workspace-layout-store";
 import { deriveSidebarStateBucket, type SidebarStateBucket } from "@/utils/sidebar-agent-state";
 import { workspaceAgentStatus } from "@/utils/workspace-agent-activity";
 import { useWorkspaceAgentTabActions } from "@/screens/workspace/use-workspace-agent-tab-actions";
+import { useSidebarNameSearch } from "@/components/sidebar/sidebar-model";
 import { buildWorkspaceTabMenuEntries } from "@/screens/workspace/workspace-tab-menu";
 import type { SidebarWorkspaceEntry } from "@/hooks/sidebar-workspaces-view-model";
 import { SidebarWorkspaceAgentRowItem } from "@/components/sidebar/sidebar-workspace-agent-row-item";
@@ -42,7 +43,14 @@ export const SidebarWorkspaceAgentList = memo(function SidebarWorkspaceAgentList
   const { serverId, workspaceId, workspaceKey } = workspace;
   const isCompactLayout = useIsCompactFormFactor();
   const showMobileAgent = usePanelStore((state) => state.showMobileAgent);
-  const rows = useSidebarWorkspaceAgentRows(workspaceKey);
+  const layoutRows = useSidebarWorkspaceAgentRows(workspaceKey);
+  // 搜索把行收窄到它保留的 agent，并给每行自己的高亮；不搜索时两张 map 为空，行保持原样。
+  const { active: nameSearchActive, matches: nameSearchMatches } = useSidebarNameSearch();
+  const agentMatches = nameSearchMatches.agents;
+  const rows = useMemo(() => {
+    if (!nameSearchActive) return layoutRows;
+    return layoutRows.filter((row) => agentMatches.has(row.agentId));
+  }, [layoutRows, agentMatches, nameSearchActive]);
   const focusedTabId = useFocusedWorkspaceTabId(workspaceKey);
   const isWorkspaceActive = useIsActiveWorkspace(serverId, workspaceId);
   const titles = useSessionStore((state) => state.sessions[serverId]?.agents ?? null);
@@ -101,6 +109,7 @@ export const SidebarWorkspaceAgentList = memo(function SidebarWorkspaceAgentList
             row={row}
             isActive={isWorkspaceActive && focusedTabId === row.tabId}
             label={agentTabLabel(titles?.get(row.agentId)?.title, row.agentId)}
+            highlightRanges={nameSearchActive ? agentMatches.get(row.agentId)?.ranges : undefined}
             statusBucket={statusBuckets.get(row.agentId) ?? null}
             menuEntries={menuEntriesByIndex[index]}
             onOpenAgent={openAgent}

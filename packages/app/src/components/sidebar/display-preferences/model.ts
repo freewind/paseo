@@ -10,6 +10,7 @@ import {
   type SidebarGroupMode,
   type SidebarLabelFilter,
 } from "@/stores/sidebar-view-store";
+
 import { DEFAULT_SIDEBAR_CHECKS_DISPLAY, type SidebarChecksDisplay } from "./checks-display";
 import { DEFAULT_SIDEBAR_ROW_ITEMS, type SidebarRowItem, type SidebarRowItems } from "./row-items";
 
@@ -39,6 +40,9 @@ export interface SidebarDisplayPreferences {
   projectFilters: readonly string[];
   toggleProjectFilter: (viewKey: string) => void;
   clearProjectFilters: () => void;
+  /** 只看还有活跃会话的项目；与 projectFilters 互斥。 */
+  nonEmptyProjectsOnly: boolean;
+  setNonEmptyProjectsOnly: (enabled: boolean) => void;
   labelFilter: SidebarLabelFilter;
   toggleLabelFilter: (name: string) => void;
   clearLabelFilter: () => void;
@@ -65,6 +69,8 @@ export function useSidebarDisplayPreferences(): SidebarDisplayPreferences {
   const projectFilters = useSidebarViewStore((state) => state.projectFilters);
   const toggleProjectFilter = useSidebarViewStore((state) => state.toggleProjectFilter);
   const clearProjectFilters = useSidebarViewStore((state) => state.clearProjectFilters);
+  const nonEmptyProjectsOnly = useSidebarViewStore((state) => state.nonEmptyProjectsOnly);
+  const setNonEmptyProjectsOnly = useSidebarViewStore((state) => state.setNonEmptyProjectsOnly);
   const labelFilter = useSidebarViewStore((state) => state.labelFilter);
   const toggleLabelFilter = useSidebarViewStore((state) => state.toggleLabelFilter);
   const clearLabelFilter = useSidebarViewStore((state) => state.clearLabelFilter);
@@ -133,6 +139,8 @@ export function useSidebarDisplayPreferences(): SidebarDisplayPreferences {
       projectFilters,
       toggleProjectFilter,
       clearProjectFilters,
+      nonEmptyProjectsOnly,
+      setNonEmptyProjectsOnly,
       labelFilter,
       toggleLabelFilter,
       clearLabelFilter,
@@ -158,6 +166,8 @@ export function useSidebarDisplayPreferences(): SidebarDisplayPreferences {
       projectFilters,
       toggleProjectFilter,
       clearProjectFilters,
+      nonEmptyProjectsOnly,
+      setNonEmptyProjectsOnly,
       labelFilter,
       toggleLabelFilter,
       clearLabelFilter,

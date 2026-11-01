@@ -1284,9 +1284,16 @@ export const en = {
         all: "All hosts",
       },
       projectFilter: {
+        nonEmpty: "Non-empty projects",
         label: "Project",
         all: "All projects",
       },
+    },
+    nameSearch: {
+      placeholder: "Search projects, workspaces, agents",
+      clear: "Clear search",
+      noMatchesTitle: "No matches",
+      noMatchesDescription: "Nothing in the sidebar matches this search.",
     },
     filterEmpty: {
       title: "No workspaces match",
