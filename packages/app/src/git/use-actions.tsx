@@ -8,6 +8,8 @@ import type { Theme } from "@/styles/theme";
 import { getForgePresentation, type Forge } from "@/git/forge";
 import { ForgeBrandIcon, getForgeBrandColorMapping } from "@/git/forge-icon";
 import { type CheckoutGitActionStatus, useCheckoutGitActionsStore } from "@/git/actions-store";
+import { useCommitDialogStore } from "@/git/commit-dialog-store";
+import { useHostFeature } from "@/runtime/host-features";
 import { type CheckoutStatusPayload, useCheckoutStatusQuery } from "@/git/use-status-query";
 import { type CheckoutPrStatusPayload, useCheckoutPrStatusQuery } from "@/git/use-pr-status-query";
 import {
@@ -444,6 +446,8 @@ export function useGitActions({ serverId, cwd, icons }: UseGitActionsInput): Use
   );
 
   const runCommit = useCheckoutGitActionsStore((s) => s.commit);
+  const openCommitDialog = useCommitDialogStore((s) => s.openCommitDialog);
+  const supportsCommitDraft = useHostFeature(serverId, "checkoutCommitDraft");
   const runPull = useCheckoutGitActionsStore((s) => s.pull);
   const runPush = useCheckoutGitActionsStore((s) => s.push);
   const runPullAndPush = useCheckoutGitActionsStore((s) => s.pullAndPush);
@@ -476,6 +480,12 @@ export function useGitActions({ serverId, cwd, icons }: UseGitActionsInput): Use
 
   // Handlers
   const handleCommit = useCallback(() => {
+    // 新主机先预览再提交；老主机没有这个 RPC，保留原来的直接提交，已有功能不能因
+    // 新增的预览能力而失效。
+    if (supportsCommitDraft) {
+      openCommitDialog({ serverId, cwd });
+      return;
+    }
     void runCommit({ serverId, cwd })
       .then(() => {
         toastActionSuccess(t("workspace.git.actions.commit.success"));
@@ -484,7 +494,16 @@ export function useGitActions({ serverId, cwd, icons }: UseGitActionsInput): Use
       .catch((err) => {
         toastActionError(err, t("workspace.git.actions.toasts.failedCommit"));
       });
-  }, [cwd, runCommit, serverId, t, toastActionError, toastActionSuccess]);
+  }, [
+    cwd,
+    openCommitDialog,
+    runCommit,
+    serverId,
+    supportsCommitDraft,
+    t,
+    toastActionError,
+    toastActionSuccess,
+  ]);
 
   const handlePull = useCallback(() => {
     void runPull({ serverId, cwd })

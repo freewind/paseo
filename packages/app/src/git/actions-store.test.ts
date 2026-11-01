@@ -59,16 +59,15 @@ describe("checkout-git-actions-store", () => {
 
     const store = useCheckoutGitActionsStore.getState();
 
-    const first = store.commit({ serverId, cwd });
-    const second = store.commit({ serverId, cwd });
+    const first = store.commit({ serverId, cwd, message: "Ship it" });
+    const second = store.commit({ serverId, cwd, message: "Ship it" });
 
     expect(store.getStatus({ serverId, cwd, actionId: "commit" })).toBe("pending");
 
-    deferred.resolve({});
+    deferred.resolve({ success: true, error: null, cwd, requestId: "r" });
     await Promise.all([first, second]);
 
     expect(store.getStatus({ serverId, cwd, actionId: "commit" })).toBe("success");
-
     vi.advanceTimersByTime(1000);
     expect(store.getStatus({ serverId, cwd, actionId: "commit" })).toBe("idle");
   });
