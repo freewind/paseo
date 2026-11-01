@@ -139,6 +139,7 @@ import {
   type AgentSessionConfig,
 } from "./agent/agent-sdk-types.js";
 import type { StoredAgentRecord } from "./agent/agent-storage.js";
+import { resolveTransferWorkspaceTarget } from "./agent/transfer-workspace-target.js";
 import type { AgentStorage } from "./agent/agent-storage.js";
 import {
   ImportSessionsRequestError,
@@ -2857,6 +2858,8 @@ export class Session {
         return this.handleAgentForkRequest(msg, source);
       case "agent.clone.request":
         return this.handleAgentCloneRequest(msg, source);
+      case "agent.transfer_workspace.request":
+        return this.handleAgentTransferWorkspaceRequest(msg, source);
       default:
         return undefined;
     }
@@ -8402,6 +8405,72 @@ export class Session {
     await this.syncWorkspaceGitObserverForWorkspace(workspace);
     await this.emitCreatedWorkspaceUpdate(await this.describeWorkspaceRecord(workspace));
     return workspace.workspaceId;
+  }
+
+  /**
+   * 把 agent 挪到同一 daemon 上的另一个工作区。目标二选一：已有工作区，或在项目根目录
+   * 新建一个目录型工作区。归属记录由 AgentManager 负责回滚，失败的移动不会留下半套状态。
+   */
+  private async handleAgentTransferWorkspaceRequest(
+    msg: Extract<SessionInboundMessage, { type: "agent.transfer_workspace.request" }>,
+    source?: object,
+  ): Promise<void> {
+    const respond = (payload: {
+      agentId: string;
+      workspaceId: string | null;
+      error: string | null;
+    }) => {
+      this.emitForSource(
+        {
+          type: "agent.transfer_workspace.response",
+          payload: { requestId: msg.requestId, ...payload },
+        },
+        source,
+      );
+    };
+    try {
+      await ensureAgentLoaded(msg.agentId, {
+        agentManager: this.agentManager,
+        agentStorage: this.agentStorage,
+        logger: this.sessionLogger,
+      });
+
+      const targetWorkspace = await resolveTransferWorkspaceTarget({
+        ...(msg.targetWorkspaceId ? { targetWorkspaceId: msg.targetWorkspaceId } : {}),
+        ...(msg.newWorkspace ? { newWorkspace: msg.newWorkspace } : {}),
+        getWorkspace: (workspaceId) => this.workspaceRegistry.get(workspaceId),
+        getProject: (projectId) => this.projectRegistry.get(projectId),
+        createWorkspaceAtProjectRoot: async (target) => {
+          const created = await this.workspaceProvisioning.createWorkspaceForDirectory(
+            target.rootPath,
+            target.title,
+            target.projectId,
+          );
+          await this.registerWorkspaceForImportedAgent(created);
+          return created;
+        },
+      });
+
+      await this.agentManager.moveAgentToWorkspace(msg.agentId, {
+        workspaceId: targetWorkspace.workspaceId,
+        cwd: targetWorkspace.cwd,
+      });
+      respond({
+        agentId: msg.agentId,
+        workspaceId: targetWorkspace.workspaceId,
+        error: null,
+      });
+    } catch (error) {
+      this.sessionLogger.error(
+        { err: error, agentId: msg.agentId },
+        "Failed to handle agent.transfer_workspace.request",
+      );
+      respond({
+        agentId: msg.agentId,
+        workspaceId: null,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   private async handleAgentCloneRequest(

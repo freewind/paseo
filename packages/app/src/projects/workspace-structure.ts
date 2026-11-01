@@ -20,6 +20,30 @@ export interface WorkspaceStructureProject {
   workspaceKeys: string[];
 }
 
+/**
+ * 结构 key 是 `serverId:workspaceId`。它是跨 host 合并（`buildWorkspaceStructureProjects`）
+ * 之后唯一可靠的身份，所以每个消费方都要解码使用，不能把它直接当成 session workspace 的
+ * Map key —— 那个 Map 的键是 workspace id，且只在单个 session 内有意义。
+ */
+export function workspaceStructureKey(input: { serverId: string; workspaceId: string }): string {
+  return `${input.serverId}:${input.workspaceId}`;
+}
+
+export function parseWorkspaceStructureKey(
+  value: string,
+): { serverId: string; workspaceId: string } | null {
+  const separatorIndex = value.indexOf(":");
+  if (separatorIndex <= 0) {
+    return null;
+  }
+  const serverId = value.slice(0, separatorIndex);
+  const workspaceId = value.slice(separatorIndex + 1);
+  if (!workspaceId) {
+    return null;
+  }
+  return { serverId, workspaceId };
+}
+
 export interface WorkspaceStructure {
   projects: WorkspaceStructureProject[];
 }
@@ -95,7 +119,10 @@ export function buildWorkspaceStructureProjects(input: {
       byProject.get(viewKey)?.workspaces.push({
         sortTime: workspaceSortTime(workspace, input.workspaceSort),
         workspaceName: workspace.name,
-        workspaceKey: `${session.serverId}:${workspace.id}`,
+        workspaceKey: workspaceStructureKey({
+          serverId: session.serverId,
+          workspaceId: workspace.id,
+        }),
       });
     }
   }

@@ -3,7 +3,7 @@ import type {
   WorkspaceStructureHostPlacement,
   WorkspaceStructureProject,
 } from "@/projects/workspace-structure";
-import { createProjectViewKey } from "@/projects/workspace-structure";
+import { createProjectViewKey, workspaceStructureKey } from "@/projects/workspace-structure";
 
 export type HostProjectListItem = WorkspaceStructureProject;
 
@@ -84,7 +84,9 @@ export function hostProjectFromWorkspace(input: {
         customIconRevision: input.workspace.projectCustomIconRevision,
       },
     ],
-    workspaceKeys: [`${input.serverId}:${input.workspace.id}`],
+    workspaceKeys: [
+      workspaceStructureKey({ serverId: input.serverId, workspaceId: input.workspace.id }),
+    ],
   };
 }
 

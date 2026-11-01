@@ -1,5 +1,6 @@
 import type { AttachedAgentTool, PluginAgentToolsRuntime } from "../plugins/agent-tools.js";
 import type { AgentToolResult } from "@getpaseo/plugin/server";
+import { areEquivalentPaths } from "../../utils/path.js";
 import type { RuntimeCleanupCandidate } from "./idle-runtime-cleanup/index.js";
 import { ensureAgentLoaded } from "./agent-loading.js";
 import { projectTimelineRows } from "./timeline-projection.js";
@@ -189,6 +190,13 @@ interface TimeoutOptions {
   operation: Promise<void>;
   timeoutMs: number;
   onLateError?: (error: unknown) => void;
+}
+
+function resolveReloadWorkspaceId(
+  currentWorkspaceId: string | undefined,
+  options?: { workspaceId?: string },
+): string | undefined {
+  return options?.workspaceId ?? currentWorkspaceId;
 }
 
 function formatProviderList(providers: readonly string[]): string {
@@ -1654,10 +1662,84 @@ export class AgentManager {
     );
   }
 
+  /**
+   * 把 agent 挪到另一个工作区：同一个 agent id、同一个 provider 会话、同一段历史，
+   * 只改 workspaceId 归属与执行 cwd。cwd 变了就走刷新通道重建会话，让从 cwd 推导状态的
+   * provider（转录路径、spawn 目录、ACP 载入）重新推导；cwd 相同时只改归属。
+   */
+  moveAgentToWorkspace(
+    agentId: string,
+    target: { workspaceId: string; cwd: string },
+  ): Promise<ManagedAgent> {
+    return this.trackAgentRegistrationOperation(
+      this.runLifecycleMutation(agentId, () => this.moveAgentToWorkspaceInternal(agentId, target)),
+    );
+  }
+
+  private async moveAgentToWorkspaceInternal(
+    agentId: string,
+    target: { workspaceId: string; cwd: string },
+  ): Promise<ManagedAgent> {
+    this.assertAcceptingAgentRegistrations();
+    const existing = this.requireSessionAgent(agentId);
+    if (this.hasInFlightRun(agentId)) {
+      throw new Error("Cannot move the workspace while a turn is running");
+    }
+    if (
+      existing.workspaceId === target.workspaceId &&
+      areEquivalentPaths(existing.cwd, target.cwd)
+    ) {
+      return existing;
+    }
+
+    // 归属记录是权威：先改它，再重建会话；重建失败必须回滚，失败的移动不能留下半套状态。
+    const registry = this.requireRegistry();
+    const record = await registry.get(agentId);
+    if (!record) {
+      throw new Error(`Agent not found: ${agentId}`);
+    }
+    const previousWorkspaceId = record.workspaceId;
+    const previousCwd = record.cwd;
+    await registry.upsert({
+      ...record,
+      workspaceId: target.workspaceId,
+      cwd: target.cwd,
+      updatedAt: new Date().toISOString(),
+    });
+
+    if (areEquivalentPaths(record.cwd, target.cwd)) {
+      // 同一目录：只换归属，不需要重建 provider 会话。
+      existing.workspaceId = target.workspaceId;
+      this.notifyAgentState(agentId);
+      return existing;
+    }
+
+    try {
+      return await this.reloadAgentSessionInternal(
+        agentId,
+        { cwd: target.cwd },
+        {
+          workspaceId: target.workspaceId,
+        },
+      );
+    } catch (error) {
+      await registry.upsert({
+        ...record,
+        workspaceId: previousWorkspaceId,
+        cwd: previousCwd,
+        updatedAt: new Date().toISOString(),
+      });
+      if (this.getAgent(agentId)) {
+        this.notifyAgentState(agentId);
+      }
+      throw error;
+    }
+  }
+
   private async reloadAgentSessionInternal(
     agentId: string,
     overrides?: Partial<AgentSessionConfig>,
-    options?: { rehydrateFromDisk?: boolean },
+    options?: { rehydrateFromDisk?: boolean; workspaceId?: string },
   ): Promise<ManagedAgent> {
     this.assertAcceptingAgentRegistrations();
     let existing = this.requireSessionAgent(agentId);
@@ -1666,6 +1748,8 @@ export class AgentManager {
       existing = this.requireSessionAgent(agentId);
     }
     const rehydrateFromDisk = options?.rehydrateFromDisk ?? false;
+    // 移动会话时归属已经写进记录，本次重建要用新值，不能沿用旧的内存状态。
+    const workspaceId = resolveReloadWorkspaceId(existing.workspaceId, options);
     const preservedHistoryPrimed = existing.historyPrimed;
     const preservedLastUsage = existing.lastUsage;
     const preservedLastError = existing.lastError;
@@ -1693,7 +1777,7 @@ export class AgentManager {
       {
         reason: "refresh",
         purpose: "interactive",
-        workspaceId: existing.workspaceId,
+        workspaceId,
         title: await this.resolveInitialPersistedTitle(agentId, existing.config, null),
         labels: existing.labels,
       },
@@ -1738,7 +1822,7 @@ export class AgentManager {
       handedToRegistration = true;
       return this.registerSession(session, storedConfig, agentId, {
         labels: existing.labels,
-        workspaceId: existing.workspaceId,
+        workspaceId,
         owner: existing.owner,
         createdAt: existing.createdAt,
         updatedAt: existing.updatedAt,

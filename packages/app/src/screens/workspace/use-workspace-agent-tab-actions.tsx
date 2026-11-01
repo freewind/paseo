@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useToast } from "@/contexts/toast-context";
 import { useHostFeature } from "@/runtime/host-features";
+import { useAgentTransferWorkspace } from "@/screens/workspace/use-agent-transfer-workspace";
 import type { TFunction } from "i18next";
 import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
 import type { ToastApi } from "@/components/toast-host";
@@ -134,6 +135,11 @@ export interface WorkspaceAgentTabActions {
   onCopyConversationMarkdown: (agentId: string) => Promise<void>;
   onCopyAgentAsNew: (agentId: string) => Promise<void>;
   canCloneAgent: boolean;
+  /** 只在宿主声明 agentTransferWorkspace 时出现。 */
+  onMoveAgentToWorkspace?: (agentId: string) => void;
+  canMoveAgentToWorkspace: boolean;
+  /** 由持有这个 hook 的列表渲染一次；选择移动目标。 */
+  transferWorkspaceModal: ReactElement | null;
   onDeleteAgent: (agentId: string) => Promise<void>;
   onReloadAgent: (agentId: string) => Promise<void>;
   onRenameTab: (tab: WorkspaceTabDescriptor) => void;
@@ -228,6 +234,11 @@ export function useWorkspaceAgentTabActions({
     });
 
   const supportsCloneAgent = useHostFeature(serverId, "agentCloneSession");
+  const supportsAgentTransferWorkspace = useHostFeature(serverId, "agentTransferWorkspace");
+  const { transferWorkspaceModal, onMoveAgentToWorkspace } = useAgentTransferWorkspace({
+    serverId,
+    enabled: supportsAgentTransferWorkspace && isConnected,
+  });
   const onDeleteAgent = useCallback(
     async (agentId: string) => {
       await deleteAgent({ serverId, agentId });
@@ -419,6 +430,8 @@ export function useWorkspaceAgentTabActions({
       onCopyConversationMarkdown,
       onCopyAgentAsNew,
       canCloneAgent: supportsCloneAgent,
+      onMoveAgentToWorkspace: supportsAgentTransferWorkspace ? onMoveAgentToWorkspace : undefined,
+      canMoveAgentToWorkspace: supportsAgentTransferWorkspace,
       onDeleteAgent,
       onReloadAgent,
       onRenameTab: handleRenameTab,
@@ -429,6 +442,7 @@ export function useWorkspaceAgentTabActions({
       onMarkAsUnread,
       canMarkAsUnread,
       renameModal,
+      transferWorkspaceModal,
     }),
     [
       handleRenameTab,
@@ -442,10 +456,13 @@ export function useWorkspaceAgentTabActions({
       onCopyConversationMarkdown,
       onCopyAgentAsNew,
       supportsCloneAgent,
+      onMoveAgentToWorkspace,
+      supportsAgentTransferWorkspace,
       onDeleteAgent,
       onCopyResumeCommand,
       onReloadAgent,
       renameModal,
+      transferWorkspaceModal,
     ],
   );
 }

@@ -731,6 +731,11 @@ export type AgentConversationExportPayload = Extract<
   { type: "agent.conversation.export.response" }
 >["payload"];
 
+export type AgentTransferWorkspacePayload = Extract<
+  SessionOutboundMessage,
+  { type: "agent.transfer_workspace.response" }
+>["payload"];
+
 export type ProviderSubagentListPayload = Extract<
   SessionOutboundMessage,
   { type: "agent.provider_subagents.list.response" }
@@ -3735,6 +3740,48 @@ export class DaemonClient {
       options: { skipQueue: true },
       select: (response) =>
         response.type === "agent.conversation.export.response" &&
+        response.payload.requestId === requestId
+          ? response.payload
+          : null,
+    });
+    if (payload.error) {
+      throw new Error(payload.error);
+    }
+    return payload;
+  }
+
+  /**
+   * 把 agent 挪到另一个工作区：同一 daemon 内，target 二选一——已有工作区，或让 daemon
+   * 在指定项目根目录新建一个工作区。
+   */
+  async transferAgentWorkspace(
+    agentId: string,
+    target:
+      | { kind: "workspace"; workspaceId: string }
+      | { kind: "project"; projectId: string; title?: string },
+    options: { requestId?: string; timeout?: number } = {},
+  ): Promise<AgentTransferWorkspacePayload> {
+    const requestId = this.createRequestId(options.requestId);
+    const message = SessionInboundMessageSchema.parse({
+      type: "agent.transfer_workspace.request",
+      agentId,
+      requestId,
+      ...(target.kind === "workspace"
+        ? { targetWorkspaceId: target.workspaceId }
+        : {
+            newWorkspace: {
+              projectId: target.projectId,
+              ...(target.title ? { title: target.title } : {}),
+            },
+          }),
+    });
+    const payload = await this.sendRequest({
+      requestId,
+      message,
+      timeout: options.timeout,
+      options: { skipQueue: true },
+      select: (response) =>
+        response.type === "agent.transfer_workspace.response" &&
         response.payload.requestId === requestId
           ? response.payload
           : null,
