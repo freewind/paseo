@@ -181,6 +181,7 @@ import {
 import { setupAutoArchiveOnMerge } from "./auto-archive-on-merge/index.js";
 import { wrapSessionMessage, type SessionOutboundMessage } from "./messages.js";
 import { AgentMemoStore } from "./agent/agent-memo-store.js";
+import { NavigationStateStore } from "./navigation/navigation-state-store.js";
 import type { TerminalManager } from "../terminal/terminal-manager.js";
 import { startWorkerTerminalManager } from "../terminal/worker-terminal-manager.js";
 import { applyTerminalAgentHookSetting } from "../terminal/agent-hooks/terminal-agent-hook-setting.js";
@@ -1817,6 +1818,8 @@ export async function createPaseoDaemon(
 
             const agentMemoStore = new AgentMemoStore(config.paseoHome, logger);
             await agentMemoStore.initialize();
+            const navigationStateStore = new NavigationStateStore(config.paseoHome, logger);
+            await navigationStateStore.initialize();
             wsServer = new VoiceAssistantWebSocketServer(
               httpServer,
               logger,
@@ -1891,6 +1894,7 @@ export async function createPaseoDaemon(
               orchestrationSkills,
               workspaceLabelService,
               agentMemoStore,
+              navigationStateStore,
             );
             pluginRuntime.bindPaseoSessionHost(wsServer);
             await pluginRuntime.start();

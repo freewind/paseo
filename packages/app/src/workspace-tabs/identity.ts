@@ -191,6 +191,20 @@ function recordsShallowEqual(
   return true;
 }
 
+/** 是否算同一个位置：两个空白 tab 视为同一处（回放重建空白 tab 后会换实例 id），其余按目标身份比较。 */
+export function workspaceTabPositionsEqual(
+  left: WorkspaceTabTarget | null,
+  right: WorkspaceTabTarget | null,
+): boolean {
+  if (!left || !right) {
+    return !left && !right;
+  }
+  if (left.kind === "new_tab" && right.kind === "new_tab") {
+    return true;
+  }
+  return workspaceTabTargetsEqual(left, right);
+}
+
 export function buildDeterministicWorkspaceTabId(target: WorkspaceTabTarget): string {
   if (target.kind === "new_tab") {
     throw new Error("New tabs do not have deterministic target identities");

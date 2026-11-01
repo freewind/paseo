@@ -102,6 +102,27 @@ store-ready protected group so a cold host deep link can survive daemon startup.
 Do not collapse this topology with a catch-all, `getId`, or
 `dangerouslySingular` workaround.
 
+## Navigation History
+
+The sidebar's top row holds recent visits, Back and Forward
+(`components/sidebar/sidebar-back-row.tsx`). Back and Forward walk their own
+history, not the route stack: an entry is a pathname plus the focused workspace
+tab (`stores/navigation-history-store.ts`), so switching Chat inside a workspace
+is a step even though the pathname does not change. Only main agent chats are
+recorded; files, terminals, blank tabs, drafts and provider-subagent panels are
+dropped in `recordNavigation`, and the recent visits list uses the same rule.
+
+`navigation/navigation-history-bridge.tsx` (mounted once in the root layout)
+observes rendered state and replays a Back/Forward target through
+`navigateToWorkspace()`. A replay holds new observations until the target appears
+(2s timeout), and a jump after Back truncates the forward branch like a browser.
+The daemon stores recent visits globally and one stack per browser device key;
+restore replays the stored cursor, but waits for a host route and layout
+hydration before navigating. Sync is web-only (`isWeb` gate in
+`navigation-state-sync.ts`): on iOS and Android a restart starts with an empty
+history and does not read other clients' recent visits. The Android system Back
+button still pops the route stack and is not part of this history.
+
 ## Agent Targets
 
 Notifications and agent URLs name a host and agent. Both use

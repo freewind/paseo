@@ -1482,6 +1482,30 @@ export function revealTargetInLayout(input: CreateTabInLayoutInput): OpenTabInLa
 }
 
 /**
+ * 聚焦调用方记住的那个 tab 实例。实例优先于记住的目标：记录之后 tab 被改了目标
+ * （草稿转成了 agent）也仍然是用户当时看的那个。实例不存在时返回 null。
+ */
+export function revealTabInstanceInLayout(input: {
+  layout: WorkspaceLayout;
+  tabId: string;
+  placement: WorkspaceTabPlacement;
+}): OpenTabInLayoutResult | null {
+  const layout = asInternalLayout(input.layout);
+  const existingTab = collectAllTabs(layout.root).find((tab) => tab.tabId === input.tabId);
+  if (!existingTab) {
+    return null;
+  }
+  return {
+    tabId: existingTab.tabId,
+    layout: revealExistingTab({
+      layout: input.layout,
+      tabId: existingTab.tabId,
+      placement: input.placement,
+    }),
+  };
+}
+
+/**
  * Brings an already-open tab to the user. Only an explicit pane-local placement
  * relocates it; every other open finds it where the user last put it.
  */

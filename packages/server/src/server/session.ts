@@ -142,6 +142,7 @@ import type { StoredAgentRecord } from "./agent/agent-storage.js";
 import { resolveTransferWorkspaceTarget } from "./agent/transfer-workspace-target.js";
 import type { AgentStorage } from "./agent/agent-storage.js";
 import type { AgentMemoStore } from "./agent/agent-memo-store.js";
+import type { NavigationStateStore } from "./navigation/navigation-state-store.js";
 import {
   ImportSessionsRequestError,
   importProviderSession,
@@ -481,6 +482,7 @@ export interface SessionOptions {
   agentManager: AgentManager;
   agentStorage: AgentStorage;
   agentMemoStore: AgentMemoStore;
+  navigationStateStore: NavigationStateStore;
   messageReceipts: Pick<MessageReceipts, "send">;
   agentMessages: AgentMessageDelivery;
   creationService: Pick<CreationService, "create" | "subscribe">;
@@ -765,6 +767,7 @@ export class Session {
   private agentManager: AgentManager;
   private readonly agentStorage: AgentStorage;
   private readonly agentMemoStore: AgentMemoStore;
+  private readonly navigationStateStore: NavigationStateStore;
   private readonly projectRegistry: ProjectRegistry;
   private readonly workspaceRegistry: WorkspaceRegistry;
   private readonly agentDirectory: AgentDirectory;
@@ -953,6 +956,7 @@ export class Session {
     this.agentManager = agentManager;
     this.agentStorage = agentStorage;
     this.agentMemoStore = options.agentMemoStore;
+    this.navigationStateStore = options.navigationStateStore;
     this.projectRegistry = projectRegistry;
     this.workspaceRegistry = workspaceRegistry;
     this.directorySync = resolveDirectorySync(directorySync);
@@ -2799,10 +2803,26 @@ export class Session {
     }
   }
 
+  /** 导航状态请求单独分发：它们和会话时间线无关，塞进同一个 switch 只会让复杂度超限。 */
+  private dispatchNavigationStateMessage(msg: SessionInboundMessage): Promise<void> | undefined {
+    switch (msg.type) {
+      case "navigation.state.get.request":
+        return this.handleNavigationStateGetRequest(msg);
+      case "navigation.state.set.request":
+        return this.handleNavigationStateSetRequest(msg);
+      default:
+        return undefined;
+    }
+  }
+
   private dispatchAgentTimelineMessage(
     msg: SessionInboundMessage,
     source?: object,
   ): Promise<void> | undefined {
+    const navigation = this.dispatchNavigationStateMessage(msg);
+    if (navigation) {
+      return navigation;
+    }
     switch (msg.type) {
       case "fetch_agent_timeline_request":
         return this.handleFetchAgentTimelineRequest(msg, source);
@@ -7984,6 +8004,51 @@ export class Session {
   /**
    * 每条回复都带全量列表，客户端按替换对齐；其他客户端在下一次 agent 拉取时看到变化。
    */
+  private async handleNavigationStateGetRequest(
+    msg: Extract<SessionInboundMessage, { type: "navigation.state.get.request" }>,
+  ): Promise<void> {
+    try {
+      this.emit({
+        type: "navigation.state.get.response",
+        payload: {
+          requestId: msg.requestId,
+          state: this.navigationStateStore.get(msg.deviceKey),
+          error: null,
+        },
+      });
+    } catch (error) {
+      this.emit({
+        type: "navigation.state.get.response",
+        payload: {
+          requestId: msg.requestId,
+          state: { recentVisits: [], stack: null },
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+    }
+  }
+
+  private async handleNavigationStateSetRequest(
+    msg: Extract<SessionInboundMessage, { type: "navigation.state.set.request" }>,
+  ): Promise<void> {
+    try {
+      const state = await this.navigationStateStore.set(msg.deviceKey, msg.state);
+      this.emit({
+        type: "navigation.state.set.response",
+        payload: { requestId: msg.requestId, state, error: null },
+      });
+    } catch (error) {
+      this.emit({
+        type: "navigation.state.set.response",
+        payload: {
+          requestId: msg.requestId,
+          state: { recentVisits: [], stack: null },
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+    }
+  }
+
   private async handleAgentMemoAddRequest(
     msg: Extract<SessionInboundMessage, { type: "agent.memo.add.request" }>,
   ): Promise<void> {

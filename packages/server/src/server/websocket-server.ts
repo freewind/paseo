@@ -25,6 +25,7 @@ import type { AgentManager, AgentMetricsSnapshot } from "./agent/agent-manager.j
 import type { AgentStorage } from "./agent/agent-storage.js";
 import type { DownloadTokenStore } from "./file-download/token-store.js";
 import { AgentMemoStore } from "./agent/agent-memo-store.js";
+import { NavigationStateStore } from "./navigation/navigation-state-store.js";
 import type { TerminalManager } from "../terminal/terminal-manager.js";
 import type pino from "pino";
 import type { ProjectRegistry, WorkspaceRegistry } from "./workspace-registry.js";
@@ -553,9 +554,19 @@ function resolveAgentMemoStore(
   return injected ?? new AgentMemoStore(paseoHome, logger);
 }
 
+/** 注入的 store 优先；测试直接构造服务器时用一个未初始化的本地 store。 */
+function resolveNavigationStateStore(
+  injected: NavigationStateStore | undefined,
+  paseoHome: string,
+  logger: pino.Logger,
+): NavigationStateStore {
+  return injected ?? new NavigationStateStore(paseoHome, logger);
+}
+
 export class VoiceAssistantWebSocketServer {
   private readonly logger: pino.Logger;
   private readonly agentMemoStore: AgentMemoStore;
+  private readonly navigationStateStore: NavigationStateStore;
   private readonly wss: WebSocketServer;
   private readonly hostLinks = new Map<WebSocketLike, DaemonLinkEndpoint>();
   private readonly pendingConnections: Map<WebSocketLike, PendingConnection> = new Map();
@@ -700,8 +711,14 @@ export class VoiceAssistantWebSocketServer {
     orchestrationSkills?: SessionOptions["orchestrationSkills"],
     workspaceLabelService?: WorkspaceLabelService,
     agentMemoStore?: AgentMemoStore,
+    navigationStateStore?: NavigationStateStore,
   ) {
     this.agentMemoStore = resolveAgentMemoStore(agentMemoStore, paseoHome, logger);
+    this.navigationStateStore = resolveNavigationStateStore(
+      navigationStateStore,
+      paseoHome,
+      logger,
+    );
     this.logger = logger.child({ module: "websocket-server" });
     this.workspaceSetupRuntime = workspaceSetupRuntime;
     this.advertiseDaemonStatusRpc = wsConfig.daemonStatusRpc !== false;
@@ -1614,6 +1631,7 @@ export class VoiceAssistantWebSocketServer {
       agentManager: this.agentManager,
       agentStorage: this.agentStorage,
       agentMemoStore: this.agentMemoStore,
+      navigationStateStore: this.navigationStateStore,
       messageReceipts: this.messageReceipts,
       agentMessages: this.agentMessages,
       creationService: this.creationService,
@@ -2086,6 +2104,8 @@ export class VoiceAssistantWebSocketServer {
         conversationExport: true,
         // COMPAT(quickReplies): added in v0.11.0, remove gate after 2027-10-25.
         quickReplies: true,
+        // COMPAT(navigationState): added in v0.11.0, remove gate after 2027-05-05.
+        navigationState: true,
         // COMPAT(agentMemos): added in v0.11.0, remove gate after 2027-05-05.
         agentMemos: true,
         // COMPAT(agentMemoCompletion): added in v0.11.0, remove gate after 2027-05-05.

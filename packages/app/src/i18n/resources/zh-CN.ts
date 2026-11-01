@@ -1272,6 +1272,12 @@ export const zhCN: TranslationResources = {
     },
   },
   sidebar: {
+    recentVisits: {
+      trigger: "最近访问",
+      current: "当前",
+      subagent: "子代理",
+      empty: "还没有最近访问",
+    },
     statusGroupAccessibility: "{{label}} 分组",
     statusBucket: {
       needsInput: "需要输入",

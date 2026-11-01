@@ -18,6 +18,7 @@ import {
 import { CreationClient } from "./creation/index.js";
 import type { CreationSnapshot } from "@getpaseo/protocol/messages";
 import type { AgentMemo } from "@getpaseo/protocol/messages";
+import type { NavigationState } from "@getpaseo/protocol/messages";
 import type { ImageAttachment } from "@getpaseo/protocol/messages";
 
 export interface AgentMemoOperationPayload {
@@ -3693,6 +3694,39 @@ export class DaemonClient {
     }
 
     return payload;
+  }
+
+  /**
+   * 侧栏的前进/后退栈与最近访问。存在 daemon 上，刷新后还在；`state.stack` 为 null
+   * 表示这台设备还没有栈。
+   */
+  async getNavigationState(
+    deviceKey: string,
+    options?: { requestId?: string; timeout?: number },
+  ): Promise<NavigationState> {
+    const payload = await this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "navigation.state.get.request", deviceKey },
+      responseType: "navigation.state.get.response",
+      timeout: options?.timeout,
+    });
+    if (payload.error) throw new Error(payload.error);
+    return payload.state;
+  }
+
+  async setNavigationState(
+    deviceKey: string,
+    state: NavigationState,
+    options?: { requestId?: string; timeout?: number },
+  ): Promise<NavigationState> {
+    const payload = await this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "navigation.state.set.request", deviceKey, state },
+      responseType: "navigation.state.set.response",
+      timeout: options?.timeout,
+    });
+    if (payload.error) throw new Error(payload.error);
+    return payload.state;
   }
 
   async addAgentMemo(
