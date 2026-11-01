@@ -7,6 +7,7 @@ import {
   ArrowRightToLine,
   Copy,
   Circle,
+  Trash2,
   CopyX,
   Ellipsis,
   ExternalLink,
@@ -35,6 +36,7 @@ const ThemedCopyX = withUnistyles(CopyX);
 const ThemedPencil = withUnistyles(Pencil);
 const ThemedExternalLink = withUnistyles(ExternalLink);
 const ThemedCircle = withUnistyles(Circle);
+const ThemedTrash2 = withUnistyles(Trash2);
 const ThemedFolderOpen = withUnistyles(FolderOpen);
 const ThemedX = withUnistyles(X);
 
@@ -72,6 +74,8 @@ function MobileTabDropdownMenuItem({
         return <ThemedFolderOpen size={16} uniProps={mutedColorMapping} />;
       case "circle":
         return <ThemedCircle size={16} uniProps={mutedColorMapping} />;
+      case "trash-2":
+        return <ThemedTrash2 size={16} uniProps={mutedColorMapping} />;
       case "x":
         return <ThemedX size={16} uniProps={mutedColorMapping} />;
       default:

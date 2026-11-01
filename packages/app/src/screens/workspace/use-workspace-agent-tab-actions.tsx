@@ -12,6 +12,7 @@ import { canMarkAgentUnread } from "@/workspace/agent-unread-policy";
 import { useHostRuntimeIsConnected } from "@/runtime/host-runtime";
 import { resolveCloseAgentTabPolicy } from "@/subagents/close-tab-policy";
 import { useArchiveAgent } from "@/hooks/use-archive-agent";
+import { useDeleteAgent } from "@/hooks/use-delete-agent";
 import { useSessionStore } from "@/stores/session-store";
 import { useWorkspaceLayoutStore } from "@/stores/workspace-layout-store";
 import { confirmDialog } from "@/utils/confirm-dialog";
@@ -132,6 +133,7 @@ export interface WorkspaceAgentTabActions {
   onCopyAgentId: (agentId: string) => Promise<void>;
   onCopyAgentAsNew: (agentId: string) => Promise<void>;
   canCloneAgent: boolean;
+  onDeleteAgent: (agentId: string) => Promise<void>;
   onReloadAgent: (agentId: string) => Promise<void>;
   onRenameTab: (tab: WorkspaceTabDescriptor) => void;
   onCloseTab: (tabId: string) => Promise<void>;
@@ -162,6 +164,7 @@ export function useWorkspaceAgentTabActions({
   const queryClient = useQueryClient();
   const isConnected = useHostRuntimeIsConnected(serverId);
   const { archiveAgent } = useArchiveAgent();
+  const { deleteAgent } = useDeleteAgent();
   const { closeTab } = useCloseTabs();
   const client = useSessionStore((state) => state.sessions[serverId]?.client ?? null);
   const closeWorkspaceTab = useWorkspaceLayoutStore((state) => state.closeTab);
@@ -223,6 +226,12 @@ export function useWorkspaceAgentTabActions({
   });
 
   const supportsCloneAgent = useHostFeature(serverId, "agentCloneSession");
+  const onDeleteAgent = useCallback(
+    async (agentId: string) => {
+      await deleteAgent({ serverId, agentId });
+    },
+    [deleteAgent, serverId],
+  );
   const onCopyAgentAsNew = useCallback(
     async (agentId: string) => {
       await copyAgentAsNewTab({
@@ -407,6 +416,7 @@ export function useWorkspaceAgentTabActions({
       onCopyAgentId,
       onCopyAgentAsNew,
       canCloneAgent: supportsCloneAgent,
+      onDeleteAgent,
       onReloadAgent,
       onRenameTab: handleRenameTab,
       onCloseTab,
@@ -428,6 +438,7 @@ export function useWorkspaceAgentTabActions({
       onCopyAgentId,
       onCopyAgentAsNew,
       supportsCloneAgent,
+      onDeleteAgent,
       onCopyResumeCommand,
       onReloadAgent,
       renameModal,

@@ -21,6 +21,7 @@ import { Archive, ChevronRight } from "lucide-react-native";
 import { useProviderIcon } from "@/components/provider-icons";
 import { navigateToAgent } from "@/utils/navigate-to-agent";
 import { useArchiveAgent } from "@/hooks/use-archive-agent";
+import { useDeleteAgent } from "@/hooks/use-delete-agent";
 import { HighlightedText } from "@/components/ui/highlighted-text";
 import { StatusBadge, type StatusBadgeVariant } from "@/components/ui/status-badge";
 import { findHighlightRanges } from "@/components/ui/highlighted-text-segments";
@@ -356,6 +357,7 @@ export function AgentList({
   const [actionAgent, setActionAgent] = useState<AggregatedAgent | null>(null);
   const isMobile = useIsCompactFormFactor();
   const { archiveAgent } = useArchiveAgent();
+  const { deleteAgent, isDeletingAgent } = useDeleteAgent();
 
   const actionClient = useSessionStore((state) =>
     actionAgent?.serverId ? (state.sessions[actionAgent.serverId]?.client ?? null) : null,
@@ -405,6 +407,15 @@ export function AgentList({
   const handleCloseActionSheet = useCallback(() => {
     setActionAgent(null);
   }, []);
+
+  // 确认与失败提示都由 hook 负责，这里只把当前这一行的身份交出去。
+  const handleDeleteAgent = useCallback(() => {
+    if (!actionAgent || !actionClient) {
+      return;
+    }
+    void deleteAgent({ serverId: actionAgent.serverId, agentId: actionAgent.id });
+    setActionAgent(null);
+  }, [actionAgent, actionClient, deleteAgent]);
 
   const handleArchiveAgent = useCallback(() => {
     if (!actionAgent || !actionClient) {
@@ -546,6 +557,14 @@ export function AgentList({
                 <Text style={sheetArchiveTextStyle}>{t("agentList.archiveSheet.archive")}</Text>
               </Pressable>
             </View>
+            <Pressable
+              disabled={isActionDaemonUnavailable || isDeletingAgent}
+              style={[styles.sheetButton, styles.sheetDeleteButton]}
+              onPress={handleDeleteAgent}
+              testID="agent-action-delete"
+            >
+              <Text style={styles.sheetDeleteText}>{t("agentList.deleteSheet.delete")}</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -740,6 +759,14 @@ const styles = StyleSheet.create((theme) => ({
   },
   sheetArchiveTextDisabled: {
     opacity: 0.5,
+  },
+  sheetDeleteButton: {
+    backgroundColor: theme.colors.destructive,
+  },
+  sheetDeleteText: {
+    color: theme.colors.destructiveForeground,
+    fontWeight: theme.fontWeight.semibold,
+    fontSize: theme.fontSize.base,
   },
   sheetCancelButton: {
     backgroundColor: theme.colors.surface1,

@@ -17,6 +17,7 @@ import {
   ArrowLeftToLine,
   ArrowRightToLine,
   Circle,
+  Trash2,
   Copy,
   ExternalLink,
   FolderOpen,
@@ -137,6 +138,7 @@ const ThemedCopyX = withUnistyles(CopyX);
 const ThemedPencil = withUnistyles(Pencil);
 const ThemedExternalLink = withUnistyles(ExternalLink);
 const ThemedCircle = withUnistyles(Circle);
+const ThemedTrash2 = withUnistyles(Trash2);
 const ThemedFolderOpen = withUnistyles(FolderOpen);
 const ThemedPlus = withUnistyles(Plus);
 const ThemedColumns2 = withUnistyles(Columns2);
@@ -448,6 +450,8 @@ function TabContextMenuItem({
         return <ThemedFolderOpen size={16} uniProps={mutedColorMapping} />;
       case "circle":
         return <ThemedCircle size={16} uniProps={mutedColorMapping} />;
+      case "trash-2":
+        return <ThemedTrash2 size={16} uniProps={mutedColorMapping} />;
       case "x":
         return <ThemedX size={16} uniProps={mutedColorMapping} />;
       default:
@@ -547,6 +551,7 @@ export interface WorkspaceDesktopTabsRowProps {
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
   onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
+  onDeleteAgent?: (agentId: string) => Promise<void> | void;
   canCloneAgent?: boolean;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
@@ -1049,6 +1054,7 @@ function ResolvedWorkspaceDesktopTabsRow({
   onCopyResumeCommand,
   onCopyAgentId,
   onCopyAgentAsNew,
+  onDeleteAgent,
   canCloneAgent,
   onCopyTerminalId,
   onCopyFilePath,
@@ -1145,6 +1151,8 @@ function ResolvedWorkspaceDesktopTabsRow({
       reloadAgent: t("workspace.tabs.menu.reloadAgent"),
       reloadAgentTooltip: t("workspace.tabs.menu.reloadAgentTooltip"),
       markAsUnread: t("workspace.tabs.menu.markAsUnread"),
+      deleteAgent: t("workspace.tabs.menu.deleteAgent"),
+      deleteAgentTooltip: t("workspace.tabs.menu.deleteAgentTooltip"),
       close: t("workspace.tabs.menu.close"),
     }),
     [t],
@@ -1327,6 +1335,7 @@ function ResolvedWorkspaceDesktopTabsRow({
           onCopyResumeCommand={onCopyResumeCommand}
           onCopyAgentId={onCopyAgentId}
           onCopyAgentAsNew={onCopyAgentAsNew}
+          onDeleteAgent={onDeleteAgent}
           canCloneAgent={canCloneAgent}
           onCopyTerminalId={onCopyTerminalId}
           onCopyFilePath={onCopyFilePath}
@@ -1363,6 +1372,7 @@ function ResolvedWorkspaceDesktopTabsRow({
       onCloseTabsToRight,
       onCopyAgentId,
       onCopyAgentAsNew,
+      onDeleteAgent,
       canCloneAgent,
       onCopyTerminalId,
       onCopyFilePath,
@@ -1491,6 +1501,7 @@ function ResolvedDesktopTabChip({
   onCopyResumeCommand,
   onCopyAgentId,
   onCopyAgentAsNew,
+  onDeleteAgent,
   canCloneAgent,
   onCopyTerminalId,
   onCopyFilePath,
@@ -1522,6 +1533,7 @@ function ResolvedDesktopTabChip({
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
   onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
+  onDeleteAgent?: (agentId: string) => Promise<void> | void;
   canCloneAgent?: boolean;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
@@ -1556,6 +1568,7 @@ function ResolvedDesktopTabChip({
         onCopyResumeCommand,
         onCopyAgentId,
         onCopyAgentAsNew,
+        onDeleteAgent,
         canCloneAgent,
         onCopyTerminalId,
         onCopyFilePath,
@@ -1579,6 +1592,7 @@ function ResolvedDesktopTabChip({
       onCloseTabsToRight,
       onCopyAgentId,
       onCopyAgentAsNew,
+      onDeleteAgent,
       canCloneAgent,
       onCopyTerminalId,
       onCopyFilePath,

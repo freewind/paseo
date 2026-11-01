@@ -220,6 +220,45 @@ export function markAgentArchivedInHistoryCache(
   );
 }
 
+export function removeAgentFromHistoryPayload<T extends AgentHistoryQueryData | undefined>(
+  payload: T,
+  input: AgentLifecycleKeyInput,
+): T {
+  if (!payload || !Array.isArray(payload.pages) || !input.agentId) {
+    return payload;
+  }
+
+  let changed = false;
+  const pages = payload.pages.map((page) => {
+    if (!Array.isArray(page.agents)) {
+      return page;
+    }
+    const agents = page.agents.filter((agent) => {
+      const matches =
+        agent.id === input.agentId && (agent.serverId == null || agent.serverId === input.serverId);
+      if (matches) changed = true;
+      return !matches;
+    });
+    return agents.length === page.agents.length ? page : { ...page, agents };
+  });
+
+  return changed ? ({ ...payload, pages } as T) : payload;
+}
+
+export function removeAgentFromHistoryCache(
+  queryClient: QueryClient,
+  input: AgentLifecycleKeyInput,
+): void {
+  queryClient.setQueryData<AgentHistoryQueryData | undefined>(
+    agentHistoryQueryKey(input.serverId),
+    (current) => removeAgentFromHistoryPayload(current, input),
+  );
+  queryClient.setQueriesData<AgentHistoryQueryData | undefined>(
+    { queryKey: allAgentHistoryQueryRootKey() },
+    (current) => removeAgentFromHistoryPayload(current, input),
+  );
+}
+
 export interface AgentCacheSnapshot {
   sidebarAgentsList: AgentsListQueryData | undefined;
   allAgents: AgentsListQueryData | undefined;
