@@ -49,9 +49,16 @@ import {
 import { DropdownTrigger } from "@/components/ui/dropdown-trigger";
 import { ComboboxTrigger } from "@/components/ui/combobox-trigger";
 import { SidebarHeaderRow } from "@/components/sidebar/sidebar-header-row";
+import { SearchField } from "@/components/ui/search-field";
+import {
+  settingsSectionsMatching,
+  settingsTextMatches,
+} from "@/screens/settings/settings-search-index";
+import { useSettingsSearchStore } from "@/stores/settings-search-store";
 import { HostPicker as SharedHostPicker } from "@/components/hosts/host-picker";
 import { HostStatusDot } from "@/components/host-status-dot";
 import { SettingsSection } from "@/components/settings/headings/settings-section";
+import { SettingsSearchSectionProvider } from "@/components/settings";
 import { AppearanceSection } from "@/screens/settings/appearance/appearance-section";
 import { OpenLocationSection } from "@/screens/settings/open-location/open-location-section";
 import { TerminalSection } from "@/screens/settings/terminal/terminal-section";
@@ -964,7 +971,7 @@ function SettingsSidebar({
   layout,
 }: SettingsSidebarProps) {
   const { theme, rt } = useUnistyles();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { settings: appSettings } = useAppSettings();
   const hostSectionItems = appSettings.disableUncommonFeatures
     ? HOST_SECTION_ITEMS.filter((item) => item.id !== "usage" && item.id !== "plugins")
@@ -997,10 +1004,38 @@ function SettingsSidebar({
   if (view.kind === "project") selectedHostSection = "projects";
   if (view.kind === "plugin") selectedHostSection = "plugins";
 
+  // 搜索只收窄 app 分区：待解决的是 app 设置太多，与 host 无关。查询存在 store 里，
+  // 选中结果会导航并重挂载本屏，组件内 state 一重置就把用户丢回完整列表。
+  const searchQuery = useSettingsSearchStore((state) => state.query);
+  const setSearchQuery = useSettingsSearchStore((state) => state.setQuery);
+  const isSearching = searchQuery.trim().length > 0;
+  // 索引在搜索时才解析文案，所以切语言要重算命中；否则旧语言的分区会留在列表里。
+  const matchingSections = useMemo(
+    () => (isSearching ? settingsSectionsMatching(searchQuery, i18n.language) : null),
+    [isSearching, searchQuery, i18n.language],
+  );
+  // 分区标题命中也算：侧栏显示的正是标题，只按行文案筛会让搜到的项看不见。
+  const visibleItems = useMemo(() => {
+    if (!matchingSections) return items;
+    return items.filter(
+      (item) =>
+        matchingSections.has(item.id) || settingsTextMatches(searchQuery, [t(item.labelKey)]),
+    );
+  }, [items, matchingSections, searchQuery, t]);
+
   const sidebarBody = (
     <>
-      <SidebarGroup label={t("settings.groups.app")}>
-        {items.map((item) => (
+      <View style={sidebarStyles.searchRow}>
+        <SearchField
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder={t("settings.search.placeholder")}
+          clearAccessibilityLabel={t("settings.search.clear")}
+          testID="settings-sidebar-search"
+        />
+      </View>
+      <SidebarGroup label={isSearching ? t("settings.search.results") : t("settings.groups.app")}>
+        {visibleItems.map((item) => (
           <SidebarSectionButton
             key={item.id}
             itemId={item.id}
@@ -1010,6 +1045,9 @@ function SettingsSidebar({
             onSelect={onSelectSection}
           />
         ))}
+        {isSearching && visibleItems.length === 0 ? (
+          <Text style={sidebarStyles.searchEmpty}>{t("settings.search.noResults")}</Text>
+        ) : null}
       </SidebarGroup>
       {hasHosts ? (
         <SidebarGroup label={t("settings.groups.host")}>
@@ -1371,35 +1409,40 @@ export default function SettingsScreen({ view, openAddHostIntent = null }: Setti
     if (view.kind === "section") {
       const item = SIDEBAR_SECTION_ITEMS.find((candidate) => candidate.id === view.section);
       if (!item || !isSectionAvailable(item, isDesktopApp)) return null;
-      switch (view.section) {
-        case "general":
-          return (
-            <>
-              <GeneralSection settings={settings} handleLanguageChange={handleLanguageChange} />
-              <SendingSection />
-              {isDesktopApp ? <OpenLocationSection /> : null}
-            </>
-          );
-        case "diagnostics":
-          return (
-            <DiagnosticsSection
-              voiceAudioEngine={voiceAudioEngine}
-              isPlaybackTestRunning={isPlaybackTestRunning}
-              playbackTestResult={playbackTestResult}
-              handlePlaybackTest={handlePlaybackTest}
-            />
-          );
-        case "about":
-          return (
-            <AboutSection
-              appVersion={appVersion}
-              appVersionText={appVersionText}
-              isDesktopApp={isDesktopApp}
-            />
-          );
-        default:
-          return item.Content ? <item.Content /> : null;
-      }
+      const body = ((): ReactNode => {
+        switch (view.section) {
+          case "general":
+            return (
+              <>
+                <GeneralSection settings={settings} handleLanguageChange={handleLanguageChange} />
+                <SendingSection />
+                {isDesktopApp ? <OpenLocationSection /> : null}
+              </>
+            );
+          case "diagnostics":
+            return (
+              <DiagnosticsSection
+                voiceAudioEngine={voiceAudioEngine}
+                isPlaybackTestRunning={isPlaybackTestRunning}
+                playbackTestResult={playbackTestResult}
+                handlePlaybackTest={handlePlaybackTest}
+              />
+            );
+          case "about":
+            return (
+              <AboutSection
+                appVersion={appVersion}
+                appVersionText={appVersionText}
+                isDesktopApp={isDesktopApp}
+              />
+            );
+          default:
+            return item.Content ? <item.Content /> : null;
+        }
+      })();
+      return (
+        <SettingsSearchSectionProvider section={view.section}>{body}</SettingsSearchSectionProvider>
+      );
     }
     return null;
   })();
@@ -1586,6 +1629,18 @@ const sidebarStyles = StyleSheet.create((theme) => ({
   },
   scrollBody: {
     flex: 1,
+  },
+  // 与 group 的内边距一致，搜索框和分区岛左边对齐。
+  searchRow: {
+    paddingHorizontal: theme.spacing[2],
+    paddingTop: theme.spacing[2],
+    paddingBottom: theme.spacing[1],
+  },
+  searchEmpty: {
+    color: theme.colors.foregroundMuted,
+    fontSize: { xs: theme.fontSize.lg, md: theme.fontSize.base },
+    paddingHorizontal: { xs: theme.spacing[4], md: theme.spacing[2] },
+    paddingVertical: theme.spacing[1],
   },
   sidebarDragArea: {
     position: "relative",

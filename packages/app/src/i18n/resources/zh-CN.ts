@@ -2205,6 +2205,12 @@ export const zhCN: TranslationResources = {
     },
   },
   settings: {
+    search: {
+      placeholder: "搜索设置",
+      results: "结果",
+      noResults: "没有匹配的设置",
+      clear: "清除搜索",
+    },
     title: "设置",
     loading: "正在加载设置...",
     groups: {

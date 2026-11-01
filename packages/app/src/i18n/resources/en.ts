@@ -2240,6 +2240,12 @@ export const en = {
     },
   },
   settings: {
+    search: {
+      placeholder: "Search settings",
+      results: "Results",
+      noResults: "No matching settings",
+      clear: "Clear search",
+    },
     title: "Settings",
     loading: "Loading settings...",
     groups: {
