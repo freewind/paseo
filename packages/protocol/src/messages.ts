@@ -1997,6 +1997,28 @@ export const AgentForkRequestMessageSchema = z.object({
   requestId: z.string(),
 });
 
+/**
+ * 完整复制：daemon 把源 agent 的整个对话复制到一个新的 agent id。副本开一个全新的
+ * provider 会话，历史经由 resume 带过来。
+ */
+export const AgentCloneRequestMessageSchema = z.object({
+  type: z.literal("agent.clone.request"),
+  sourceAgentId: z.string(),
+  targetWorkspace: z.enum(["same", "new"]).optional(),
+  requestId: z.string(),
+});
+
+export const AgentCloneResponseMessageSchema = z.object({
+  type: z.literal("agent.clone.response"),
+  payload: z.object({
+    requestId: z.string(),
+    sourceAgentId: z.string(),
+    newAgentId: z.string().nullable(),
+    newWorkspaceId: z.string().optional(),
+    error: z.string().nullable(),
+  }),
+});
+
 export const SetAgentModeRequestMessageSchema = z.object({
   type: z.literal("set_agent_mode_request"),
   agentId: z.string(),
@@ -3389,6 +3411,7 @@ export const SessionInboundMessageSchema = z.discriminatedUnion("type", [
   SetAgentTimelineSubscriptionRequestMessageSchema,
   AgentForkContextRequestMessageSchema,
   AgentForkRequestMessageSchema,
+  AgentCloneRequestMessageSchema,
   SetAgentModeRequestMessageSchema,
   SetAgentModelRequestMessageSchema,
   SetAgentThinkingRequestMessageSchema,
@@ -3799,6 +3822,8 @@ export const ServerInfoStatusPayloadSchema = z
         agentForkContextCursor: z.boolean().optional(),
         // COMPAT(agentForkSession): added in v0.11.0, remove gate after 2027-04-05.
         agentForkSession: z.boolean().optional(),
+        // COMPAT(agentCloneSession): added in v0.11.0, remove gate after 2027-04-05.
+        agentCloneSession: z.boolean().optional(),
         // COMPAT(providerSubagents): added in v0.1.107, remove gate after 2027-01-12.
         providerSubagents: z.boolean().optional(),
         // COMPAT(projectedSubagentTimeline): added after v0.8.0, remove gates after 2027-03-14; retain wire field.
@@ -7119,6 +7144,7 @@ export const SessionOutboundMessageSchema = z.discriminatedUnion("type", [
   AgentAttentionRequiredMessageSchema,
   AgentForkContextResponseMessageSchema,
   AgentForkResponseMessageSchema,
+  AgentCloneResponseMessageSchema,
   CancelAgentResponseMessageSchema,
   ClearAgentAttentionResponseMessageSchema,
   WorkspaceCreateResponseSchema,
@@ -7344,6 +7370,7 @@ export type AgentTimelineListPromptsResponseMessage = z.infer<
 >;
 export type AgentForkContextResponseMessage = z.infer<typeof AgentForkContextResponseMessageSchema>;
 export type AgentForkResponseMessage = z.infer<typeof AgentForkResponseMessageSchema>;
+export type AgentCloneResponseMessage = z.infer<typeof AgentCloneResponseMessageSchema>;
 export type CancelAgentResponseMessage = z.infer<typeof CancelAgentResponseMessageSchema>;
 export type SendAgentMessageResponseMessage = z.infer<typeof SendAgentMessageResponseMessageSchema>;
 export type SetVoiceModeResponseMessage = z.infer<typeof SetVoiceModeResponseMessageSchema>;
@@ -7453,6 +7480,7 @@ export type ProjectListRequestMessage = z.infer<typeof ProjectListRequestMessage
 export type FetchAgentRequestMessage = z.infer<typeof FetchAgentRequestMessageSchema>;
 export type AgentForkContextRequestMessage = z.infer<typeof AgentForkContextRequestMessageSchema>;
 export type AgentForkRequestMessage = z.infer<typeof AgentForkRequestMessageSchema>;
+export type AgentCloneRequestMessage = z.infer<typeof AgentCloneRequestMessageSchema>;
 export type SendAgentMessageRequest = z.infer<typeof SendAgentMessageRequestSchema>;
 export type WaitForFinishRequest = z.infer<typeof WaitForFinishRequestSchema>;
 export type DictationStreamStartMessage = z.infer<typeof DictationStreamStartMessageSchema>;

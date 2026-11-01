@@ -481,6 +481,25 @@ export function wrapSessionProvider(provider: AgentProvider, inner: AgentSession
   } satisfies ForwardedAgentSession;
 }
 
+/**
+ * 离线复制/分叉：内层 provider 在自己的句柄上工作，返回的句柄要换回外层 provider，
+ * 管理层才能按当前注册项恢复副本。
+ */
+function forwardSessionCopy<Input>(
+  provider: AgentProvider,
+  inner: AgentClient,
+  copy:
+    | ((handle: AgentPersistenceHandle, input: Input) => Promise<AgentPersistenceHandle>)
+    | undefined,
+): ((handle: AgentPersistenceHandle, input: Input) => Promise<AgentPersistenceHandle>) | undefined {
+  if (!copy) {
+    return undefined;
+  }
+  return async (handle, input) => ({
+    ...(await copy({ ...handle, provider: inner.provider }, input)),
+    provider,
+  });
+}
 function wrapClientProvider(
   provider: AgentProvider,
   inner: AgentClient,
@@ -494,7 +513,6 @@ function wrapClientProvider(
   const listFeatures = inner.listFeatures?.bind(inner);
   const archiveNativeSession = inner.archiveNativeSession?.bind(inner);
   const unarchiveNativeSession = inner.unarchiveNativeSession?.bind(inner);
-  const forkSession = inner.forkSession?.bind(inner);
   const configuredModelIds = [...profileModels, ...additionalModels].map((model) => model.id);
 
   return {
@@ -608,13 +626,8 @@ function wrapClientProvider(
     unarchiveNativeSession: unarchiveNativeSession
       ? async (handle) => await unarchiveNativeSession({ ...handle, provider: inner.provider })
       : undefined,
-    // 分叉出的 handle 要带外层 provider 回来，管理层才能按当前注册项恢复副本。
-    forkSession: forkSession
-      ? async (handle, input) => ({
-          ...(await forkSession({ ...handle, provider: inner.provider }, input)),
-          provider,
-        })
-      : undefined,
+    forkSession: forwardSessionCopy(provider, inner, inner.forkSession?.bind(inner)),
+    cloneSession: forwardSessionCopy(provider, inner, inner.cloneSession?.bind(inner)),
     getCatalogCacheKey: inner.getCatalogCacheKey?.bind(inner),
     isAvailable: (signal, options) => inner.isAvailable(signal, options),
     getDiagnostic: inner.getDiagnostic?.bind(inner),

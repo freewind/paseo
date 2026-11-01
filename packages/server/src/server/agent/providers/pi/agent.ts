@@ -2606,6 +2606,23 @@ export class PiRpcAgentClient implements AgentClient {
     };
   }
 
+  /** 完整复制：不给边界，fork.ts 会复制整条活跃分支。 */
+  async cloneSession(
+    handle: AgentPersistenceHandle,
+    _input: { leafEntryId?: string },
+  ): Promise<AgentPersistenceHandle> {
+    const sessionFile = handle.nativeHandle;
+    if (!sessionFile) {
+      throw new Error("Pi copy requires a native session file handle");
+    }
+    const copy = await forkPiSessionFile({ sessionFile });
+    return {
+      ...handle,
+      sessionId: copy.sessionId,
+      nativeHandle: copy.sessionFile,
+    };
+  }
+
   async resumeSession(
     handle: AgentPersistenceHandle,
     overrides?: Partial<AgentSessionConfig>,

@@ -3553,6 +3553,42 @@ export class AgentManager {
     return fork;
   }
 
+  /**
+   * 把源 agent 的完整对话复制成一个全新的 agent id：provider 复制自己持久化的活跃分支，
+   * 新 agent 恢复那份副本。源 agent、它的会话与时间线都不会被碰。只复制稳定的持久化
+   * 状态，不含正在跑的回合、排队的提示词或待确认的权限。
+   */
+  async cloneAgent(input: {
+    sourceAgentId: string;
+    /** 覆盖源的工作区，好让复制落到一个新的工作区里。 */
+    workspaceId?: string;
+  }): Promise<ManagedAgent> {
+    const source = this.requireSessionAgent(input.sourceAgentId);
+    if (isAgentBusy(source.lifecycle)) {
+      throw new Error("Cannot copy the conversation while a turn is running");
+    }
+    const handle = source.session.describePersistence();
+    if (!handle) {
+      throw new Error(`Provider '${source.provider}' has no persisted session to copy`);
+    }
+    const client = this.requireClient(source.provider);
+    if (!client.cloneSession) {
+      throw new Error(`Provider '${source.provider}' does not support copying a session`);
+    }
+
+    this.logger.info(
+      { sourceAgentId: input.sourceAgentId, provider: source.provider },
+      "agent.clone.start",
+    );
+    const copiedHandle = await client.cloneSession(handle, {});
+    const copy = await this.resumeForkedAgent(source, copiedHandle, input.workspaceId);
+    this.logger.info(
+      { sourceAgentId: input.sourceAgentId, newAgentId: copy.id, provider: source.provider },
+      "agent.clone.complete",
+    );
+    return copy;
+  }
+
   /** 用源的配置与身份恢复分叉/复制出来的持久化句柄。 */
   private async resumeForkedAgent(
     source: ActiveManagedAgent,

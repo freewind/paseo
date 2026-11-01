@@ -2839,6 +2839,8 @@ export class Session {
         return this.handleAgentForkContextRequest(msg);
       case "agent.fork.request":
         return this.handleAgentForkRequest(msg, source);
+      case "agent.clone.request":
+        return this.handleAgentCloneRequest(msg, source);
       default:
         return undefined;
     }
@@ -8284,15 +8286,7 @@ export class Session {
         error: null,
       });
     } catch (error) {
-      if (newWorkspaceId) {
-        await this.archiveWorkspaceRecord(newWorkspaceId).catch((cleanupError: unknown) => {
-          this.sessionLogger.warn(
-            { err: cleanupError, workspaceId: newWorkspaceId },
-            "Failed to archive workspace left behind by a failed fork",
-          );
-        });
-        await this.emitWorkspaceUpdateForWorkspaceId(newWorkspaceId).catch(() => undefined);
-      }
+      if (newWorkspaceId) await this.discardFailedCopyWorkspace(newWorkspaceId);
       this.sessionLogger.error(
         { err: error, sourceAgentId: msg.sourceAgentId },
         "Failed to handle agent.fork.request",
@@ -8305,8 +8299,8 @@ export class Session {
   }
 
   /**
-   * 在源 agent 的目录上再开一个工作区，让分叉跑在原来那份旁边，而不是塞进去。分叉
-   * 归到同一个项目，所以新工作区会出现在侧栏里原来那份的旁边。
+   * 在源 agent 的目录上再开一个工作区，让分叉或复制跑在原来那份旁边，而不是塞进去。
+   * 它归到同一个项目，所以新工作区会出现在侧栏里原来那份的旁边。
    */
   private async createForkWorkspace(source: ManagedAgent): Promise<string> {
     const sourceWorkspace = source.workspaceId
@@ -8321,6 +8315,73 @@ export class Session {
     await this.syncWorkspaceGitObserverForWorkspace(workspace);
     await this.emitCreatedWorkspaceUpdate(await this.describeWorkspaceRecord(workspace));
     return workspace.workspaceId;
+  }
+
+  private async handleAgentCloneRequest(
+    msg: Extract<SessionInboundMessage, { type: "agent.clone.request" }>,
+    source?: object,
+  ): Promise<void> {
+    const respond = (payload: {
+      newAgentId: string | null;
+      newWorkspaceId?: string;
+      error: string | null;
+    }) => {
+      this.emitForSource(
+        {
+          type: "agent.clone.response",
+          payload: {
+            requestId: msg.requestId,
+            sourceAgentId: msg.sourceAgentId,
+            ...payload,
+          },
+        },
+        source,
+      );
+    };
+    // 复制同样先建目标工作区才能把它交给副本；失败时归档这个残留，别让它留在侧栏。
+    let newWorkspaceId: string | undefined;
+    try {
+      const sourceAgent = await ensureAgentLoaded(msg.sourceAgentId, {
+        agentManager: this.agentManager,
+        agentStorage: this.agentStorage,
+        logger: this.sessionLogger,
+      });
+      if (msg.targetWorkspace === "new") {
+        newWorkspaceId = await this.createForkWorkspace(sourceAgent);
+      }
+      const copy = await this.agentManager.cloneAgent({
+        sourceAgentId: msg.sourceAgentId,
+        workspaceId: newWorkspaceId,
+      });
+      respond({
+        newAgentId: copy.id,
+        ...(newWorkspaceId ? { newWorkspaceId } : {}),
+        error: null,
+      });
+    } catch (error) {
+      if (newWorkspaceId) await this.discardFailedCopyWorkspace(newWorkspaceId);
+      this.sessionLogger.error(
+        { err: error, sourceAgentId: msg.sourceAgentId },
+        "Failed to handle agent.clone.request",
+      );
+      respond({
+        newAgentId: null,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * 分叉与复制都会先建好目标工作区再复制会话；复制失败时这个工作区只剩空壳，归档并广播更新。
+   */
+  private async discardFailedCopyWorkspace(workspaceId: string): Promise<void> {
+    await this.archiveWorkspaceRecord(workspaceId).catch((cleanupError: unknown) => {
+      this.sessionLogger.warn(
+        { err: cleanupError, workspaceId },
+        "Failed to archive workspace left behind by a failed copy",
+      );
+    });
+    await this.emitWorkspaceUpdateForWorkspaceId(workspaceId).catch(() => undefined);
   }
 
   private async prepareAgentMessage(agentId: string, text: string): Promise<void> {

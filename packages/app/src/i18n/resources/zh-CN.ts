@@ -690,6 +690,7 @@ export const zhCN: TranslationResources = {
         openFor: "打开 {{label}} 的菜单",
         copyResumeCommand: "复制恢复命令",
         copyAgentId: "复制 Agent ID",
+        copyAgentAsNewConversation: "复制为新对话",
         copyTerminalId: "复制 Terminal ID",
         copyFilePath: "复制文件路径",
         rename: "重命名",
@@ -733,6 +734,8 @@ export const zhCN: TranslationResources = {
       },
       toasts: {
         copyFailed: "复制失败",
+        cloneUnavailable: "此主机不支持复制为新对话",
+        cloneFailed: "复制为新对话失败",
         agentIdCopiedLabel: "Agent ID",
         terminalIdCopiedLabel: "Terminal ID",
         resumeCommandCopiedLabel: "恢复命令",

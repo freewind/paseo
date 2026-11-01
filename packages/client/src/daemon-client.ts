@@ -3890,6 +3890,29 @@ export class DaemonClient {
     return this.sendAgentMessage(agentId, text, options);
   }
 
+  async cloneAgent(
+    sourceAgentId: string,
+    options: { targetWorkspace?: "same" | "new"; requestId?: string; timeout?: number } = {},
+  ): Promise<{ newAgentId: string; newWorkspaceId?: string }> {
+    const payload = await this.sendCorrelatedSessionRequest({
+      requestId: options.requestId,
+      message: {
+        type: "agent.clone.request",
+        sourceAgentId,
+        ...(options.targetWorkspace ? { targetWorkspace: options.targetWorkspace } : {}),
+      },
+      responseType: "agent.clone.response",
+      timeout: options.timeout,
+    });
+    if (payload.error) {
+      throw new Error(payload.error);
+    }
+    if (!payload.newAgentId) {
+      throw new Error("Agent clone returned no agent id");
+    }
+    return { newAgentId: payload.newAgentId, newWorkspaceId: payload.newWorkspaceId };
+  }
+
   async forkAgent(
     sourceAgentId: string,
     options: {

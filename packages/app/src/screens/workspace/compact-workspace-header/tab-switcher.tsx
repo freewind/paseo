@@ -134,6 +134,8 @@ interface MobileWorkspaceTabSwitcherProps {
   onCreateTerminal: () => void;
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
+  onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
+  canCloneAgent?: boolean;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
   fileOpenActions?: WorkspaceTabFileOpenActions;
@@ -156,6 +158,8 @@ function MobileWorkspaceTabOption({
   onPress,
   onCopyResumeCommand,
   onCopyAgentId,
+  onCopyAgentAsNew,
+  canCloneAgent,
   onCopyTerminalId,
   onCopyFilePath,
   fileOpenActions,
@@ -176,6 +180,8 @@ function MobileWorkspaceTabOption({
   onPress: () => void;
   onCopyResumeCommand: (agentId: string) => Promise<void> | void;
   onCopyAgentId: (agentId: string) => Promise<void> | void;
+  onCopyAgentAsNew?: (agentId: string) => Promise<void> | void;
+  canCloneAgent?: boolean;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
   fileOpenActions?: WorkspaceTabFileOpenActions;
@@ -191,6 +197,7 @@ function MobileWorkspaceTabOption({
     () => ({
       copyResumeCommand: t("workspace.tabs.menu.copyResumeCommand"),
       copyAgentId: t("workspace.tabs.menu.copyAgentId"),
+      copyAgentAsNew: t("workspace.tabs.menu.copyAgentAsNewConversation"),
       copyTerminalId: t("workspace.tabs.menu.copyTerminalId"),
       copyFilePath: t("workspace.tabs.menu.copyFilePath"),
       rename: t("workspace.tabs.menu.rename"),
@@ -214,6 +221,8 @@ function MobileWorkspaceTabOption({
     menuTestIDBase,
     onCopyResumeCommand,
     onCopyAgentId,
+    onCopyAgentAsNew,
+    canCloneAgent,
     onCopyTerminalId,
     onCopyFilePath,
     fileOpenActions,
@@ -292,6 +301,8 @@ export const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitch
   onCreateTerminal,
   onCopyResumeCommand,
   onCopyAgentId,
+  onCopyAgentAsNew,
+  canCloneAgent,
   onCopyTerminalId,
   onCopyFilePath,
   fileOpenActions,
@@ -415,6 +426,8 @@ export const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitch
           onPress={onPress}
           onCopyResumeCommand={onCopyResumeCommand}
           onCopyAgentId={onCopyAgentId}
+          onCopyAgentAsNew={onCopyAgentAsNew}
+          canCloneAgent={canCloneAgent}
           onCopyTerminalId={onCopyTerminalId}
           onCopyFilePath={onCopyFilePath}
           fileOpenActions={fileOpenActions}
@@ -435,6 +448,8 @@ export const MobileWorkspaceTabSwitcher = memo(function MobileWorkspaceTabSwitch
       normalizedWorkspaceId,
       onCopyResumeCommand,
       onCopyAgentId,
+      onCopyAgentAsNew,
+      canCloneAgent,
       onCopyTerminalId,
       onCopyFilePath,
       fileOpenActions,
