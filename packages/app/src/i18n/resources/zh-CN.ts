@@ -2168,6 +2168,7 @@ export const zhCN: TranslationResources = {
     updateFailedTitle: "守护进程更新失败",
   },
   contextWindow: {
+    compactConfirm: "压缩上下文",
     noData: "暂无上下文数据",
     accessibilityNoData: "上下文窗口：暂无上下文数据",
     title: "上下文窗口",

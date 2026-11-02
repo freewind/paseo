@@ -5,10 +5,12 @@ import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { useTranslation } from "react-i18next";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 import { useIsCompactFormFactor } from "@/constants/layout";
 import { isNative } from "@/constants/platform";
 import { useHostReportsUsage } from "@/usage";
 import { useResetWhenPanelInactive } from "@/components/retained-panel";
+import { useCompactContext } from "@/hooks/use-compact-context";
 import type { Theme } from "@/styles/theme";
 import { ContextWindowDetails } from "./context-window-details";
 import { ContextWindowSheet } from "./context-window-sheet";
@@ -168,6 +170,11 @@ export function ContextWindowMeter({
   });
   const openSheet = useCallback(() => setIsSheetOpen(true), []);
   const closeSheet = useCallback(() => setIsSheetOpen(false), []);
+  const { canCompact, sendCompact } = useCompactContext({ serverId, agentId });
+  const handleCompact = useCallback(() => {
+    closeSheet();
+    sendCompact();
+  }, [closeSheet, sendCompact]);
   const percentage =
     maxTokens !== null && usedTokens !== null ? getUsagePercentage(maxTokens, usedTokens) : null;
   const geometry = getMeterGeometry(showPercentage, glyphSize);
@@ -207,6 +214,11 @@ export function ContextWindowMeter({
   const accessibilityLabel = context
     ? t("contextWindow.accessibility", { percentage: context.percentage })
     : t("contextWindow.accessibilityNoData");
+  const compactAction = canCompact ? (
+    <Button style={styles.compactAction} onPress={handleCompact} testID="context-window-compact">
+      {t("contextWindow.compactConfirm")}
+    </Button>
+  ) : null;
 
   if (isCompact) {
     return (
@@ -230,6 +242,7 @@ export function ContextWindowMeter({
             showTitle={false}
             refreshable
           />
+          {compactAction}
         </ContextWindowSheet>
       </>
     );
@@ -305,6 +318,7 @@ export function ContextWindowMeter({
           showTitle
           refreshable
         />
+        {compactAction}
       </HoverCardContent>
     </HoverCard>
   );
@@ -334,4 +348,5 @@ const styles = StyleSheet.create((theme) => ({
   // Plain details use a small inset; account usage cards have their own content density.
   plainPopover: { paddingVertical: theme.spacing[1], paddingHorizontal: theme.spacing[2] },
   usagePopover: { padding: theme.spacing[3], gap: theme.spacing[3] },
+  compactAction: { marginTop: theme.spacing[2] },
 }));
