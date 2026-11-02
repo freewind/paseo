@@ -124,10 +124,7 @@ import { useKeyboardActionHandler } from "@/hooks/use-keyboard-action-handler";
 import type { KeyboardActionDefinition } from "@/keyboard/keyboard-action-dispatcher";
 import type { MessageInputKeyboardActionKind } from "@/keyboard/actions";
 import { submitAgentInput } from "@/composer/submit";
-import {
-  composerQuickReplyKey,
-  registerComposerQuickReplySubmit,
-} from "@/composer/composer-submit";
+import { composerSubmitKey, registerComposerSubmit } from "@/composer/composer-submit";
 import { ComposerRecall } from "@/composer/recall";
 import { createMessageSubmissionWriter } from "@/composer/submission/writer";
 import { ComposerKeyboardScopeProvider, useComposerKeyboardScope } from "@/composer/keyboard-scope";
@@ -1722,8 +1719,8 @@ function ComposerContentImpl({
   );
 
   const handleSubmit = useCallback(
-    (payload: MessagePayload) => {
-      const outgoingAttachments = buildOutgoingAttachments(attachments);
+    (payload: MessagePayload, overrides?: { attachments: UserComposerAttachment[] }) => {
+      const outgoingAttachments = buildOutgoingAttachments(overrides?.attachments ?? attachments);
       const clientSlashCommand = resolveClientSlashCommand({
         text: payload.text,
         hasAttachments: outgoingAttachments.length > 0,
@@ -2400,19 +2397,37 @@ function ComposerContentImpl({
   const isSubmitDisabled =
     isSubmitLoadingVisible || (waitForForgeAutoAttachOnSubmit && isForgeResolving);
 
-  // 常用回复走发送按钮同一条 `handleSubmit`；只读与提交中在这里先拦，运行中交给
-  // `submitAgentInput` 排队，所以快捷条不需要自己判断这些状态。
+  // 常用回复与压缩上下文都走发送按钮同一条 `handleSubmit`；只读与提交中在这里先拦，
+  // 运行中交给 `submitAgentInput` 排队，所以调用方不需要自己判断这些状态。
   useEffect(
     () =>
-      registerComposerQuickReplySubmit(composerQuickReplyKey(serverId, agentId), (text) => {
+      registerComposerSubmit(composerSubmitKey(serverId, agentId), (text, options) => {
         if (readOnly || isSubmitDisabled) {
           return "blocked";
         }
         const queued = isAgentRunning;
-        handleSubmit({ text, attachments: [], cwd });
+        // 带草稿的提交先把手上的文字和附件发出去，再发指令本身：用户点压缩时
+        // 不该丢掉已经打好的内容，而它确实已经被当成一条消息送出去了。
+        if (options?.includeDraft) {
+          const draft = textSource.getSnapshot();
+          if (draft.trim().length > 0 || attachments.length > 0) {
+            void handleSubmit({ text: draft, attachments, cwd });
+          }
+        }
+        void handleSubmit({ text, attachments: [], cwd }, { attachments: [] });
         return queued ? "queued" : "sent";
       }),
-    [agentId, cwd, handleSubmit, isAgentRunning, isSubmitDisabled, readOnly, serverId],
+    [
+      agentId,
+      attachments,
+      cwd,
+      handleSubmit,
+      isAgentRunning,
+      isSubmitDisabled,
+      readOnly,
+      serverId,
+      textSource,
+    ],
   );
 
   // Disable drops while submitting/uploading: the submit path clears and restores attachments,

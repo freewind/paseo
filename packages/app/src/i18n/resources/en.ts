@@ -2203,6 +2203,7 @@ export const en = {
     updateFailedTitle: "Daemon update failed",
   },
   contextWindow: {
+    compactConfirm: "Compact context",
     noData: "No context data",
     accessibilityNoData: "Context window: No context data",
     title: "Context window",

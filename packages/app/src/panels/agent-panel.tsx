@@ -90,7 +90,7 @@ import { SideRailSheetButton, SideRailSheetTrigger } from "@/components/side-rai
 import { ComposerTrackBar } from "@/composer/tracks";
 import { QuickRepliesEditor } from "@/quick-replies/quick-replies-editor";
 import { useIsQuickRepliesSupported, useQuickReplies } from "@/quick-replies/use-quick-replies";
-import { composerQuickReplyKey, submitQuickReply } from "@/composer/composer-submit";
+import { composerSubmitKey, submitComposerText } from "@/composer/composer-submit";
 import { shouldShowQuickRepliesRail } from "@/quick-replies/layout";
 import { QuickRepliesRightRail } from "@/quick-replies/right-rail";
 import { resolveContentMaxWidth } from "@/hooks/use-settings";
@@ -1268,7 +1268,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   // 点一条就立即发出：走 composer 登记的同一发送入口，只读、提交中与运行中排队都由它把关。
   const sendQuickReply = useCallback(
     (text: string) => {
-      const outcome = submitQuickReply(composerQuickReplyKey(serverId, agentId), text);
+      const outcome = submitComposerText(composerSubmitKey(serverId, agentId), text);
       if (outcome === "sent") {
         toastApi.show(t("composer.quickReplies.sent"), { variant: "success" });
       } else if (outcome === "queued") {
