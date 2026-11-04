@@ -15,6 +15,7 @@ import { explorerTarget, fileManagerTarget, finderTarget } from "./targets/file-
 import { golandTarget } from "./targets/goland.js";
 import { intellijIdeaTarget } from "./targets/intellij-idea.js";
 import { kiroTarget } from "./targets/kiro.js";
+import { openideaTarget } from "./targets/openidea.js";
 import { phpstormTarget } from "./targets/phpstorm.js";
 import { pycharmTarget } from "./targets/pycharm.js";
 import { riderTarget } from "./targets/rider.js";
@@ -40,6 +41,7 @@ export const EDITOR_TARGETS: readonly EditorTarget[] = [
   androidStudioTarget,
   xcodeTarget,
   intellijIdeaTarget,
+  openideaTarget,
   aquaTarget,
   clionTarget,
   datagripTarget,
