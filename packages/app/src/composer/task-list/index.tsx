@@ -44,14 +44,13 @@ const TaskListCard = memo(function TaskListCard({
   const label = t("message.todo.tasksProgress", { completed, total: tasks.length });
   const segments = useMemo(() => [{ bucket: null, text: label }], [label]);
 
-  // 只有 daemon 报了这个能力位、并且知道 agent 是谁时，行才可点开编辑。
-  const editable = useMemo(() => {
-    if (!serverId || !agentId) return false;
-    return (
-      getHostRuntimeStore().getClient(serverId)?.getLastServerInfoMessage()?.features
-        ?.todoMutation === true
-    );
-  }, [serverId, agentId]);
+  // 只有 daemon 报了这个能力位、并且知道 agent 是谁时才给写入口。
+  // 不能在 useMemo 里读：client 就绪时间晚于首次渲染，memo 不会因它重算，会永久停在只读。
+  const editable =
+    Boolean(serverId && agentId) &&
+    getHostRuntimeStore()
+      .getClient(serverId ?? "")
+      ?.getLastServerInfoMessage()?.features?.todoMutation === true;
 
   const handleCreatePress = useCallback(() => setCreating(true), []);
   const handleDismiss = useCallback(() => {
