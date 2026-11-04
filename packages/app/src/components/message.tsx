@@ -1605,17 +1605,13 @@ export const TodoListCard = memo(function TodoListCard({
             <Text style={todoListCardStylesheet.emptyText}>{t("message.todo.empty")}</Text>
           ) : (
             items.map((item) => (
-              <TaskListRow
-                key={item.id ?? item.text}
-                task={item}
-                onPress={editable ? setSelectedTask : undefined}
-              />
+              <TaskListRow key={item.id ?? item.text} task={item} onPress={setSelectedTask} />
             ))
           )}
         </View>
       </View>
     );
-  }, [items, t, editable]);
+  }, [items, t]);
 
   return (
     <>
@@ -1635,6 +1631,7 @@ export const TodoListCard = memo(function TodoListCard({
           serverId={serverId}
           agentId={agentId}
           task={selectedTask}
+          editable={editable}
           onClose={handleTaskSheetDismiss}
         />
       ) : null}

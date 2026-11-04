@@ -42,6 +42,8 @@ export interface TaskDetailSheetProps {
   agentId: string;
   /** null 表示新建任务。 */
   task: TodoEntry | null;
+  /** 没有写通道时只能看：隐藏所有编辑控件。 */
+  editable?: boolean;
   onClose: () => void;
 }
 
@@ -54,6 +56,7 @@ export function TaskDetailSheet({
   serverId,
   agentId,
   task,
+  editable = true,
   onClose,
 }: TaskDetailSheetProps) {
   const { t } = useTranslation();
@@ -150,6 +153,7 @@ export function TaskDetailSheet({
           initial={formInitial}
           busy={busy}
           error={error}
+          editable={editable}
           onSubjectChange={setSubject}
           onStatusChange={setStatus}
           onActiveFormChange={setActiveForm}
@@ -168,6 +172,7 @@ function TaskForm({
   initial,
   busy,
   error,
+  editable,
   onSubjectChange,
   onStatusChange,
   onActiveFormChange,
@@ -186,6 +191,7 @@ function TaskForm({
   };
   busy: boolean;
   error: string | null;
+  editable: boolean;
   onSubjectChange: (text: string) => void;
   onStatusChange: (next: TaskStatus) => void;
   onActiveFormChange: (text: string) => void;
@@ -223,43 +229,51 @@ function TaskForm({
 
   return (
     <>
-      <StatusPickerOrHint task={task} status={draftStatus} onChange={handleStatusChange} />
+      {editable ? (
+        <StatusPickerOrHint task={task} status={draftStatus} onChange={handleStatusChange} />
+      ) : null}
       <LabeledInput
         label={t("message.todo.detail.subject")}
         initialValue={initial.subject}
         onChangeText={handleSubjectChange}
+        editable={editable}
         multiline
       />
       <LabeledInput
         label={t("message.todo.detail.activeForm")}
         initialValue={initial.activeForm}
         onChangeText={onActiveFormChange}
+        editable={editable}
       />
       <LabeledInput
         label={t("message.todo.detail.description")}
         initialValue={initial.description}
         onChangeText={onDescriptionChange}
+        editable={editable}
         multiline
       />
       <LabeledInput
         label={t("message.todo.detail.owner")}
         initialValue={initial.owner}
         onChangeText={onOwnerChange}
+        editable={editable}
       />
       <ReadonlyRows task={task} />
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      <View style={styles.actions}>
-        <PressHighlight
-          onPress={handleSavePress}
-          disabled={!trimmed || busy}
-          accessibilityRole="button"
-          style={saveButtonStyle}
-          highlightStyle={styles.pressed}
-        >
-          <Text style={styles.primaryText}>{t("message.todo.detail.save")}</Text>
-        </PressHighlight>
-        <DeleteButton visible={Boolean(task?.id)} busy={busy} onDelete={onDelete} />
-      </View>
+      {editable ? (
+        <View style={styles.actions}>
+          <PressHighlight
+            onPress={handleSavePress}
+            disabled={!trimmed || busy}
+            accessibilityRole="button"
+            style={saveButtonStyle}
+            highlightStyle={styles.pressed}
+          >
+            <Text style={styles.primaryText}>{t("message.todo.detail.save")}</Text>
+          </PressHighlight>
+          <DeleteButton visible={Boolean(task?.id)} busy={busy} onDelete={onDelete} />
+        </View>
+      ) : null}
     </>
   );
 }
@@ -353,13 +367,24 @@ function LabeledInput({
   label,
   initialValue,
   onChangeText,
+  editable,
   multiline,
 }: {
   label: string;
   initialValue: string;
   onChangeText: (text: string) => void;
+  editable: boolean;
   multiline?: boolean;
 }) {
+  const { t } = useTranslation();
+  if (!editable) {
+    return (
+      <View style={styles.field}>
+        <Text style={styles.label}>{label}</Text>
+        <Text style={styles.readonly}>{initialValue || t("message.todo.detail.empty")}</Text>
+      </View>
+    );
+  }
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>

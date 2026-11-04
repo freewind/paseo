@@ -69,7 +69,7 @@ const TaskListCard = memo(function TaskListCard({
         {tasks.map((task, index) => (
           <ComposerTrackRow key={task.id ?? `${index}:${task.text}`}>
             <View style={styles.taskRow}>
-              <TaskListRow task={task} onPress={editable ? setSelectedTask : undefined} />
+              <TaskListRow task={task} onPress={setSelectedTask} />
             </View>
           </ComposerTrackRow>
         ))}
@@ -93,6 +93,7 @@ const TaskListCard = memo(function TaskListCard({
           serverId={serverId}
           agentId={agentId}
           task={selectedTask}
+          editable={editable}
           onClose={handleDismiss}
         />
       ) : null}
