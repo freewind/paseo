@@ -54,6 +54,7 @@ vi.mock("lucide-react-native", () => {
     Circle: createIcon("Circle"),
     CircleCheck: createIcon("CircleCheck"),
     CircleDot: createIcon("CircleDot"),
+    ChevronRight: createIcon("ChevronRight"),
   };
 });
 

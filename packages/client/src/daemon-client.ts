@@ -3752,6 +3752,25 @@ export class DaemonClient {
     return payload.state;
   }
 
+  /** 修改 agent 的任务清单，返回修改后的任务列表。仅 pi 支持。 */
+  async mutateAgentTasks(
+    agentId: string,
+    mutation: Omit<
+      Extract<SessionInboundMessage, { type: "agent.tasks.mutate.request" }>,
+      "type" | "requestId" | "agentId"
+    >,
+    options?: { requestId?: string; timeout?: number },
+  ): Promise<import("@getpaseo/protocol/agent-types").AgentTaskItem[]> {
+    const payload = await this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "agent.tasks.mutate.request", agentId, ...mutation },
+      responseType: "agent.tasks.mutate.response",
+      timeout: options?.timeout,
+    });
+    if (payload.error) throw new Error(payload.error);
+    return payload.items ?? [];
+  }
+
   async addAgentMemo(
     agentId: string,
     text: string,

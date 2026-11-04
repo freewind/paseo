@@ -18,6 +18,8 @@ import { RewindMenu, type RewindMode } from "@/components/rewind/rewind-menu";
 import { useRewindAgentMutation } from "@/components/rewind/use-rewind-agent-mutation";
 import type { RegenerateUserMessageInput } from "@/components/rewind/regenerate-user-message";
 import { TaskListRow } from "@/components/task-list-row";
+import { TaskDetailSheet } from "@/components/task-detail-sheet";
+import { getHostRuntimeStore } from "@/runtime/host-runtime";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useIsCompactFormFactor } from "@/constants/layout";
 import { isNative, isWeb } from "@/constants/platform";
@@ -1531,6 +1533,8 @@ interface TodoListCardProps {
   items: TodoEntry[];
   activity: TaskActivity;
   disableOuterSpacing?: boolean;
+  serverId?: string;
+  agentId?: string;
 }
 
 function taskActivityIcon(activity: TaskActivity) {
@@ -1563,9 +1567,18 @@ export const TodoListCard = memo(function TodoListCard({
   items,
   activity,
   disableOuterSpacing,
+  serverId,
+  agentId,
 }: TodoListCardProps) {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<TodoEntry | null>(null);
+  // 只有 daemon 报了这个能力位、并且知道 agent 是谁时，行才可点开编辑。
+  const editable =
+    Boolean(serverId && agentId) &&
+    getHostRuntimeStore()
+      .getClient(serverId ?? "")
+      ?.getLastServerInfoMessage()?.features?.todoMutation === true;
   const activityDisplay = useMemo(() => {
     if (activity.type === "created") {
       return {
@@ -1582,6 +1595,7 @@ export const TodoListCard = memo(function TodoListCard({
   const handleToggle = useCallback(() => {
     setIsExpanded((prev) => !prev);
   }, []);
+  const handleTaskSheetDismiss = useCallback(() => setSelectedTask(null), []);
 
   const renderDetails = useCallback(() => {
     return (
@@ -1590,23 +1604,41 @@ export const TodoListCard = memo(function TodoListCard({
           {items.length === 0 ? (
             <Text style={todoListCardStylesheet.emptyText}>{t("message.todo.empty")}</Text>
           ) : (
-            items.map((item) => <TaskListRow key={item.id ?? item.text} task={item} />)
+            items.map((item) => (
+              <TaskListRow
+                key={item.id ?? item.text}
+                task={item}
+                onPress={editable ? setSelectedTask : undefined}
+              />
+            ))
           )}
         </View>
       </View>
     );
-  }, [items, t]);
+  }, [items, t, editable]);
 
   return (
-    <ExpandableBadge
-      label={activityDisplay.label}
-      secondaryLabel={activityDisplay.secondaryLabel}
-      icon={taskActivityIcon(activity)}
-      isExpanded={isExpanded}
-      onToggle={handleToggle}
-      renderDetails={renderDetails}
-      disableOuterSpacing={disableOuterSpacing}
-    />
+    <>
+      <ExpandableBadge
+        label={activityDisplay.label}
+        secondaryLabel={activityDisplay.secondaryLabel}
+        icon={taskActivityIcon(activity)}
+        isExpanded={isExpanded}
+        onToggle={handleToggle}
+        renderDetails={renderDetails}
+        disableOuterSpacing={disableOuterSpacing}
+      />
+      {selectedTask && serverId && agentId ? (
+        <TaskDetailSheet
+          key={selectedTask.id ?? selectedTask.text}
+          visible
+          serverId={serverId}
+          agentId={agentId}
+          task={selectedTask}
+          onClose={handleTaskSheetDismiss}
+        />
+      ) : null}
+    </>
   );
 });
 

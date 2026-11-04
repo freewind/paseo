@@ -726,6 +726,19 @@ const ToolCallTimelineItemPayloadSchema: z.ZodType<ToolCallTimelineItem, unknown
     ToolCallCanceledPayloadSchema,
   ]);
 
+/** 时间线 todo 项与任务编辑响应共用的任务条目形状。 */
+export const AgentTaskItemPayloadSchema = z.object({
+  text: z.string(),
+  completed: z.boolean(),
+  id: z.string().optional(),
+  status: z.enum(["pending", "in_progress", "completed"]).optional(),
+  activeForm: z.string().optional(),
+  description: z.string().optional(),
+  blockedBy: z.array(z.union([z.string(), z.number()])).optional(),
+  owner: z.string().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
 // zod-aot 0.20.4 miscompiles this as a nested discriminated union by omitting
 // the inner tool_call branch from the generated outer dispatch.
 export const AgentTimelineItemPayloadSchema: z.ZodType<AgentTimelineItem, unknown> = z.union([
@@ -747,16 +760,7 @@ export const AgentTimelineItemPayloadSchema: z.ZodType<AgentTimelineItem, unknow
   ToolCallTimelineItemPayloadSchema,
   z.object({
     type: z.literal("todo"),
-    items: z.array(
-      z.object({
-        text: z.string(),
-        completed: z.boolean(),
-        id: z.string().optional(),
-        status: z.enum(["pending", "in_progress", "completed"]).optional(),
-        activeForm: z.string().optional(),
-        description: z.string().optional(),
-      }),
-    ),
+    items: z.array(AgentTaskItemPayloadSchema),
   }),
   z.object({
     type: z.literal("error"),
@@ -1659,6 +1663,30 @@ export const AgentMemoSchema = z.object({
   images: z.array(ImageAttachmentSchema).optional(),
 });
 export type AgentMemo = z.infer<typeof AgentMemoSchema>;
+
+/** 客户端修改 agent 任务清单；目前只有 pi 实现，其他 provider 返回错误。 */
+export const AgentTasksMutateRequestSchema = z.object({
+  type: z.literal("agent.tasks.mutate.request"),
+  requestId: z.string(),
+  agentId: z.string(),
+  action: z.enum(["create", "update", "delete", "clear"]),
+  id: z.string().optional(),
+  subject: z.string().optional(),
+  description: z.string().optional(),
+  activeForm: z.string().optional(),
+  status: z.enum(["pending", "in_progress", "completed"]).optional(),
+  owner: z.string().optional(),
+});
+
+export const AgentTasksMutateResponseSchema = z.object({
+  type: z.literal("agent.tasks.mutate.response"),
+  payload: z.object({
+    requestId: z.string(),
+    agentId: z.string(),
+    items: z.array(AgentTaskItemPayloadSchema).nullable(),
+    error: z.string().nullable(),
+  }),
+});
 
 export const AgentMemoAddRequestSchema = z.object({
   type: z.literal("agent.memo.add.request"),
@@ -3617,6 +3645,7 @@ export const SessionInboundMessageSchema = z.discriminatedUnion("type", [
   AgentTimelineAppendRequestSchema,
   NavigationStateGetRequestSchema,
   NavigationStateSetRequestSchema,
+  AgentTasksMutateRequestSchema,
   AgentMemoAddRequestSchema,
   AgentMemoUpdateRequestSchema,
   AgentMemoDeleteRequestSchema,
@@ -3962,6 +3991,7 @@ export const ServerInfoStatusPayloadSchema = z
         internalWorkspaces: z.boolean().optional(),
         backgroundWorkspaces: z.boolean().optional(),
         providersSnapshot: z.boolean().optional(),
+        todoMutation: z.boolean().optional(),
         connectedHosts: z.boolean().optional(),
         hostMultiplexing: z.boolean().optional(),
         usageSources: z.boolean().optional(),
@@ -7389,6 +7419,7 @@ export const SessionOutboundMessageSchema = z.discriminatedUnion("type", [
   AgentTimelineAppendResponseSchema,
   NavigationStateGetResponseSchema,
   NavigationStateSetResponseSchema,
+  AgentTasksMutateResponseSchema,
   AgentMemoAddResponseSchema,
   AgentMemoUpdateResponseSchema,
   AgentMemoDeleteResponseSchema,

@@ -1,5 +1,5 @@
-import { ChevronDown, ChevronRight, Circle, CircleCheck, CircleDot } from "lucide-react-native";
-import { memo, useCallback, useMemo, useState } from "react";
+import { ChevronRight, Circle, CircleCheck, CircleDot } from "lucide-react-native";
+import { memo, useCallback, useMemo } from "react";
 import { Text, View } from "react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { PressHighlight } from "@/components/ui/press-highlight";
@@ -9,7 +9,6 @@ import type { TodoEntry } from "@/types/stream";
 const ThemedCircle = withUnistyles(Circle);
 const ThemedCircleCheck = withUnistyles(CircleCheck);
 const ThemedCircleDot = withUnistyles(CircleDot);
-const ThemedChevronDown = withUnistyles(ChevronDown);
 const ThemedChevronRight = withUnistyles(ChevronRight);
 
 const extraMutedIcon = (theme: Theme) => ({ color: theme.colors.foregroundExtraMuted });
@@ -28,22 +27,19 @@ function TaskStatusIcon({ isCompleted, isRunning }: { isCompleted: boolean; isRu
   return <ThemedCircle size={16} uniProps={extraMutedIcon} />;
 }
 
-function ExpandChevron({ hasBody, expanded }: { hasBody: boolean; expanded: boolean }) {
-  if (!hasBody) return null;
-  if (expanded) return <ThemedChevronDown size={14} uniProps={extraMutedIcon} />;
-  return <ThemedChevronRight size={14} uniProps={extraMutedIcon} />;
-}
-
-export const TaskListRow = memo(function TaskListRow({ task }: { task: TodoEntry }) {
-  const [expanded, setExpanded] = useState(false);
+export const TaskListRow = memo(function TaskListRow({
+  task,
+  onPress,
+}: {
+  task: TodoEntry;
+  onPress?: (task: TodoEntry) => void;
+}) {
   const isCompleted = task.completed || task.status === "completed";
   const isRunning = !isCompleted && task.status === "in_progress";
   const text = isRunning && task.activeForm ? task.activeForm : task.text;
   const taskId = task.id?.trim();
-  // 只有带正文的行才可点：点了什么都不展开的行就是一个死控件。
-  const description = task.description?.trim();
-  const handlePress = useCallback(() => setExpanded((value) => !value), []);
-  const accessibilityState = useMemo(() => ({ expanded }), [expanded]);
+  const handlePress = useCallback(() => onPress?.(task), [onPress, task]);
+  const accessibilityState = useMemo(() => ({ expanded: false }), []);
 
   const row = (
     <View style={styles.row} accessibilityLabel={text}>
@@ -59,12 +55,13 @@ export const TaskListRow = memo(function TaskListRow({ task }: { task: TodoEntry
       >
         {text}
       </Text>
-      <ExpandChevron hasBody={Boolean(description)} expanded={expanded} />
+      {onPress ? <ThemedChevronRight size={14} uniProps={extraMutedIcon} /> : null}
     </View>
   );
 
-  if (!description) return row;
+  if (!onPress) return row;
 
+  // 点开的是详情弹层：整行可点，行内不再就地展开正文。
   return (
     <PressHighlight
       accessibilityRole="button"
@@ -73,7 +70,6 @@ export const TaskListRow = memo(function TaskListRow({ task }: { task: TodoEntry
       highlightStyle={styles.pressed}
     >
       {row}
-      {expanded ? <Text style={[styles.description]}>{description}</Text> : null}
     </PressHighlight>
   );
 });
@@ -110,14 +106,6 @@ const styles = StyleSheet.create((theme) => ({
   completedText: {
     color: theme.colors.foregroundExtraMuted,
     textDecorationLine: "line-through",
-  },
-  // 正文接在标题下方，缩进对齐到标题起点：状态图标宽 16，加上 row 的 gap。
-  description: {
-    color: theme.colors.foregroundMuted,
-    fontSize: theme.fontSize.sm,
-    lineHeight: theme.fontSize.base,
-    paddingLeft: 16 + theme.spacing[2],
-    paddingTop: theme.spacing[1],
   },
   pressed: {
     backgroundColor: theme.colors.interactionHighlight,

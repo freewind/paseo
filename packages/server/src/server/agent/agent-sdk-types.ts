@@ -24,6 +24,17 @@ export type {
 
 export type AgentProvider = string;
 
+/** 客户端对 agent 任务清单的一次修改请求。 */
+export interface AgentTaskMutation {
+  action: "create" | "update" | "delete" | "clear";
+  id?: string;
+  subject?: string;
+  description?: string;
+  activeForm?: string;
+  status?: "pending" | "in_progress" | "completed";
+  owner?: string;
+}
+
 export interface AgentMetadata {
   [key: string]: unknown;
 }
@@ -717,6 +728,8 @@ export interface AgentSession {
    * 没有时返回 null，导出退到实时时间线里最后一个 todo 项。
    */
   getConversationTaskSnapshot?(): Promise<AgentTaskSnapshotItem[] | null>;
+  /** 修改任务清单并返回修改后的完整快照；目前只有 pi 实现。 */
+  mutateConversationTasks?(input: AgentTaskMutation): Promise<AgentTaskItem[]>;
   revertConversation?(input: { messageId: string }): Promise<void>;
   revertFiles?(input: { messageId: string }): Promise<void>;
   revertBoth?(input: { messageId: string }): Promise<void>;

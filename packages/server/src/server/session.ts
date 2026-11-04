@@ -2789,6 +2789,8 @@ export class Session {
     source?: object,
   ): Promise<void> | undefined {
     switch (msg.type) {
+      case "agent.tasks.mutate.request":
+        return this.handleAgentTasksMutateRequest(msg, source);
       case "agent.rewind.request":
         return this.handleAgentRewindRequest(msg, source);
       default:
@@ -8218,6 +8220,57 @@ export class Session {
             locations: [],
             nextCursor: null,
             error: error instanceof Error ? error.message : String(error),
+          },
+        },
+        source,
+      );
+    }
+  }
+
+  private async handleAgentTasksMutateRequest(
+    msg: Extract<SessionInboundMessage, { type: "agent.tasks.mutate.request" }>,
+    source?: object,
+  ): Promise<void> {
+    try {
+      const snapshot = await ensureAgentLoaded(msg.agentId, {
+        agentManager: this.agentManager,
+        agentStorage: this.agentStorage,
+        logger: this.sessionLogger,
+      });
+      const mutate = snapshot.session?.mutateConversationTasks?.bind(snapshot.session);
+      if (!mutate) {
+        throw new Error("This agent's provider does not support task editing");
+      }
+      const items = await mutate({
+        action: msg.action,
+        ...(msg.id !== undefined ? { id: msg.id } : {}),
+        ...(msg.subject !== undefined ? { subject: msg.subject } : {}),
+        ...(msg.description !== undefined ? { description: msg.description } : {}),
+        ...(msg.activeForm !== undefined ? { activeForm: msg.activeForm } : {}),
+        ...(msg.status !== undefined ? { status: msg.status } : {}),
+        ...(msg.owner !== undefined ? { owner: msg.owner } : {}),
+      });
+      this.emitForSource(
+        {
+          type: "agent.tasks.mutate.response",
+          payload: {
+            requestId: msg.requestId,
+            agentId: msg.agentId,
+            items,
+            error: null,
+          },
+        },
+        source,
+      );
+    } catch (error) {
+      this.emitForSource(
+        {
+          type: "agent.tasks.mutate.response",
+          payload: {
+            requestId: msg.requestId,
+            agentId: msg.agentId,
+            items: null,
+            error: error instanceof Error ? error.message : "Failed to mutate agent tasks",
           },
         },
         source,

@@ -995,7 +995,14 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
             return <Notification level={item.level} message={item.message} />;
 
           case "todo_list":
-            return <TodoListCard items={item.items} activity={item.activity} />;
+            return (
+              <TodoListCard
+                items={item.items}
+                activity={item.activity}
+                serverId={resolvedServerId}
+                agentId={agentId}
+              />
+            );
 
           case "compaction":
             return (

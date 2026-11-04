@@ -375,6 +375,12 @@ export interface AgentTaskItem {
   activeForm?: string;
   /** 任务的长正文；可选，多数 provider 只给标题。 */
   description?: string;
+  /** 依赖的任务 id；目前只有 pi 的 todo 工具会给。 */
+  blockedBy?: (string | number)[];
+  /** 任务被指派的 owner。 */
+  owner?: string;
+  /** provider 附带的自由字段。 */
+  metadata?: Record<string, unknown>;
 }
 
 /**

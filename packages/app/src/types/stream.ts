@@ -829,6 +829,10 @@ export interface TodoEntry {
   status?: "pending" | "in_progress" | "completed";
   activeForm?: string;
   description?: string;
+  /** 依赖的任务 id；只有 pi 的 todo 工具会给。 */
+  blockedBy?: (string | number)[];
+  owner?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export type TaskActivity =
@@ -1304,6 +1308,9 @@ function appendTodoList(
     ...(item.status ? { status: item.status } : {}),
     ...(item.activeForm ? { activeForm: item.activeForm } : {}),
     ...(item.description ? { description: item.description } : {}),
+    ...(item.blockedBy ? { blockedBy: item.blockedBy } : {}),
+    ...(item.owner ? { owner: item.owner } : {}),
+    ...(item.metadata ? { metadata: item.metadata } : {}),
   }));
 
   const previousIndex = state.findLastIndex(
