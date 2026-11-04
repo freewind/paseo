@@ -39,6 +39,7 @@ export const TaskListRow = memo(function TaskListRow({ task }: { task: TodoEntry
   const isCompleted = task.completed || task.status === "completed";
   const isRunning = !isCompleted && task.status === "in_progress";
   const text = isRunning && task.activeForm ? task.activeForm : task.text;
+  const taskId = task.id?.trim();
   // 只有带正文的行才可点：点了什么都不展开的行就是一个死控件。
   const description = task.description?.trim();
   const handlePress = useCallback(() => setExpanded((value) => !value), []);
@@ -47,6 +48,11 @@ export const TaskListRow = memo(function TaskListRow({ task }: { task: TodoEntry
   const row = (
     <View style={styles.row} accessibilityLabel={text}>
       <TaskStatusIcon isCompleted={isCompleted} isRunning={isRunning} />
+      {taskId ? (
+        <Text numberOfLines={1} style={styles.id}>
+          {taskId}
+        </Text>
+      ) : null}
       <Text
         numberOfLines={1}
         style={[styles.text, isRunning && styles.runningText, isCompleted && styles.completedText]}
@@ -77,6 +83,15 @@ const styles = StyleSheet.create((theme) => ({
     flexDirection: "row",
     alignItems: "center",
     gap: theme.spacing[2],
+  },
+  // 编号比标题弱一档，等宽字体和标题区分开；某些 provider 会给出 uuid 形态的长 id，
+  // 固定宽度上限加单行截断，保证它永远抢不掉标题的位置；行太窄时先缩 id。
+  id: {
+    maxWidth: 96,
+    flexShrink: 1,
+    color: theme.colors.foregroundExtraMuted,
+    fontFamily: theme.fontFamily.mono,
+    fontSize: theme.fontSize.sm,
   },
   // Grows and shrinks, but keeps an `auto` basis: a zero-basis label reports no intrinsic width,
   // and a container that sizes itself to its content — the composer track panel — measures the

@@ -9,6 +9,7 @@ const { theme } = vi.hoisted(() => ({
   theme: {
     spacing: { 2: 8 },
     fontSize: { sm: 13 },
+    fontFamily: { mono: "mono" },
     colors: {
       foreground: "#foreground",
       foregroundMuted: "#muted",
