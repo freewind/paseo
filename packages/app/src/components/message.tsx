@@ -1,4 +1,5 @@
 import { MessagePreview, MessageSender } from "@/components/user-message";
+import { useSessionStore } from "@/stores/session-store";
 import { useStableEvent } from "@/hooks/use-stable-event";
 import { getAgentAttachmentPillContent } from "@/attachments/attachment-pill-content";
 import {
@@ -19,7 +20,6 @@ import { useRewindAgentMutation } from "@/components/rewind/use-rewind-agent-mut
 import type { RegenerateUserMessageInput } from "@/components/rewind/regenerate-user-message";
 import { TaskListRow } from "@/components/task-list-row";
 import { TaskDetailSheet } from "@/components/task-detail-sheet";
-import { getHostRuntimeStore } from "@/runtime/host-runtime";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useIsCompactFormFactor } from "@/constants/layout";
 import { isNative, isWeb } from "@/constants/platform";
@@ -1573,12 +1573,11 @@ export const TodoListCard = memo(function TodoListCard({
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TodoEntry | null>(null);
-  // 只有 daemon 报了这个能力位、并且知道 agent 是谁时，行才可点开编辑。
-  const editable =
-    Boolean(serverId && agentId) &&
-    getHostRuntimeStore()
-      .getClient(serverId ?? "")
-      ?.getLastServerInfoMessage()?.features?.todoMutation === true;
+  // 能力位从 store 订阅，client 就绪或重连后能立刻切到可编辑。
+  const todoMutationEnabled = useSessionStore(
+    (state) => state.sessions[serverId ?? ""]?.serverInfo?.features?.todoMutation === true,
+  );
+  const editable = Boolean(serverId && agentId) && todoMutationEnabled;
   const activityDisplay = useMemo(() => {
     if (activity.type === "created") {
       return {
