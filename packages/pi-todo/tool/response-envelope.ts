@@ -90,6 +90,7 @@ export function buildToolResult(
 ): { content: Array<{ type: "text"; text: string }>; details: TaskDetails } {
   const text = formatContent(op, state);
   const details: TaskDetails = {
+    source: "freewind-todo",
     action,
     params: params as Record<string, unknown>,
     tasks: state.tasks,

@@ -75,7 +75,7 @@ import {
   type PiExtensionEventOutput,
 } from "./extensions/index.js";
 import { revertPiConversation } from "./rewind.js";
-import { mapRpivTodoTasks } from "./extensions/rpiv-todo/index.js";
+import { mapFreewindTodoTasks } from "./extensions/freewind-todo/index.js";
 import { forkPiSessionFile } from "./fork.js";
 import { listPiImportableSessions, readPiImportSessionConfig } from "./session-descriptor.js";
 import type { PiRuntime, PiRuntimeSession, PiStartSessionInput } from "./runtime.js";
@@ -105,7 +105,7 @@ const DEFAULT_PI_THINKING_LEVEL: PiThinkingLevel = "medium";
 const PI_BINARY_COMMAND = process.env.PI_COMMAND ?? process.env.PI_ACP_PI_COMMAND ?? "pi";
 const PASEO_PI_TREE_EXTENSION_COMMAND = "paseo_tree";
 const PASEO_PI_CAPTURE_EXTENSION_COMMAND = "paseo_capture_entries";
-const PASEO_PI_TODO_EXTENSION_COMMAND = "paseo_todos";
+const PASEO_PI_TODO_EXTENSION_COMMAND = "freewind_todos";
 const PASEO_PI_REWIND_ENTRY_TYPE = "paseo_rewind";
 const PASEO_PI_ENTRY_CAPTURE_MARKER = "PASEO_ENTRY_CAPTURE";
 const PASEO_PI_SUBMITTED_USER_ENTRY_MARKER = "PASEO_SUBMITTED_USER_ENTRY";
@@ -1790,13 +1790,13 @@ export class PiRpcAgentSession implements AgentSession {
   }
 
   /**
-   * 用户在 app 里改任务清单：走扩展的 `/paseo_todos` 桥命令，不进对话历史。
+   * 用户在 app 里改任务清单：走扩展的 `/freewind_todos` 桥命令，不进对话历史。
    * 扩展没装时这条 slash 命令会被 pi 当成普通消息塞进对话，所以先确认命令存在。
    */
   async mutateConversationTasks(input: AgentTaskMutation): Promise<AgentTaskItem[]> {
     const commands = await this.listCommands();
     if (!commands.some((command) => command.name === PASEO_PI_TODO_EXTENSION_COMMAND)) {
-      throw new Error("Pi todo bridge is unavailable; install the paseo-pi-todo extension");
+      throw new Error("Pi todo bridge is unavailable; install the freewind-todo extension");
     }
     const requestId = randomUUID();
     const resultPromise = this.waitForExtensionResult(requestId);
@@ -1805,7 +1805,7 @@ export class PiRpcAgentSession implements AgentSession {
     const result = await resultPromise;
     const tasks = (result as { tasks?: unknown } | undefined)?.tasks;
     const parsed = Array.isArray(tasks) ? tasks : [];
-    return mapRpivTodoTasks(parsed as never);
+    return mapFreewindTodoTasks(parsed as never);
   }
 
   async revertConversation(input: { messageId: string }): Promise<void> {

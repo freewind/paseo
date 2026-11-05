@@ -12,6 +12,11 @@ export const TOOL_NAME = "todo";
 export const TOOL_LABEL = "Todo";
 export const COMMAND_NAME = "todos";
 
+// 会话自定义条目名：bridge 写入、replay 读取，两边必须一致。
+export const FREEWIND_TODO_STATE_ENTRY = "freewind_todo_state";
+/** 旧条目名只用于读取历史会话；写入一律用新名。 */
+export const LEGACY_PASEO_TODO_STATE_ENTRY = "paseo_todo_state";
+
 // ---------------------------------------------------------------------------
 // User-facing strings (kept stable for /todos UX parity).
 // ---------------------------------------------------------------------------
@@ -45,6 +50,8 @@ export interface Task {
  * cross-version replay compatibility.
  */
 export interface TaskDetails {
+  /** Paseo 适配器用它认领：工具名与 rpiv-todo 相同，靠这个字段区分。旧会话条目没有它。 */
+  source?: "freewind-todo";
   action: TaskAction;
   params: Record<string, unknown>;
   tasks: Task[];

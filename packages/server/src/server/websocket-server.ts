@@ -2000,7 +2000,7 @@ export class VoiceAssistantWebSocketServer {
         workspaceSortTimes: true,
         // COMPAT(providersSnapshot): keep optional until all clients rely on snapshot flow.
         providersSnapshot: true,
-        // 任务编辑通道：需要客户端与 daemon 同时支持，且宿主装了 paseo-pi-todo 扩展。
+        // 任务编辑通道：需要客户端与 daemon 同时支持，且宿主装了 freewind-todo 扩展。
         todoMutation: true,
         // COMPAT(providersSnapshotCwd): added in v0.3.2, remove gate after 2027-02-10.
         providersSnapshotCwd: true,

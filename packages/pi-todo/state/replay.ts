@@ -1,4 +1,8 @@
-import type { TaskDetails } from "../tool/types.js";
+import {
+  FREEWIND_TODO_STATE_ENTRY,
+  LEGACY_PASEO_TODO_STATE_ENTRY,
+  type TaskDetails,
+} from "../tool/types.js";
 import { EMPTY_STATE, type TaskState } from "./state.js";
 
 /**
@@ -17,9 +21,10 @@ export function isTaskDetails(value: unknown): value is TaskDetails {
  * `toolName === "todo"` and whose `details` shape matches `TaskDetails` wins
  * (last-write-wins). When no matching entry exists, returns `EMPTY_STATE`.
  *
- * 移植版新增：Paseo 通过 `/paseo_todos` 命令改任务时不会产生 toolResult，而是写一条
- * `customType === "paseo_todo_state"` 的自定义条目。这种条目和 todo 工具结果同样参与
+ * 移植版新增：Paseo 通过 `/freewind_todos` 命令改任务时不会产生 toolResult，而是写一条
+ * `customType === "freewind_todo_state"` 的自定义条目。这种条目和 todo 工具结果同样参与
  * 「取最后一条」的比较，否则命令改过的状态会在重启后回退。
+ * 旧名 `paseo_todo_state` 仍参与读取，改名前写入的历史不会被丢弃。
  *
  * Pure of module state — `index.ts` writes the returned snapshot into the
  * store after this returns. The function explicitly does NOT touch the store
@@ -36,7 +41,10 @@ export function replayFromBranch(ctx: {
       data?: unknown;
       message?: { role?: string; toolName?: string; details?: unknown };
     };
-    if (e.type === "custom" && e.customType === "paseo_todo_state") {
+    if (
+      e.type === "custom" &&
+      (e.customType === FREEWIND_TODO_STATE_ENTRY || e.customType === LEGACY_PASEO_TODO_STATE_ENTRY)
+    ) {
       if (!isTaskDetails(e.data)) continue;
       result = {
         tasks: e.data.tasks.map((t) => ({ ...t })),

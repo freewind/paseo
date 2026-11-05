@@ -33,7 +33,7 @@ import {
   setActiveRenderSession,
   sid,
 } from "./state/store.js";
-import { registerPaseoBridgeCommand } from "./bridge.js";
+import { registerFreewindBridgeCommand } from "./bridge.js";
 import { registerTodosCommand, registerTodoTool, TOOL_NAME } from "./todo.js";
 import type { TodoOverlay } from "./todo-overlay.js";
 
@@ -157,7 +157,7 @@ export default function (
 
   registerTodoTool(pi);
   registerTodosCommand(pi);
-  registerPaseoBridgeCommand(pi);
+  registerFreewindBridgeCommand(pi);
 
   // Collapse/expand hotkey for the todo overlay. The key is resolved once at
   // factory scope from config (register-once contract: a config change needs

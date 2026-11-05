@@ -1,5 +1,5 @@
 {
-  "name": "paseo-pi-todo",
+  "name": "freewind-todo",
   "version": "1.0.0",
   "private": true,
   "description": "Pi 扩展：todo 工具 + 供 Paseo 读写的任务状态通道。移植自 @juicesharp/rpiv-todo 2.12.0（MIT）。",

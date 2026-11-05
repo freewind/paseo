@@ -3,11 +3,11 @@
  *
  * 为什么需要它：任务状态只活在 pi 进程内（state/store.ts 的会话槽），Paseo 的
  * daemon/app 没有写口，用户就只能看不能改。这里注册一条内部命令，让 daemon 用
- * `prompt("/paseo_todos <base64url payload>")` 触发增删改查：命令不进对话历史，
+ * `prompt("/freewind_todos <base64url payload>")` 触发增删改查：命令不进对话历史，
  * 执行结果通过 `ctx.ui.notify` 带着 marker 回传给 daemon。
  *
  * 持久化：pi 的会话重放只认 `todo` 工具的 toolResult，所以每次改动额外写一条
- * `paseo_todo_state` 自定义条目；state/replay.ts 会把这种条目和 toolResult 一起按
+ * `freewind_todo_state` 自定义条目；state/replay.ts 会把这种条目和 toolResult 一起按
  * 时间顺序比较，取最后一条为准。
  */
 
@@ -16,9 +16,10 @@ import { applyTaskMutation } from "./state/state-reducer.js";
 import { commitState, getState, sid } from "./state/store.js";
 import { buildToolResult } from "./tool/response-envelope.js";
 import type { TaskAction, TaskMutationParams } from "./tool/types.js";
+import { FREEWIND_TODO_STATE_ENTRY } from "./tool/types.js";
 
-export const PASEO_TODO_COMMAND = "paseo_todos";
-export const PASEO_TODO_STATE_ENTRY = "paseo_todo_state";
+export const FREEWIND_TODO_COMMAND = "freewind_todos";
+export { FREEWIND_TODO_STATE_ENTRY };
 /** 复用 Paseo 注入扩展已有的命令结果通道，daemon 侧不必新增 marker 处理。 */
 const PASEO_COMMAND_RESULT_MARKER = "PASEO_COMMAND_RESULT";
 
@@ -33,9 +34,9 @@ function decode(raw: string): BridgePayload | null {
   }
 }
 
-export function registerPaseoBridgeCommand(pi: ExtensionAPI): void {
-  pi.registerCommand(PASEO_TODO_COMMAND, {
-    description: "Internal Paseo todo bridge",
+export function registerFreewindBridgeCommand(pi: ExtensionAPI): void {
+  pi.registerCommand(FREEWIND_TODO_COMMAND, {
+    description: "Internal freewind-todo bridge",
     handler: async (args, ctx) => {
       const payload = decode(args.trim());
       if (!payload) {
@@ -57,7 +58,8 @@ export function registerPaseoBridgeCommand(pi: ExtensionAPI): void {
         }
         const result = applyTaskMutation(getState(sessionId), payload.action, params);
         commitState(sessionId, result.state);
-        pi.appendEntry(PASEO_TODO_STATE_ENTRY, {
+        pi.appendEntry(FREEWIND_TODO_STATE_ENTRY, {
+          source: "freewind-todo",
           tasks: result.state.tasks,
           nextId: result.state.nextId,
         });
