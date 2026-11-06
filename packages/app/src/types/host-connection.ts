@@ -350,6 +350,8 @@ export function upsertHostConnectionInProfiles(input: {
   );
   const nextLifecycle = prev.lifecycle;
   const nextLabel = prev.label === prev.serverId ? derivedLabel : prev.label;
+  // 插入或复制一条连接时走到这里：原首选 id 还在连接列表里就保持不动，复制出来的新连接因此
+  // 不会顶掉现有首选，用户要再点一次「选用」。首选没被换掉，下面的手动标记也才保得住。
   const nextPreferredConnectionId =
     prev.preferredConnectionId &&
     nextConnections.some((connection) => connection.id === prev.preferredConnectionId)
