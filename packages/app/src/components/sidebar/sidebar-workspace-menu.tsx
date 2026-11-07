@@ -18,6 +18,10 @@ import { getForgePresentation, normalizeForge } from "@/git/forge";
 import type { SidebarWorkspaceEntry } from "@/hooks/use-sidebar-workspaces-list";
 import { useAppSettings } from "@/hooks/use-settings";
 import { densityIconProps } from "@/styles/density";
+import {
+  orderWorkspaceMenuItems,
+  type WorkspaceMenuItemNodes,
+} from "@/workspace/workspace-menu-items";
 import type { Theme } from "@/styles/theme";
 import type { ShortcutKey } from "@/utils/format-shortcut";
 import {
@@ -155,69 +159,73 @@ function SidebarWorkspaceMenuItems({
     [],
   );
 
-  return (
-    <>
-      {onCopyPath ? (
-        <WorkspaceMenuItem
-          surface={surface}
-          testID={`sidebar-workspace-menu-copy-path-${workspaceKey}`}
-          leading={copyLeadingIcon}
-          onSelect={onCopyPath}
-        >
-          {t("sidebar.workspace.actions.copyPath")}
-        </WorkspaceMenuItem>
-      ) : null}
-      {onCopyBranchName ? (
-        <WorkspaceMenuItem
-          surface={surface}
-          testID={`sidebar-workspace-menu-copy-branch-name-${workspaceKey}`}
-          leading={copyLeadingIcon}
-          onSelect={onCopyBranchName}
-        >
-          {t("sidebar.workspace.actions.copyBranchName")}
-        </WorkspaceMenuItem>
-      ) : null}
-      {onRename ? (
-        <WorkspaceMenuItem
-          surface={surface}
-          testID={`sidebar-workspace-menu-rename-${workspaceKey}`}
-          leading={renameLeadingIcon}
-          onSelect={onRename}
-        >
-          {t("sidebar.workspace.actions.rename")}
-        </WorkspaceMenuItem>
-      ) : null}
-      {onMarkAsRead ? (
-        <WorkspaceMenuItem
-          surface={surface}
-          testID={`sidebar-workspace-menu-mark-as-read-${workspaceKey}`}
-          leading={markAsReadLeadingIcon}
-          onSelect={onMarkAsRead}
-        >
-          Mark as read
-        </WorkspaceMenuItem>
-      ) : null}
-      {onMarkAsUnread ? (
-        <WorkspaceMenuItem
-          surface={surface}
-          testID={`sidebar-workspace-menu-mark-as-unread-${workspaceKey}`}
-          leading={markAsUnreadLeadingIcon}
-          onSelect={onMarkAsUnread}
-        >
-          Mark as unread
-        </WorkspaceMenuItem>
-      ) : null}
-      {onTogglePin ? (
-        <WorkspaceMenuItem
-          surface={surface}
-          testID={`sidebar-workspace-menu-pin-${workspaceKey}`}
-          leading={isPinned ? unpinLeadingIcon : pinLeadingIcon}
-          onSelect={onTogglePin}
-        >
-          {isPinned ? t("sidebar.workspace.actions.unpin") : t("sidebar.workspace.actions.pin")}
-        </WorkspaceMenuItem>
-      ) : null}
-      {serverId && workspaceId ? (
+  // 清单是两侧的总顺序表，顺序由它决定。侧栏没有「导入会话」与「显示设置」的入口，
+  // 那两个位置留 null 占位，这样条目顺序仍与头部逐项对齐。
+  const items: WorkspaceMenuItemNodes = {
+    copyPath: onCopyPath ? (
+      <WorkspaceMenuItem
+        surface={surface}
+        testID={`sidebar-workspace-menu-copy-path-${workspaceKey}`}
+        leading={copyLeadingIcon}
+        onSelect={onCopyPath}
+      >
+        {t("workspace.header.actions.copyPath")}
+      </WorkspaceMenuItem>
+    ) : null,
+    copyBranchName: onCopyBranchName ? (
+      <WorkspaceMenuItem
+        surface={surface}
+        testID={`sidebar-workspace-menu-copy-branch-name-${workspaceKey}`}
+        leading={copyLeadingIcon}
+        onSelect={onCopyBranchName}
+      >
+        {t("sidebar.workspace.actions.copyBranchName")}
+      </WorkspaceMenuItem>
+    ) : null,
+    rename: onRename ? (
+      <WorkspaceMenuItem
+        surface={surface}
+        testID={`sidebar-workspace-menu-rename-${workspaceKey}`}
+        leading={renameLeadingIcon}
+        onSelect={onRename}
+      >
+        {t("sidebar.workspace.actions.rename")}
+      </WorkspaceMenuItem>
+    ) : null,
+    importSession: null,
+    separator: null,
+    markAsRead: onMarkAsRead ? (
+      <WorkspaceMenuItem
+        surface={surface}
+        testID={`sidebar-workspace-menu-mark-as-read-${workspaceKey}`}
+        leading={markAsReadLeadingIcon}
+        onSelect={onMarkAsRead}
+      >
+        {t("sidebar.workspace.actions.markAsRead")}
+      </WorkspaceMenuItem>
+    ) : null,
+    markAsUnread: onMarkAsUnread ? (
+      <WorkspaceMenuItem
+        surface={surface}
+        testID={`sidebar-workspace-menu-mark-as-unread-${workspaceKey}`}
+        leading={markAsUnreadLeadingIcon}
+        onSelect={onMarkAsUnread}
+      >
+        {t("sidebar.workspace.actions.markAsUnread")}
+      </WorkspaceMenuItem>
+    ) : null,
+    pin: onTogglePin ? (
+      <WorkspaceMenuItem
+        surface={surface}
+        testID={`sidebar-workspace-menu-pin-${workspaceKey}`}
+        leading={isPinned ? unpinLeadingIcon : pinLeadingIcon}
+        onSelect={onTogglePin}
+      >
+        {isPinned ? t("sidebar.workspace.actions.unpin") : t("sidebar.workspace.actions.pin")}
+      </WorkspaceMenuItem>
+    ) : null,
+    labels:
+      serverId && workspaceId ? (
         <DropdownMenuSubTrigger
           id={WORKSPACE_LABEL_PAGE_ID}
           leading={labelLeading}
@@ -225,27 +233,31 @@ function SidebarWorkspaceMenuItems({
         >
           {t("workspaceLabels.title")}
         </DropdownMenuSubTrigger>
-      ) : null}
+      ) : null,
+    showSetup: null,
+    openFolder: (
       <OpenInFileManagerMenuItem
         surface={surface}
         path={openInFileManagerPath}
         testID={`sidebar-workspace-menu-open-folder-${workspaceKey}`}
       />
-      {onArchive ? (
-        <WorkspaceMenuItem
-          surface={surface}
-          testID={`sidebar-workspace-menu-archive-${workspaceKey}`}
-          leading={archiveLeadingIcon}
-          trailing={archiveTrailing}
-          status={archiveStatus}
-          pendingLabel={archivePendingLabel}
-          onSelect={onArchive}
-        >
-          {archiveLabel ?? t("sidebar.workspace.actions.archive")}
-        </WorkspaceMenuItem>
-      ) : null}
-    </>
-  );
+    ),
+    archive: onArchive ? (
+      <WorkspaceMenuItem
+        surface={surface}
+        testID={`sidebar-workspace-menu-archive-${workspaceKey}`}
+        leading={archiveLeadingIcon}
+        trailing={archiveTrailing}
+        status={archiveStatus}
+        pendingLabel={archivePendingLabel}
+        onSelect={onArchive}
+      >
+        {archiveLabel ?? t("sidebar.workspace.actions.archive")}
+      </WorkspaceMenuItem>
+    ) : null,
+  };
+
+  return <>{orderWorkspaceMenuItems(items)}</>;
 }
 
 export function SidebarWorkspaceMenu({
