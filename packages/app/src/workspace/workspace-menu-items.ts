@@ -28,6 +28,7 @@ export const WORKSPACE_MENU_ITEM_KEYS = [
   "showSetup",
   "openFolder",
   "archive",
+  "restoreLastArchivedAgent",
 ] as const;
 
 export type WorkspaceMenuItemNodes = Record<(typeof WORKSPACE_MENU_ITEM_KEYS)[number], ReactNode>;

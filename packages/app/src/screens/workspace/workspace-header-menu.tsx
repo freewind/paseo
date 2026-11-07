@@ -4,6 +4,7 @@ import { useRouter, type Href } from "expo-router";
 import { useTranslation } from "react-i18next";
 import {
   Archive,
+  ArchiveRestore,
   Circle,
   CircleCheck,
   Copy,
@@ -41,6 +42,7 @@ import {
   type WorkspaceMenuItemNodes,
 } from "@/workspace/workspace-menu-items";
 import { useDaemonConfig } from "@/hooks/use-daemon-config";
+import { useRestoreLastArchivedAgent } from "@/hooks/use-restore-last-archived-agent";
 import {
   getTerminalProfileIcon,
   resolveTerminalProfiles,
@@ -67,6 +69,7 @@ const ThemedPin = withUnistyles(Pin);
 const ThemedPinOff = withUnistyles(PinOff);
 const ThemedTag = withUnistyles(Tag);
 const ThemedArchive = withUnistyles(Archive);
+const ThemedArchiveRestore = withUnistyles(ArchiveRestore);
 const ThemedNewAgent = withUnistyles(SquarePen);
 
 const mutedColorMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
@@ -83,6 +86,9 @@ const MENU_UNPIN_ICON = <ThemedPinOff size={16} uniProps={mutedColorMapping} />;
 const MENU_LABELS_ICON = <ThemedTag size={16} uniProps={mutedColorMapping} />;
 const MENU_SETTINGS_ICON = <ThemedSettings size={16} uniProps={mutedColorMapping} />;
 const MENU_ARCHIVE_ICON = <ThemedArchive size={16} uniProps={mutedColorMapping} />;
+const MENU_RESTORE_LAST_ARCHIVED_AGENT_ICON = (
+  <ThemedArchiveRestore size={16} uniProps={mutedColorMapping} />
+);
 function WorkspaceHeaderMenuTriggerIcon() {
   return (
     <ThemedEllipsis
@@ -163,6 +169,11 @@ function WorkspaceHeaderWorkspaceActionItems({
 }: WorkspaceHeaderWorkspaceActions) {
   const { t } = useTranslation();
   const closeMenu = useDropdownMenuClose();
+  // 放在内容组件里：菜单打开才挂载，不会为每个工作区常驻一个 store 订阅。
+  const restoreLastArchivedAgent = useRestoreLastArchivedAgent({
+    serverId: workspaceTarget?.serverId,
+    workspaceId: workspaceTarget?.workspaceId,
+  });
   const handleRename = useCallback(() => {
     if (!onRename) return;
     // 先关菜单，免得重命名弹窗叠在它上面。
@@ -293,6 +304,15 @@ function WorkspaceHeaderWorkspaceActionItems({
         onSelect={handleArchive}
       >
         {t("sidebar.workspace.actions.archive")}
+      </DropdownMenuItem>
+    ) : null,
+    restoreLastArchivedAgent: restoreLastArchivedAgent ? (
+      <DropdownMenuItem
+        testID="workspace-header-restore-last-archived-agent"
+        leading={MENU_RESTORE_LAST_ARCHIVED_AGENT_ICON}
+        onSelect={restoreLastArchivedAgent}
+      >
+        {t("sidebar.workspace.actions.restoreLastArchivedAgent")}
       </DropdownMenuItem>
     ) : null,
   };
