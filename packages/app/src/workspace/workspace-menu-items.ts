@@ -15,6 +15,7 @@ import type { ReactNode } from "react";
  * 清单只负责「有哪些项、什么顺序」，少写一项就编译不过。
  */
 export const WORKSPACE_MENU_ITEM_KEYS = [
+  "newAgent",
   "copyPath",
   "copyBranchName",
   "rename",

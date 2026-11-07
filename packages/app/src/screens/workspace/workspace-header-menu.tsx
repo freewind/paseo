@@ -14,6 +14,7 @@ import {
   Pin,
   PinOff,
   Settings,
+  SquarePen,
   Tag,
 } from "lucide-react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
@@ -66,9 +67,11 @@ const ThemedPin = withUnistyles(Pin);
 const ThemedPinOff = withUnistyles(PinOff);
 const ThemedTag = withUnistyles(Tag);
 const ThemedArchive = withUnistyles(Archive);
+const ThemedNewAgent = withUnistyles(SquarePen);
 
 const mutedColorMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
 
+const MENU_NEW_AGENT_ICON = <ThemedNewAgent size={16} uniProps={mutedColorMapping} />;
 const MENU_NEW_BROWSER_ICON = <ThemedGlobe size={16} uniProps={mutedColorMapping} />;
 const MENU_IMPORT_ICON = <ThemedImport size={16} uniProps={mutedColorMapping} />;
 const MENU_COPY_ICON = <ThemedCopy size={16} uniProps={mutedColorMapping} />;
@@ -126,6 +129,7 @@ export interface WorkspaceHeaderWorkspaceActions {
   workspaceKey: string;
   workspaceTarget: WorkspaceLabelTarget | null;
   workspaceDirectory?: string | null;
+  onCreateAgent: () => void;
   onRename?: () => void;
   onMarkAsRead?: () => void;
   onMarkAsUnread?: () => void;
@@ -145,6 +149,9 @@ function WorkspaceHeaderWorkspaceActionItems({
   onCopyWorkspacePath,
   onCopyBranchName,
   onOpenSetupTab,
+  workspaceTarget,
+  workspaceDirectory,
+  onCreateAgent,
   onRename,
   onMarkAsRead,
   onMarkAsUnread,
@@ -153,8 +160,6 @@ function WorkspaceHeaderWorkspaceActionItems({
   onArchive,
   isArchiving,
   archiveLabel,
-  workspaceTarget,
-  workspaceDirectory,
 }: WorkspaceHeaderWorkspaceActions) {
   const { t } = useTranslation();
   const closeMenu = useDropdownMenuClose();
@@ -179,6 +184,15 @@ function WorkspaceHeaderWorkspaceActionItems({
 
   // 清单是两侧的总顺序表，顺序由它决定，这里只需把每一项实现出来。
   const items: WorkspaceMenuItemNodes = {
+    newAgent: (
+      <DropdownMenuItem
+        testID="workspace-header-new-agent"
+        leading={MENU_NEW_AGENT_ICON}
+        onSelect={onCreateAgent}
+      >
+        {t("workspace.header.actions.newAgent")}
+      </DropdownMenuItem>
+    ),
     copyPath: (
       <DropdownMenuItem
         testID="workspace-header-copy-path"

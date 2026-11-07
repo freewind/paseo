@@ -1,4 +1,10 @@
-import { useMemo, type ComponentProps, type PropsWithChildren, type ReactNode } from "react";
+import {
+  useCallback,
+  useMemo,
+  type ComponentProps,
+  type PropsWithChildren,
+  type ReactNode,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { type PressableStateCallbackType } from "react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
@@ -11,12 +17,14 @@ import {
   Pencil,
   Pin,
   PinOff,
+  SquarePen,
   Tag,
 } from "lucide-react-native";
 import { isWeb } from "@/constants/platform";
 import { getForgePresentation, normalizeForge } from "@/git/forge";
-import type { SidebarWorkspaceEntry } from "@/hooks/use-sidebar-workspaces-list";
+import { useCreateWorkspaceAgent } from "@/hooks/use-create-workspace-agent";
 import { useAppSettings } from "@/hooks/use-settings";
+import type { SidebarWorkspaceEntry } from "@/hooks/use-sidebar-workspaces-list";
 import { densityIconProps } from "@/styles/density";
 import {
   orderWorkspaceMenuItems,
@@ -31,6 +39,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useDropdownMenuClose } from "@/components/ui/dropdown-menu";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -64,7 +73,9 @@ const ThemedCircleCheck = withUnistyles(CircleCheck);
 const ThemedPin = withUnistyles(Pin);
 const ThemedPinOff = withUnistyles(PinOff);
 const ThemedTag = withUnistyles(Tag);
+const ThemedNewAgent = withUnistyles(SquarePen);
 
+const newAgentLeadingIcon = <ThemedNewAgent size={14} uniProps={foregroundMutedColorMapping} />;
 const copyLeadingIcon = <ThemedCopy size={14} uniProps={foregroundMutedColorMapping} />;
 const renameLeadingIcon = <ThemedPencil size={14} uniProps={foregroundMutedColorMapping} />;
 const markAsReadLeadingIcon = (
@@ -150,6 +161,20 @@ function SidebarWorkspaceMenuItems({
   openInFileManagerPath,
 }: SidebarWorkspaceMenuItemsProps & { surface: MenuSurface }): ReactNode {
   const { t } = useTranslation();
+  const closeMenu = useDropdownMenuClose();
+  const onCreateAgent = useCreateWorkspaceAgent({ serverId, workspaceId });
+  const handleTogglePin = useCallback(() => {
+    if (!onTogglePin) return;
+    // 先关菜单，免得固定开关的乐观状态叠在它上面。
+    closeMenu();
+    onTogglePin();
+  }, [closeMenu, onTogglePin]);
+  const handleArchive = useCallback(() => {
+    if (!onArchive) return;
+    // 先关菜单，免得归档流程（确认弹窗 / 跳转）叠在它上面。
+    closeMenu();
+    onArchive();
+  }, [closeMenu, onArchive]);
   const archiveTrailing = useMemo(
     () => (archiveShortcutKeys ? <Shortcut chord={archiveShortcutKeys} /> : null),
     [archiveShortcutKeys],
@@ -162,6 +187,16 @@ function SidebarWorkspaceMenuItems({
   // 清单是两侧的总顺序表，顺序由它决定。侧栏没有「导入会话」与「显示设置」的入口，
   // 那两个位置留 null 占位，这样条目顺序仍与头部逐项对齐。
   const items: WorkspaceMenuItemNodes = {
+    newAgent: onCreateAgent ? (
+      <WorkspaceMenuItem
+        surface={surface}
+        testID={`sidebar-workspace-menu-new-agent-${workspaceKey}`}
+        leading={newAgentLeadingIcon}
+        onSelect={onCreateAgent}
+      >
+        {t("workspace.header.actions.newAgent")}
+      </WorkspaceMenuItem>
+    ) : null,
     copyPath: onCopyPath ? (
       <WorkspaceMenuItem
         surface={surface}
