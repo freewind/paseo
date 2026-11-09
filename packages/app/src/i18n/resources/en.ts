@@ -155,6 +155,7 @@ export const en = {
   comment: {
     menu: {
       addToMemo: "Add to memos",
+      copy: "Copy",
       item: "Comment",
       title: "Comment",
     },

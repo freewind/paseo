@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { TextContextMenuItem } from "react-native-enriched-markdown";
-import { ClipboardList } from "lucide-react-native";
+import * as Clipboard from "expo-clipboard";
+import { ClipboardList, Copy } from "lucide-react-native";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -18,6 +19,7 @@ import { ICON_SIZE } from "@/styles/theme";
 
 const mutedColorMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
 const ThemedMemoIcon = withUnistyles(ClipboardList, mutedColorMapping);
+const ThemedCopyIcon = withUnistyles(Copy, mutedColorMapping);
 
 /**
  * 一条回复的评论入口。原生把菜单项交给文本选择菜单（选中后出现），web 用右键菜单，
@@ -44,6 +46,14 @@ export function useMarkdownCommentMenu(commentSource: string | undefined) {
     },
     [commentSource, requestAddToMemo],
   );
+  // 复制原文，不经 resolveCommentQuote：引用格式是评论用的，复制要的是用户看到的那段字。
+  const copy = useCallback(
+    (selected: string | null) => {
+      const text = selected ?? commentSource;
+      if (text) void Clipboard.setStringAsync(text);
+    },
+    [commentSource],
+  );
   const nativeItems = useMemo<TextContextMenuItem[] | undefined>(() => {
     if (!enabled) return undefined;
     const items: TextContextMenuItem[] = [
@@ -59,10 +69,14 @@ export function useMarkdownCommentMenu(commentSource: string | undefined) {
         onPress: ({ text }) => addToMemo(readAssistantCommentSelection() ?? text),
       });
     }
+    items.push({
+      text: t("comment.menu.copy"),
+      onPress: ({ text }) => copy(readAssistantCommentSelection() ?? text),
+    });
     return items;
-  }, [addToMemo, enabled, requestAddToMemo, requestComment, t]);
+  }, [addToMemo, copy, enabled, requestAddToMemo, requestComment, t]);
 
-  return { enabled, requestComment, addToMemo, nativeItems };
+  return { enabled, requestComment, addToMemo, copy, nativeItems };
 }
 
 /** web 右键菜单：`contextOnly` 只接右键，不影响文本选择与点击。 */
@@ -70,19 +84,23 @@ export function WebMarkdownCommentMenu({
   enabled,
   onComment,
   onAddToMemo,
+  onCopy,
   children,
 }: {
   enabled: boolean;
   onComment: (selected: string | null) => void;
   onAddToMemo?: (selected: string | null) => void;
+  onCopy: (selected: string | null) => void;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
   const leading = useMemo(() => <ThemedCommentIcon size={ICON_SIZE.sm} />, []);
   const memoLeading = useMemo(() => <ThemedMemoIcon size={ICON_SIZE.sm} />, []);
+  const copyLeading = useMemo(() => <ThemedCopyIcon size={ICON_SIZE.sm} />, []);
   // 右键打开时就把选区记下来：点菜单项时浏览器可能已经折叠选区，届时再读只剩整条消息。
   const [captured, setCaptured] = useState<string | null>(null);
   const handleAddToMemo = useCallback(() => onAddToMemo?.(captured), [captured, onAddToMemo]);
+  const handleCopy = useCallback(() => onCopy(captured), [captured, onCopy]);
   const handleOpenChange = useCallback((open: boolean) => {
     if (open) {
       setCaptured(readAssistantCommentSelection());
@@ -116,6 +134,9 @@ export function WebMarkdownCommentMenu({
             {t("comment.menu.addToMemo")}
           </ContextMenuItem>
         ) : null}
+        <ContextMenuItem leading={copyLeading} onSelect={handleCopy} testID="assistant-comment-copy">
+          {t("comment.menu.copy")}
+        </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
   );

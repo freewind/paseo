@@ -128,6 +128,7 @@ const MarkdownPart = memo(function MarkdownPart({
               enabled={isWeb && commentMenu.enabled}
               onComment={openComment}
               onAddToMemo={commentMenu.enabled ? addCommentToMemo : undefined}
+              onCopy={commentMenu.copy}
             >
               <ThemedMarkdown
                 markdown={segment.source}
