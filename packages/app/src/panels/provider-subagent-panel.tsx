@@ -21,6 +21,7 @@ import { ParentAgentCallout } from "@/subagents/parent";
 import { type SubagentRow, useSubagentsForParent } from "@/subagents/select";
 import { useSubagentSheetTab } from "@/subagents/sheet-tab";
 import { SubagentsTrack } from "@/subagents/track";
+import { useArchiveFinishedSubagents } from "@/subagents/use-archive-finished";
 import {
   providerSubagentKey,
   providerSubagentLifecycleStatus,
@@ -50,15 +51,35 @@ function resolveChildTrackClearance(childCount: number, isCompact: boolean) {
 
 function ProviderSubagentChildTrack({
   serverId,
+  parentAgentId,
   rows,
   onOpenProviderSubagent,
   sheetTabFor,
 }: {
   serverId: string;
+  parentAgentId: string;
   rows: ReturnType<typeof useSubagentsForParent>;
   onOpenProviderSubagent: (parentAgentId: string, subagentId: string) => void;
   sheetTabFor: (row: SubagentRow) => SheetTab | null;
 }) {
+  const archiveFinished = useArchiveFinishedSubagents({ serverId, parentAgentId, rows });
+  const client = useSessionStore((state) => state.sessions[serverId]?.client ?? null);
+  const runningRows = rows.filter(
+    (row) => row.kind === "paseo" && (row.status === "running" || row.status === "initializing"),
+  );
+  const detachableRows = rows.filter((row) => row.kind === "paseo");
+  const handleStopAll = () => {
+    if (!client) return;
+    for (const row of runningRows) {
+      if (row.kind === "paseo") void client.cancelAgent(row.address.agentId).catch(() => undefined);
+    }
+  };
+  const handleDetachAll = () => {
+    if (!client) return;
+    for (const row of detachableRows) {
+      if (row.kind === "paseo") void client.detachAgent(row.address.agentId).catch(() => undefined);
+    }
+  };
   if (rows.length === 0) return null;
   return (
     <ComposerTrackBar>
@@ -69,6 +90,11 @@ function ProviderSubagentChildTrack({
         onOpenProviderSubagent={onOpenProviderSubagent}
         sheetTabFor={sheetTabFor}
         onArchiveSubagent={NOOP_SUBAGENT}
+        onArchiveFinished={archiveFinished.archiveFinished}
+        archiveFinishedStatus={archiveFinished.status}
+        onArchiveAll={archiveFinished.archiveAll}
+        onStopAll={runningRows.length > 0 ? handleStopAll : undefined}
+        onDetachAll={detachableRows.length > 0 ? handleDetachAll : undefined}
       />
     </ComposerTrackBar>
   );
@@ -274,6 +300,7 @@ function ProviderSubagentPanel() {
         />
         <ProviderSubagentChildTrack
           serverId={serverId}
+          parentAgentId={target.parentAgentId}
           rows={childRows}
           onOpenProviderSubagent={openProviderChild}
           sheetTabFor={sheetTabFor}

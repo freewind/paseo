@@ -2073,6 +2073,9 @@ export const zhCN: TranslationResources = {
     archiveTooltip: "归档 subagent",
     archiveFinishedAction: "归档已完成的 subagent",
     archiveFinishedRetry: "重试 ({{failed}}/{{total}})",
+    archiveAllAction: "归档全部",
+    stopAllAction: "停止全部",
+    detachAllAction: "分离全部",
   },
   panels: {
     draft: {

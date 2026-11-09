@@ -3,11 +3,12 @@ import { useHosts } from "@/runtime/host-runtime";
 import { useCallback, useMemo, type ReactElement, type ReactNode } from "react";
 import { Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import { Archive, Unlink } from "lucide-react-native";
+import { Archive, ArchiveRestore, CircleStop, Unlink } from "lucide-react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { useProviderIcon } from "@/components/provider-icons";
 import { ComposerTrackActions, ComposerTrackPill, ComposerTrackRow } from "@/composer/tracks";
 import { mutedIconColorMapping } from "@/components/ui/icon-button-chrome";
+import { InlineConfirm } from "@/components/ui/inline-confirm";
 import { ToolbarButton, paneContentToolbarIconSize } from "@/components/ui/pane-content-toolbar";
 import { useIsCompactFormFactor } from "@/constants/layout";
 import { isNative } from "@/constants/platform";
@@ -49,6 +50,12 @@ export interface SubagentsTrackProps {
   onArchiveSubagent: (address: AgentAddress) => void;
   onArchiveFinished?: () => void;
   archiveFinishedStatus?: ArchiveFinishedStatus;
+  /** 归档除运行中以外的所有子代理；运行中的原样留着。 */
+  onArchiveAll?: () => void;
+  /** 停止所有还在跑的子代理，不归档。 */
+  onStopAll?: () => void;
+  /** 分离所有可分离的子代理。 */
+  onDetachAll?: () => void;
   onDetachSubagent?: (address: AgentAddress) => void;
 }
 
@@ -77,6 +84,9 @@ export function SubagentsTrack({
   onArchiveSubagent,
   onArchiveFinished,
   archiveFinishedStatus = IDLE_ARCHIVE_FINISHED_STATUS,
+  onArchiveAll,
+  onStopAll,
+  onDetachAll,
   onDetachSubagent,
 }: SubagentsTrackProps): ReactElement | null {
   const { t } = useTranslation();
@@ -90,7 +100,8 @@ export function SubagentsTrack({
 
   const pill = buildSubagentPillPresentation(t, rows);
   const finishedCount = countFinishedSubagents(rows);
-  const showArchiveFinished = finishedCount > 0 || isArchivingFinished || isArchiveFinishedFailed;
+  // 这一行常显：没有可归档的子代理时也留着，用户才知道有这个入口。
+  const showBulkActions = onArchiveFinished !== undefined;
   const sheets = rows.map(sheetTabFor);
   const pages = sheets.flatMap((sheet) => (sheet ? [sheetPanePage(sheet)] : []));
 
@@ -102,13 +113,40 @@ export function SubagentsTrack({
       accessibilityLabel={pill.accessibilityLabel}
       panelTitle={t("subagents.title")}
     >
-      {showArchiveFinished && onArchiveFinished ? (
+      {showBulkActions ? (
         <ComposerTrackActions divided={rows.length > 0}>
-          <ArchiveFinishedRow
+          <BulkActionRow
+            icon={Archive}
+            label={t("subagents.archiveFinishedAction")}
             status={archiveFinishedStatus}
-            disabled={isArchivingFinished}
+            disabled={isArchivingFinished || finishedCount === 0}
             onPress={onArchiveFinished}
+            testID="subagents-track-archive-finished"
           />
+          {onArchiveAll ? (
+            <BulkActionRow
+              icon={ArchiveRestore}
+              label={t("subagents.archiveAllAction")}
+              onPress={onArchiveAll}
+              testID="subagents-track-archive-all"
+            />
+          ) : null}
+          {onStopAll ? (
+            <BulkActionRow
+              icon={CircleStop}
+              label={t("subagents.stopAllAction")}
+              onPress={onStopAll}
+              testID="subagents-track-stop-all"
+            />
+          ) : null}
+          {onDetachAll ? (
+            <BulkActionRow
+              icon={Unlink}
+              label={t("subagents.detachAllAction")}
+              onPress={onDetachAll}
+              testID="subagents-track-detach-all"
+            />
+          ) : null}
         </ComposerTrackActions>
       ) : null}
       {rows.map((row, index) => (
@@ -182,6 +220,51 @@ function ArchiveFinishedRow({
     >
       {renderRow}
     </ComposerTrackRow>
+  );
+}
+/**
+ * 批量动作的通用一行：点一下原地变成「取消 / 确认」，确认后才真正执行。
+ * 四个动作共用这套布局，不再各写一份。
+ */
+function BulkActionRow({
+  icon: Icon,
+  label,
+  status,
+  disabled = false,
+  onPress,
+  testID,
+}: {
+  icon: typeof Archive;
+  label: string;
+  status?: ArchiveFinishedStatus;
+  disabled?: boolean;
+  onPress: () => void;
+  testID: string;
+}): ReactElement {
+  const ThemedIcon = useMemo(() => withUnistyles(Icon), [Icon]);
+  return (
+    <View
+      style={disabled ? styles.bulkRowDisabled : styles.bulkRow}
+      pointerEvents={disabled ? "none" : "auto"}
+      testID={testID}
+    >
+      <InlineConfirm
+        triggerStyle={styles.bulkTrigger}
+        onConfirm={onPress}
+        destructive
+        testID={`${testID}-confirm`}
+      >
+        <ThemedIcon size={ROW_ICON_SIZE} />
+        <Text style={styles.rowLabel} numberOfLines={1}>
+          {label}
+        </Text>
+        {status?.kind === "archiving" ? (
+          <Text style={styles.rowTrailing}>
+            {status.completedCount}/{status.totalCount}
+          </Text>
+        ) : null}
+      </InlineConfirm>
+    </View>
   );
 }
 
@@ -380,6 +463,23 @@ function SubagentActionButton({
 }
 
 const styles = StyleSheet.create((theme) => ({
+  // 批量动作行：与列表行同一套几何，只是内容换成 InlineConfirm 包住的图标 + 名称。
+  bulkRow: {
+    minWidth: 0,
+  },
+  bulkRowDisabled: {
+    minWidth: 0,
+    opacity: 0.5,
+  },
+  bulkTrigger: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing[2],
+    paddingVertical: theme.spacing[1],
+    paddingHorizontal: theme.spacing[2],
+    borderRadius: theme.borderRadius.md,
+    minWidth: 0,
+  },
   // `flexBasis: "auto"` rather than `flex: 1`: a zero-basis label contributes nothing to the row's
   // intrinsic width, so the panel measures itself at its floor and truncates every label at once.
   rowLabel: {

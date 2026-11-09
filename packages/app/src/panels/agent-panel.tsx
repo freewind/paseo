@@ -1506,6 +1506,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
           tasks={tasks}
           archiveFinishedStatus={archiveFinishedSubagents.status}
           onArchiveFinished={archiveFinishedSubagents.archiveFinished}
+          onArchiveAll={archiveFinishedSubagents.archiveAll}
           hasPluginComposerPills={hasPluginComposerPills}
           hasMemosEntry={hasMemosEntry}
           onOpenAgentMemos={openMemosSheet}

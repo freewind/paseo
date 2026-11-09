@@ -21,6 +21,7 @@ export interface UseArchiveFinishedSubagentsInput {
 
 export interface ArchiveFinishedSubagentsCapability extends ArchiveFinishedState {
   archiveFinished: () => Promise<ArchiveFinishedOutcome>;
+  archiveAll: () => Promise<ArchiveFinishedOutcome>;
 }
 
 export function useArchiveFinishedSubagents({
@@ -59,5 +60,5 @@ export function useArchiveFinishedSubagents({
     archiveFinished.setRows(rows);
   }, [archiveFinished, rows]);
 
-  return { ...state, archiveFinished: archiveFinished.archiveFinished };
+  return { ...state, archiveFinished: archiveFinished.archiveFinished, archiveAll: archiveFinished.archiveAll };
 }

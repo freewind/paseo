@@ -33,11 +33,23 @@ export interface ArchiveFinishedSubagents {
   setRows(rows: readonly SubagentRow[]): void;
   subscribe(listener: () => void): () => void;
   archiveFinished(): Promise<ArchiveFinishedOutcome>;
+  /** 归档所有不在运行的子代理；运行中的原样留着。 */
+  archiveAll(): Promise<ArchiveFinishedOutcome>;
 }
 
 export function isFinishedSubagent(row: SubagentRow): boolean {
   if (row.kind === "paseo") return row.status === "idle" || row.status === "error";
   return row.status === "completed" || row.status === "failed" || row.status === "canceled";
+}
+
+/** 成功跑完的子代理：不算失败与取消，供“归档已完成”使用。 */
+export function isSuccessfullyFinishedSubagent(row: SubagentRow): boolean {
+  return row.kind === "paseo" ? row.status === "idle" : row.status === "completed";
+}
+
+/** 还在跑的子代理：归档全部时跳过它们，想清掉先停止。 */
+function isBusySubagent(row: SubagentRow): boolean {
+  return !isFinishedSubagent(row);
 }
 
 function canArchiveManagedSubagent(
@@ -85,7 +97,8 @@ export function createArchiveFinishedSubagents(
   initialRows: readonly SubagentRow[],
   deps: ArchiveFinishedSubagentsDeps,
 ): ArchiveFinishedSubagents {
-  let eligibleRows = initialRows.filter(isFinishedSubagent);
+  let eligibleRows = initialRows.filter(isSuccessfullyFinishedSubagent);
+  let allRows = initialRows.filter((row) => !isBusySubagent(row));
   let signature = eligibleSignature(eligibleRows);
   let failedSignature: string | null = null;
   let state: ArchiveFinishedState = {
@@ -103,7 +116,8 @@ export function createArchiveFinishedSubagents(
   };
 
   const setRows = (rows: readonly SubagentRow[]) => {
-    const nextEligibleRows = rows.filter(isFinishedSubagent);
+    const nextEligibleRows = rows.filter(isSuccessfullyFinishedSubagent);
+    allRows = rows.filter((row) => !isBusySubagent(row));
     const nextSignature = eligibleSignature(nextEligibleRows);
     const eligibilityChanged = signature !== nextSignature;
     eligibleRows = nextEligibleRows;
@@ -152,6 +166,39 @@ export function createArchiveFinishedSubagents(
       return outcome;
     });
   };
+  const archiveAll = () => {
+    if (state.status.kind === "archiving" || allRows.length === 0) {
+      return Promise.resolve(emptyOutcome());
+    }
+
+    const snapshot = allRows;
+    const totalCount = snapshot.length;
+    setState({
+      eligibleCount: eligibleRows.length,
+      status: { kind: "archiving", completedCount: 0, totalCount },
+    });
+    return runArchiveFinished(snapshot, deps, (completedCount) => {
+      setState({
+        eligibleCount: eligibleRows.length,
+        status: { kind: "archiving", completedCount, totalCount },
+      });
+    }).then(({ outcome, retryableFailureIds }) => {
+      failedSignature =
+        retryableFailureIds.size > 0 ? identitySignature(retryableFailureIds) : null;
+      setState({
+        eligibleCount: eligibleRows.length,
+        status:
+          retryableFailureIds.size > 0
+            ? {
+                kind: "failed",
+                failedCount: retryableFailureIds.size,
+                totalCount: retryableFailureIds.size,
+              }
+            : { kind: "idle" },
+      });
+      return outcome;
+    });
+  };
 
   return {
     getState: () => state,
@@ -161,6 +208,7 @@ export function createArchiveFinishedSubagents(
       return () => listeners.delete(listener);
     },
     archiveFinished,
+    archiveAll,
   };
 }
 

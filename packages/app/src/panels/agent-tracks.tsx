@@ -1,5 +1,5 @@
 import type { AgentAddress } from "@getpaseo/protocol/addresses";
-import { memo, useCallback, type ReactElement, type ReactNode } from "react";
+import { memo, useCallback, useMemo, type ReactElement, type ReactNode } from "react";
 import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { ClipboardList } from "lucide-react-native";
@@ -45,6 +45,7 @@ export const AgentTracks = memo(function AgentTracks({
   tasks,
   archiveFinishedStatus,
   onArchiveFinished,
+  onArchiveAll,
   hasPluginComposerPills,
   hasMemosEntry,
   onOpenAgentMemos,
@@ -59,6 +60,7 @@ export const AgentTracks = memo(function AgentTracks({
   tasks: TodoEntry[] | undefined;
   archiveFinishedStatus: ArchiveFinishedStatus;
   onArchiveFinished: () => void;
+  onArchiveAll: () => void;
   hasPluginComposerPills: boolean;
   /** 桌面右缝放不下备忘时，这一行给入口。 */
   hasMemosEntry: boolean;
@@ -77,6 +79,32 @@ export const AgentTracks = memo(function AgentTracks({
   );
   const archiveSubagent = useArchiveSubagent();
   const detachSubagent = useDetachSubagent();
+  const client = useSessionStore((state) => state.sessions[serverId]?.client ?? null);
+  // 停止与分离都是逐个子代理发请求；运行中的才停，没有可执行的就不显示这些入口。
+  const runningRows = useMemo(
+    () =>
+      subagentRows.filter(
+        (row) =>
+          row.kind === "paseo" && (row.status === "running" || row.status === "initializing"),
+      ),
+    [subagentRows],
+  );
+  const detachableRows = useMemo(
+    () => (canDetachSubagents ? subagentRows.filter((row) => row.kind === "paseo") : []),
+    [canDetachSubagents, subagentRows],
+  );
+  const handleStopAll = useCallback(() => {
+    if (!client) return;
+    for (const row of runningRows) {
+      if (row.kind === "paseo") void client.cancelAgent(row.address.agentId).catch(() => undefined);
+    }
+  }, [client, runningRows]);
+  const handleDetachAll = useCallback(() => {
+    if (!client) return;
+    for (const row of detachableRows) {
+      if (row.kind === "paseo") void client.detachAgent(row.address.agentId).catch(() => undefined);
+    }
+  }, [client, detachableRows]);
   const openSubagentTarget = useCallback(
     (target: WorkspaceTabTarget) => {
       openPreferredWorkspaceTarget({
@@ -157,6 +185,9 @@ export const AgentTracks = memo(function AgentTracks({
         onArchiveSubagent={archiveSubagent}
         onArchiveFinished={onArchiveFinished}
         archiveFinishedStatus={archiveFinishedStatus}
+        onArchiveAll={onArchiveAll}
+        onStopAll={runningRows.length > 0 ? handleStopAll : undefined}
+        onDetachAll={detachableRows.length > 0 ? handleDetachAll : undefined}
         onDetachSubagent={canDetachSubagents ? detachSubagent : undefined}
       />
       <PluginComposerPills

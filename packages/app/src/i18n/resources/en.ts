@@ -2110,6 +2110,9 @@ export const en = {
     archiveTooltip: "Archive subagent",
     archiveFinishedAction: "Archive finished subagents",
     archiveFinishedRetry: "Retry ({{failed}}/{{total}})",
+    archiveAllAction: "Archive all",
+    stopAllAction: "Stop all",
+    detachAllAction: "Detach all",
   },
   panels: {
     draft: {
