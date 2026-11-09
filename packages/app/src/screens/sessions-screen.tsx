@@ -12,12 +12,23 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { AgentList } from "@/components/agent-list";
 import { SearchField } from "@/components/ui/search-field";
 import { HostFilter } from "@/components/hosts/host-filter";
+import {
+  ALL_MODELS_OPTION_ID,
+  ModelFilter,
+  type ModelFilterOption,
+} from "@/components/hosts/model-filter";
+import {
+  ALL_PROJECTS_OPTION_ID,
+  ProjectFilter,
+  type ProjectFilterOption,
+} from "@/components/hosts/project-filter";
 import { ALL_HOSTS_OPTION_ID } from "@/components/hosts/host-picker";
 import { type AgentHistoryHostError, useAgentHistory } from "@/hooks/use-agent-history";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useImportSession } from "@/hooks/use-import-session";
 import { useHosts } from "@/runtime/host-runtime";
 import { buildOpenProjectRoute } from "@/utils/host-routes";
+import { useWorkspaceStructure } from "@/stores/session-store-hooks";
 
 /** Long enough that a typed word is one request, short enough to feel live. */
 const SEARCH_DEBOUNCE_MS = 200;
@@ -60,6 +71,35 @@ function resolveEmptyText(input: {
   return "No sessions for this host";
 }
 
+const ALL_PROJECTS_OPTION: ProjectFilterOption = {
+  id: ALL_PROJECTS_OPTION_ID,
+  label: "All projects",
+};
+
+/**
+ * One option per project the connected hosts expose, keyed by the server-side `projectKey` the
+ * history filter narrows by. Projects whose key is unknown (older daemons) are skipped — they
+ * cannot be filtered on reliably, and "All projects" still lists their sessions.
+ */
+export function buildHistoryProjectOptions(input: {
+  projects: readonly { viewKey: string; projectKey: string | null; projectName: string }[];
+}): ProjectFilterOption[] {
+  const byKey = new Map<string, string>();
+  for (const project of input.projects) {
+    if (!project.projectKey) continue;
+    if (!byKey.has(project.projectKey)) {
+      byKey.set(project.projectKey, project.projectName);
+    }
+  }
+  return [
+    ALL_PROJECTS_OPTION,
+    ...Array.from(byKey, ([projectKey, projectName]) => ({
+      id: projectKey,
+      label: projectName,
+    })).sort((left, right) => left.label.localeCompare(right.label)),
+  ];
+}
+
 export function SessionsScreen() {
   const isFocused = useIsFocused();
 
@@ -70,12 +110,17 @@ export function SessionsScreen() {
   return <SessionsScreenContent />;
 }
 
+// The filter row's three independent gates plus the list's four render branches put this just
+// over the budget; the branches are flat and each reads as its own row.
+// oxlint-disable-next-line complexity
 function SessionsScreenContent() {
   const { theme } = useUnistyles();
   const { t } = useTranslation();
   const importSession = useImportSession();
   const hosts = useHosts();
   const [selectedHost, setSelectedHost] = useState(ALL_HOSTS_OPTION_ID);
+  const [selectedProject, setSelectedProject] = useState(ALL_PROJECTS_OPTION_ID);
+  const [selectedModel, setSelectedModel] = useState(ALL_MODELS_OPTION_ID);
   const [searchInput, setSearchInput] = useState("");
   const search = useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS).trim();
   const historyServerId = selectedHost === ALL_HOSTS_OPTION_ID ? null : selectedHost;
@@ -93,8 +138,38 @@ function SessionsScreenContent() {
   } = useAgentHistory({
     serverId: historyServerId,
     search,
+    projectKeys: selectedProject === ALL_PROJECTS_OPTION_ID ? [] : [selectedProject],
+    includeStats: true,
   });
+  const allServerIds = useMemo(() => hosts.map((host) => host.serverId), [hosts]);
+  const structure = useWorkspaceStructure(allServerIds);
+  const projectOptions = useMemo(
+    () => buildHistoryProjectOptions({ projects: structure.projects }),
+    [structure.projects],
+  );
   const isSearching = isSearchSupported && search.length > 0;
+
+  // The model filter runs here, not on the daemon: history has no model filter, so the options
+  // are whatever the loaded pages contain and the filter narrows those same rows.
+  const modelOptions = useMemo((): ModelFilterOption[] => {
+    const seen = new Set<string>();
+    const options: ModelFilterOption[] = [{ id: ALL_MODELS_OPTION_ID, label: "All models" }];
+    for (const agent of agents) {
+      const model = agent.model;
+      if (!model || seen.has(model)) continue;
+      seen.add(model);
+      options.push({ id: model, label: model });
+    }
+    return options;
+  }, [agents]);
+  const visibleAgents = useMemo(
+    () =>
+      selectedModel === ALL_MODELS_OPTION_ID
+        ? agents
+        : agents.filter((agent) => agent.model === selectedModel),
+    [agents, selectedModel],
+  );
+  const isModelFiltered = selectedModel !== ALL_MODELS_OPTION_ID;
 
   useEffect(() => {
     if (
@@ -104,6 +179,28 @@ function SessionsScreenContent() {
       setSelectedHost(ALL_HOSTS_OPTION_ID);
     }
   }, [hosts, selectedHost]);
+
+  // A project option naming a project no connected host exposes (it went away, or the host
+  // filter narrowed) resolves back to all projects rather than filtering everything out.
+  useEffect(() => {
+    if (
+      selectedProject !== ALL_PROJECTS_OPTION_ID &&
+      !projectOptions.some((option) => option.id === selectedProject)
+    ) {
+      setSelectedProject(ALL_PROJECTS_OPTION_ID);
+    }
+  }, [projectOptions, selectedProject]);
+
+  // A model option comes from the loaded rows, so a refresh can leave the selected one without
+  // any session; the filter then resolves back to all models instead of emptying the list.
+  useEffect(() => {
+    if (
+      selectedModel !== ALL_MODELS_OPTION_ID &&
+      !modelOptions.some((option) => option.id === selectedModel)
+    ) {
+      setSelectedModel(ALL_MODELS_OPTION_ID);
+    }
+  }, [modelOptions, selectedModel]);
 
   const [isManualRefresh, setIsManualRefresh] = useState(false);
 
@@ -115,18 +212,35 @@ function SessionsScreenContent() {
   // Searching filters the chronological history without changing its date buckets.
   const emptyText = resolveEmptyText({
     t,
-    isSearching,
+    isSearching: isSearching || isModelFiltered,
     isAllHosts: selectedHost === ALL_HOSTS_OPTION_ID,
   });
   const showHostFilter = hosts.length > 1;
-  const showFilterRow = showHostFilter || isSearchSupported;
+  const showProjectFilter = projectOptions.length > 2;
+  const showModelFilter = modelOptions.length > 2;
+  const showFilterRow = showHostFilter || showProjectFilter || showModelFilter || isSearchSupported;
   const showLoadError = isError && agents.length === 0;
+
+  const handleSelectProject = useCallback(
+    (projectKey: string) => setSelectedProject(projectKey),
+    [],
+  );
+
+  const handleSelectModel = useCallback((modelId: string) => setSelectedModel(modelId), []);
+  const sessionsProjectOptionTestID = useCallback(
+    (projectKey: string) => `sessions-project-filter-item-${projectKey}`,
+    [],
+  );
 
   const handleBack = useCallback(() => {
     router.navigate(buildOpenProjectRoute());
   }, []);
 
-  const handleClearSearch = useCallback(() => setSearchInput(""), []);
+  // An empty list under either filter has to lead somewhere: clearing both is the one way out.
+  const handleClearFilters = useCallback(() => {
+    setSearchInput("");
+    setSelectedModel(ALL_MODELS_OPTION_ID);
+  }, []);
 
   const listFooterComponent = useMemo(() => {
     // COMPAT(historyPagination): old daemons return a truncated relevance page.
@@ -150,32 +264,51 @@ function SessionsScreenContent() {
     );
   }, [hasMore, isLoadingMore, isSearchTruncated, loadMore, t]);
 
+  const filterRow = showFilterRow ? (
+    <View style={styles.filterContainer}>
+      {isSearchSupported ? (
+        <SearchField
+          value={searchInput}
+          onChangeText={setSearchInput}
+          placeholder={t("sessions.searchPlaceholder")}
+          clearAccessibilityLabel={t("sessions.actions.clearSearch")}
+          testID="sessions-search-input"
+          clearTestID="sessions-search-clear"
+        />
+      ) : null}
+      {showProjectFilter ? (
+        <ProjectFilter
+          options={projectOptions}
+          selectedProject={selectedProject}
+          onSelectProject={handleSelectProject}
+          triggerTestID="sessions-project-filter-trigger"
+          optionTestID={sessionsProjectOptionTestID}
+        />
+      ) : null}
+      {showModelFilter ? (
+        <ModelFilter
+          options={modelOptions}
+          selectedModel={selectedModel}
+          onSelectModel={handleSelectModel}
+          triggerTestID="sessions-model-filter-trigger"
+        />
+      ) : null}
+      {showHostFilter ? (
+        <HostFilter
+          hosts={hosts}
+          selectedHost={selectedHost}
+          onSelectHost={setSelectedHost}
+          triggerTestID="sessions-host-filter-trigger"
+          hostOptionTestID={sessionsHostOptionTestID}
+        />
+      ) : null}
+    </View>
+  ) : null;
+
   return (
     <View style={styles.container}>
       <MenuHeader title={t("sessions.title")} />
-      {showFilterRow ? (
-        <View style={styles.filterContainer}>
-          {isSearchSupported ? (
-            <SearchField
-              value={searchInput}
-              onChangeText={setSearchInput}
-              placeholder={t("sessions.searchPlaceholder")}
-              clearAccessibilityLabel={t("sessions.actions.clearSearch")}
-              testID="sessions-search-input"
-              clearTestID="sessions-search-clear"
-            />
-          ) : null}
-          {showHostFilter ? (
-            <HostFilter
-              hosts={hosts}
-              selectedHost={selectedHost}
-              onSelectHost={setSelectedHost}
-              triggerTestID="sessions-host-filter-trigger"
-              hostOptionTestID={sessionsHostOptionTestID}
-            />
-          ) : null}
-        </View>
-      ) : null}
+      {filterRow}
       {hostErrors.length > 0 ? <SessionHostErrorsBanner errors={hostErrors} t={t} /> : null}
       {isInitialLoad ? (
         <View style={styles.loadingContainer}>
@@ -190,11 +323,11 @@ function SessionsScreenContent() {
           </Button>
         </View>
       ) : null}
-      {!isInitialLoad && !showLoadError && agents.length === 0 ? (
+      {!isInitialLoad && !showLoadError && visibleAgents.length === 0 ? (
         <View style={styles.emptyContainer} testID="sessions-empty">
           <Text style={styles.emptyText}>{emptyText}</Text>
-          {isSearching ? (
-            <Button variant="ghost" onPress={handleClearSearch}>
+          {isSearching || isModelFiltered ? (
+            <Button variant="ghost" onPress={handleClearFilters}>
               {t("sessions.actions.clearSearch")}
             </Button>
           ) : (
@@ -207,9 +340,9 @@ function SessionsScreenContent() {
           </Button>
         </View>
       ) : null}
-      {!isInitialLoad && !showLoadError && agents.length > 0 ? (
+      {!isInitialLoad && !showLoadError && visibleAgents.length > 0 ? (
         <AgentList
-          agents={agents}
+          agents={visibleAgents}
           showCheckoutInfo={false}
           isRefreshing={isManualRefresh}
           onRefresh={handleRefresh}

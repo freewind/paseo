@@ -1388,6 +1388,14 @@ export const FetchAgentHistoryRequestMessageSchema = z.object({
   // A free-text filter over agent title, workspace name, branch, and project name.
   // Matching rows follow the requested sort and cursor pagination.
   search: z.string().optional(),
+  // Per-row facts that cost a timeline read. Opt-in because paging runs before the
+  // scan: only the returned page is scanned, never the whole candidate list.
+  include: z
+    .object({
+      // COMPAT(agentHistoryStats): added in v0.14.0, remove gate after 2027-11-20.
+      stats: z.boolean().optional(),
+    })
+    .optional(),
   sort: z
     .array(
       z.object({
@@ -3992,6 +4000,8 @@ export const ServerInfoStatusPayloadSchema = z
         agentForkSession: z.boolean().optional(),
         // COMPAT(conversationExport): added in v0.11.0, remove gate after 2027-10-25.
         conversationExport: z.boolean().optional(),
+        // COMPAT(agentHistoryStats): added in v0.14.0, remove gate after 2027-11-20.
+        agentHistoryStats: z.boolean().optional(),
         // COMPAT(agentMemos): added in v0.11.0, remove gate after 2027-05-05.
         agentMemos: z.boolean().optional(),
         // COMPAT(agentMemoCompletion): added in v0.11.0, remove gate after 2027-05-05.
@@ -4489,9 +4499,24 @@ export const AgentSearchMatchSchema = z.object({
 
 export type AgentSearchMatch = z.infer<typeof AgentSearchMatchSchema>;
 
+/**
+ * 历史行要的两个事实。它们随每次对话变化，所以不靠平时同步维护，而是在请求时
+ * 现算；唯一的沉淀发生在归档那一刻——归档后的会话不会再变，值写进记录长期复用。
+ */
+export const AgentHistoryStatsSchema = z.object({
+  userMessageCount: z.number().int().nonnegative(),
+  // The daemon never truncates: the list decides how much of it to show. The
+  // timestamp is not repeated here, `agent.lastUserMessageAt` already carries it.
+  lastUserMessage: z.string().nullable(),
+});
+
+export type AgentHistoryStats = z.infer<typeof AgentHistoryStatsSchema>;
+
 const AgentDirectoryResponseEntrySchema = z.object({
   agent: AgentSnapshotPayloadSchema,
   project: ProjectPlacementPayloadSchema,
+  // COMPAT(agentHistoryStats): present only when the request asked for `include.stats`.
+  stats: AgentHistoryStatsSchema.optional(),
   // Legacy relevance metadata remains accepted from older daemons.
   // Current history responses use the requested chronological sort.
   searchScore: z.number().optional(),

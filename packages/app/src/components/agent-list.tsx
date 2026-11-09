@@ -14,16 +14,23 @@ import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { useIsCompactFormFactor } from "@/constants/layout";
+import { isWeb } from "@/constants/platform";
+import { useToast } from "@/contexts/toast-context";
 import { useTimeAgo } from "@/hooks/use-time-ago";
 import { type AggregatedAgent } from "@/hooks/use-aggregated-agents";
 import { useSessionStore } from "@/stores/session-store";
-import { Archive, ChevronRight } from "lucide-react-native";
+import { Archive, ArchiveRestore, ChevronRight, Trash2 } from "lucide-react-native";
 import { useProviderIcon } from "@/components/provider-icons";
 import { navigateToAgent } from "@/utils/navigate-to-agent";
 import { useArchiveAgent } from "@/hooks/use-archive-agent";
 import { useDeleteAgent } from "@/hooks/use-delete-agent";
 import { HighlightedText } from "@/components/ui/highlighted-text";
 import { StatusBadge, type StatusBadgeVariant } from "@/components/ui/status-badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { InlineConfirm } from "@/components/ui/inline-confirm";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { HistoryConversationPreviewSheet } from "@/components/history-conversation-preview-sheet";
+import type { MatchRange } from "@getpaseo/protocol/search/text-match";
 import { findHighlightRanges } from "@/components/ui/highlighted-text-segments";
 
 interface AgentListProps {
@@ -50,6 +57,12 @@ const DATE_SECTION_ORDER = [
 ] as const satisfies readonly DateSectionKey[];
 
 const HISTORY_MATCH_OPTIONS = { typoTolerant: true } as const;
+
+/**
+ * web 端行若渲染成原生 button，行内操作按钮会嵌套 button（HTML 不允许），
+ * 因此行在 web 退化为可点击 div，native 保留按钮语义。
+ */
+const ROW_ACCESSIBILITY_ROLE = isWeb ? undefined : "button";
 
 type FlatListItem =
   | { type: "header"; key: string; section: DateSectionKey }
@@ -113,13 +126,55 @@ function SessionBadge({
   return <StatusBadge label={label} variant={variant} leading={icon} />;
 }
 
+/**
+ * 宽屏行首的项目列；手机端项目在 meta 行展示，两处不同时渲染。
+ */
+function SessionProjectColumn({
+  agent,
+  projectName,
+  ranges,
+  isMobile,
+}: {
+  agent: AggregatedAgent;
+  projectName: string;
+  ranges: readonly MatchRange[];
+  isMobile: boolean;
+}) {
+  if (isMobile) {
+    return null;
+  }
+  return (
+    <HighlightedText
+      text={projectName}
+      ranges={ranges}
+      style={[styles.columnMeta, styles.projectColumnGap]}
+      numberOfLines={1}
+      testID={`agent-row-project-${agent.serverId}-${agent.id}`}
+    />
+  );
+}
+
+/**
+ * A live snapshot wins over the cached history row: unarchive changes no history cache, so the
+ * store is what turns the icon back once the restore commits.
+ */
+function useAgentIsArchived(agent: AggregatedAgent): boolean {
+  const liveAgent = useSessionStore((state) => {
+    const session = state.sessions[agent.serverId];
+    return session?.agents.get(agent.id) ?? session?.agentDetails.get(agent.id) ?? null;
+  });
+  return liveAgent ? liveAgent.archivedAt != null : agent.archivedAt != null;
+}
+
 function SessionRowBadges({
   agent,
+  isArchived,
   archivedIcon,
   pendingPermissionCount,
   showDesktopAttention,
 }: {
   agent: AggregatedAgent;
+  isArchived: boolean;
   archivedIcon: ReactElement;
   pendingPermissionCount: number;
   showDesktopAttention: boolean;
@@ -127,7 +182,13 @@ function SessionRowBadges({
   const { t } = useTranslation();
   return (
     <>
-      {agent.archivedAt ? (
+      {agent.stats ? (
+        <SessionBadge
+          label={t("agentList.badges.userMessages", { count: agent.stats.userMessageCount })}
+        />
+      ) : null}
+      {agent.parentAgentId ? <SessionBadge label={t("agentList.badges.subagent")} /> : null}
+      {isArchived ? (
         <SessionBadge label={t("agentList.badges.archived")} icon={archivedIcon} />
       ) : null}
       {pendingPermissionCount > 0 ? (
@@ -172,6 +233,8 @@ function SessionRow({
   showHostColumn,
   onPress,
   onLongPress,
+  onPreviewAgent,
+  onDeleteAgent,
 }: {
   agent: AggregatedAgent;
   search?: string;
@@ -181,15 +244,19 @@ function SessionRow({
   showHostColumn: boolean;
   onPress: (agent: AggregatedAgent) => void;
   onLongPress: (agent: AggregatedAgent) => void;
+  onPreviewAgent?: (agent: AggregatedAgent) => void;
+  onDeleteAgent: (agent: AggregatedAgent) => void;
 }) {
   const { theme } = useUnistyles();
   const { t } = useTranslation();
+  const [isHovered, setIsHovered] = useState(false);
   const agentKey = `${agent.serverId}:${agent.id}`;
   const isSelected = selectedAgentId === agentKey;
   const projectName = agent.projectPlacement?.projectName ?? "";
   const branch = agent.projectPlacement?.checkout.currentBranch ?? "";
   const workspaceName = agent.projectPlacement?.workspaceName ?? "";
   const ProviderIcon = useProviderIcon(agent.provider, agent.serverId);
+  const isArchived = useAgentIsArchived(agent);
   const pendingPermissionCount = agent.pendingPermissionCount ?? 0;
   const ranges = useMemo(
     () => ({
@@ -203,17 +270,31 @@ function SessionRow({
   );
 
   const pressableStyle = useCallback(
-    ({ pressed, hovered = false }: PressableStateCallbackType & { hovered?: boolean }) => [
+    ({ pressed }: PressableStateCallbackType) => [
       styles.row,
       isSelected && styles.rowSelected,
-      Boolean(hovered) && styles.rowHovered,
+      isHovered && styles.rowHovered,
       pressed && styles.rowPressed,
     ],
-    [isSelected],
+    [isHovered, isSelected],
   );
 
-  const handlePress = useCallback(() => onPress(agent), [onPress, agent]);
+  // 行点击先看预览：既能少一次来回跳转，也不至于在历史列表里误进会话。
+  // 老 host 不支持导出整段会话时，退回原来的「直接打开」。
+  const supportsConversationExport = useSessionStore(
+    (state) => state.sessions[agent.serverId]?.serverInfo?.features?.conversationExport === true,
+  );
+  const handlePress = useCallback(() => {
+    if (supportsConversationExport && onPreviewAgent) {
+      onPreviewAgent(agent);
+      return;
+    }
+    onPress(agent);
+  }, [agent, onPress, onPreviewAgent, supportsConversationExport]);
   const handleLongPress = useCallback(() => onLongPress(agent), [onLongPress, agent]);
+  const handlePointerEnter = useCallback(() => setIsHovered(true), []);
+  const handlePointerLeave = useCallback(() => setIsHovered(false), []);
+  const handleDeleteAgent = useCallback(() => onDeleteAgent(agent), [agent, onDeleteAgent]);
 
   const archivedIcon = useMemo(
     () => <Archive size={theme.fontSize.sm} color={theme.colors.foregroundMuted} />,
@@ -231,103 +312,234 @@ function SessionRow({
         text={agent.title || t("agentList.fallbackTitle")}
         ranges={ranges.title}
         style={styles.sessionTitle}
-        numberOfLines={1}
         testID={`agent-row-title-${agent.serverId}-${agent.id}`}
       />
     </View>
   );
 
   return (
-    <Pressable
-      style={pressableStyle}
-      onPress={handlePress}
-      onLongPress={handleLongPress}
-      accessibilityRole="button"
-      testID={`agent-row-${agent.serverId}-${agent.id}`}
-    >
-      <View style={styles.rowContent}>
-        <View style={styles.rowTitleRow}>
-          <HighlightedText
-            text={workspaceName || projectName}
-            ranges={workspaceName ? ranges.workspace : ranges.project}
-            style={styles.workspaceTitleText}
-            numberOfLines={1}
-            testID={`agent-row-workspace-${agent.serverId}-${agent.id}`}
-          />
-          {!isMobile ? (
-            <>
-              <ChevronRight size={theme.iconSize.xs} color={theme.colors.foregroundMuted} />
-              {agentTitle}
-            </>
-          ) : null}
-          <SessionRowBadges
-            agent={agent}
-            archivedIcon={archivedIcon}
-            pendingPermissionCount={pendingPermissionCount}
-            showDesktopAttention={showDesktopAttention}
-          />
-        </View>
-        {isMobile ? agentTitle : null}
-        {isMobile ? (
-          <View style={styles.rowMetaRow}>
+    // Hover lives on the plain view: the row's own actions are pressables, and a pressable that
+    // tracks hover loses it to them — which is what made the revealed icons flicker.
+    <View onPointerEnter={handlePointerEnter} onPointerLeave={handlePointerLeave}>
+      <Pressable
+        style={pressableStyle}
+        onPress={handlePress}
+        onLongPress={handleLongPress}
+        accessibilityRole={ROW_ACCESSIBILITY_ROLE}
+        testID={`agent-row-${agent.serverId}-${agent.id}`}
+      >
+        <SessionProjectColumn
+          agent={agent}
+          projectName={projectName}
+          ranges={ranges.project}
+          isMobile={isMobile}
+        />
+        <View style={styles.rowContent}>
+          <View style={styles.rowTitleRow}>
             <HighlightedText
-              text={projectName}
-              ranges={ranges.project}
-              style={styles.sessionMetaText}
+              text={workspaceName || projectName}
+              ranges={workspaceName ? ranges.workspace : ranges.project}
+              style={styles.workspaceTitleText}
               numberOfLines={1}
-              testID={`agent-row-project-${agent.serverId}-${agent.id}`}
+              testID={`agent-row-workspace-${agent.serverId}-${agent.id}`}
             />
-            <Text style={styles.sessionMetaSeparator}>·</Text>
+            {!isMobile ? (
+              <>
+                <ChevronRight size={theme.iconSize.xs} color={theme.colors.foregroundMuted} />
+                {agentTitle}
+              </>
+            ) : null}
+            <SessionRowBadges
+              agent={agent}
+              isArchived={isArchived}
+              archivedIcon={archivedIcon}
+              pendingPermissionCount={pendingPermissionCount}
+              showDesktopAttention={showDesktopAttention}
+            />
+          </View>
+          {isMobile ? agentTitle : null}
+          {isMobile ? (
+            <View style={styles.rowMetaRow}>
+              <HighlightedText
+                text={projectName}
+                ranges={ranges.project}
+                style={styles.sessionMetaText}
+                numberOfLines={1}
+                testID={`agent-row-project-${agent.serverId}-${agent.id}`}
+              />
+              <Text style={styles.sessionMetaSeparator}>·</Text>
+              <HighlightedText
+                text={branch}
+                ranges={ranges.branch}
+                style={styles.sessionMetaText}
+                numberOfLines={1}
+                testID={`agent-row-branch-${agent.serverId}-${agent.id}`}
+              />
+              <Text style={styles.sessionMetaSeparator}>·</Text>
+              <AgentActivityTime date={agent.lastActivityAt} isMobile />
+              {showHostColumn && agent.serverLabel ? (
+                <>
+                  <Text style={styles.sessionMetaSeparator}>·</Text>
+                  <Text style={styles.sessionMetaText} numberOfLines={1}>
+                    {agent.serverLabel}
+                  </Text>
+                </>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
+        {!isMobile ? (
+          <View style={styles.rowColumns}>
+            <SessionModelCell
+              model={agent.model}
+              onPress={handlePress}
+              onLongPress={handleLongPress}
+            />
+            {showHostColumn ? (
+              <Text style={styles.columnMetaHost} numberOfLines={1}>
+                {agent.serverLabel}
+              </Text>
+            ) : null}
             <HighlightedText
               text={branch}
               ranges={ranges.branch}
-              style={styles.sessionMetaText}
+              style={styles.columnMeta}
               numberOfLines={1}
               testID={`agent-row-branch-${agent.serverId}-${agent.id}`}
             />
-            <Text style={styles.sessionMetaSeparator}>·</Text>
-            <AgentActivityTime date={agent.lastActivityAt} isMobile />
-            {showHostColumn && agent.serverLabel ? (
-              <>
-                <Text style={styles.sessionMetaSeparator}>·</Text>
-                <Text style={styles.sessionMetaText} numberOfLines={1}>
-                  {agent.serverLabel}
-                </Text>
-              </>
-            ) : null}
+            <AgentActivityTime date={agent.lastActivityAt} isMobile={false} />
+            <AgentRowActions
+              agent={agent}
+              isArchived={isArchived}
+              testIDPrefix={`agent-row-${agent.serverId}-${agent.id}`}
+              onDeleteAgent={handleDeleteAgent}
+            />
           </View>
         ) : null}
-      </View>
-      {!isMobile ? (
-        <View style={styles.rowColumns}>
-          <HighlightedText
-            text={projectName}
-            ranges={ranges.project}
-            style={styles.columnMeta}
-            numberOfLines={1}
-            testID={`agent-row-project-${agent.serverId}-${agent.id}`}
-          />
-          {showHostColumn ? (
-            <Text style={styles.columnMetaHost} numberOfLines={1}>
-              {agent.serverLabel}
-            </Text>
-          ) : null}
-          <HighlightedText
-            text={branch}
-            ranges={ranges.branch}
-            style={styles.columnMeta}
-            numberOfLines={1}
-            testID={`agent-row-branch-${agent.serverId}-${agent.id}`}
-          />
-          <AgentActivityTime date={agent.lastActivityAt} isMobile={false} />
+        <SessionRowTrailingAttention
+          isMobile={isMobile}
+          showAttentionIndicator={showAttentionIndicator}
+          requiresAttention={agent.requiresAttention}
+        />
+      </Pressable>
+    </View>
+  );
+}
+
+/**
+ * The model column. It sits inside the row's Pressable, so it takes the row's press handlers:
+ * a nested control that swallowed the tap would leave a dead patch in the row that opens the
+ * session. Only the hover is this cell's own, and an empty model renders nothing at all.
+ */
+function SessionModelCell({
+  model,
+  onPress,
+  onLongPress,
+}: {
+  model: string | null;
+  onPress: () => void;
+  onLongPress: () => void;
+}): ReactElement | null {
+  if (!model) return null;
+  return (
+    <Tooltip delayDuration={300} enabledOnDesktop enabledOnMobile={false}>
+      <TooltipTrigger asChild>
+        <Pressable style={styles.columnModel} onPress={onPress} onLongPress={onLongPress}>
+          <Text style={styles.columnModelText} numberOfLines={1} ellipsizeMode="tail">
+            {model}
+          </Text>
+        </Pressable>
+      </TooltipTrigger>
+      <TooltipContent side="top" align="start" offset={6} maxWidth={420}>
+        <Text style={styles.tooltipText}>{model}</Text>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+/**
+ * The revealed actions are icons only, so each says what it does on hover. The label doubles as
+ * the accessibility label, so the spoken and the hovered text cannot drift apart.
+ */
+function RowActionTooltip({ label, children }: { label: string; children: ReactElement }) {
+  return (
+    <Tooltip delayDuration={250} enabledOnDesktop enabledOnMobile={false}>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side="top" align="center" offset={8}>
+        <Text style={styles.tooltipText}>{label}</Text>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+/**
+ * The row's own actions, always in view so the columns keep one shape whether or not the pointer
+ * is over them. Archiving flips with the live archived state; deleting asks in place, because a
+ * session removed here is gone. Freewind only: upstream rows carry no action column.
+ */
+function AgentRowActions({
+  agent,
+  isArchived,
+  testIDPrefix,
+  onDeleteAgent,
+}: {
+  agent: AggregatedAgent;
+  isArchived: boolean;
+  testIDPrefix: string;
+  onDeleteAgent: () => void;
+}) {
+  const { theme } = useUnistyles();
+  const { t } = useTranslation();
+  const { toggleArchiveAgent, readArchiveAgentOperation } = useArchiveAgent();
+  const operation = readArchiveAgentOperation({ serverId: agent.serverId, agentId: agent.id });
+  const isBusy = operation !== null;
+  const archiveLabel = isArchived
+    ? t("agentPanel.archived.unarchive")
+    : t("agentList.archiveSheet.archive");
+  const deleteLabel = t("agentList.deleteSheet.delete");
+  const archiveIcon = useMemo(() => {
+    if (isBusy) {
+      return <LoadingSpinner size="small" color={theme.colors.foregroundMuted} />;
+    }
+    if (isArchived) {
+      return <ArchiveRestore size={theme.iconSize.sm} color={theme.colors.foregroundMuted} />;
+    }
+    return <Archive size={theme.iconSize.sm} color={theme.colors.foregroundMuted} />;
+  }, [isBusy, isArchived, theme.colors.foregroundMuted, theme.iconSize.sm]);
+  const archiveButtonState = useMemo(() => ({ disabled: isBusy }), [isBusy]);
+  const handleToggleArchive = useCallback(() => {
+    void toggleArchiveAgent({
+      serverId: agent.serverId,
+      agentId: agent.id,
+      archived: isArchived,
+    }).catch(() => undefined);
+  }, [agent.serverId, agent.id, isArchived, toggleArchiveAgent]);
+
+  return (
+    <View style={styles.rowActions}>
+      <RowActionTooltip label={archiveLabel}>
+        <Pressable
+          onPress={handleToggleArchive}
+          disabled={isBusy}
+          accessibilityRole="button"
+          accessibilityLabel={archiveLabel}
+          accessibilityState={archiveButtonState}
+          testID={`${testIDPrefix}-${isArchived ? "unarchive" : "archive"}`}
+          style={styles.rowAction}
+          hitSlop={6}
+        >
+          {archiveIcon}
+        </Pressable>
+      </RowActionTooltip>
+      <RowActionTooltip label={deleteLabel}>
+        {/* The tooltip needs a ref host; `InlineConfirm` is a function component. */}
+        <View style={styles.rowActionTooltipHost} collapsable={false}>
+          <InlineConfirm onConfirm={onDeleteAgent} destructive testID={`${testIDPrefix}-delete`}>
+            <Trash2 size={theme.iconSize.sm} color={theme.colors.foregroundMuted} />
+          </InlineConfirm>
         </View>
-      ) : null}
-      <SessionRowTrailingAttention
-        isMobile={isMobile}
-        showAttentionIndicator={showAttentionIndicator}
-        requiresAttention={agent.requiresAttention}
-      />
-    </Pressable>
+      </RowActionTooltip>
+    </View>
   );
 }
 
@@ -353,8 +565,11 @@ export function AgentList({
 }: AgentListProps) {
   const { theme } = useUnistyles();
   const { t } = useTranslation();
+  const toast = useToast();
   const insets = useSafeAreaInsets();
   const [actionAgent, setActionAgent] = useState<AggregatedAgent | null>(null);
+  const [previewAgent, setPreviewAgent] = useState<AggregatedAgent | null>(null);
+  const [isPreviewVisible, setIsPreviewVisible] = useState(false);
   const isMobile = useIsCompactFormFactor();
   const { archiveAgent } = useArchiveAgent();
   const { deleteAgent, isDeletingAgent } = useDeleteAgent();
@@ -417,6 +632,25 @@ export function AgentList({
     setActionAgent(null);
   }, [actionAgent, actionClient, deleteAgent]);
 
+  // The agent stays selected after close so the sheet keeps its content during the dismiss
+  // animation, and reopening the same row reuses the cached export.
+  const handlePreviewAgent = useCallback((agent: AggregatedAgent) => {
+    setPreviewAgent(agent);
+    setIsPreviewVisible(true);
+  }, []);
+
+  const handleClosePreview = useCallback(() => {
+    setIsPreviewVisible(false);
+  }, []);
+
+  // oxlint jsx-no-new-function-as-prop：sheet 的 onOpen 需要稳定引用，避免每次渲染新建函数。
+  const handlePreviewOpen = useCallback(() => {
+    handleClosePreview();
+    if (previewAgent) {
+      handleAgentPress(previewAgent);
+    }
+  }, [handleClosePreview, handleAgentPress, previewAgent]);
+
   const handleArchiveAgent = useCallback(() => {
     if (!actionAgent || !actionClient) {
       return;
@@ -425,6 +659,16 @@ export function AgentList({
     void archiveAgent({ serverId: actionAgent.serverId, agentId: actionAgent.id }).catch(() => {});
     setActionAgent(null);
   }, [actionAgent, actionClient, archiveAgent]);
+
+  // Deleting is the one irreversible action here; the row asks in place before calling this.
+  const handleDeleteAgentFromRow = useCallback(
+    (agent: AggregatedAgent) => {
+      void deleteAgent({ serverId: agent.serverId, agentId: agent.id }).catch((error: unknown) => {
+        toast.error(error instanceof Error ? error.message : t("agentList.deleteSheet.failed"));
+      });
+    },
+    [deleteAgent, t, toast],
+  );
 
   const flatItems = useMemo((): FlatListItem[] => {
     const buckets = new Map<DateSectionKey, AggregatedAgent[]>();
@@ -468,12 +712,16 @@ export function AgentList({
           showHostColumn={showHostColumn}
           onPress={handleAgentPress}
           onLongPress={handleAgentLongPress}
+          onPreviewAgent={handlePreviewAgent}
+          onDeleteAgent={handleDeleteAgentFromRow}
         />
       );
     },
     [
       handleAgentLongPress,
       handleAgentPress,
+      handleDeleteAgentFromRow,
+      handlePreviewAgent,
       isMobile,
       search,
       selectedAgentId,
@@ -568,6 +816,17 @@ export function AgentList({
           </View>
         </View>
       </Modal>
+
+      {previewAgent ? (
+        <HistoryConversationPreviewSheet
+          serverId={previewAgent?.serverId ?? ""}
+          agentId={previewAgent?.id ?? null}
+          agentTitle={previewAgent?.title ?? null}
+          visible={isPreviewVisible}
+          onClose={handleClosePreview}
+          onOpen={handlePreviewOpen}
+        />
+      ) : null}
     </>
   );
 }
@@ -637,7 +896,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   workspaceTitleText: {
     flexShrink: { xs: 1, md: 0 },
-    maxWidth: { xs: "100%", md: 320 },
+    maxWidth: { xs: "100%", md: 120 },
     fontSize: theme.fontSize.base,
     color: theme.colors.foreground,
   },
@@ -683,6 +942,10 @@ const styles = StyleSheet.create((theme) => ({
     flexShrink: 0,
     gap: theme.spacing[3],
   },
+  /** 行首项目列与标题内容区之间留出列间距。 */
+  projectColumnGap: {
+    marginRight: theme.spacing[3],
+  },
   columnMeta: {
     fontSize: theme.fontSize.base,
     color: theme.colors.foregroundMuted,
@@ -703,6 +966,37 @@ const styles = StyleSheet.create((theme) => ({
     width: 120,
     marginLeft: theme.spacing[4],
     textAlign: "right" as const,
+  },
+  /** Model ids are long and uneven; the cell truncates and the tooltip carries the rest. */ columnModel:
+    {
+      flexShrink: 0,
+      width: 160,
+    },
+  columnModelText: {
+    fontSize: theme.fontSize.base,
+    color: theme.colors.foregroundMuted,
+  },
+  tooltipText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.foreground,
+  },
+  /** The actions keep their footprint at rest so hovering never shifts the columns. */
+  rowActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: theme.spacing[1],
+    flexShrink: 0,
+    width: 88,
+  },
+  rowAction: {
+    padding: theme.spacing[1],
+    borderRadius: theme.borderRadius.md,
+  },
+  /** The delete tooltip's ref host; the confirm keeps its own padding. */
+  rowActionTooltipHost: {
+    alignItems: "center",
+    justifyContent: "center",
   },
   sheetOverlay: {
     flex: 1,

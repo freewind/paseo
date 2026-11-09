@@ -2994,6 +2994,80 @@ test("fetch_agent_history_request pages archived historical rows separately", as
   expect(session.agentUpdates.hasSubscription()).toBe(false);
 });
 
+test("fetch_agent_history_request attaches stats only when the request asks", async () => {
+  const emitted: SessionOutboundMessage[] = [];
+  const session = createSessionForWorkspaceTests();
+  const statsCwd = path.resolve("/tmp/history-stats");
+  const project = createPersistedProjectRecord({
+    projectId: "proj-stats",
+    rootPath: statsCwd,
+    kind: "non_git",
+    displayName: "history-stats",
+    createdAt: "2026-03-01T12:00:00.000Z",
+    updatedAt: "2026-03-01T12:00:00.000Z",
+  });
+  const workspace = createPersistedWorkspaceRecord({
+    workspaceId: "ws-stats",
+    projectId: project.projectId,
+    cwd: statsCwd,
+    kind: "directory",
+    displayName: "history-stats",
+    createdAt: "2026-03-01T12:00:00.000Z",
+    updatedAt: "2026-03-01T12:00:00.000Z",
+  });
+  const agent = makeAgent({
+    id: "stats-agent",
+    cwd: statsCwd,
+    workspaceId: "ws-stats",
+    status: "idle",
+    updatedAt: "2026-03-02T12:00:00.000Z",
+  });
+
+  session.emit = (message) => {
+    if (isSessionOutboundMessage(message)) emitted.push(message);
+  };
+  session.projectRegistry.get = async () => project;
+  session.workspaceRegistry.list = async () => [workspace];
+  session.workspaceRegistry.get = async () => workspace;
+  session.listAgentPayloads = async () => [agent];
+  // 内存里已有这个会话，所以统计走“直接数内存 timeline”那一条，不触发加载。
+  session.agentManager.getAgent = () =>
+    makeManagedAgent({
+      id: agent.id,
+      cwd: statsCwd,
+      workspaceId: "ws-stats",
+      lifecycle: "idle",
+      updatedAt: agent.updatedAt,
+    }) as unknown as ManagedAgent;
+  session.agentManager.getTimeline = () =>
+    [
+      { type: "user_message", text: "first" },
+      { type: "assistant_message", text: "reply" },
+      { type: "user_message", text: "second" },
+    ] as ReturnType<typeof session.agentManager.getTimeline>;
+
+  await session.handleMessage({
+    type: "fetch_agent_history_request",
+    requestId: "req-stats",
+    include: { stats: true },
+  });
+
+  const withStats = filterByType(emitted, "fetch_agent_history_response")[0];
+  expect(withStats.payload.entries[0]?.stats).toEqual({
+    userMessageCount: 2,
+    lastUserMessage: "second",
+  });
+
+  emitted.length = 0;
+  await session.handleMessage({
+    type: "fetch_agent_history_request",
+    requestId: "req-without-stats",
+  });
+
+  const withoutStats = filterByType(emitted, "fetch_agent_history_response")[0];
+  expect(withoutStats.payload.entries[0]?.stats).toBeUndefined();
+});
+
 test("fetch_agent_history_request filters across history and paginates chronologically", async () => {
   const emitted: SessionOutboundMessage[] = [];
   const session = createSessionForWorkspaceTests();

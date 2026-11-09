@@ -58,6 +58,7 @@ export const en = {
     loading: "Loading...",
     actions: {
       save: "Save",
+      open: "Open",
       back: "Back",
       cancel: "Cancel",
       close: "Close",
@@ -69,6 +70,7 @@ export const en = {
       search: "Search",
       select: "Select",
       selectAll: "Select all",
+      preview: "Preview",
       add: "Add",
       edit: "Edit",
       delete: "Delete",
@@ -398,6 +400,8 @@ export const en = {
     },
     badges: {
       archived: "Archived",
+      subagent: "Subagent",
+      userMessages: "User messages: {{count}}",
       pending: "{{count}} pending",
       attention: "Attention",
     },

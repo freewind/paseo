@@ -24,6 +24,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { FilePanelOpenWithMenu } from "@/file-panels";
 import type { WorkspaceTabMenuEntry } from "@/screens/workspace/workspace-tab-menu";
+import {
+  renderSidebarKebabIcon,
+  sidebarKebabTriggerStyle,
+} from "@/components/sidebar/sidebar-kebab-trigger";
 import type { Theme } from "@/styles/theme";
 
 const ThemedEllipsis = withUnistyles(Ellipsis);
@@ -102,14 +106,18 @@ export function MobileTabTrailingAccessory({
   presentationLabel,
   menuEntries,
   openWith,
+  variant = "tab",
 }: {
   menuTestIDBase: string;
   presentationLabel: string;
   menuEntries: WorkspaceTabMenuEntry[];
   /** A file tab's "Open with…" row and its page. */
   openWith?: FilePanelOpenWithMenu;
+  /** `sidebar` renders the sidebar row kebab, so a row and a tab do not disagree on its look. */
+  variant?: "sidebar" | "tab";
 }): ReactElement {
   const { t } = useTranslation();
+  const isSidebar = variant === "sidebar";
   return (
     <DropdownMenu compactMode="sheet">
       <DropdownMenuTrigger
@@ -117,9 +125,13 @@ export function MobileTabTrailingAccessory({
         accessibilityRole="button"
         accessibilityLabel={t("workspace.tabs.menu.openFor", { label: presentationLabel })}
         hitSlop={8}
-        style={mobileTabMenuTriggerStyle}
+        style={isSidebar ? sidebarKebabTriggerStyle : mobileTabMenuTriggerStyle}
       >
-        <ThemedEllipsis size={14} uniProps={mutedColorMapping} />
+        {isSidebar ? (
+          renderSidebarKebabIcon
+        ) : (
+          <ThemedEllipsis size={14} uniProps={mutedColorMapping} />
+        )}
       </DropdownMenuTrigger>
       <DropdownMenuContent
         side="bottom"

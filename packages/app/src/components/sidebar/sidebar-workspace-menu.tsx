@@ -6,15 +6,13 @@ import {
   type ReactNode,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { type PressableStateCallbackType } from "react-native";
-import { StyleSheet, withUnistyles } from "react-native-unistyles";
+import { withUnistyles } from "react-native-unistyles";
 import {
   Archive,
   ArchiveRestore,
   Circle,
   CircleCheck,
   Copy,
-  MoreVertical,
   Pencil,
   Pin,
   PinOff,
@@ -27,7 +25,6 @@ import { useCreateWorkspaceAgent } from "@/hooks/use-create-workspace-agent";
 import { useRestoreLastArchivedAgent } from "@/hooks/use-restore-last-archived-agent";
 import { useAppSettings } from "@/hooks/use-settings";
 import type { SidebarWorkspaceEntry } from "@/hooks/use-sidebar-workspaces-list";
-import { densityIconProps } from "@/styles/density";
 import {
   orderWorkspaceMenuItems,
   type WorkspaceMenuItemNodes,
@@ -52,6 +49,10 @@ import { Shortcut } from "@/components/ui/shortcut";
 import { OpenInFileManagerMenuItem } from "@/workspace/open-in-file-manager/menu-item";
 import { resolveSidebarWorkspaceAccessibilityLabel } from "@/components/sidebar/sidebar-workspace-title";
 import {
+  renderSidebarKebabIcon,
+  sidebarKebabTriggerStyle,
+} from "@/components/sidebar/sidebar-kebab-trigger";
+import {
   workspaceServiceLabelKey,
   type WorkspaceServiceSummary,
 } from "@/components/sidebar/workspace-meta-row";
@@ -61,12 +62,10 @@ import {
   type WorkspaceLabelTarget,
 } from "@/workspace-labels/picker";
 
-const foregroundColorMapping = (theme: Theme) => ({ color: theme.colors.foreground });
 const foregroundMutedColorMapping = (theme: Theme) => ({
   color: theme.colors.foregroundMuted,
 });
 
-const ThemedMoreVertical = withUnistyles(MoreVertical);
 const ThemedCopy = withUnistyles(Copy);
 const ThemedArchive = withUnistyles(Archive);
 const ThemedArchiveRestore = withUnistyles(ArchiveRestore);
@@ -91,13 +90,6 @@ const restoreLastArchivedAgentLeadingIcon = (
 );
 const pinLeadingIcon = <ThemedPin size={14} uniProps={foregroundMutedColorMapping} />;
 const unpinLeadingIcon = <ThemedPinOff size={14} uniProps={foregroundMutedColorMapping} />;
-
-const triggerIconProps = densityIconProps("sm", foregroundMutedColorMapping);
-const triggerIconHoveredProps = densityIconProps("sm", foregroundColorMapping);
-
-function renderTriggerIcon({ hovered }: { hovered?: boolean }) {
-  return <ThemedMoreVertical uniProps={hovered ? triggerIconHoveredProps : triggerIconProps} />;
-}
 
 export interface SidebarWorkspaceMenuProps {
   workspaceKey: string;
@@ -262,7 +254,7 @@ function SidebarWorkspaceMenuItems({
         surface={surface}
         testID={`sidebar-workspace-menu-pin-${workspaceKey}`}
         leading={isPinned ? unpinLeadingIcon : pinLeadingIcon}
-        onSelect={onTogglePin}
+        onSelect={handleTogglePin}
       >
         {isPinned ? t("sidebar.workspace.actions.unpin") : t("sidebar.workspace.actions.pin")}
       </WorkspaceMenuItem>
@@ -293,7 +285,7 @@ function SidebarWorkspaceMenuItems({
         trailing={archiveTrailing}
         status={archiveStatus}
         pendingLabel={archivePendingLabel}
-        onSelect={onArchive}
+        onSelect={handleArchive}
       >
         {archiveLabel ?? t("sidebar.workspace.actions.archive")}
       </WorkspaceMenuItem>
@@ -345,12 +337,12 @@ export function SidebarWorkspaceMenu({
     <DropdownMenu compactMode="sheet" open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
         hitSlop={8}
-        style={triggerStyle}
+        style={sidebarKebabTriggerStyle}
         accessibilityRole={isWeb ? undefined : "button"}
         accessibilityLabel={t("sidebar.workspace.actions.menu")}
         testID={`sidebar-workspace-kebab-${workspaceKey}`}
       >
-        {renderTriggerIcon}
+        {renderSidebarKebabIcon}
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
@@ -496,27 +488,3 @@ export function SidebarWorkspaceContextMenu({
     </ContextMenu>
   );
 }
-
-function triggerStyle({ hovered = false }: PressableStateCallbackType & { hovered?: boolean }) {
-  return [styles.trigger, hovered && styles.triggerHovered];
-}
-
-const styles = StyleSheet.create((theme) => ({
-  trigger: {
-    // Larger on compact so the kebab is an easy tap target.
-    width: { xs: 32, md: 18 },
-    height: { xs: 32, md: 18 },
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 4,
-    marginLeft: 2,
-    // Center the compact box on the 20px title line it is anchored to.
-    marginTop: { xs: -6, md: 0 },
-    // MoreVertical paints only around the center of its SVG. Keep the padded hit box, but
-    // pull the painted dots through that unused view-box space onto the trailing-content rail.
-    marginRight: { xs: -14, md: -7 },
-  },
-  triggerHovered: {
-    backgroundColor: theme.colors.surface2,
-  },
-}));

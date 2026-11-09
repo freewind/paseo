@@ -10,6 +10,8 @@ export interface SidebarWorkspaceAgentRow {
   tabId: string;
   agentId: string;
   target: WorkspaceTabTarget & { kind: "agent" };
+  /** agent 最后一次活动的时间；取不到时为 null，行尾就不画时间。 */
+  lastActivityAt: Date | null;
 }
 
 /** agent 行显示的标签：未命名 agent 回退到它的 id，标题不会空着。 */
@@ -28,12 +30,18 @@ export function agentTabLabel(title: string | null | undefined, fallback: string
  */
 export function buildSidebarWorkspaceAgentRows(
   layout: WorkspaceLayout | null | undefined,
+  readLastActivity: (agentId: string) => Date | null = () => null,
 ): SidebarWorkspaceAgentRow[] {
   if (!layout) return [];
   const rows: SidebarWorkspaceAgentRow[] = [];
   for (const tab of collectAllTabs(layout.root)) {
     if (tab.target.kind !== "agent") continue;
-    rows.push({ tabId: tab.tabId, agentId: tab.target.agentId, target: tab.target });
+    rows.push({
+      tabId: tab.tabId,
+      agentId: tab.target.agentId,
+      target: tab.target,
+      lastActivityAt: readLastActivity(tab.target.agentId),
+    });
   }
   return rows;
 }

@@ -1,9 +1,12 @@
 import { memo, useCallback, useMemo, useState } from "react";
-import { View } from "react-native";
+import { Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { StyleSheet } from "react-native-unistyles";
 import { PressHighlight } from "@/components/ui/press-highlight";
 import { isNative, isWeb } from "@/constants/platform";
+import { useIsCompactFormFactor } from "@/constants/layout";
+import { SidebarWorkspaceTrailingActionSlot } from "@/components/sidebar/sidebar-workspace-row-content";
+import { useCompactTimeAgo } from "@/hooks/use-time-ago";
 import { SidebarStatusSlot } from "@/components/sidebar/sidebar-status-slot";
 import { MobileTabTrailingAccessory } from "@/screens/workspace/workspace-tab-trailing-accessory";
 import type { WorkspaceTabMenuEntry } from "@/screens/workspace/workspace-tab-menu";
@@ -38,6 +41,10 @@ export const SidebarWorkspaceAgentRowItem = memo(function SidebarWorkspaceAgentR
   const handlePointerEnter = useCallback(() => setIsHovered(true), []);
   const handlePointerLeave = useCallback(() => setIsHovered(false), []);
   const accessibilityState = useMemo(() => ({ selected: isActive }), [isActive]);
+  const isCompact = useIsCompactFormFactor();
+  // 与 workspace 行同一个算法：原生或紧凑布局没有 hover，菜单只能常显。
+  const isTouchPlatform = isNative || isCompact;
+  const showTime = Boolean(row.lastActivityAt) && !isTouchPlatform;
   const handlePress = useCallback(() => onOpenAgent(row.agentId), [onOpenAgent, row.agentId]);
   return (
     // 用 View 而不是 Pressable：行的点击区和菜单触发器是兄弟节点，web 端才不会把 button 套 button。
@@ -63,21 +70,74 @@ export const SidebarWorkspaceAgentRowItem = memo(function SidebarWorkspaceAgentR
         <HighlightedText
           text={label}
           ranges={highlightRanges}
-          numberOfLines={1}
           style={[styles.label, isActive && styles.labelActive]}
           testID={`sidebar-workspace-agent-title-${row.tabId}`}
         />
       </PressHighlight>
-      <MobileTabTrailingAccessory
-        menuTestIDBase={`sidebar-workspace-agent-menu-${row.tabId}`}
-        presentationLabel={label}
-        menuEntries={menuEntries}
-      />
+      <SidebarWorkspaceTrailingActionSlot reserveWidth={showTime}>
+        {showTime && row.lastActivityAt ? (
+          <AgentTrailingTime date={row.lastActivityAt} hidden={isHovered} tabId={row.tabId} />
+        ) : null}
+        <View
+          style={
+            showTime
+              ? [styles.trailingMenuResting, !isHovered && styles.trailingMenuHidden]
+              : undefined
+          }
+        >
+          <MobileTabTrailingAccessory
+            variant="sidebar"
+            menuTestIDBase={`sidebar-workspace-agent-menu-${row.tabId}`}
+            presentationLabel={label}
+            menuEntries={menuEntries}
+          />
+        </View>
+      </SidebarWorkspaceTrailingActionSlot>
     </View>
   );
 });
 
+/** 行尾时间：与菜单同占一个槽位，悬停时让位给菜单。 */
+function AgentTrailingTime({
+  date,
+  hidden,
+  tabId,
+}: {
+  date: Date;
+  hidden: boolean;
+  tabId: string;
+}) {
+  const label = useCompactTimeAgo(date);
+  return (
+    <Text
+      style={[styles.trailingTime, hidden && styles.trailingTimeHidden]}
+      numberOfLines={1}
+      testID={`sidebar-workspace-agent-time-${tabId}`}
+    >
+      {label}
+    </Text>
+  );
+}
 const styles = StyleSheet.create((theme) => ({
+  trailingTime: {
+    color: theme.colors.foregroundExtraMuted,
+    fontSize: theme.fontSize.sm,
+    flexShrink: 0,
+  },
+  trailingTimeHidden: {
+    opacity: 0,
+  },
+  // 有时间时菜单一直浮在时间上方（只切换透明度），悬停不会把行撑高、也不会把按钮挤到下一行。
+  trailingMenuResting: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    right: 0,
+    justifyContent: "center",
+  },
+  trailingMenuHidden: {
+    opacity: 0,
+  },
   // 比 workspace 行自身的 padding 再深一级，agent 才读作归属于上方 workspace，而不是自己就是
   // 一个 workspace。这一级全加在状态槽左边，圆点和标题仍落在同两条竖轨上。
   row: {
@@ -85,7 +145,7 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: "center",
     gap: theme.spacing[1],
     paddingVertical: theme.spacing[1],
-    paddingRight: theme.spacing[1],
+    paddingRight: theme.spacing[3],
     paddingLeft: theme.spacing[4],
     // 上方 workspace 行的背景是圆角的，agent 行若保留直角会被读成另一种东西，而不是那一行的子项。
     borderRadius: theme.borderRadius.lg,

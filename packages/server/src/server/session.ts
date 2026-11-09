@@ -1,6 +1,8 @@
 import { type WorkspaceRuntimeStore } from "./workspace-runtime-store/index.js";
 import type { AgentMessageDelivery } from "./agent/agent-messages/index.js";
 import { AgentDirectory } from "./agent/directory.js";
+import { computeHistoryStats } from "./agent/history-stats.js";
+import type { AgentHistoryStats } from "./messages.js";
 import { ConnectedHostSession } from "./connected-hosts/index.js";
 import type { ConnectedHosts } from "./connected-hosts/index.js";
 import { searchTimeline } from "./agent/chat-search/index.js";
@@ -761,6 +763,16 @@ export class Session {
   private readonly projectIcons: ProjectIconReader;
   private readonly worktreesRoot: string | undefined;
   private readonly rewindInitiators = new Map<string, object | undefined>();
+  /**
+   * 历史列表的统计缓存。键是 agentId，版本是当时的 updatedAt：会话动过就必须重算，
+   * 没动过就白拿。上限只为夹住无限翻页带来的增长。
+   */
+  private readonly historyStatsCache = new Map<
+    string,
+    { updatedAt: string; stats: AgentHistoryStats }
+  >();
+  private static readonly HISTORY_STATS_CACHE_LIMIT = 4000;
+  private static readonly HISTORY_STATS_CONCURRENCY = 6;
 
   private agentManager: AgentManager;
   private readonly agentStorage: AgentStorage;
@@ -3419,7 +3431,17 @@ export class Session {
   private async handleArchiveAgentRequest(agentId: string, requestId: string): Promise<void> {
     this.sessionLogger.info({ agentId }, `Archiving agent ${agentId}`);
 
+    // 归档前 timeline 就在内存里，数它是免费的；归档后的会话不会再产生消息，
+    // 这份值因此可以长期当历史列表的读取来源，不必为了数消息再把会话拉起来。
+    const liveStats = this.agentManager.getAgent(agentId)
+      ? computeHistoryStats(this.agentManager.getTimeline(agentId))
+      : null;
+
     const { archivedAt } = await this.archiveAgentForClose(agentId);
+
+    if (liveStats) {
+      await this.persistArchivedHistoryStats(agentId, liveStats);
+    }
 
     this.emit({
       type: "agent_archived",
@@ -3429,6 +3451,22 @@ export class Session {
         requestId,
       },
     });
+  }
+
+  private async persistArchivedHistoryStats(
+    agentId: string,
+    stats: AgentHistoryStats,
+  ): Promise<void> {
+    try {
+      await this.agentStorage.setHistoryStats(agentId, stats);
+      const record = await this.agentStorage.get(agentId);
+      if (record) {
+        this.rememberHistoryStats(agentId, record.updatedAt, stats);
+      }
+    } catch (error) {
+      // 统计只是列表的装饰，写不进去也不能把归档这件事拖失败。
+      this.sessionLogger.warn({ err: error, agentId }, "Failed to persist history stats");
+    }
   }
 
   private async archiveAgentForClose(
@@ -5563,6 +5601,86 @@ export class Session {
     return matchedEntries;
   }
 
+  /**
+   * 历史页要了 `include.stats` 才补统计，而且只补分页后的这一页：代价上限是一页的行数，
+   * 永远不会扇到全部候选。并发有限，单行失败只是少一个字段，不让整页跟着失败。
+   */
+  private async attachHistoryStats(
+    entries: FetchAgentsResponseEntry[],
+    request: AgentDirectoryRequestMessage,
+  ): Promise<void> {
+    if (request.type !== "fetch_agent_history_request" || request.include?.stats !== true) {
+      return;
+    }
+
+    let nextIndex = 0;
+    const takeNext = (): number => {
+      const index = nextIndex;
+      nextIndex += 1;
+      return index;
+    };
+    const workers = Array.from(
+      { length: Math.min(Session.HISTORY_STATS_CONCURRENCY, entries.length) },
+      async () => {
+        for (let index = takeNext(); index < entries.length; index = takeNext()) {
+          const entry = entries[index];
+          const stats = await this.readHistoryStats(entry.agent);
+          if (stats) {
+            entry.stats = stats;
+          }
+        }
+      },
+    );
+    await Promise.all(workers);
+  }
+
+  private rememberHistoryStats(agentId: string, updatedAt: string, stats: AgentHistoryStats): void {
+    if (this.historyStatsCache.size >= Session.HISTORY_STATS_CACHE_LIMIT) {
+      this.historyStatsCache.clear();
+    }
+    this.historyStatsCache.set(agentId, { updatedAt, stats });
+  }
+
+  /**
+   * 三级取数：内存缓存 → 归档时定格的记录 → 真的把会话加载起来数一次。第三级是唯一
+   * 有代价的一级，只在碰到从没统计过的归档会话时发生，数完就写回记录，之后永久免费。
+   */
+  private async readHistoryStats(agent: AgentSnapshotPayload): Promise<AgentHistoryStats | null> {
+    const cached = this.historyStatsCache.get(agent.id);
+    if (cached && cached.updatedAt === agent.updatedAt) {
+      return cached.stats;
+    }
+
+    if (this.agentManager.getAgent(agent.id)) {
+      const stats = computeHistoryStats(this.agentManager.getTimeline(agent.id));
+      this.rememberHistoryStats(agent.id, agent.updatedAt, stats);
+      return stats;
+    }
+
+    const record = await this.agentStorage.get(agent.id);
+    if (record?.archivedAt && record.historyStats) {
+      this.rememberHistoryStats(agent.id, agent.updatedAt, record.historyStats);
+      return record.historyStats;
+    }
+
+    try {
+      await ensureAgentLoaded(agent.id, {
+        agentManager: this.agentManager,
+        agentStorage: this.agentStorage,
+        logger: this.sessionLogger,
+      });
+      const stats = computeHistoryStats(this.agentManager.getTimeline(agent.id));
+      this.rememberHistoryStats(agent.id, agent.updatedAt, stats);
+      if (record?.archivedAt) {
+        await this.agentStorage.setHistoryStats(agent.id, stats);
+      }
+      return stats;
+    } catch (error) {
+      this.sessionLogger.warn({ err: error, agentId: agent.id }, "Failed to read history stats");
+      return null;
+    }
+  }
+
   private async listFetchAgentsEntries(request: AgentDirectoryRequestMessage): Promise<{
     entries: FetchAgentsResponseEntry[];
     pageInfo: FetchAgentsResponsePageInfo;
@@ -5641,6 +5759,8 @@ export class Session {
       hasMore && pagedEntries.length > 0
         ? this.agentsPager.encode(pagedEntries[pagedEntries.length - 1].agent, sort)
         : null;
+
+    await this.attachHistoryStats(pagedEntries, request);
 
     return {
       entries: pagedEntries,

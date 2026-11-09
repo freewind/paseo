@@ -13,6 +13,8 @@ import { buildAgentDirectoryState } from "@/utils/agent-directory-sync";
 import { agentHistoryQueryKey, allAgentHistoryQueryKey } from "./agent-history-query-key";
 
 const AGENT_HISTORY_PAGE_LIMIT = 200;
+// 要统计信息时一页装小一点：每一行都可能带回一整段用户原话，200 行会让翻页变重。
+const AGENT_HISTORY_STATS_PAGE_LIMIT = 50;
 const AGENT_HISTORY_SORT: NonNullable<FetchAgentHistoryOptions["sort"]> = [
   { key: "updated_at", direction: "desc" },
 ];
@@ -76,15 +78,26 @@ export async function fetchAgentHistoryPage(input: {
   serverId: string;
   cursor: string | null;
   search?: string;
+  projectKeys?: readonly string[];
+  includeStats?: boolean;
 }): Promise<AgentHistoryPage> {
+  const pageLimit =
+    input.includeStats === true ? AGENT_HISTORY_STATS_PAGE_LIMIT : AGENT_HISTORY_PAGE_LIMIT;
   const payload = await input.client.fetchAgentHistory({
     ...(input.search ? { search: input.search } : {}),
+    ...(input.includeStats === true ? { include: { stats: true } } : {}),
+    ...(input.projectKeys && input.projectKeys.length > 0
+      ? { filter: { projectKeys: [...input.projectKeys] } }
+      : {}),
     sort: AGENT_HISTORY_SORT,
-    page: input.cursor
-      ? { limit: AGENT_HISTORY_PAGE_LIMIT, cursor: input.cursor }
-      : { limit: AGENT_HISTORY_PAGE_LIMIT },
+    page: input.cursor ? { limit: pageLimit, cursor: input.cursor } : { limit: pageLimit },
   });
 
+  const statsById = new Map(
+    payload.entries.flatMap((entry) =>
+      entry.stats ? ([[entry.agent.id, entry.stats]] as const) : [],
+    ),
+  );
   const { agents } = buildAgentDirectoryState({
     serverId: input.serverId,
     entries: payload.entries,
@@ -102,6 +115,8 @@ export async function fetchAgentHistoryPage(input: {
       cwd: agent.cwd,
       workspaceId: agent.workspaceId,
       provider: agent.provider,
+      model: agent.model,
+      parentAgentId: agent.parentAgentId,
       pendingPermissionCount: agent.pendingPermissions.length,
       requiresAttention: agent.requiresAttention,
       attentionReason: agent.attentionReason,
@@ -110,6 +125,7 @@ export async function fetchAgentHistoryPage(input: {
       createdAt: agent.createdAt,
       labels: agent.labels,
       projectPlacement: agent.projectPlacement,
+      stats: statsById.get(agent.id),
     })),
     pageInfo: payload.pageInfo,
   };
@@ -161,6 +177,9 @@ export async function fetchAgentHistoryBatch(input: {
   hosts: readonly AgentHistoryHost[];
   cursorByServerId: AgentHistoryCursorByServerId | null;
   search?: string;
+  projectKeys?: readonly string[];
+  /** 支持统计的主机；其余主机照旧请求，只是不带 include.stats。 */
+  statsSupportedServerIds?: ReadonlySet<string>;
 }): Promise<AgentHistoryBatchPage> {
   const cursorByServerId = input.cursorByServerId ?? {};
   const hasCursorFilter = Object.keys(cursorByServerId).length > 0;
@@ -175,6 +194,10 @@ export async function fetchAgentHistoryBatch(input: {
         serverId: host.serverId,
         cursor: cursorByServerId[host.serverId] ?? null,
         ...(input.search ? { search: input.search } : {}),
+        ...(input.projectKeys ? { projectKeys: input.projectKeys } : {}),
+        ...(input.statsSupportedServerIds?.has(host.serverId) === true
+          ? { includeStats: true }
+          : {}),
       });
       return { host, page };
     }),
@@ -218,6 +241,8 @@ export function useAgentHistory(options: {
   serverId?: string | null;
   enabled?: boolean;
   search?: string;
+  projectKeys?: readonly string[];
+  includeStats?: boolean;
 }): AgentHistoryResult {
   const { t } = useTranslation();
   const daemons = useHosts();
@@ -274,12 +299,36 @@ export function useAgentHistory(options: {
     const trimmed = options.search?.trim() ?? "";
     return isSearchSupported ? trimmed : "";
   }, [isSearchSupported, options.search]);
+  const projectKeys = useMemo(
+    () => (options.projectKeys ?? []).filter((key) => key.trim().length > 0),
+    [options.projectKeys],
+  );
+  const projectKeysKey = projectKeys.join(",");
+  // 统计要的是一行的最后一整句原话，代价跟数据量直接相关：老 daemon 不认这个参数。
+  // 逐台判断而不是「全部支持才开」：一台老 daemon 不该把其它主机的统计一起关掉。
+  // 选择器返回字符串，快照稳定；Set 每次新建会让 useSyncExternalStore 反复重渲染。
+  const statsSupportedKey = useSessionStore(
+    useCallback(
+      (state) =>
+        targetServerIds
+          .filter((id) => state.sessions[id]?.serverInfo?.features?.agentHistoryStats === true)
+          .join(","),
+      [targetServerIds],
+    ),
+  );
+  const wantsStats = options.includeStats ?? false;
+  const statsSupportedServerIds = useMemo(
+    () => new Set(statsSupportedKey.length > 0 ? statsSupportedKey.split(",") : []),
+    [statsSupportedKey],
+  );
   const queryKey = useMemo(
     () => [
       ...(serverId ? agentHistoryQueryKey(serverId) : allAgentHistoryQueryKey(targetServerIds)),
       search,
+      projectKeysKey,
+      wantsStats ? statsSupportedKey : "",
     ],
-    [search, serverId, targetServerIds],
+    [search, projectKeysKey, statsSupportedKey, serverId, targetServerIds, wantsStats],
   );
   const serverLabelById = useMemo(
     () => new Map(daemons.map((daemon) => [daemon.serverId, daemon.label])),
@@ -298,6 +347,9 @@ export function useAgentHistory(options: {
     staleTime: 30_000,
     initialPageParam: null,
     getNextPageParam: getNextAgentHistoryPageParam,
+    // Changing the project filter invalidates the key, so this closure only needs
+    // the values captured for the current query.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
     queryFn: async ({ pageParam }) => {
       if (targetHosts.length === 0) {
         throw new Error(t("workspace.terminal.hostDisconnected"));
@@ -306,6 +358,8 @@ export function useAgentHistory(options: {
         hosts: targetHosts,
         cursorByServerId: pageParam,
         ...(search ? { search } : {}),
+        ...(projectKeys.length > 0 ? { projectKeys } : {}),
+        ...(wantsStats && statsSupportedServerIds.size > 0 ? { statsSupportedServerIds } : {}),
       });
     },
   });

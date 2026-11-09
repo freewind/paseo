@@ -62,6 +62,7 @@ export const zhCN: TranslationResources = {
     loading: "加载中...",
     actions: {
       save: "保存",
+      open: "打开",
       back: "返回",
       cancel: "取消",
       close: "关闭",
@@ -73,6 +74,7 @@ export const zhCN: TranslationResources = {
       search: "搜索",
       select: "选择",
       selectAll: "全选",
+      preview: "预览",
       add: "添加",
       edit: "编辑",
       delete: "删除",
@@ -398,6 +400,8 @@ export const zhCN: TranslationResources = {
     },
     badges: {
       archived: "已归档",
+      subagent: "子代理",
+      userMessages: "{{count}}问",
       pending: "{{count}} 个待处理",
       attention: "需要注意",
     },

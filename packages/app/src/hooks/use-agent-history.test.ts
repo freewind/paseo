@@ -86,6 +86,7 @@ function historyEntry(input: {
   title?: string | null;
   archivedAt?: string | null;
   searchScore?: number;
+  stats?: { userMessageCount: number; lastUserMessage: string | null };
 }): FetchAgentHistoryEntry {
   return {
     agent: {
@@ -136,6 +137,7 @@ function historyEntry(input: {
       },
     },
     ...(input.searchScore === undefined ? {} : { searchScore: input.searchScore }),
+    ...(input.stats === undefined ? {} : { stats: input.stats }),
   };
 }
 
@@ -175,6 +177,40 @@ describe("fetchAgentHistoryPage", () => {
       nextCursor: "cursor-2",
       prevCursor: null,
       hasMore: true,
+    });
+  });
+
+  it("requests stats with a smaller page and carries them onto the row", async () => {
+    const client = createClient([
+      historyPayload({
+        entries: [
+          historyEntry({
+            id: "history-stats",
+            cwd: "/repo",
+            updatedAt: "2026-04-02T10:00:00.000Z",
+            title: "With stats",
+            stats: { userMessageCount: 7, lastUserMessage: "let us ship it" },
+          }),
+        ],
+      }),
+    ]);
+
+    const page = await fetchAgentHistoryPage({
+      client,
+      serverId: "server-1",
+      cursor: null,
+      includeStats: true,
+    });
+
+    // A page that may carry whole user messages has to be smaller than the metadata-only one.
+    expect(client.calls.at(-1)).toEqual({
+      include: { stats: true },
+      sort: [{ key: "updated_at", direction: "desc" }],
+      page: { limit: 50 },
+    } satisfies FetchAgentHistoryOptions);
+    expect(page.agents[0]?.stats).toEqual({
+      userMessageCount: 7,
+      lastUserMessage: "let us ship it",
     });
   });
 

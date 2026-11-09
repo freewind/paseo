@@ -39,7 +39,7 @@ export const SidebarWorkspaceAgentList = memo(function SidebarWorkspaceAgentList
   const { serverId, workspaceId, workspaceKey } = workspace;
   const isCompactLayout = useIsCompactFormFactor();
   const showMobileAgent = usePanelStore((state) => state.showMobileAgent);
-  const layoutRows = useSidebarWorkspaceAgentRows(workspaceKey);
+  const layoutRows = useSidebarWorkspaceAgentRows(workspaceKey, serverId);
   // 搜索把行收窄到它保留的 agent，并给每行自己的高亮；不搜索时两张 map 为空，行保持原样。
   const { active: nameSearchActive, matches: nameSearchMatches } = useSidebarNameSearch();
   const agentMatches = nameSearchMatches.agents;
@@ -152,9 +152,21 @@ function deriveAgentStatusBucket(session: SessionState, agent: Agent): SidebarSt
   });
 }
 
-function useSidebarWorkspaceAgentRows(workspaceKey: string): SidebarWorkspaceAgentRow[] {
+function useSidebarWorkspaceAgentRows(
+  workspaceKey: string,
+  serverId: string,
+): SidebarWorkspaceAgentRow[] {
   const layout = useWorkspaceLayoutStore((state) => state.layoutByWorkspace[workspaceKey] ?? null);
-  return useMemo(() => buildSidebarWorkspaceAgentRows(layout), [layout]);
+  // 时间取 agent 自己的最后活动时间：侧栏一行对着一个 tab，而 tab 没有时间概念。
+  const agents = useSessionStore((state) => state.sessions[serverId]?.agents ?? null);
+  return useMemo(
+    () =>
+      buildSidebarWorkspaceAgentRows(
+        layout,
+        (agentId) => agents?.get(agentId)?.lastActivityAt ?? null,
+      ),
+    [agents, layout],
+  );
 }
 
 function useFocusedWorkspaceTabId(workspaceKey: string): string | null {

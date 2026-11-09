@@ -74,6 +74,14 @@ const STORED_AGENT_SCHEMA = z.object({
   attentionTimestamp: z.string().nullable().optional(),
   internal: z.boolean().optional(),
   archivedAt: z.string().nullable().optional(),
+  // 归档那一刻定格的列表统计。归档后的会话不会再产生消息，所以这份值可以
+  // 一直作为读取来源，不必为了数消息再把会话加载起来。
+  historyStats: z
+    .object({
+      userMessageCount: z.number().int().nonnegative(),
+      lastUserMessage: z.string().nullable(),
+    })
+    .optional(),
   owner: AgentOwnerSchema.optional(),
 });
 
@@ -153,6 +161,28 @@ export class AgentStorage {
   async upsert(record: StoredAgentRecord): Promise<void> {
     await this.load();
     await this.queueRecordWrite(record);
+  }
+
+  /**
+   * 只改 `historyStats` 一个字段。走同一条串行写队列并基于队列里的最新副本，
+   * 所以不会把同时落盘的状态字段盖回去。
+   */
+  async setHistoryStats(
+    agentId: string,
+    stats: NonNullable<StoredAgentRecord["historyStats"]>,
+  ): Promise<void> {
+    await this.load();
+    if (!this.cache.has(agentId)) {
+      return;
+    }
+
+    await this.queueRecordMutation(agentId, (current) => {
+      const base = current ?? this.cache.get(agentId);
+      if (!base) {
+        throw new Error(`Agent ${agentId} disappeared while recording history stats`);
+      }
+      return { ...base, historyStats: stats };
+    });
   }
 
   private queueRecordWrite(record: StoredAgentRecord): Promise<void> {
