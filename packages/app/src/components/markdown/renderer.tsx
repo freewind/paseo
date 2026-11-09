@@ -108,6 +108,9 @@ const MarkdownPart = memo(function MarkdownPart({
   const openComment = useStableEvent((selected: string | null) => {
     commentMenu.requestComment(selected);
   });
+  const addCommentToMemo = useStableEvent((selected: string | null) => {
+    commentMenu.addToMemo(selected);
+  });
   const segments = useMemo(
     () =>
       isWeb ? [{ kind: "markdown", id: "0", source: markdown }] : splitMermaidFences(markdown),
@@ -124,6 +127,7 @@ const MarkdownPart = memo(function MarkdownPart({
               key={`${segment.kind}:${segment.id}`}
               enabled={isWeb && commentMenu.enabled}
               onComment={openComment}
+              onAddToMemo={commentMenu.enabled ? addCommentToMemo : undefined}
             >
               <ThemedMarkdown
                 markdown={segment.source}

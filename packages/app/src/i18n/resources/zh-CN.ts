@@ -13,6 +13,11 @@ export const zhCN: TranslationResources = {
       label: "Agent 完成时播放提示音",
       description: "回合结束时响一声",
     },
+    bulk: {
+      open: "批量添加",
+      placeholder: "每行一条备忘",
+      submit: "全部添加",
+    },
     turnCompleteSound: {
       label: "完成提示音",
       description: "选择要播放的音效",
@@ -68,6 +73,10 @@ export const zhCN: TranslationResources = {
       search: "搜索",
       select: "选择",
       selectAll: "全选",
+      add: "添加",
+      edit: "编辑",
+      delete: "删除",
+      clear: "清空",
       manage: "管理",
     },
     placeholders: {
@@ -149,6 +158,7 @@ export const zhCN: TranslationResources = {
   },
   comment: {
     menu: {
+      addToMemo: "添加到备忘",
       item: "评论",
       title: "评论",
     },
@@ -159,6 +169,21 @@ export const zhCN: TranslationResources = {
       attach: "附加",
       sendNow: "直接发送",
     },
+  },
+  agentMemos: {
+    toggle: "备忘录",
+    placeholder: "新备忘",
+    useMemo: "把备忘追加到输入框",
+    markDone: "标记为完成",
+    markNotDone: "标记为未完成",
+    clearAll: "清空全部",
+    clearCompleted: "清空完成",
+    addedToMemo: "已加入备忘",
+    failedToAdd: "加入备忘失败",
+    attachImage: "附加图片",
+    sheetTitle: "添加到备忘",
+    sheetPlaceholder: "备忘内容",
+    pasteFailed: "粘贴图片失败",
   },
   composer: {
     quickReplies: {

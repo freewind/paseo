@@ -141,6 +141,7 @@ import {
 import type { StoredAgentRecord } from "./agent/agent-storage.js";
 import { resolveTransferWorkspaceTarget } from "./agent/transfer-workspace-target.js";
 import type { AgentStorage } from "./agent/agent-storage.js";
+import type { AgentMemoStore } from "./agent/agent-memo-store.js";
 import {
   ImportSessionsRequestError,
   importProviderSession,
@@ -479,6 +480,7 @@ export interface SessionOptions {
   worktreesRoot?: string;
   agentManager: AgentManager;
   agentStorage: AgentStorage;
+  agentMemoStore: AgentMemoStore;
   messageReceipts: Pick<MessageReceipts, "send">;
   agentMessages: AgentMessageDelivery;
   creationService: Pick<CreationService, "create" | "subscribe">;
@@ -762,6 +764,7 @@ export class Session {
 
   private agentManager: AgentManager;
   private readonly agentStorage: AgentStorage;
+  private readonly agentMemoStore: AgentMemoStore;
   private readonly projectRegistry: ProjectRegistry;
   private readonly workspaceRegistry: WorkspaceRegistry;
   private readonly agentDirectory: AgentDirectory;
@@ -949,6 +952,7 @@ export class Session {
     });
     this.agentManager = agentManager;
     this.agentStorage = agentStorage;
+    this.agentMemoStore = options.agentMemoStore;
     this.projectRegistry = projectRegistry;
     this.workspaceRegistry = workspaceRegistry;
     this.directorySync = resolveDirectorySync(directorySync);
@@ -2804,6 +2808,14 @@ export class Session {
         return this.handleFetchAgentTimelineRequest(msg, source);
       case "agent.timeline.append.request":
         return this.handleAgentTimelineAppendRequest(msg);
+      case "agent.memo.add.request":
+        return this.handleAgentMemoAddRequest(msg);
+      case "agent.memo.update.request":
+        return this.handleAgentMemoUpdateRequest(msg);
+      case "agent.memo.delete.request":
+        return this.handleAgentMemoDeleteRequest(msg);
+      case "agent.memo.set_completed.request":
+        return this.handleAgentMemoSetCompletedRequest(msg);
       case "agent.timeline.search.request":
         return this.handleAgentTimelineSearchRequest(msg, source);
       case "agent.timeline.list_prompts.request":
@@ -3384,6 +3396,7 @@ export class Session {
     try {
       await this.agentStorage.remove(agentId);
       await this.agentManager.deleteAgentState(agentId);
+      await this.agentMemoStore.remove(agentId);
     } catch (error) {
       this.sessionLogger.error({ err: error, agentId }, `Failed to fully delete agent ${agentId}`);
     }
@@ -7828,7 +7841,13 @@ export class Session {
       : null;
     this.emit({
       type: "fetch_agent_response",
-      payload: { requestId, agent, project, error: null },
+      payload: {
+        requestId,
+        agent,
+        project,
+        memos: await this.agentMemoStore.list(resolved.agentId),
+        error: null,
+      },
     });
   }
 
@@ -7953,6 +7972,134 @@ export class Session {
         },
         source,
       );
+    }
+  }
+
+  /**
+   * 每条回复都带全量列表，客户端按替换对齐；其他客户端在下一次 agent 拉取时看到变化。
+   */
+  private async handleAgentMemoAddRequest(
+    msg: Extract<SessionInboundMessage, { type: "agent.memo.add.request" }>,
+  ): Promise<void> {
+    try {
+      await ensureAgentLoaded(msg.agentId, {
+        agentManager: this.agentManager,
+        agentStorage: this.agentStorage,
+        logger: this.sessionLogger,
+      });
+      const memo = await this.agentMemoStore.add(msg.agentId, msg.text, msg.images);
+      this.emit({
+        type: "agent.memo.add.response",
+        payload: {
+          requestId: msg.requestId,
+          agentId: msg.agentId,
+          memo,
+          memos: await this.agentMemoStore.list(msg.agentId),
+          error: null,
+        },
+      });
+    } catch (error) {
+      this.emit({
+        type: "agent.memo.add.response",
+        payload: {
+          requestId: msg.requestId,
+          agentId: msg.agentId,
+          memo: null,
+          memos: await this.agentMemoStore.list(msg.agentId),
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+    }
+  }
+
+  private async handleAgentMemoUpdateRequest(
+    msg: Extract<SessionInboundMessage, { type: "agent.memo.update.request" }>,
+  ): Promise<void> {
+    try {
+      const memo = await this.agentMemoStore.update(msg.agentId, msg.memoId, msg.text, msg.images);
+      this.emit({
+        type: "agent.memo.update.response",
+        payload: {
+          requestId: msg.requestId,
+          agentId: msg.agentId,
+          memoId: msg.memoId,
+          memo,
+          memos: await this.agentMemoStore.list(msg.agentId),
+          error: null,
+        },
+      });
+    } catch (error) {
+      this.emit({
+        type: "agent.memo.update.response",
+        payload: {
+          requestId: msg.requestId,
+          agentId: msg.agentId,
+          memoId: msg.memoId,
+          memo: null,
+          memos: await this.agentMemoStore.list(msg.agentId),
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+    }
+  }
+
+  private async handleAgentMemoSetCompletedRequest(
+    msg: Extract<SessionInboundMessage, { type: "agent.memo.set_completed.request" }>,
+  ): Promise<void> {
+    try {
+      const memo = await this.agentMemoStore.setCompleted(msg.agentId, msg.memoId, msg.completed);
+      this.emit({
+        type: "agent.memo.set_completed.response",
+        payload: {
+          requestId: msg.requestId,
+          agentId: msg.agentId,
+          memoId: msg.memoId,
+          memo,
+          memos: await this.agentMemoStore.list(msg.agentId),
+          error: null,
+        },
+      });
+    } catch (error) {
+      this.emit({
+        type: "agent.memo.set_completed.response",
+        payload: {
+          requestId: msg.requestId,
+          agentId: msg.agentId,
+          memoId: msg.memoId,
+          memo: null,
+          memos: await this.agentMemoStore.list(msg.agentId),
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+    }
+  }
+
+  private async handleAgentMemoDeleteRequest(
+    msg: Extract<SessionInboundMessage, { type: "agent.memo.delete.request" }>,
+  ): Promise<void> {
+    try {
+      await this.agentMemoStore.delete(msg.agentId, msg.memoId);
+      this.emit({
+        type: "agent.memo.delete.response",
+        payload: {
+          requestId: msg.requestId,
+          agentId: msg.agentId,
+          memoId: msg.memoId,
+          memos: await this.agentMemoStore.list(msg.agentId),
+          error: null,
+        },
+      });
+    } catch (error) {
+      this.emit({
+        type: "agent.memo.delete.response",
+        payload: {
+          requestId: msg.requestId,
+          agentId: msg.agentId,
+          memoId: msg.memoId,
+          memos: await this.agentMemoStore.list(msg.agentId),
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
     }
   }
 

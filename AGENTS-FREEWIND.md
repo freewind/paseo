@@ -35,6 +35,12 @@ pullRequest?: { instructions?: string }
 
 界面用 `server_info.features.quickReplies` 决定是否提供这块功能，老 daemon 上整块不出现。
 
+### 备忘录
+
+`agent-memos/` 目录由 daemon 持有，一个 agent 一个文件（`<agentId>.json`），内容是 `{ version: 1, memos }`。每条备忘录有 `id`、`text`、`createdAt`、可选的 `updatedAt`、可选的 `completed`、可选的 `images`。图片是内联 base64（`{ data, mimeType }`）而不是附件 id，任何客户端不用查文件就能渲染。分文件是为了让一次改动只重写自己那一份；备忘不设字数、条数或体积上限，会话被彻底删除时文件一起删掉。
+
+每次备忘录 RPC 返回该 agent 的完整列表，客户端整份替换而不是合并。老记录没有 `completed`，视为未完成。取 agent 时可能带 `memos`；字段缺省表示列表没变，不是空列表。
+
 ## 术语补充
 
 上游 `docs/glossary.md` 的词条不改，fork 需要补充的说明写在这里。
@@ -59,6 +65,10 @@ pullRequest?: { instructions?: string }
 ### 选中文字评论
 
 引用选区读的是 `packages/app/modules/paseo-text-selection`，不走渲染器。选区菜单回调会带上选中的文字，但引用要在菜单关闭后仍然可用，所以这次读取是同步的：模块切到主线程，最多等 500ms，线程被卡住时返回 `null`。JS 无法给同步原生调用设超时，所以截止时间放在 Kotlin 里；拿到 `null` 时退回整条消息。
+
+### 危险操作的确认
+
+危险操作不强制用 `confirmDialog`：点错会丢工作时用 `confirmDialog`，操作小、触发按钮本身已经说明后果时用 `InlineConfirm`。
 
 ## 分支结构
 

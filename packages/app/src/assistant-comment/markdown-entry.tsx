@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { TextContextMenuItem } from "react-native-enriched-markdown";
+import { ClipboardList } from "lucide-react-native";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -11,7 +12,12 @@ import { useAssistantComment } from "@/assistant-comment/context";
 import { readAssistantCommentSelection } from "@/assistant-comment/selection";
 import { resolveCommentQuote } from "@/assistant-comment/selection-model";
 import { ThemedCommentIcon } from "@/assistant-comment/icons";
+import { withUnistyles } from "react-native-unistyles";
+import type { Theme } from "@/styles/theme";
 import { ICON_SIZE } from "@/styles/theme";
+
+const mutedColorMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
+const ThemedMemoIcon = withUnistyles(ClipboardList, mutedColorMapping);
 
 /**
  * 一条回复的评论入口。原生把菜单项交给文本选择菜单（选中后出现），web 用右键菜单，
@@ -31,34 +37,52 @@ export function useMarkdownCommentMenu(commentSource: string | undefined) {
     [comment, commentSource],
   );
 
+  const requestAddToMemo = comment?.requestAddToMemo;
+  const addToMemo = useCallback(
+    (selected: string | null) => {
+      requestAddToMemo?.(resolveCommentQuote(selected, commentSource ?? ""));
+    },
+    [commentSource, requestAddToMemo],
+  );
   const nativeItems = useMemo<TextContextMenuItem[] | undefined>(() => {
     if (!enabled) return undefined;
-    return [
+    const items: TextContextMenuItem[] = [
       {
         text: t("comment.menu.item"),
         // 选择菜单自己带了选中文字；仍先问原生模块，超时或老二进制时退回事件里的值。
         onPress: ({ text }) => requestComment(readAssistantCommentSelection() ?? text),
       },
     ];
-  }, [enabled, requestComment, t]);
+    if (requestAddToMemo) {
+      items.push({
+        text: t("comment.menu.addToMemo"),
+        onPress: ({ text }) => addToMemo(readAssistantCommentSelection() ?? text),
+      });
+    }
+    return items;
+  }, [addToMemo, enabled, requestAddToMemo, requestComment, t]);
 
-  return { enabled, requestComment, nativeItems };
+  return { enabled, requestComment, addToMemo, nativeItems };
 }
 
 /** web 右键菜单：`contextOnly` 只接右键，不影响文本选择与点击。 */
 export function WebMarkdownCommentMenu({
   enabled,
   onComment,
+  onAddToMemo,
   children,
 }: {
   enabled: boolean;
   onComment: (selected: string | null) => void;
+  onAddToMemo?: (selected: string | null) => void;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
   const leading = useMemo(() => <ThemedCommentIcon size={ICON_SIZE.sm} />, []);
+  const memoLeading = useMemo(() => <ThemedMemoIcon size={ICON_SIZE.sm} />, []);
   // 右键打开时就把选区记下来：点菜单项时浏览器可能已经折叠选区，届时再读只剩整条消息。
   const [captured, setCaptured] = useState<string | null>(null);
+  const handleAddToMemo = useCallback(() => onAddToMemo?.(captured), [captured, onAddToMemo]);
   const handleOpenChange = useCallback((open: boolean) => {
     if (open) {
       setCaptured(readAssistantCommentSelection());
@@ -83,6 +107,15 @@ export function WebMarkdownCommentMenu({
         <ContextMenuItem leading={leading} onSelect={handleSelect} testID="assistant-comment-item">
           {t("comment.menu.item")}
         </ContextMenuItem>
+        {onAddToMemo ? (
+          <ContextMenuItem
+            leading={memoLeading}
+            onSelect={handleAddToMemo}
+            testID="assistant-comment-add-to-memo"
+          >
+            {t("comment.menu.addToMemo")}
+          </ContextMenuItem>
+        ) : null}
       </ContextMenuContent>
     </ContextMenu>
   );

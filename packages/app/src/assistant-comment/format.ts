@@ -17,6 +17,18 @@ export function formatQuotedBlock(blockText: string): string {
   return normalized.split("\n").map(formatQuotedLine).join("\n");
 }
 
+export interface MemoTextInput {
+  blockText: string;
+  comment: string;
+}
+
+/** 「添加到备忘」存的内容：与评论同一段引用和正文，去掉只为续写服务的尾部空行。 */
+export function buildMemoText(input: MemoTextInput): string {
+  const quoted = formatQuotedBlock(input.blockText);
+  const comment = input.comment.trim();
+  return [quoted, comment].filter((part) => part.length > 0).join("\n\n");
+}
+
 export interface CommentDraftInput {
   existingText: string;
   blockText: string;

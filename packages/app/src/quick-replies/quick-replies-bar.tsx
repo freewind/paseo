@@ -124,10 +124,8 @@ const styles = StyleSheet.create((theme: Theme) => ({
     flexDirection: "row",
     flexWrap: "wrap",
     alignItems: "center",
-    // 按钮少时从底部往上排，不要贴着上方的备忘；多到撑满时行为不变。
-    alignContent: "flex-end",
+    alignContent: "flex-start",
     justifyContent: "flex-start",
-    flex: 1,
     gap: theme.spacing[0.5],
     minWidth: 0,
   },

@@ -17,6 +17,25 @@ import {
 } from "./connection/index.js";
 import { CreationClient } from "./creation/index.js";
 import type { CreationSnapshot } from "@getpaseo/protocol/messages";
+import type { AgentMemo } from "@getpaseo/protocol/messages";
+import type { ImageAttachment } from "@getpaseo/protocol/messages";
+
+export interface AgentMemoOperationPayload {
+  requestId: string;
+  agentId: string;
+  memo: AgentMemo | null;
+  memoId?: string;
+  memos: AgentMemo[];
+  error: string | null;
+}
+
+export interface AgentMemoDeletePayload {
+  requestId: string;
+  agentId: string;
+  memoId: string;
+  memos: AgentMemo[];
+  error: string | null;
+}
 import type { z } from "zod";
 import type { SessionEventSubscription } from "@getpaseo/protocol/messages";
 import type { LocalSpeechModel } from "@getpaseo/protocol/speech/rpc-schemas";
@@ -970,6 +989,10 @@ type WorkspaceSetupStatusPayload = WorkspaceSetupStatusResponseMessage["payload"
 export interface FetchAgentResult {
   agent: AgentSnapshotPayload;
   project: ProjectPlacementPayload | null;
+  /**
+   * Stored memos for the agent. 缺省表示宿主还没发列表，不能当成空列表清掉本地缓存。
+   */
+  memos?: AgentMemo[];
 }
 
 export interface WaitForFinishResult {
@@ -3178,7 +3201,12 @@ export class DaemonClient {
     if (!payload.agent) {
       return null;
     }
-    return { agent: payload.agent, project: payload.project ?? null };
+    return {
+      agent: payload.agent,
+      project: payload.project ?? null,
+      // COMPAT(agentMemosOnFetch): 老 daemon 不发这个字段；保持“缺省”而不是补空数组。
+      ...(payload.memos ? { memos: payload.memos } : {}),
+    };
   }
 
   // ============================================================================
@@ -3659,6 +3687,81 @@ export class DaemonClient {
       throw new Error(payload.error);
     }
 
+    return payload;
+  }
+
+  async addAgentMemo(
+    agentId: string,
+    text: string,
+    images?: readonly ImageAttachment[],
+    options?: { requestId?: string; timeout?: number },
+  ): Promise<AgentMemoOperationPayload> {
+    const payload = await this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: {
+        type: "agent.memo.add.request",
+        agentId,
+        text,
+        images: images as ImageAttachment[] | undefined,
+      },
+      responseType: "agent.memo.add.response",
+      timeout: options?.timeout,
+    });
+    if (payload.error) throw new Error(payload.error);
+    return payload;
+  }
+
+  async updateAgentMemo(
+    agentId: string,
+    memoId: string,
+    text: string,
+    images?: readonly ImageAttachment[],
+    options?: { requestId?: string; timeout?: number },
+  ): Promise<AgentMemoOperationPayload> {
+    const payload = await this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: {
+        type: "agent.memo.update.request",
+        agentId,
+        memoId,
+        text,
+        images: images as ImageAttachment[] | undefined,
+      },
+      responseType: "agent.memo.update.response",
+      timeout: options?.timeout,
+    });
+    if (payload.error) throw new Error(payload.error);
+    return payload;
+  }
+
+  async setAgentMemoCompleted(
+    agentId: string,
+    memoId: string,
+    completed: boolean,
+    options?: { requestId?: string; timeout?: number },
+  ): Promise<AgentMemoOperationPayload> {
+    const payload = await this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "agent.memo.set_completed.request", agentId, memoId, completed },
+      responseType: "agent.memo.set_completed.response",
+      timeout: options?.timeout,
+    });
+    if (payload.error) throw new Error(payload.error);
+    return payload;
+  }
+
+  async deleteAgentMemo(
+    agentId: string,
+    memoId: string,
+    options?: { requestId?: string; timeout?: number },
+  ): Promise<AgentMemoDeletePayload> {
+    const payload = await this.sendCorrelatedSessionRequest({
+      requestId: options?.requestId,
+      message: { type: "agent.memo.delete.request", agentId, memoId },
+      responseType: "agent.memo.delete.response",
+      timeout: options?.timeout,
+    });
+    if (payload.error) throw new Error(payload.error);
     return payload;
   }
 

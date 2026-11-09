@@ -10,6 +10,11 @@ export const en = {
       label: "Play a sound when an agent finishes",
       description: "Chime once when a turn completes",
     },
+    bulk: {
+      open: "Add several",
+      placeholder: "One memo per line",
+      submit: "Add all",
+    },
     turnCompleteSound: {
       label: "Turn complete sound",
       description: "Which sound to play",
@@ -64,6 +69,10 @@ export const en = {
       search: "Search",
       select: "Select",
       selectAll: "Select all",
+      add: "Add",
+      edit: "Edit",
+      delete: "Delete",
+      clear: "Clear",
       manage: "Manage",
     },
     placeholders: {
@@ -145,6 +154,7 @@ export const en = {
   },
   comment: {
     menu: {
+      addToMemo: "Add to memos",
       item: "Comment",
       title: "Comment",
     },
@@ -155,6 +165,21 @@ export const en = {
       attach: "Attach",
       sendNow: "Send now",
     },
+  },
+  agentMemos: {
+    toggle: "Memos",
+    placeholder: "New memo",
+    useMemo: "Append memo to composer",
+    markDone: "Mark as done",
+    markNotDone: "Mark as not done",
+    clearAll: "Clear all",
+    clearCompleted: "Clear completed",
+    addedToMemo: "Added to memos",
+    failedToAdd: "Failed to add to memos",
+    attachImage: "Attach image",
+    sheetTitle: "Add to memos",
+    sheetPlaceholder: "Memo",
+    pasteFailed: "Failed to paste image",
   },
   composer: {
     quickReplies: {

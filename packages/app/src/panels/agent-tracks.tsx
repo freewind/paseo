@@ -2,6 +2,9 @@ import type { AgentAddress } from "@getpaseo/protocol/addresses";
 import { memo, useCallback, type ReactElement, type ReactNode } from "react";
 import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
+import { ClipboardList } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
 import { WorkspaceDiffStatPill } from "@/composer/diff-stat-pill";
 import { useWorkspaceHasDiffStat } from "@/composer/workspace-diff-stat";
 import { AgentTaskList } from "@/composer/task-list";
@@ -43,6 +46,8 @@ export const AgentTracks = memo(function AgentTracks({
   archiveFinishedStatus,
   onArchiveFinished,
   hasPluginComposerPills,
+  hasMemosEntry,
+  onOpenAgentMemos,
   leading,
   trailing,
 }: {
@@ -55,9 +60,13 @@ export const AgentTracks = memo(function AgentTracks({
   archiveFinishedStatus: ArchiveFinishedStatus;
   onArchiveFinished: () => void;
   hasPluginComposerPills: boolean;
+  /** 桌面右缝放不下备忘时，这一行给入口。 */
+  hasMemosEntry: boolean;
+  onOpenAgentMemos: () => void;
   leading?: ReactNode;
   trailing?: ReactNode;
 }): ReactElement | null {
+  const { t } = useTranslation();
   const { tabId } = usePaneContext();
   const hasWorkspaceDiffStat = useWorkspaceHasDiffStat(serverId, workspaceId);
   const isCompact = useIsCompactFormFactor();
@@ -128,6 +137,7 @@ export const AgentTracks = memo(function AgentTracks({
       tasks,
       archiveFinishedStatus,
       hasPluginComposerPills,
+      hasMemosEntry,
     })
   ) {
     return null;
@@ -160,6 +170,16 @@ export const AgentTracks = memo(function AgentTracks({
         workspaceId={workspaceId}
         onPress={handleOpenChanges}
       />
+      {hasMemosEntry ? (
+        <Button
+          variant="ghost"
+          size="xs"
+          leftIcon={ClipboardList}
+          accessibilityLabel={t("agentMemos.toggle")}
+          onPress={onOpenAgentMemos}
+          testID="composer-agent-memos-button"
+        />
+      ) : null}
       {trailing ? <View style={styles.trailing}>{trailing}</View> : null}
     </ComposerTrackBar>
   );
@@ -175,18 +195,21 @@ export function hasAgentTracks({
   tasks,
   archiveFinishedStatus,
   hasPluginComposerPills = false,
+  hasMemosEntry = false,
 }: {
   parentAgentId: string | null;
   subagentRows: readonly SubagentRow[];
   tasks: readonly TodoEntry[] | undefined;
   archiveFinishedStatus: ArchiveFinishedStatus;
   hasPluginComposerPills?: boolean;
+  hasMemosEntry?: boolean;
 }): boolean {
   return (
     parentAgentId !== null ||
     subagentRows.length > 0 ||
     Boolean(tasks?.length) ||
     archiveFinishedStatus.kind !== "idle" ||
-    hasPluginComposerPills
+    hasPluginComposerPills ||
+    hasMemosEntry
   );
 }

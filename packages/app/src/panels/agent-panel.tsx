@@ -4,7 +4,11 @@ import type { AgentInputSubmitResult } from "@/composer/submit";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
-import type { QuickReply } from "@getpaseo/protocol/messages";
+import { AgentMemosRail } from "@/agent-memos/agent-memos-rail";
+import { AgentMemosSheet } from "@/agent-memos/agent-memos-sheet";
+import { useAgentMemoPanel } from "@/agent-memos/use-agent-memo-panel";
+import { useHostFeature } from "@/runtime/host-features";
+import type { AgentMemo, QuickReply } from "@getpaseo/protocol/messages";
 import type { TFunction } from "i18next";
 import { List, MessageSquareText, SquarePen } from "lucide-react-native";
 import React, {
@@ -301,6 +305,11 @@ function storeFetchedAgentDetail(input: {
       next.set(hydrated.id, hydrated);
       return next;
     });
+  }
+
+  // 缺省表示“没有变化”，不能当成空列表清掉本地缓存。
+  if (input.result.memos) {
+    store.setAgentMemos(input.serverId, hydrated.id, input.result.memos);
   }
 
   store.setPendingPermissions(input.serverId, (previous) => {
@@ -1077,6 +1086,42 @@ function ChatAgentContent({
   );
 }
 
+const PaneRightGutter = memo(function PaneRightGutter({
+  memosSupported,
+  showsQuickReplies,
+  serverId,
+  agentId,
+  onMemoAppend,
+  replies,
+  onQuickReply,
+  onEditReplies,
+}: {
+  memosSupported: boolean;
+  showsQuickReplies: boolean;
+  serverId: string;
+  agentId: string;
+  onMemoAppend: (memo: AgentMemo) => void;
+  replies: QuickReply[];
+  onQuickReply: (text: string) => void;
+  onEditReplies: () => void;
+}) {
+  if (!memosSupported && !showsQuickReplies) {
+    return null;
+  }
+  return (
+    <View style={styles.quickRepliesRail}>
+      {memosSupported ? (
+        <View style={styles.quickRepliesRailSection}>
+          <AgentMemosRail serverId={serverId} agentId={agentId} onAppendToComposer={onMemoAppend} />
+        </View>
+      ) : null}
+      {showsQuickReplies ? (
+        <QuickRepliesRightRail replies={replies} onSelect={onQuickReply} onEdit={onEditReplies} />
+      ) : null}
+    </View>
+  );
+});
+
 function OutlineEntryFallback({
   hasActiveComposer,
   entry,
@@ -1172,11 +1217,11 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     rows: subagentRows,
   });
   const hasPluginComposerPills = useHasPluginComposerPills(serverId, workspaceId, agentId);
-  const { onLayout: onPaneLayout, width: paneWidth } = useContainerWidth();
-  const contentMaxWidth = useSettings(resolveContentMaxWidth);
   const isCompactFormFactor = useIsCompactFormFactor();
   const quickReplies = useQuickReplies(serverId);
   const quickRepliesSupported = useIsQuickRepliesSupported(serverId);
+  const contentMaxWidth = useSettings(resolveContentMaxWidth);
+  const { onLayout: onPaneLayout, width: paneWidth } = useContainerWidth();
   // 右侧留缝够宽才把常用回复立成常驻面板；不够时改为输入框上方的快捷条。
   const showsSideRails = shouldShowQuickRepliesRail({
     enabled: true,
@@ -1210,6 +1255,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   const parentAgentId = useParentAgentId(serverId, agentId);
   // With a composer the parent is a pill above it; without one, the box takes the composer's place.
   const parentPillAgentId = showsComposer ? parentAgentId : null;
+  // 紧凑布局没有右侧留缝：备忘退到轨道入口 + 弹层。
+  const hasMemosEntry = useHostFeature(serverId, "agentMemos") && isCompactFormFactor;
   const hasQuickRepliesEntry = quickRepliesSupported && showsComposer && !showsQuickRepliesRail;
   const hasVisibleAgentTracks =
     hasOutlineEntry ||
@@ -1220,6 +1267,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
       tasks,
       archiveFinishedStatus: archiveFinishedSubagents.status,
       hasPluginComposerPills,
+      hasMemosEntry,
     });
   const rawAgentInputDraft = useAgentInputDraft({
     draftKey: buildDraftStoreKey({
@@ -1279,13 +1327,47 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     },
     [agentId, serverId, t, toastApi],
   );
-  const quickRepliesRail = useMemo(
-    () =>
-      showsQuickRepliesRail ? (
-        <QuickRepliesRightRail replies={quickReplies.replies} onSelect={sendQuickReply} onEdit={openQuickRepliesEditor} />
-      ) : null,
-    [sendQuickReply, openQuickRepliesEditor, quickReplies.replies, showsQuickRepliesRail],
+  const {
+    memosSupported,
+    isMemosSheetOpen,
+    openMemosSheet,
+    closeMemosSheet,
+    appendMemoToComposer,
+    addSelectionToMemo,
+  } = useAgentMemoPanel({
+    serverId,
+    agentId,
+    isCompactFormFactor,
+    agentInputDraft,
+    toastApi,
+    t,
+  });
+  // 右缝里两件事：备忘在上（可滚动），常用回复贴底。
+  const rightGutter = useMemo(
+    () => (
+      <PaneRightGutter
+        memosSupported={memosSupported}
+        showsQuickReplies={showsQuickRepliesRail}
+        serverId={serverId}
+        agentId={agentId}
+        onMemoAppend={appendMemoToComposer}
+        replies={quickReplies.replies}
+        onQuickReply={sendQuickReply}
+        onEditReplies={openQuickRepliesEditor}
+      />
+    ),
+    [
+      agentId,
+      appendMemoToComposer,
+      memosSupported,
+      openQuickRepliesEditor,
+      quickReplies.replies,
+      sendQuickReply,
+      serverId,
+      showsQuickRepliesRail,
+    ],
   );
+
   const composerSubmitNowRef = useRef<((text: string) => Promise<AgentInputSubmitResult>) | null>(
     null,
   );
@@ -1394,6 +1476,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
       <RenderProfile id={`AgentStreamSection:${agentId}`}>
         <CommentableAgentStreamSection
           onCommentCommit={handleCommentCommit}
+          onAddToMemo={addSelectionToMemo}
+          memoEnabled={memosSupported}
           commentEnabled={showsComposer}
           streamViewRef={streamViewRef}
           serverId={serverId}
@@ -1405,7 +1489,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
           hasActiveComposer={hasActiveComposer}
           hasVisibleAgentTracks={hasVisibleAgentTracks}
           hasOutlineEntry={hasOutlineEntry}
-          rightGutter={quickRepliesRail ?? undefined}
+          rightGutter={rightGutter ?? undefined}
           onChatOutlineAvailabilityChange={setHasTextOutline}
           toast={toastApi}
           onOpenWorkspaceFile={onOpenWorkspaceFile}
@@ -1423,6 +1507,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
           archiveFinishedStatus={archiveFinishedSubagents.status}
           onArchiveFinished={archiveFinishedSubagents.archiveFinished}
           hasPluginComposerPills={hasPluginComposerPills}
+          hasMemosEntry={hasMemosEntry}
+          onOpenAgentMemos={openMemosSheet}
           leading={outlineEntry}
           trailing={quickRepliesEntry}
         />
@@ -1480,6 +1566,13 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
           </View>
         ) : null}
 
+        <AgentMemosSheet
+          visible={isMemosSheetOpen}
+          serverId={serverId}
+          agentId={agentId}
+          onAppendToComposer={appendMemoToComposer}
+          onClose={closeMemosSheet}
+        />
         <QuickRepliesEditor
           visible={isQuickRepliesEditorOpen}
           mountKey={isQuickRepliesEditorOpen ? "open" : "closed"}
@@ -1658,6 +1751,8 @@ const AgentStreamSection = memo(function AgentStreamSection({
 
 type CommentableAgentStreamSectionProps = React.ComponentProps<typeof AgentStreamSection> & {
   onCommentCommit: (input: { blockText: string; comment: string; sendNow: boolean }) => void;
+  onAddToMemo?: (blockText: string) => void;
+  memoEnabled?: boolean;
   /** 没有输入框可附加时（workspace sheet）不挂评论入口。 */
   commentEnabled: boolean;
 };
@@ -1665,6 +1760,8 @@ type CommentableAgentStreamSectionProps = React.ComponentProps<typeof AgentStrea
 /** 把评论入口挂在会话面板上：屏幕外（sheet、只读）没有 provider，markdown 里也就不出现评论菜单。 */
 function CommentableAgentStreamSection({
   onCommentCommit,
+  onAddToMemo,
+  memoEnabled = false,
   commentEnabled,
   ...props
 }: CommentableAgentStreamSectionProps) {
@@ -1672,7 +1769,10 @@ function CommentableAgentStreamSection({
     return <AgentStreamSection {...props} />;
   }
   return (
-    <AssistantCommentProvider onCommit={onCommentCommit}>
+    <AssistantCommentProvider
+      onCommit={onCommentCommit}
+      onAddToMemo={memoEnabled ? onAddToMemo : undefined}
+    >
       <AgentStreamSection {...props} />
     </AssistantCommentProvider>
   );

@@ -8,10 +8,13 @@ import {
   type ReactNode,
 } from "react";
 import { CommentSheet, type CommentRequest } from "@/assistant-comment/comment-sheet";
+import { buildMemoText } from "@/assistant-comment/format";
 
 export interface AssistantCommentController {
   /** 打开评论框；`blockText` 是要引用进草稿的那段文字。 */
   requestComment: (blockText: string) => void;
+  /** 把选中的文字直接存成备忘；宿主不支持备忘时不存在。 */
+  requestAddToMemo?: (blockText: string) => void;
 }
 
 const AssistantCommentContext = createContext<AssistantCommentController | null>(null);
@@ -26,6 +29,8 @@ export function useAssistantComment(): AssistantCommentController | null {
 
 interface AssistantCommentProviderProps {
   onCommit: (input: { blockText: string; comment: string; sendNow: boolean }) => void;
+  /** 宿主支持备忘时提供；菜单里才会出现「添加到备忘」。 */
+  onAddToMemo?: (blockText: string) => void;
   children: ReactNode;
 }
 
@@ -33,8 +38,13 @@ interface AssistantCommentProviderProps {
  * 评论入口的价值在于引用自带原文：选中几句就能带着它们一起发出去，不用先手动复制再粘贴
  * 回输入框。
  */
-export function AssistantCommentProvider({ onCommit, children }: AssistantCommentProviderProps) {
+export function AssistantCommentProvider({
+  onCommit,
+  onAddToMemo,
+  children,
+}: AssistantCommentProviderProps) {
   const [request, setRequest] = useState<CommentRequest | null>(null);
+  const [memoRequest, setMemoRequest] = useState<CommentRequest | null>(null);
   const nextId = useRef(1);
 
   const requestComment = useCallback((blockText: string) => {
@@ -45,6 +55,35 @@ export function AssistantCommentProvider({ onCommit, children }: AssistantCommen
     nextId.current += 1;
     setRequest({ id, blockText });
   }, []);
+
+  /** 打开备忘弹层；只有提交时才真正写备忘。 */
+  const openMemoSheet = useCallback(
+    (blockText: string) => {
+      if (!onAddToMemo || blockText.trim().length === 0) {
+        return;
+      }
+      const id = nextId.current;
+      nextId.current += 1;
+      setMemoRequest({ id, blockText });
+    },
+    [onAddToMemo],
+  );
+
+  const cancelMemo = useCallback(() => {
+    setMemoRequest(null);
+  }, []);
+
+  const submitMemo = useCallback(
+    (comment: string) => {
+      setMemoRequest((current) => {
+        if (current) {
+          onAddToMemo?.(buildMemoText({ blockText: current.blockText, comment }));
+        }
+        return null;
+      });
+    },
+    [onAddToMemo],
+  );
 
   const cancelComment = useCallback(() => {
     setRequest(null);
@@ -73,8 +112,9 @@ export function AssistantCommentProvider({ onCommit, children }: AssistantCommen
   const controller = useMemo<AssistantCommentController>(
     () => ({
       requestComment,
+      requestAddToMemo: onAddToMemo ? openMemoSheet : undefined,
     }),
-    [requestComment],
+    [onAddToMemo, openMemoSheet, requestComment],
   );
 
   return (
@@ -85,6 +125,12 @@ export function AssistantCommentProvider({ onCommit, children }: AssistantCommen
         onCancel={cancelComment}
         onSubmit={handleAttach}
         onSendNow={handleSend}
+      />
+      <CommentSheet
+        variant="memo"
+        request={memoRequest}
+        onCancel={cancelMemo}
+        onSubmit={submitMemo}
       />
     </AssistantCommentContext.Provider>
   );
