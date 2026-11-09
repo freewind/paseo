@@ -2808,11 +2808,17 @@ export class PiRpcAgentClient implements AgentClient {
     }
     const availableModels = await runtimeSession.getAvailableModels();
     if (!availableModels.some(isRequested)) {
-      this.logger.warn(
-        { requestedModel, sessionModel: modelToId(state.model) },
-        "Pi resumed on the session's model because the requested model is unavailable",
-      );
-      return state;
+      // 记录里的模型已经不存在：直接切到可用列表的第一个，不让恢复卡在这一点上。
+      const fallback = availableModels[0];
+      if (!fallback) {
+        this.logger.warn(
+          { requestedModel, sessionModel: modelToId(state.model) },
+          "Pi resumed on the session's model because no model is available",
+        );
+        return state;
+      }
+      await runtimeSession.setModel(fallback.provider, fallback.id);
+      return runtimeSession.getState();
     }
     await runtimeSession.setModel(provider, id);
     return runtimeSession.getState();
