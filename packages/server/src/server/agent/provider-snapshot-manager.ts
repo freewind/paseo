@@ -294,6 +294,24 @@ export class ProviderSnapshotManager {
     const providers = this.resolveRefreshProviders(options.providers);
     const providersToRefresh = providers ?? this.getProviderIds();
     await this.refreshProviders(target, providersToRefresh);
+    // 模型目录按 cwd 各存一份，而刷新请求只带当前会话的 cwd。其余 target 也拉一次，
+    // 已打开的会话才能跟着更新；不等它们，刷新的等待时间只取决于当前这一份。
+    void this.refreshOtherTargets(snapshotCwd, providersToRefresh);
+  }
+
+  /** 除 `snapshotCwd` 外的已知 target 强拉一次；每个 target 拉完会推自己的快照。 */
+  private refreshOtherTargets(snapshotCwd: string, providers: AgentProvider[]): Promise<void> {
+    const others = [...this.targets.keys()].filter((cwd) => cwd !== snapshotCwd);
+    return Promise.all(
+      others.map((cwd) =>
+        this.refreshProviders(
+          isGlobalProviderSnapshotKey(cwd)
+            ? createGlobalSnapshotTarget()
+            : createWorkspaceSnapshotTarget(cwd),
+          providers,
+        ),
+      ),
+    ).then(() => undefined);
   }
 
   async refreshSettingsSnapshot(
