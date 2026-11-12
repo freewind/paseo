@@ -86,6 +86,42 @@ export function highlightDiffLines(
     } else if (line.type === "remove" && oldTokens) {
       tokens = oldTokens[oldIndex];
     }
-    return tokens ? { ...line, tokens } : line;
+    if (!tokens) {
+      return line;
+    }
+    const segments = line.segments;
+    if (!segments || segments.length === 0) {
+      return { ...line, tokens };
+    }
+    // 按 segments 的边界把 token 切开，每一小段带走它落在的那个 segment 的 changed
+    // 标记，同一行里语法着色与行内变更才能叠加：字符串里改了两个字，只有这两个字
+    // 带变更底色，其余部分仍是字符串的颜色。不切的话整个 token（例如一整串字符串
+    // 字面量）会一起被标成变更。
+    const merged: HighlightToken[] = [];
+    let segIndex = 0;
+    let segOffset = 0;
+    for (const token of tokens) {
+      let remaining = token.text;
+      while (remaining.length > 0 && segIndex < segments.length) {
+        const segment = segments[segIndex];
+        const segRemaining = segment.text.slice(segOffset);
+        const take = Math.min(remaining.length, segRemaining.length);
+        merged.push({
+          text: remaining.slice(0, take),
+          style: token.style,
+          changed: segment.changed,
+        });
+        remaining = remaining.slice(take);
+        segOffset += take;
+        if (segOffset >= segment.text.length) {
+          segIndex += 1;
+          segOffset = 0;
+        }
+      }
+      if (remaining.length > 0) {
+        merged.push({ text: remaining, style: token.style, changed: false });
+      }
+    }
+    return { ...line, tokens: merged };
   });
 }

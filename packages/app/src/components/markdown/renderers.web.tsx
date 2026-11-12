@@ -7,9 +7,11 @@ import type {
 } from "react-native-enriched-markdown";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { useFileLink } from "@/assistant-file-links";
+import { DiffViewer } from "@/components/diff-viewer";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { HighlightedCodeBlock } from "@/components/highlighted-code-block";
 import type { Theme } from "@/styles/theme";
+import { parseUnifiedDiff } from "@/utils/tool-call-parsers";
 import { MermaidFence } from "./fence/mermaid";
 import { markdownLinkSource } from "./source";
 
@@ -22,8 +24,15 @@ const codeStyle = (theme: Theme) => ({
   },
   textStyle: { backgroundColor: theme.colors.surface2, padding: 12, borderRadius: 8 },
 });
+const DIFF_FENCE_LANGUAGES = new Set(["patch", "diff"]);
+/** 聊天里的 diff 块可能很长；限制高度，让巨大的 patch 在消息内部滚动。 */
+const CHAT_DIFF_MAX_HEIGHT = 480;
+
 function WebCodeBlock({ code, language }: CodeBlockRendererProps) {
   if (language?.toLowerCase() === "mermaid") return <MermaidFence code={code} />;
+  if (language && DIFF_FENCE_LANGUAGES.has(language.toLowerCase())) {
+    return <DiffViewer diffLines={parseUnifiedDiff(code)} maxHeight={CHAT_DIFF_MAX_HEIGHT} />;
+  }
   return <ThemedCodeBlock code={code} language={language} uniProps={codeStyle} />;
 }
 

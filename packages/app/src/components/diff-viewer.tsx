@@ -51,12 +51,24 @@ function DiffLineRow({ line }: { line: DiffLine }) {
     [line.type],
   );
 
+  // key 用累积偏移（前面各段文本长度的和），不用「变更标记 + 文本」：同一行里完全
+  // 相同的文本可能重复出现多次，那种 key 会撞，React 复用错节点导致段错位。
+  // 这是纯 key 冲突的修复，渲染结果与改动前一致。
+  const keyedSegments = React.useMemo(() => {
+    let offset = 0;
+    return line.segments?.map((segment) => {
+      const key = offset;
+      offset += segment.text.length;
+      return { key, segment };
+    });
+  }, [line.segments]);
+
   if (line.tokens) {
     return (
       <View style={lineContainerStyle}>
         <Text style={styles.lineText}>
           <Text style={prefixStyle}>{diffLinePrefix(line)}</Text>
-          <DiffTokens tokens={line.tokens} />
+          <DiffTokens tokens={line.tokens} lineType={line.type} />
         </Text>
       </View>
     );
@@ -69,12 +81,8 @@ function DiffLineRow({ line }: { line: DiffLine }) {
           <Text style={line.type === "add" ? styles.addText : styles.removeText}>
             {line.content[0]}
           </Text>
-          {line.segments.map((segment) => (
-            <DiffSegment
-              key={`${segment.changed ? "c" : "u"}:${segment.text}`}
-              segment={segment}
-              lineType={line.type}
-            />
+          {keyedSegments?.map(({ key, segment }) => (
+            <DiffSegment key={key} segment={segment} lineType={line.type} />
           ))}
         </Text>
       ) : (
@@ -84,7 +92,13 @@ function DiffLineRow({ line }: { line: DiffLine }) {
   );
 }
 
-function DiffTokens({ tokens }: { tokens: NonNullable<DiffLine["tokens"]> }) {
+function DiffTokens({
+  tokens,
+  lineType,
+}: {
+  tokens: NonNullable<DiffLine["tokens"]>;
+  lineType: DiffLine["type"];
+}) {
   const keyed = React.useMemo(
     () => tokens.map((token, index) => ({ key: `${index}-${token.text}`, token })),
     [tokens],
@@ -92,7 +106,13 @@ function DiffTokens({ tokens }: { tokens: NonNullable<DiffLine["tokens"]> }) {
   return (
     <>
       {keyed.map(({ key, token }) => (
-        <Text key={key} style={token.style ? syntaxTokenStyleFor(token.style) : undefined}>
+        <Text
+          key={key}
+          style={[
+            token.style ? syntaxTokenStyleFor(token.style) : undefined,
+            token.changed && (lineType === "add" ? styles.addHighlight : styles.removeHighlight),
+          ]}
+        >
           {token.text}
         </Text>
       ))}

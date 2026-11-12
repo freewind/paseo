@@ -2756,9 +2756,12 @@ export const WorkspaceMarkUnreadRequestSchema = z.object({
 
 // Highlighted diff token schema
 // Note: style can be a compound class name (e.g., "heading meta") from the syntax highlighter
+// changed 必须保持可选：旧版本产出的 diff 数据不带这个字段，解析后为 undefined，
+// 效果等同不做行内标记。设成必填会让旧数据整体解析失败。
 const HighlightTokenSchema = z.object({
   text: z.string(),
   style: z.string().nullable(),
+  changed: z.boolean().optional(),
 });
 
 const DiffLineSchema = z.object({
