@@ -432,9 +432,10 @@ export const UserMessage = memo(function UserMessage({
   const getMessageContent = useCallback(() => message, [message]);
   const handleRewind = useCallback(
     (input: { mode: RewindMode; rewoundText: string }) => {
-      return rewindMutation.rewindAgent(input);
+      // 回退后 composer 要复原成这条消息的样子，图片与附件一起带走。
+      return rewindMutation.rewindAgent({ ...input, images, attachments });
     },
-    [rewindMutation],
+    [rewindMutation, images, attachments],
   );
 
   const containerStyle = useMemo(

@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/contexts/toast-context";
 import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
+import type { AgentAttachment } from "@getpaseo/protocol/messages";
+import type { AttachmentMetadata } from "@/attachments/types";
 import type { RewindMode } from "./use-rewind-capabilities";
 import { useRewindComposerRestore } from "./composer-restore";
 import { useSessionStore } from "@/stores/session-store";
@@ -20,6 +22,9 @@ interface UseRewindAgentMutationInput {
 interface RewindAgentInput {
   mode: RewindMode;
   rewoundText: string;
+  /** 被回退那条消息的附件，回退成功后放回输入框。 */
+  images?: AttachmentMetadata[];
+  attachments?: AgentAttachment[];
 }
 
 export function useRewindAgentMutation(input: UseRewindAgentMutationInput): {
@@ -52,7 +57,11 @@ export function useRewindAgentMutation(input: UseRewindAgentMutationInput): {
       if (!shouldRestoreComposerForRewindMode(variables.mode)) {
         return;
       }
-      composerRestore?.completeRewind(variables.rewoundText);
+      composerRestore?.completeRewind({
+        text: variables.rewoundText,
+        images: variables.images,
+        attachments: variables.attachments,
+      });
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : t("rewind.errors.failed"));
