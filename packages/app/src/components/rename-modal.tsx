@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Text, View } from "react-native";
-import { StyleSheet } from "react-native-unistyles";
+import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { useTranslation } from "react-i18next";
+import { X } from "lucide-react-native";
 import {
   AdaptiveModalSheet,
   AdaptiveTextInput,
   type SheetHeader,
 } from "@/components/adaptive-modal-sheet";
 import { Button } from "@/components/ui/button";
+import { PressHighlight } from "@/components/ui/press-highlight";
 import { isWeb } from "@/constants/platform";
 import type { EditingTextInputHandle } from "@/components/ui/text-input";
+import type { Theme } from "@/styles/theme";
+
+const foregroundMutedColorMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
+const ThemedX = withUnistyles(X, foregroundMutedColorMapping);
 
 export interface AdaptiveRenameModalProps {
   visible: boolean;
@@ -41,6 +47,13 @@ export function AdaptiveRenameModal({
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
   const inputRef = useRef<EditingTextInputHandle>(null);
+
+  const handleClear = useCallback(() => {
+    inputRef.current?.reset();
+    setDraft("");
+    setError(null);
+    inputRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     if (!visible) return;
@@ -124,19 +137,33 @@ export function AdaptiveRenameModal({
       testID={testID}
     >
       <View style={styles.body}>
-        <AdaptiveTextInput
-          ref={inputRef}
-          initialValue={initialValue}
-          onChangeText={handleChange}
-          placeholder={placeholder}
-          autoCapitalize="none"
-          autoCorrect={false}
-          editable={!isPending}
-          maxLength={maxLength}
-          onSubmitEditing={handleSubmitVoid}
-          style={styles.input}
-          testID={inputTestID}
-        />
+        <View style={styles.inputContainer}>
+          <AdaptiveTextInput
+            ref={inputRef}
+            initialValue={initialValue}
+            onChangeText={handleChange}
+            placeholder={placeholder}
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!isPending}
+            maxLength={maxLength}
+            onSubmitEditing={handleSubmitVoid}
+            style={styles.input}
+            testID={inputTestID}
+          />
+          {draft ? (
+            <PressHighlight
+              accessibilityRole="button"
+              accessibilityLabel={t("renameModal.clear")}
+              hitSlop={8}
+              onPress={handleClear}
+              style={styles.clearButton}
+              testID={inputTestID ? `${inputTestID}-clear` : undefined}
+            >
+              <ThemedX size={16} />
+            </PressHighlight>
+          ) : null}
+        </View>
         {error ? (
           <Text style={styles.errorText} testID={errorTestID}>
             {error}
@@ -174,15 +201,27 @@ const styles = StyleSheet.create((theme) => ({
     gap: theme.spacing[3],
     paddingBottom: theme.spacing[2],
   },
+  inputContainer: {
+    position: "relative",
+  },
   input: {
     backgroundColor: theme.colors.surface0,
     color: theme.colors.foreground,
     paddingVertical: theme.spacing[3],
-    paddingHorizontal: theme.spacing[3],
+    paddingLeft: theme.spacing[3],
+    paddingRight: 40,
     borderRadius: theme.borderRadius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
     fontSize: theme.fontSize.base,
+  },
+  clearButton: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    right: theme.spacing[2],
+    alignItems: "center",
+    justifyContent: "center",
   },
   errorText: {
     color: theme.colors.palette.red[300],
