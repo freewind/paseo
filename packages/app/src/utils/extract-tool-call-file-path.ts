@@ -61,6 +61,7 @@ export function extractToolCallFilePath(detail: ToolCallDetail | undefined): str
     case "read":
     case "edit":
     case "write":
+    case "show_diff":
       return detail.filePath || null;
     case "shell":
       return extractFromShellCommand(detail.command);

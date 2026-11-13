@@ -111,10 +111,7 @@ function collapseWhitespace(text: string): string {
  * 最多两段——先问什么，再指向哪里——无论命中多少键。徽标
  * 长到三四段就不再是一眼能读完的东西了。
  */
-function buildUnknownInputSummary(
-  input: unknown,
-  cwd: string | undefined,
-): string | undefined {
+function buildUnknownInputSummary(input: unknown, cwd: string | undefined): string | undefined {
   if (!isRecord(input)) return undefined;
   const intent = firstSummaryValue(input, UNKNOWN_INTENT_KEYS);
   const target = firstSummaryValue(input, UNKNOWN_TARGET_KEYS);
@@ -189,6 +186,8 @@ function buildCanonicalDetailDisplay(input: ToolCallDisplayInput): DetailDisplay
       return buildFilePathDisplay("Read", input.detail.filePath, input.cwd);
     case "edit":
       return buildFilePathDisplay("Edit", input.detail.filePath, input.cwd);
+    case "show_diff":
+      return buildFilePathDisplay("ShowDiff", input.detail.filePath, input.cwd);
     case "write":
       return buildFilePathDisplay("Write", input.detail.filePath, input.cwd);
     case "search":

@@ -47,6 +47,12 @@ interface LsToolInput {
   limit?: number;
 }
 
+interface ShowDiffToolInput {
+  path: string;
+  oldText: string;
+  newText: string;
+}
+
 interface PiToolResultObject {
   output?: string;
   stdout?: string;
@@ -59,6 +65,7 @@ interface PiToolResultObject {
 
 interface PiToolResultDetails {
   diff?: string;
+  unifiedDiff?: string;
   [key: string]: unknown;
 }
 
@@ -116,6 +123,12 @@ interface PiLsToolCall {
   args: LsToolInput;
 }
 
+interface PiShowDiffToolCall {
+  kind: "show_diff";
+  toolName: "show_diff";
+  args: ShowDiffToolInput;
+}
+
 interface PiUnknownToolCall {
   kind: "unknown";
   toolName: string;
@@ -130,6 +143,7 @@ export type PiTrackedToolCall =
   | PiFindToolCall
   | PiGrepToolCall
   | PiLsToolCall
+  | PiShowDiffToolCall
   | PiUnknownToolCall;
 
 interface ToolCallOutputSummary {
@@ -156,6 +170,7 @@ const PiToolResultContentSchema = z.union([
 const PiToolResultDetailsSchema = z
   .object({
     diff: z.string().optional(),
+    unifiedDiff: z.string().optional(),
   })
   .passthrough();
 
@@ -226,6 +241,12 @@ const GrepToolInputSchema: z.ZodType<GrepToolInput> = z.object({
 const LsToolInputSchema: z.ZodType<LsToolInput> = z.object({
   path: z.string().optional(),
   limit: z.number().optional(),
+});
+
+const ShowDiffToolInputSchema: z.ZodType<ShowDiffToolInput> = z.object({
+  path: z.string(),
+  oldText: z.string(),
+  newText: z.string(),
 });
 
 export function parseToolResult(rawResult: unknown): PiToolResult {
@@ -312,6 +333,8 @@ export function mapToolDetail(toolCall: PiTrackedToolCall, result?: PiToolResult
         input: toolCall.args,
       };
     }
+    case "show_diff":
+      return mapShowDiffToolDetail(toolCall.args, parsedResult);
     case "write":
       return { type: "write", filePath: toolCall.args.path, content: toolCall.args.content };
     case "find":
@@ -382,7 +405,7 @@ function parseEditToolArgs(rawArgs: unknown): PiTrackedToolCall {
   return { kind: "unknown", toolName: "edit", args: rawArgs ?? null };
 }
 
-type SimpleToolKind = "bash" | "read" | "write" | "find" | "grep" | "ls";
+type SimpleToolKind = "bash" | "read" | "write" | "find" | "grep" | "ls" | "show_diff";
 const SIMPLE_TOOL_SCHEMAS: {
   [K in SimpleToolKind]: { safeParse: (data: unknown) => { success: boolean; data?: unknown } };
 } = {
@@ -392,6 +415,7 @@ const SIMPLE_TOOL_SCHEMAS: {
   find: FindToolInputSchema,
   grep: GrepToolInputSchema,
   ls: LsToolInputSchema,
+  show_diff: ShowDiffToolInputSchema,
 };
 
 function mapFindToolDetail(args: FindToolInput, result: PiToolResult): ToolCallDetail {
@@ -422,5 +446,18 @@ function mapLsToolDetail(args: LsToolInput, result: PiToolResult): ToolCallDetai
     type: "search",
     query: args.path ?? "ls",
     content: typeof result === "string" ? result : undefined,
+  };
+}
+
+function mapShowDiffToolDetail(args: ShowDiffToolInput, result: PiToolResult): ToolCallDetail {
+  const details = result && typeof result !== "string" ? result.details : undefined;
+  const unifiedDiff =
+    typeof details?.unifiedDiff === "string"
+      ? details.unifiedDiff
+      : (extractTextFromToolResult(result) ?? "");
+  return {
+    type: "show_diff",
+    filePath: args.path,
+    unifiedDiff,
   };
 }

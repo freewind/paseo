@@ -251,7 +251,11 @@ export function parseUnifiedDiff(diffText?: string): DiffLine[] {
       line.startsWith("diff --git") ||
       line.startsWith("index ") ||
       line.startsWith("---") ||
-      line.startsWith("+++")
+      line.startsWith("+++") ||
+      line.startsWith("new file mode") ||
+      line.startsWith("deleted file mode") ||
+      line.startsWith("similarity index") ||
+      line.startsWith("rename ")
     ) {
       continue;
     }

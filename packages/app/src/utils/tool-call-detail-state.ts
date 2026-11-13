@@ -68,6 +68,8 @@ export function hasMeaningfulToolCallDetail(detail: ToolCallDetail | undefined):
       return hasMeaningfulReadLikeDetail(detail);
     case "edit":
       return hasMeaningfulEditDetail(detail);
+    case "show_diff":
+      return Boolean(detail.filePath || detail.unifiedDiff);
     case "write":
       return hasMeaningfulReadLikeDetail(detail);
     case "search":

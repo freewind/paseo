@@ -244,6 +244,11 @@ export type ToolCallDetail =
       input?: unknown;
     }
   | {
+      type: "show_diff";
+      filePath: string;
+      unifiedDiff: string;
+    }
+  | {
       type: "write";
       filePath: string;
       content?: string;

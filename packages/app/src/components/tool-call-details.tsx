@@ -144,7 +144,11 @@ function useDetailStyles(
 
 function useDiffLines(detail: ToolCallDetail | undefined): DiffLine[] | undefined {
   return useMemo(() => {
-    if (!detail || detail.type !== "edit") return undefined;
+    if (!detail) return undefined;
+    if (detail.type === "show_diff") {
+      return highlightDiffLines(parseUnifiedDiff(detail.unifiedDiff), detail.filePath);
+    }
+    if (detail.type !== "edit") return undefined;
     const diffLines = detail.unifiedDiff
       ? parseUnifiedDiff(detail.unifiedDiff)
       : buildLineDiff(detail.oldString ?? "", detail.newString ?? "");
@@ -685,6 +689,9 @@ function buildDetailSections(
       ) : null,
       <EditDetailSection key="edit" diffLines={diffLines} ds={ds} />,
     ];
+  }
+  if (detail.type === "show_diff") {
+    return [<EditDetailSection key="show-diff" diffLines={diffLines} ds={ds} />];
   }
   if (detail.type === "write") {
     return [

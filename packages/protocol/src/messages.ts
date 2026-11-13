@@ -609,6 +609,11 @@ const ToolCallDetailPayloadSchema: z.ZodType<ToolCallDetail, unknown> = z.discri
       input: z.unknown().optional(),
     }),
     z.object({
+      type: z.literal("show_diff"),
+      filePath: z.string(),
+      unifiedDiff: z.string(),
+    }),
+    z.object({
       type: z.literal("write"),
       filePath: z.string(),
       content: z.string().optional(),

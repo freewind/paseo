@@ -8,6 +8,7 @@ const TOOL_DETAIL_ICON_NAMES: Record<ToolCallDetail["type"], ToolCallIcon> = {
   shell: "square_terminal",
   read: "eye",
   edit: "pencil",
+  show_diff: "eye",
   write: "pencil",
   search: "search",
   fetch: "search",

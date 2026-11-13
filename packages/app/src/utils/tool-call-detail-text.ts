@@ -24,7 +24,7 @@ export function buildToolCallInputFields(detail: ToolCallDetail | undefined): To
     pushInputField(fields, "limit", detail.limit);
     return fields;
   }
-  if (detail.type === "write" || detail.type === "edit") {
+  if (detail.type === "write" || detail.type === "edit" || detail.type === "show_diff") {
     pushInputField(fields, "path", detail.filePath);
     return fields;
   }
@@ -113,6 +113,8 @@ function resolveOutputBody(detail: ToolCallDetail): string | null {
   switch (detail.type) {
     case "edit":
       return resolveEditOutputText(detail.output);
+    case "show_diff":
+      return detail.unifiedDiff;
     case "search":
       return resolveSearchOutputText(detail);
     case "unknown":
