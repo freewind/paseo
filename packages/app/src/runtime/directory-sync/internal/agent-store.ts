@@ -7,6 +7,7 @@ import { derivePendingPermissionKey, normalizeAgentSnapshot } from "@/utils/agen
 import { resolveProjectPlacement } from "@/utils/project-placement";
 import { clearArchiveAgentPending } from "@/hooks/use-archive-agent";
 import { queryClient } from "@/data/query-client";
+import { navigationHistoryStore } from "@/stores/navigation-history-store";
 import { buildDraftStoreKey } from "@/stores/draft-keys";
 import { useDraftStore } from "@/stores/draft-store";
 import { getInitDeferred, getInitKey, rejectInitDeferred } from "@/utils/agent-initialization";
@@ -96,6 +97,8 @@ export class AgentStoreProjection {
     });
     if (accepted.archivedAt) {
       clearArchiveAgentPending({ queryClient, serverId: this.serverId, agentId: accepted.id });
+      // 归档的 agent 不再作为返回/前进的历史步存在。
+      navigationHistoryStore.forgetAgent(accepted.id);
     }
     this.replacePendingPermissions(accepted);
     useSessionStore.getState().setAgentLastActivity(accepted.id, accepted.lastActivityAt);
@@ -120,6 +123,8 @@ export class AgentStoreProjection {
       agents.set(agentId, existing && equal(existing, merged) ? existing : merged);
       if (fetchedAgent.archivedAt) {
         clearArchiveAgentPending({ queryClient, serverId: this.serverId, agentId });
+        // 归档的 agent 不再作为返回/前进的历史步存在。
+        navigationHistoryStore.forgetAgent(agentId);
       }
     }
     store.setAgents(this.serverId, agents);
@@ -180,6 +185,8 @@ export class AgentStoreProjection {
 
   remove(agentId: string): void {
     this.removeFromDirectory(agentId);
+    // 彻底删除的 agent 也不再作为返回/前进的历史步存在。
+    navigationHistoryStore.forgetAgent(agentId);
     // Only entity deletion destroys the transcript. A filtered active-list
     // response can arrive after a fresh history response for an archived agent.
     const store = useSessionStore.getState();
@@ -204,6 +211,10 @@ export class AgentStoreProjection {
       next.set(agentId, archived);
       return next;
     });
+    if (archived) {
+      // 归档的 agent 不再作为返回/前进的历史步存在。
+      navigationHistoryStore.forgetAgent(agentId);
+    }
     return archived;
   }
 

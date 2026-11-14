@@ -11,6 +11,8 @@ import {
   Text,
   View,
   type PressableStateCallbackType,
+  type StyleProp,
+  type TextStyle,
   type ViewStyle,
 } from "react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
@@ -221,8 +223,32 @@ function resolveItemLabel(input: {
   return children;
 }
 
+/**
+ * The row's label. A wrapping label keeps its full text and breaks inside long unbroken tokens
+ * (an agent id, a URL) at any character; the default truncates to one line.
+ */
+function MenuItemLabel({
+  wrap,
+  style,
+  children,
+}: PropsWithChildren<{ wrap: boolean | undefined; style: StyleProp<TextStyle> }>): ReactElement {
+  return (
+    <Text
+      numberOfLines={wrap ? undefined : 1}
+      style={[style, wrap ? styles.itemTextWrapped : null]}
+    >
+      {children}
+    </Text>
+  );
+}
+
 export interface MenuItemProps {
   description?: string;
+  /**
+   * Label wraps onto as many lines as it needs instead of truncating to one, breaking inside
+   * long unbroken tokens (an agent id, a URL) at any character. Defaults to one line.
+   */
+  wrapLabel?: boolean;
   onSelect?: () => void;
   disabled?: boolean;
   muted?: boolean;
@@ -256,6 +282,7 @@ export interface MenuItemProps {
 export function MenuItem({
   children,
   description,
+  wrapLabel,
   onSelect,
   disabled,
   muted = false,
@@ -353,9 +380,9 @@ export function MenuItem({
       ) : null}
       {leadingContent ? <View style={styles.leadingSlot}>{leadingContent}</View> : null}
       <View style={styles.itemContent}>
-        <Text numberOfLines={1} style={itemTextStyle}>
+        <MenuItemLabel wrap={wrapLabel} style={itemTextStyle}>
           {label}
-        </Text>
+        </MenuItemLabel>
         {description && !isPending && !isSuccess ? (
           <Text numberOfLines={2} style={styles.itemDescription}>
             {description}
@@ -507,6 +534,13 @@ const styles = StyleSheet.create((theme) => ({
   },
   itemTextSuccess: {
     color: theme.colors.palette.green[500],
+  },
+  // Web breaks a long unbroken token only with this CSS. `_web` keeps it off the native style;
+  // native Text wraps such a token on its own.
+  itemTextWrapped: {
+    _web: {
+      overflowWrap: "anywhere",
+    },
   },
   itemDescription: {
     marginTop: 2,

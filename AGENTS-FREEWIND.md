@@ -72,9 +72,9 @@ pullRequest?: { instructions?: string }
 
 ### 导航历史
 
-侧栏顶行放后退与前进（`components/sidebar/sidebar-back-row.tsx`）。后退与前进走自己的历史，不是路由栈：一条记录是路径名加当前聚焦的工作区标签（`stores/navigation-history-store.ts`），所以在同一个工作区里切 Chat 也算一步，即使路径名没变。只有独立 agent 的会话会被记录（Paseo 自己创建的 sub agent 也算，它们是独立 agent）；文件、终端、空标签、草稿与 provider 子 agent 面板在 `recordNavigation` 里被丢弃。
+侧栏顶行放最近访问、后退与前进（`components/sidebar/sidebar-back-row.tsx`）。后退与前进走自己的历史，不是路由栈：一条记录是路径名加当前聚焦的工作区标签（`stores/navigation-history-store.ts`），所以在同一个工作区里切 Chat 也算一步，即使路径名没变。只有独立 agent 的会话会被记录（Paseo 自己创建的 sub agent 也算，它们是独立 agent）；文件、终端、空标签、草稿与 provider 子 agent 面板在 `recordNavigation` 里被丢弃，最近访问列表用同一套规则。
 
-`navigation/navigation-history-bridge.tsx`（在根布局挂一次）观察渲染结果，并通过 `navigateToWorkspace()` 重放后退与前进的目标。重放期间新的观察会被挂起，直到目标出现（2 秒超时）；后退之后再跳转会像浏览器一样截断前进分支。栈只存在内存里，重启后从空开始：启动页面由上游恢复上次的工作区与聚焦标签，这套历史不参与启动；只留最近 20 步。Android 系统返回键仍然弹路由栈，不在这套历史里。
+`navigation/navigation-history-bridge.tsx`（在根布局挂一次）观察渲染结果，并通过 `navigateToWorkspace()` 重放后退与前进的目标。重放期间新的观察会被挂起，直到目标出现（2 秒超时）；后退之后再跳转会像浏览器一样截断前进分支。栈与最近访问都只存在内存里，重启后从空开始：启动页面由上游恢复上次的工作区与聚焦标签，这套历史不参与启动。栈只留最近 20 步；最近访问不设上限，只按 agent 去重，同一个 agent 再访问仍留在原位。Android 系统返回键仍然弹路由栈，不在这套历史里。
 
 ## 分支结构
 

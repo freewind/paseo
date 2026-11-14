@@ -21,6 +21,16 @@ export interface NavigationHistoryEntry {
   tabId: string | null;
 }
 
+/**
+ * 用户真正看过的 agent，最近访问的在前。刻意与 `entries` 分开：历史是一条可以
+ * 来回走的路径，另开一条新分支或沿路径回头，都不该丢掉刚待过的其它 agent。
+ */
+export interface RecentAgentVisit {
+  serverId: string;
+  workspaceId: string;
+  agentId: string;
+}
+
 export interface NavigationHistorySnapshot {
   entries: readonly NavigationHistoryEntry[];
   /** 当前所在位置在 `entries` 中的下标。 */
@@ -32,6 +42,8 @@ export interface NavigationHistorySnapshot {
   currentOutsideHistory: boolean;
   /** 前进/后退跳转还在落地时设置；消费方只应用一次。 */
   replay: { token: number; entry: NavigationHistoryEntry } | null;
+  /** 用户访问过的 agent，最近在前，已去重。 */
+  recentAgentVisits: readonly RecentAgentVisit[];
 }
 
 /** 只会用到最近 20 步；再往前的方向键已经没人会按，存着只是占地方。 */
@@ -136,12 +148,62 @@ function isPendingWorkspaceEntry(entry: NavigationHistoryEntry): boolean {
   return !entry.target && Boolean(entry.serverId) && Boolean(entry.workspaceId);
 }
 
+/**
+ * 占位与落在同一工作区的真实位置是同一步，只是当时还没解析出 tab。
+ */
+function pendingMatchesEntry(
+  pending: NavigationHistoryEntry,
+  entry: NavigationHistoryEntry,
+): boolean {
+  return pending.serverId === entry.serverId && pending.workspaceId === entry.workspaceId;
+}
+
+/** 位置是独立 agent 的 chat 时返回它对应的 agent。 */
+function readRecentAgentVisit(entry: NavigationHistoryEntry): RecentAgentVisit | null {
+  if (!isAgentChatEntry(entry)) {
+    return null;
+  }
+  return {
+    serverId: entry.serverId,
+    workspaceId: entry.workspaceId,
+    agentId: entry.target.agentId,
+  };
+}
+
+function recentAgentVisitsEqual(left: RecentAgentVisit, right: RecentAgentVisit): boolean {
+  return (
+    left.serverId === right.serverId &&
+    left.workspaceId === right.workspaceId &&
+    left.agentId === right.agentId
+  );
+}
+
+/**
+ * 访问到一个 agent 时更新最近访问：已存在的留在原位不动，新出现的放到最前。
+ * 位置不变是因为从这一行点回去时列表不该跟着跳，否则每点一次顺序就变一次。
+ */
+function withRecentAgentVisit(
+  visits: readonly RecentAgentVisit[],
+  entry: NavigationHistoryEntry,
+): readonly RecentAgentVisit[] {
+  const visit = readRecentAgentVisit(entry);
+  if (!visit) {
+    return visits;
+  }
+  if (visits.some((item) => recentAgentVisitsEqual(item, visit))) {
+    return visits;
+  }
+  return [visit, ...visits];
+}
+
 export function createNavigationHistoryStore(options: { replayTimeoutMs?: number } = {}): {
   subscribe: (onStoreChange: () => void) => () => void;
   getSnapshot: () => NavigationHistorySnapshot;
+  getRecentAgentVisits: () => readonly RecentAgentVisit[];
   recordNavigation: (entry: NavigationHistoryEntry) => void;
   navigateBack: () => boolean;
   navigateForward: () => boolean;
+  forgetAgent: (agentId: string) => void;
 } {
   const replayTimeoutMs = options.replayTimeoutMs ?? REPLAY_TIMEOUT_MS;
   const listeners = new Set<() => void>();
@@ -152,6 +214,7 @@ export function createNavigationHistoryStore(options: { replayTimeoutMs?: number
     cursor: -1,
     currentOutsideHistory: false,
     replay: null,
+    recentAgentVisits: [],
   };
 
   function emit(next: NavigationHistorySnapshot): void {
@@ -211,6 +274,7 @@ export function createNavigationHistoryStore(options: { replayTimeoutMs?: number
         emit({
           ...snapshot,
           entries: rebindReplayInstance(snapshot.entries, snapshot.cursor, entry.tabId),
+          recentAgentVisits: withRecentAgentVisit(snapshot.recentAgentVisits, entry),
           currentOutsideHistory: false,
           replay: null,
         });
@@ -219,6 +283,17 @@ export function createNavigationHistoryStore(options: { replayTimeoutMs?: number
     }
 
     const current = snapshot.cursor >= 0 ? snapshot.entries[snapshot.cursor] : null;
+    // 水合完成：把光标处的占位换成真实位置，而不是再排一步。
+    if (current && isPendingWorkspaceEntry(current) && pendingMatchesEntry(current, entry)) {
+      emit({
+        entries: snapshot.entries.map((item, index) => (index === snapshot.cursor ? entry : item)),
+        cursor: snapshot.cursor,
+        recentAgentVisits: withRecentAgentVisit(snapshot.recentAgentVisits, entry),
+        currentOutsideHistory: false,
+        replay: null,
+      });
+      return;
+    }
     if (current && entriesEqual(current, entry)) {
       // 回到光标所在的位置（例如从历史列表退回那个 agent）：只清掉“在历史之外”的标记。
       if (snapshot.currentOutsideHistory) {
@@ -237,9 +312,42 @@ export function createNavigationHistoryStore(options: { replayTimeoutMs?: number
     emit({
       entries,
       cursor,
+      recentAgentVisits: withRecentAgentVisit(snapshot.recentAgentVisits, entry),
       currentOutsideHistory: false,
       replay: null,
     });
+  }
+
+  /**
+   * 把 agent 的所有历史步连根删掉。归档与彻底删除后，返回/前进都不该再落到它；
+   * 与其跳转时逐个跳过（canGoBack/canGoForward 会虚报可走），不如让历史里根本没有这一步。
+   */
+  function forgetAgent(agentId: string): void {
+    const removeIndices = new Set<number>();
+    snapshot.entries.forEach((entry, index) => {
+      if (entry.target?.kind === "agent" && entry.target.agentId === agentId) {
+        removeIndices.add(index);
+      }
+    });
+    if (removeIndices.size === 0) {
+      return;
+    }
+    const entries = snapshot.entries.filter((_, index) => !removeIndices.has(index));
+    let cursor = snapshot.cursor;
+    let currentOutsideHistory = snapshot.currentOutsideHistory;
+    if (removeIndices.has(snapshot.cursor)) {
+      // 删掉的是当前所在的会话（它刚被归档/删除）：当前页已不在历史里，
+      // 光标退到前一项并标记在历史之外，返回仍能走到更早的会话。
+      cursor = snapshot.cursor - 1;
+      currentOutsideHistory = true;
+    } else {
+      for (const index of removeIndices) {
+        if (index < snapshot.cursor) {
+          cursor -= 1;
+        }
+      }
+    }
+    emit({ ...snapshot, entries, cursor, currentOutsideHistory });
   }
 
   function jump(delta: -1 | 1): boolean {
@@ -268,9 +376,11 @@ export function createNavigationHistoryStore(options: { replayTimeoutMs?: number
       };
     },
     getSnapshot: () => snapshot,
+    getRecentAgentVisits: () => snapshot.recentAgentVisits,
     recordNavigation,
     navigateBack: () => jump(-1),
     navigateForward: () => jump(1),
+    forgetAgent,
   };
 }
 

@@ -1299,6 +1299,12 @@ export const en = {
     },
   },
   sidebar: {
+    recentVisits: {
+      trigger: "Recent visits",
+      current: "Current",
+      subagent: "Subagent",
+      empty: "No recent visits",
+    },
     statusGroupAccessibility: "{{label}} group",
     statusBucket: {
       needsInput: "Needs input",

@@ -5,6 +5,7 @@ import { Text, View, type AccessibilityState } from "react-native";
 import { PressHighlight } from "@/components/ui/press-highlight";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import type { SidebarRowIcon } from "@/components/sidebar/sidebar-header-row";
+import { SidebarRecentVisitsMenu } from "@/components/sidebar/sidebar-recent-visits-menu";
 import { useRouteBack } from "@/hooks/use-route-back";
 import { density } from "@/styles/density";
 import { ICON_SIZE, type Theme } from "@/styles/theme";
@@ -21,10 +22,11 @@ interface SidebarBackRowProps {
 }
 
 /**
- * 侧栏顶部常驻的一行导航：返回 + 前进。从 Chat 打开的二级页本身没有退出按钮，
- * 把返回/前进固定在这里；没有可跳历史时保留控件并置灰，避免入口忽隐忽现。
- * 历史只含独立 agent 的 chat（见 useRouteBack）：文件、终端、设置页、空白 tab
- * 都不占一步，在这些页面上按返回直接回到上一个 agent chat。
+ * 侧栏顶部常驻的一行导航：最近访问 + 返回 + 前进。从 Chat 打开的二级页本身没有
+ * 退出按钮，把返回/前进固定在这里；没有可跳历史时保留控件并置灰，避免入口忽隐
+ * 忽现。历史只含独立 agent 的 chat（见 useRouteBack）：文件、终端、设置页、空白 tab
+ * 都不占一步，在这些页面上按返回直接回到上一个 agent chat。最近访问是另一份独立
+ * 记录（见 SidebarRecentVisitsMenu）。
  *
  * 这一行不进 `disableUncommonFeatures` 的隐藏清单：那个开关管的是低频入口，而二级页没有别的
  * 退出按钮，藏掉后用户会困在页面里。
@@ -51,10 +53,11 @@ export function SidebarBackRow({ onBeforeNavigate }: SidebarBackRowProps) {
     goForward();
   }, [canGoForward, goForward, onBeforeNavigate]);
 
-  // 与侧栏头部其它行同一套排布：控件靠右。
+  // 与侧栏头部其它行同一套排布：最近访问占满剩余宽度，返回/前进在右。
 
   return (
     <View style={styles.row}>
+      <SidebarRecentVisitsMenu onBeforeNavigate={onBeforeNavigate} />
       <SidebarNavigationControl
         icon={ArrowLeft}
         label={t("common.actions.back")}
@@ -144,12 +147,11 @@ const styles = StyleSheet.create((theme) => ({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-end",
     gap: theme.spacing[1],
     paddingHorizontal: theme.spacing[2],
     // 顶部留白属于这一行本身：调用点不再包容器，模式关闭时这一行整个不存在。
     paddingTop: theme.spacing[2],
-    // 两个控件必须停在一行里：纵向换行会把侧栏顶部撑高。
+    // 三个控件必须停在一行里：纵向换行会把侧栏顶部撑高，也让最近访问失去位置。
     flexWrap: "nowrap",
     userSelect: "none",
   },
