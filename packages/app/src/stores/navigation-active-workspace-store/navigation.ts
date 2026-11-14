@@ -27,8 +27,15 @@ export interface NavigateToWorkspaceInput {
   serverId: string;
   workspaceId: string;
   target?: WorkspaceTabTarget;
+  /** 已经打开的 tab 实例 id；回放时用它落到用户原来看的那一个 tab。 */
+  tabId?: string;
   pin?: boolean;
   placement?: WorkspaceTabPlacement;
+  /**
+   * 只切路由，不自动选中需要关注的 agent。回放那些焦点不是 agent 的历史位置时用，
+   * 让恢复的是存下的 tab 焦点，而不是强开一个 Chat。
+   */
+  preserveFocus?: boolean;
 }
 
 export interface NavigateToWorkspaceDeps extends PrepareWorkspaceTabDeps {
@@ -103,7 +110,7 @@ export function navigateToWorkspace(
   };
   if (input.target) {
     prepareWorkspaceTab({ ...input, target: input.target }, { openTab });
-  } else {
+  } else if (!input.preserveFocus) {
     const workspaceAgents = resolvedWorkspaceId
       ? Array.from(deps.getSessionAgents(input.serverId)).filter(
           (agent) => normalizeWorkspaceOpaqueId(agent.workspaceId) === resolvedWorkspaceId,

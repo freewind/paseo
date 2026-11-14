@@ -60,6 +60,7 @@ export const en = {
       save: "Save",
       open: "Open",
       back: "Back",
+      forward: "Forward",
       cancel: "Cancel",
       close: "Close",
       copy: "Copy",

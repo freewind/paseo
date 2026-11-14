@@ -36,6 +36,7 @@ import {
   normalizeLayout,
   openTabInLayoutBackground,
   replaceTabTargetInLayout,
+  revealTabInstanceInLayout,
   revealTargetInLayout,
   restoreWorkspaceLayout,
   reconcileWorkspaceTabs,
@@ -102,6 +103,11 @@ export interface OpenWorkspaceTabInput {
   workspaceKey: string;
   target: WorkspaceTabTarget;
   intent: WorkspaceTabOpenIntent;
+  /**
+   * 已经打开的 tab 实例 id。reveal 时若它还在，优先落到它而不是按目标找；
+   * 实例没了再退回目标。
+   */
+  tabId?: string;
   /** Keeps an explicitly opened agent visible even when it is archived. */
   pin?: boolean;
   placement?: WorkspaceTabPlacement;
@@ -127,7 +133,7 @@ export type WorkspaceTabDestination =
   | { kind: "pane"; paneId: string; host: "main" | "explorer"; tabId: string }
   | { kind: "sheet"; tabId: string };
 
-interface WorkspaceLayoutStore {
+export interface WorkspaceLayoutStore {
   panelRevisionByWorkspace: Record<string, Record<string, number>>;
   /** Published once by the app shell; callers never pass a form factor to open a tab. */
   layoutMode: WorkspaceLayoutMode;
@@ -1168,13 +1174,22 @@ export function createWorkspaceLayoutStore(
               now: Date.now(),
             });
           } else {
-            result = revealTargetInLayout({
-              ...placement,
-              insertionPosition: input.insertionPosition,
-              target: normalizedTarget,
-              now: Date.now(),
-              createTabId: createWorkspaceTabInstanceId,
-            });
+            const rememberedTabId = trimNonEmpty(input.tabId);
+            result =
+              (rememberedTabId
+                ? revealTabInstanceInLayout({
+                    layout: placement.layout,
+                    tabId: rememberedTabId,
+                    placement: placement.placement,
+                  })
+                : null) ??
+              revealTargetInLayout({
+                ...placement,
+                insertionPosition: input.insertionPosition,
+                target: normalizedTarget,
+                now: Date.now(),
+                createTabId: createWorkspaceTabInstanceId,
+              });
           }
           if (!result) {
             return null;

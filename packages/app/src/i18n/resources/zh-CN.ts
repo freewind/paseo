@@ -64,6 +64,7 @@ export const zhCN: TranslationResources = {
       save: "保存",
       open: "打开",
       back: "返回",
+      forward: "前进",
       cancel: "取消",
       close: "关闭",
       copy: "复制",

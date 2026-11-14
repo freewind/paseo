@@ -33,6 +33,7 @@ import { SidebarDisplayPreferencesMenu } from "@/components/sidebar/display-pref
 import { SearchField } from "@/components/ui/search-field";
 import { SidebarSeparator } from "@/components/sidebar/sidebar-separator";
 import { SidebarNavRows } from "@/components/sidebar/sidebar-nav-rows";
+import { SidebarBackRow } from "@/components/sidebar/sidebar-back-row";
 import { SidebarFooterIconHighlight } from "@/components/sidebar/sidebar-footer-icon-highlight";
 import { useAppSettings } from "@/hooks/use-settings";
 import { SidebarHelpMenu } from "@/components/sidebar/sidebar-help-menu";
@@ -580,6 +581,7 @@ function MobileSidebar({
     >
       <View style={styles.sidebarContent} pointerEvents="auto">
         <WindowChromeSafeArea placement="below" />
+        <SidebarBackRow onBeforeNavigate={closeSidebar} />
         <SidebarNavRows
           style={styles.sidebarHeaderGroup}
           onBeforeNavigate={closeSidebar}
@@ -767,6 +769,7 @@ function DesktopSidebar({
           ) : (
             <TitlebarDragRegion />
           )}
+          <SidebarBackRow />
           <SidebarNavRows style={sidebarHeaderGroupStyle} />
         </View>
 
