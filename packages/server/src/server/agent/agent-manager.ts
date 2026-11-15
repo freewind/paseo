@@ -45,6 +45,7 @@ import {
   type AgentProviderNotice,
   type AgentPromptInput,
   type AgentProvider,
+  type ProviderHistoryStatsResult,
   type AgentRunOptions,
   type AgentSteerOptions,
   type AgentRunResult,
@@ -885,6 +886,15 @@ export class AgentManager {
     return Array.from(this.clients.keys());
   }
 
+  async getProviderHistoryStats(
+    provider: AgentProvider,
+    handle: AgentPersistenceHandle | null,
+  ): Promise<ProviderHistoryStatsResult> {
+    const client = this.clients.get(provider);
+    if (!client?.getProviderHistoryStats) return { supported: false };
+    return await client.getProviderHistoryStats(handle);
+  }
+
   setAgentAttentionCallback(callback: AgentAttentionCallback): void {
     this.onAgentAttention = callback;
   }
@@ -1665,10 +1675,7 @@ export class AgentManager {
    * 把 agent 挪到另一个工作区：只改归属 workspaceId，cwd、provider 会话与时间戳一律不动。
    * 所以不重建会话、不需要回滚，有回合在跑时也能直接改；代价是这个 agent 仍按原目录执行命令。
    */
-  moveAgentToWorkspace(
-    agentId: string,
-    target: { workspaceId: string },
-  ): Promise<ManagedAgent> {
+  moveAgentToWorkspace(agentId: string, target: { workspaceId: string }): Promise<ManagedAgent> {
     return this.trackAgentRegistrationOperation(
       this.runLifecycleMutation(agentId, () => this.moveAgentToWorkspaceInternal(agentId, target)),
     );

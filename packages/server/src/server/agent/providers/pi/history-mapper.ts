@@ -5,7 +5,7 @@ import {
   type PiExtensionEventOutput,
   type PiExtensionHost,
 } from "./extensions/index.js";
-import type { PiAgentMessage, PiImageContent, PiTextContent } from "./rpc-types.js";
+import type { PiAgentMessage, PiTextContent } from "./rpc-types.js";
 import {
   extractTextFromToolResult,
   mapToolDetail,
@@ -43,10 +43,11 @@ function isTextContentBlock(block: unknown): block is PiTextContent {
   );
 }
 
-export function getUserMessageText(content: string | (PiTextContent | PiImageContent)[]): string {
+export function getUserMessageText(content: unknown): string {
   if (typeof content === "string") {
     return content;
   }
+  if (!Array.isArray(content)) return "";
 
   const textParts: string[] = [];
   for (const block of content) {

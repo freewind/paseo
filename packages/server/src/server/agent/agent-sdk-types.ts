@@ -10,7 +10,7 @@ import type {
   ToolPolicy,
 } from "@getpaseo/protocol/agent-types";
 import type { AgentMessage } from "@getpaseo/protocol/agent-message";
-import type { AgentAttachment } from "@getpaseo/protocol/messages";
+import type { AgentAttachment, AgentHistoryStats } from "@getpaseo/protocol/messages";
 import type { PaseoToolCatalog } from "./tools/types.js";
 
 export type {
@@ -777,6 +777,10 @@ export interface ResolveAgentDefaultModeInput {
   signal?: AbortSignal;
 }
 
+export type ProviderHistoryStatsResult =
+  | { supported: false }
+  | { supported: true; stats: AgentHistoryStats | null; error?: unknown };
+
 export interface AgentClient {
   readonly provider: AgentProvider;
   readonly capabilities: AgentCapabilityFlags;
@@ -826,6 +830,9 @@ export interface AgentClient {
    * Returns true if available, false otherwise.
    */
   isAvailable(signal?: AbortSignal, options?: FetchCatalogOptions): Promise<boolean>;
+  getProviderHistoryStats?(
+    handle: AgentPersistenceHandle | null,
+  ): Promise<ProviderHistoryStatsResult>;
   /**
    * 在边界处切一刀，做一份持久化会话的独立副本，源会话不受影响。返回的句柄和别的
    * 一样可以恢复：对它调用 `resumeAgentFromPersistence` 得到的 agent 带着完整历史。

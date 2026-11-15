@@ -74,6 +74,7 @@ import {
 } from "./extensions/index.js";
 import { revertPiConversation } from "./rewind.js";
 import { forkPiSessionFile } from "./fork.js";
+import { readPiSessionHistoryStats } from "./session-file.js";
 import { listPiImportableSessions, readPiImportSessionConfig } from "./session-descriptor.js";
 import type { PiRuntime, PiRuntimeSession, PiStartSessionInput } from "./runtime.js";
 import type {
@@ -2876,6 +2877,20 @@ export class PiRpcAgentClient implements AgentClient {
 
   async listFeatures(_config: AgentSessionConfig): Promise<AgentFeature[]> {
     return [];
+  }
+
+  async getProviderHistoryStats(handle: AgentPersistenceHandle | null) {
+    try {
+      if (!handle?.nativeHandle) {
+        throw new Error("Pi history stats require a session file handle");
+      }
+      return {
+        supported: true as const,
+        stats: await readPiSessionHistoryStats(handle.nativeHandle),
+      };
+    } catch (error) {
+      return { supported: true as const, stats: null, error };
+    }
   }
 
   async listImportableSessions(

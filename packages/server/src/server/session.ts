@@ -5658,12 +5658,32 @@ export class Session {
     }
 
     const record = await this.agentStorage.get(agent.id);
-    if (record?.archivedAt && record.historyStats) {
-      this.rememberHistoryStats(agent.id, agent.updatedAt, record.historyStats);
-      return record.historyStats;
-    }
 
     try {
+      const providerStats = await this.agentManager.getProviderHistoryStats(
+        agent.provider,
+        toAgentPersistenceHandle(this.agentManager.getRegisteredProviderIds(), record?.persistence),
+      );
+      if (providerStats.supported) {
+        if (providerStats.error) {
+          this.sessionLogger.warn(
+            { err: providerStats.error, agentId: agent.id },
+            "Failed to read provider history stats",
+          );
+        }
+        if (!providerStats.stats) return null;
+        this.rememberHistoryStats(agent.id, agent.updatedAt, providerStats.stats);
+        if (record?.archivedAt) {
+          await this.agentStorage.setHistoryStats(agent.id, providerStats.stats);
+        }
+        return providerStats.stats;
+      }
+
+      if (record?.archivedAt && record.historyStats) {
+        this.rememberHistoryStats(agent.id, agent.updatedAt, record.historyStats);
+        return record.historyStats;
+      }
+
       await ensureAgentLoaded(agent.id, {
         agentManager: this.agentManager,
         agentStorage: this.agentStorage,
