@@ -12,18 +12,22 @@ fork 需要补充说明时，写进本文件的对应小节，用中文。
 
 ### 元数据生成的提示词覆盖
 
-`agents.metadataGeneration` 除了 `providers`，还接受四个可选的风格覆盖：
+四条元数据提示词放在 `~/.paseo/freewind.config.json`，不写入 `agents.metadataGeneration` 所在的 daemon 配置：
 
+```json
+{
+  "metadataGeneration": {
+    "title": { "instructions": "..." },
+    "branchName": { "instructions": "..." },
+    "commitMessage": { "instructions": "..." },
+    "pullRequest": { "instructions": "..." }
+  }
+}
 ```
-title?: { instructions?: string }
-branchName?: { instructions?: string }
-commitMessage?: { instructions?: string }
-pullRequest?: { instructions?: string }
-```
 
-`instructions` 覆盖该产物的风格指引。在宿主的「元数据生成」设置页填，占位符显示内置默认值；留空表示「用内置默认」，不是「用空提示词生成」。
+`instructions` 覆盖该产物的风格指引。在宿主的「元数据生成」设置页填，占位符显示内置默认值；留空表示「用内置默认」，不是「用空提示词生成」。daemon 启动时把这份配置读入内存，设置页和生成器都从内存取值。
 
-取值优先级从高到低：项目 `paseo.json` 的 `metadataGeneration.<key>.instructions`、daemon 配置、内置默认。项目文件优先，因为它随仓库走、和代码一起 review。内置默认放在 `packages/protocol/src/metadata-prompts.ts`，daemon 提示词与设置页占位符读同一份定义。
+取值优先级从高到低：项目 `paseo.json` 的 `metadataGeneration.<key>.instructions`、daemon 内存配置、内置默认。项目文件优先，因为它随仓库走、和代码一起 review。内置默认放在 `packages/protocol/src/metadata-prompts.ts`，daemon 提示词与设置页占位符读同一份定义。
 
 ### 常用回复
 

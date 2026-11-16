@@ -13,6 +13,15 @@ import { METADATA_PROMPT_KEYS } from "@getpaseo/protocol/metadata-prompts";
 import type { AgentSkillSelection } from "@getpaseo/protocol/messages";
 import type { SpeechSettingsPatch } from "@getpaseo/protocol/speech/rpc-schemas";
 import { mergeSpeechSettingsPatch, type SpeechSettingsOwner } from "./speech/speech-settings.js";
+import {
+  mergeFreewindMetadataGeneration,
+  pickMetadataPromptEntries,
+  readFreewindMetadataGeneration,
+  readFreewindMetadataGenerationSync,
+  stripMetadataPromptEntries,
+  writeFreewindMetadataGeneration,
+  type FreewindMetadataGeneration,
+} from "./freewind-config-store.js";
 
 export type { MutableDaemonConfig, MutableDaemonConfigPatch } from "@getpaseo/protocol/messages";
 
@@ -276,60 +285,60 @@ function pickRelayPatch(
   return Object.keys(picked).length > 0 ? { relay: picked } : {};
 }
 
-function pickMetadataGenerationPatch(
-  patch: MutableDaemonConfigPatch,
-): SupportedMutableConfigPatch["metadataGeneration"] {
+function splitMetadataGenerationPatch(patch: MutableDaemonConfigPatch): {
+  configPatch: SupportedMutableConfigPatch["metadataGeneration"];
+  promptPatch: FreewindMetadataGeneration;
+} {
   const metadataGeneration = patch.metadataGeneration;
   if (!metadataGeneration) {
-    return undefined;
+    return { configPatch: undefined, promptPatch: undefined };
   }
-  const picked: NonNullable<SupportedMutableConfigPatch["metadataGeneration"]> = {};
-  let hasField = false;
-  if (metadataGeneration.providers !== undefined) {
-    picked.providers = metadataGeneration.providers;
-    hasField = true;
-  }
-  for (const key of METADATA_PROMPT_KEYS) {
-    const entry = metadataGeneration[key];
-    if (entry !== undefined) {
-      picked[key] = entry;
-      hasField = true;
-    }
-  }
-  return hasField ? picked : undefined;
+  const configPatch = stripMetadataPromptEntries({ metadataGeneration }).metadataGeneration as
+    | SupportedMutableConfigPatch["metadataGeneration"]
+    | undefined;
+  return {
+    configPatch: configPatch && Object.keys(configPatch).length > 0 ? configPatch : undefined,
+    promptPatch: pickMetadataPromptEntries(metadataGeneration),
+  };
 }
 
-function pickSupportedPatchFields(patch: MutableDaemonConfigPatch): SupportedMutableConfigPatch {
-  const metadataGeneration = pickMetadataGenerationPatch(patch);
+function pickSupportedPatchFields(patch: MutableDaemonConfigPatch): {
+  supported: SupportedMutableConfigPatch;
+  promptPatch: FreewindMetadataGeneration;
+} {
+  const { configPatch: metadataGeneration, promptPatch } = splitMetadataGenerationPatch(patch);
   return {
-    ...pickRelayPatch(patch.relay),
-    ...(patch.mcp?.injectIntoAgents !== undefined
-      ? { mcp: { injectIntoAgents: patch.mcp.injectIntoAgents } }
-      : {}),
-    ...(patch.browserTools?.enabled !== undefined
-      ? { browserTools: { enabled: patch.browserTools.enabled } }
-      : {}),
-    ...(patch.providers !== undefined ? { providers: patch.providers } : {}),
-    ...(patch.removeProviders !== undefined ? { removeProviders: patch.removeProviders } : {}),
-    ...(metadataGeneration !== undefined ? { metadataGeneration } : {}),
-    ...(patch.autoArchiveAfterMerge !== undefined
-      ? { autoArchiveAfterMerge: patch.autoArchiveAfterMerge }
-      : {}),
-    ...(patch.enableTerminalAgentHooks !== undefined
-      ? { enableTerminalAgentHooks: patch.enableTerminalAgentHooks }
-      : {}),
-    ...(patch.idleRuntimeCleanup !== undefined
-      ? { idleRuntimeCleanup: patch.idleRuntimeCleanup }
-      : {}),
-    ...(patch.appendSystemPrompt !== undefined
-      ? { appendSystemPrompt: patch.appendSystemPrompt }
-      : {}),
-    ...(patch.terminalProfiles !== undefined ? { terminalProfiles: patch.terminalProfiles } : {}),
-    ...(patch.agentProfiles !== undefined ? { agentProfiles: patch.agentProfiles } : {}),
-    ...(patch.quickReplies !== undefined ? { quickReplies: patch.quickReplies } : {}),
-    ...(patch.pluginsEnabled !== undefined ? { pluginsEnabled: patch.pluginsEnabled } : {}),
-    ...(patch.plugins !== undefined ? { plugins: patch.plugins } : {}),
-    ...(patch.features !== undefined ? { features: patch.features } : {}),
+    promptPatch,
+    supported: {
+      ...pickRelayPatch(patch.relay),
+      ...(patch.mcp?.injectIntoAgents !== undefined
+        ? { mcp: { injectIntoAgents: patch.mcp.injectIntoAgents } }
+        : {}),
+      ...(patch.browserTools?.enabled !== undefined
+        ? { browserTools: { enabled: patch.browserTools.enabled } }
+        : {}),
+      ...(patch.providers !== undefined ? { providers: patch.providers } : {}),
+      ...(patch.removeProviders !== undefined ? { removeProviders: patch.removeProviders } : {}),
+      ...(metadataGeneration !== undefined ? { metadataGeneration } : {}),
+      ...(patch.autoArchiveAfterMerge !== undefined
+        ? { autoArchiveAfterMerge: patch.autoArchiveAfterMerge }
+        : {}),
+      ...(patch.enableTerminalAgentHooks !== undefined
+        ? { enableTerminalAgentHooks: patch.enableTerminalAgentHooks }
+        : {}),
+      ...(patch.idleRuntimeCleanup !== undefined
+        ? { idleRuntimeCleanup: patch.idleRuntimeCleanup }
+        : {}),
+      ...(patch.appendSystemPrompt !== undefined
+        ? { appendSystemPrompt: patch.appendSystemPrompt }
+        : {}),
+      ...(patch.terminalProfiles !== undefined ? { terminalProfiles: patch.terminalProfiles } : {}),
+      ...(patch.agentProfiles !== undefined ? { agentProfiles: patch.agentProfiles } : {}),
+      ...(patch.quickReplies !== undefined ? { quickReplies: patch.quickReplies } : {}),
+      ...(patch.pluginsEnabled !== undefined ? { pluginsEnabled: patch.pluginsEnabled } : {}),
+      ...(patch.plugins !== undefined ? { plugins: patch.plugins } : {}),
+      ...(patch.features !== undefined ? { features: patch.features } : {}),
+    },
   };
 }
 
@@ -394,8 +403,13 @@ export class DaemonConfigStore {
     this.speechOwner = options.speech;
     this.startupPersisted = options.startupPersisted ?? loadPersistedConfig(paseoHome, this.logger);
     this.lastKnownPersisted = this.startupPersisted;
+    const freewindPrompts = readFreewindMetadataGenerationSync(paseoHome);
     this.current = MutableDaemonConfigSchema.parse({
-      ...initial,
+      ...stripMetadataPromptEntries(initial),
+      metadataGeneration: mergeFreewindMetadataGeneration(
+        initial.metadataGeneration,
+        freewindPrompts,
+      ),
       relay: initial.relay ?? { enabled: true },
       ...this.readSpeech(this.startupPersisted),
     });
@@ -410,23 +424,48 @@ export class DaemonConfigStore {
       | MutableDaemonConfigPatch
       | ((current: MutableDaemonConfig) => MutableDaemonConfigPatch),
   ): Promise<MutableDaemonConfig> {
-    return this.enqueue(() =>
-      this.applySupportedPatch(
-        pickSupportedPatchFields(
-          MutableDaemonConfigPatchSchema.parse(
-            typeof partial === "function" ? partial(this.current) : partial,
-          ),
+    return this.enqueue(() => {
+      const { supported, promptPatch } = pickSupportedPatchFields(
+        MutableDaemonConfigPatchSchema.parse(
+          typeof partial === "function" ? partial(this.current) : partial,
         ),
-      ),
-    );
+      );
+      return this.applySupportedPatch(supported, promptPatch);
+    });
   }
 
   public setAgentSkillSelection(selection: AgentSkillSelection): Promise<MutableDaemonConfig> {
-    return this.enqueue(() => this.applySupportedPatch({ skills: { selection } }));
+    return this.enqueue(() => this.applySupportedPatch({ skills: { selection } }, undefined));
+  }
+
+  private async persistPromptPatchRollback(
+    persistedBeforePatch: PersistedConfig,
+    previousPrompts: FreewindMetadataGeneration,
+  ): Promise<void> {
+    await savePersistedConfigAsync(this.paseoHome, persistedBeforePatch, this.logger);
+    // 无旧值时也写空对象，确保首个提示词的失败写入不会留在磁盘上。
+    await writeFreewindMetadataGeneration(this.paseoHome, previousPrompts).catch(() => undefined);
+  }
+
+  private async applyFreewindPromptPatch(
+    next: MutableDaemonConfig,
+    persistedBeforePatch: PersistedConfig,
+  ): Promise<void> {
+    const previousPrompts = pickMetadataPromptEntries(this.current.metadataGeneration);
+    try {
+      await writeFreewindMetadataGeneration(
+        this.paseoHome,
+        pickMetadataPromptEntries(next.metadataGeneration),
+      );
+    } catch (error) {
+      await this.persistPromptPatchRollback(persistedBeforePatch, previousPrompts);
+      throw error;
+    }
   }
 
   private async applySupportedPatch(
     parsedPatch: SupportedMutableConfigPatch,
+    promptPatch: FreewindMetadataGeneration,
   ): Promise<MutableDaemonConfig> {
     if (parsedPatch.relay?.enabled !== undefined && !this.relayEnabledMutable) {
       throw new Error(
@@ -448,6 +487,12 @@ export class DaemonConfigStore {
         removedProviders,
       ),
     );
+    if (promptPatch) {
+      next.metadataGeneration = {
+        ...next.metadataGeneration,
+        ...promptPatch,
+      };
+    }
 
     const configChanged = !isEqualValue(this.current, next);
 
@@ -461,11 +506,17 @@ export class DaemonConfigStore {
       removedProviders,
     );
     const speechChanged = this.speechPersistedChanged(this.lastKnownPersisted, knownNext);
+    if (promptPatch) {
+      await this.applyFreewindPromptPatch(next, persistedBeforePatch);
+    }
     if (configChanged) {
       try {
         this.applyReplacement(next, { removedProviders });
       } catch (error) {
-        await savePersistedConfigAsync(this.paseoHome, persistedBeforePatch, this.logger);
+        await this.persistPromptPatchRollback(
+          persistedBeforePatch,
+          pickMetadataPromptEntries(this.current.metadataGeneration),
+        );
         throw error;
       }
     }
@@ -509,8 +560,13 @@ export class DaemonConfigStore {
     const resolved = this.reloadSource.resolve(persisted);
     // Plugin source changes require the plugin lifecycle operation or a daemon
     // restart. The global switch is independently reloadable.
+    const freewindPrompts = await readFreewindMetadataGeneration(this.paseoHome);
     const desired = MutableDaemonConfigSchema.parse({
-      ...resolved.mutable,
+      ...stripMetadataPromptEntries(resolved.mutable),
+      metadataGeneration: mergeFreewindMetadataGeneration(
+        resolved.mutable.metadataGeneration,
+        freewindPrompts,
+      ),
       plugins: this.current.plugins,
       ...this.readSpeech(persisted),
     });
@@ -534,6 +590,15 @@ export class DaemonConfigStore {
         )
       );
     });
+    if (
+      !isEqualValue(
+        pickMetadataPromptEntries(this.current.metadataGeneration),
+        pickMetadataPromptEntries(desired.metadataGeneration),
+      ) &&
+      !appliedPaths.includes("agents.metadataGeneration")
+    ) {
+      appliedPaths.push("agents.metadataGeneration");
+    }
     const restartRequiredPaths = compactOwnedPaths(
       diffPaths(this.startupPersisted, persisted).filter((path) => {
         if (path === "$schema" || path === "version") return false;
