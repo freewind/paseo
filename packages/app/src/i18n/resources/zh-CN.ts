@@ -328,6 +328,7 @@ export const zhCN: TranslationResources = {
     scrollToBottom: "滚动到底部",
     conversationOnly: {
       toggle: "只看对话",
+      showAll: "显示全部",
     },
     chatOutline: {
       open: "打开聊天大纲",

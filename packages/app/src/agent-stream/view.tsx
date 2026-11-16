@@ -1569,6 +1569,7 @@ function agentStreamViewPropsEqual(
     reasons.push("onChatOutlineAvailabilityChange");
   }
   if (left.readOnly !== right.readOnly) reasons.push("readOnly");
+  if (left.conversationOnly !== right.conversationOnly) reasons.push("conversationOnly");
   if (!historyPaginationPropsEqual(left.historyPagination, right.historyPagination)) {
     reasons.push("historyPagination");
   }

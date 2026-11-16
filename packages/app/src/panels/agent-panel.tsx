@@ -10,7 +10,7 @@ import { useAgentMemoPanel } from "@/agent-memos/use-agent-memo-panel";
 import { useHostFeature } from "@/runtime/host-features";
 import type { AgentMemo, QuickReply } from "@getpaseo/protocol/messages";
 import type { TFunction } from "i18next";
-import { List, MessageSquare, MessageSquareText, SquarePen } from "lucide-react-native";
+import { Eye, EyeOff, List, MessageSquareText, SquarePen } from "lucide-react-native";
 import React, {
   memo,
   type ReactNode,
@@ -1492,19 +1492,23 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
       })),
     [agentId],
   );
-  const conversationOnlyEntry = useMemo(
-    () => (
+  const conversationOnlyEntry = useMemo(() => {
+    const ActiveIcon = isConversationOnly ? ThemedEyeOff : ThemedEye;
+    return (
       <ToolbarButton
-        label={t("agentStream.conversationOnly.toggle")}
+        label={t(
+          isConversationOnly
+            ? "agentStream.conversationOnly.showAll"
+            : "agentStream.conversationOnly.toggle",
+        )}
         selected={isConversationOnly}
         onPress={toggleConversationOnly}
         testID="conversation-only-toggle"
       >
-        <ThemedMessageSquare size={ICON_SIZE.md} uniProps={foregroundMutedColorMapping} />
+        <ActiveIcon size={ICON_SIZE.md} uniProps={foregroundMutedColorMapping} />
       </ToolbarButton>
-    ),
-    [isConversationOnly, t, toggleConversationOnly],
-  );
+    );
+  }, [isConversationOnly, t, toggleConversationOnly]);
   const sessionControls = (
     <>
       {outlineEntry}
@@ -2089,7 +2093,8 @@ const ThemedLoadingSpinner = withUnistyles(LoadingSpinner);
 const foregroundMutedColorMapping = (theme: Theme) => ({
   color: theme.colors.foregroundMuted,
 });
-const ThemedMessageSquare = withUnistyles(MessageSquare, foregroundMutedColorMapping);
+const ThemedEye = withUnistyles(Eye, foregroundMutedColorMapping);
+const ThemedEyeOff = withUnistyles(EyeOff, foregroundMutedColorMapping);
 const foregroundColorMapping = (theme: Theme) => ({
   color: theme.colors.foreground,
 });

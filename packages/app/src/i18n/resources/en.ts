@@ -327,6 +327,7 @@ export const en = {
     scrollToBottom: "Scroll to bottom",
     conversationOnly: {
       toggle: "Show messages only",
+      showAll: "Show everything",
     },
     chatOutline: {
       open: "Open chat outline",
