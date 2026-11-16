@@ -1471,6 +1471,7 @@ export const zhCN: TranslationResources = {
         hideFailed: "隐藏 workspace 失败",
         archiveFailed: "归档工作区失败",
         noArchivedAgent: "这个工作区没有归档的 agent",
+        loadArchivedAgentsFailed: "加载归档 agent 失败",
         restoreArchivedAgentFailed: "恢复归档的 agent 失败",
       },
     },

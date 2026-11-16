@@ -1495,6 +1495,7 @@ export const en = {
         hideFailed: "Failed to hide workspace",
         archiveFailed: "Failed to archive workspace",
         noArchivedAgent: "No archived agent in this workspace",
+        loadArchivedAgentsFailed: "Failed to load archived agents",
         restoreArchivedAgentFailed: "Couldn't restore the archived agent",
       },
     },

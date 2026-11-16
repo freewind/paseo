@@ -169,7 +169,7 @@ function WorkspaceHeaderWorkspaceActionItems({
 }: WorkspaceHeaderWorkspaceActions) {
   const { t } = useTranslation();
   const closeMenu = useDropdownMenuClose();
-  // 放在内容组件里：菜单打开才挂载，不会为每个工作区常驻一个 store 订阅。
+  // 菜单项始终显示；查询只在点击时发生。
   const restoreLastArchivedAgent = useRestoreLastArchivedAgent({
     serverId: workspaceTarget?.serverId,
     workspaceId: workspaceTarget?.workspaceId,
@@ -306,7 +306,7 @@ function WorkspaceHeaderWorkspaceActionItems({
         {t("sidebar.workspace.actions.archive")}
       </DropdownMenuItem>
     ) : null,
-    restoreLastArchivedAgent: restoreLastArchivedAgent ? (
+    restoreLastArchivedAgent: (
       <DropdownMenuItem
         testID="workspace-header-restore-last-archived-agent"
         leading={MENU_RESTORE_LAST_ARCHIVED_AGENT_ICON}
@@ -314,7 +314,7 @@ function WorkspaceHeaderWorkspaceActionItems({
       >
         {t("sidebar.workspace.actions.restoreLastArchivedAgent")}
       </DropdownMenuItem>
-    ) : null,
+    ),
   };
 
   return <>{orderWorkspaceMenuItems(items)}</>;
