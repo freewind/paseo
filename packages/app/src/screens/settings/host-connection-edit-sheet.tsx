@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { useTranslation } from "react-i18next";
+import { normalizeHostPort, parseHostPort } from "@getpaseo/protocol/daemon-endpoints";
 import {
   AdaptiveModalSheet,
   AdaptiveTextInput,
@@ -53,7 +54,9 @@ export function ConnectionEditSheet({
     if (connection.type === "directTcp") {
       onSave({
         ...connection,
-        endpoint: `${draft.host.trim()}:${normalizePortText(draft.port)}`,
+        endpoint: normalizeHostPort(
+          `${formatEndpointHost(draft.host)}:${normalizePortText(draft.port)}`,
+        ),
         useTls: draft.useTls,
       });
       return;
@@ -62,8 +65,8 @@ export function ConnectionEditSheet({
       onSave({
         ...connection,
         host: draft.host.trim(),
-        ...(draft.sshPort ? { sshPort: Number(draft.sshPort) } : {}),
-        ...(draft.port ? { daemonPort: Number(draft.port) } : {}),
+        sshPort: draft.sshPort ? Number(draft.sshPort) : undefined,
+        daemonPort: draft.port ? Number(draft.port) : undefined,
       });
     }
   }, [canSave, connection, draft, onSave]);
@@ -135,8 +138,8 @@ const DEFAULT_DAEMON_PORT_TEXT = "6767";
 
 function draftFromConnection(connection: HostConnection): ConnectionDraft {
   if (connection.type === "directTcp") {
-    const [host = "", port = ""] = connection.endpoint.split(":");
-    return { host, port, sshPort: NO_SSH_PORT, useTls: connection.useTls ?? false };
+    const { host, port } = parseHostPort(connection.endpoint);
+    return { host, port: String(port), sshPort: NO_SSH_PORT, useTls: connection.useTls ?? false };
   }
   if (connection.type === "remoteSsh") {
     return {
@@ -160,6 +163,12 @@ function normalizePortText(value: string): string {
   return Number.isInteger(port) && port > 0 && port <= 65535
     ? String(port)
     : DEFAULT_DAEMON_PORT_TEXT;
+}
+
+/** IPv6 没有方括号时先补齐，再交给协议层统一格式化为 `[::1]:6767`。 */
+function formatEndpointHost(host: string): string {
+  const trimmed = host.trim();
+  return trimmed.includes(":") && !trimmed.startsWith("[") ? `[${trimmed}]` : trimmed;
 }
 
 const styles = StyleSheet.create((theme) => ({

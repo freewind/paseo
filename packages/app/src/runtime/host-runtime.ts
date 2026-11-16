@@ -1382,9 +1382,8 @@ export class HostRuntimeController {
   }
 
   /**
-   * 显式选定的连接不看探测结果：用户手动固定选路，就算它现在连不上也切过去，让界面直接
-   * 暴露失败，而不是被自适应切到更快的连接。新增连接时自动填的首选没有这个标记，不算手动
-   * 选择，仍走延迟自适应。返回 true 表示这轮周期已经处理完。
+   * 首选连接就是固定连接：它只要还在连接列表里，就不看探测结果一直用它，即使暂时不可达也
+   * 让界面直接暴露失败，而不是被自适应切到更快的连接。返回 true 表示这轮周期已经处理完。
    */
   private async applyPinnedConnection(input: {
     currentActiveConnectionId: string;
