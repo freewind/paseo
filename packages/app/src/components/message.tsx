@@ -2471,14 +2471,12 @@ function thinkingBadgeSummary(prefix: string | undefined, text: unknown): string
   if (!prefix || typeof text !== "string") {
     return prefix;
   }
-  const lines = text.split("\n");
-  for (let i = lines.length - 1; i >= 0; i -= 1) {
-    const line = lines[i]?.trim();
-    if (line) {
-      return `${prefix} ${line}`;
-    }
-  }
-  return prefix;
+  const line = text
+    .split("\n")
+    .toReversed()
+    .map((part) => part.trim())
+    .find(Boolean);
+  return line ? `${prefix} ${line}` : prefix;
 }
 
 export const ToolCall = memo(function ToolCall({
