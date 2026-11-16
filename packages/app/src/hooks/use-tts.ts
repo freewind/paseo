@@ -1,5 +1,6 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import * as Speech from "expo-speech";
+import { useToast } from "@/contexts/toast-context";
 import { i18n } from "@/i18n/i18next";
 
 interface SpeakTextInput {
@@ -25,6 +26,30 @@ let voicesLookup: Promise<TtsVoice[]> | null = null;
  * 渲染，卡住的查询也不会让用户选好的语音一声不响。
  */
 const VOICES_TIMEOUT_MS = 2000;
+
+/**
+ * 按 Unicode 标点切段，保留 3.5、#8 和连续标点等不应拆开的内容。
+ */
+function splitSpeechText(text: string, limit: number): string[] {
+  const punctuatedChunks = text.match(/[^]*?\p{P}+(?![\p{P}\d])|[^]+/gu) ?? [];
+  const chunks: string[] = [];
+
+  for (const chunk of punctuatedChunks) {
+    if (chunk.length <= limit) {
+      chunks.push(chunk);
+      continue;
+    }
+    for (let offset = 0; offset < chunk.length; offset += limit) {
+      chunks.push(chunk.slice(offset, offset + limit));
+    }
+  }
+
+  return chunks;
+}
+
+function stopSpeech(): void {
+  void Speech.stop().catch(() => {});
+}
 
 function withTimeout<T>(promise: Promise<T>, fallback: T): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -73,21 +98,49 @@ export function useTts(): {
   stop: () => void;
   getVoices: () => Promise<TtsVoice[]>;
 } {
-  const speak = useCallback(({ text, voiceId, rate }: SpeakTextInput) => {
-    if (!text) return;
-    // expo-speech 只有一路输出：先停掉，新回复就会替换正在读的内容，
-    // 而不是排在它后面。
-    void Speech.stop().catch(() => {});
-    Speech.speak(text, {
-      // 用户选定的语音在所有平台都优先；只有用默认语音时才回落到当前应用语言
-      // 对应的语音。
-      ...(voiceId ? { voice: voiceId } : { language: i18n.resolvedLanguage ?? "en" }),
-      rate: rate ?? 1,
-    });
-  }, []);
+  const toast = useToast();
+  const generationRef = useRef(0);
+  const speak = useCallback(
+    ({ text, voiceId, rate }: SpeakTextInput) => {
+      if (!text) return;
+      const generation = generationRef.current + 1;
+      generationRef.current = generation;
+      // expo-speech 只有一路输出：先停掉，新回复就会替换正在读的内容，
+      // 而不是排在它后面。
+      stopSpeech();
+      const chunks = splitSpeechText(text, Speech.maxSpeechInputLength);
+      const options = {
+        // 用户选定的语音在所有平台都优先；只有用默认语音时才回落到当前应用语言
+        // 对应的语音。
+        ...(voiceId ? { voice: voiceId } : { language: i18n.resolvedLanguage ?? "en" }),
+        rate: rate ?? 1,
+      };
+
+      const speakChunk = (index: number): void => {
+        if (generation !== generationRef.current) return;
+        const chunk = chunks[index];
+        if (chunk === undefined) return;
+        Speech.speak(chunk, {
+          ...options,
+          onDone: () => speakChunk(index + 1),
+          onError: (error) => {
+            if (generation !== generationRef.current) return;
+            generationRef.current += 1;
+            stopSpeech();
+            console.warn("[TTS] Failed to speak text", error);
+            toast.error(i18n.t("common.errors.error"));
+          },
+        });
+      };
+
+      speakChunk(0);
+    },
+    [toast],
+  );
 
   const stop = useCallback(() => {
-    void Speech.stop().catch(() => {});
+    generationRef.current += 1;
+    stopSpeech();
   }, []);
 
   const getVoices = useCallback(async () => {
