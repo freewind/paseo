@@ -40,6 +40,7 @@ import {
   CompactionMarker,
   MessageOuterSpacingProvider,
   type InlinePathTarget,
+  type RegenerateUserMessageInput,
 } from "@/components/message";
 import { PlanCard } from "@/components/plan-card";
 import { getStreamItemMessageId, type StreamItem } from "@/types/stream";
@@ -75,7 +76,6 @@ import { IndentRail } from "@/components/indent-rail";
 import { TurnSummaryLine } from "./turn-collapse/summary-line";
 import { type AgentStreamRenderModel, buildAgentStreamRenderModel } from "./model";
 import { resolveStreamRenderStrategy } from "./strategy-resolver";
-import type { RegenerateUserMessageInput } from "@/components/rewind/regenerate-user-message";
 import { type StreamSegmentRenderers, type StreamViewportHandle } from "./strategy";
 import { ChatOutlineTextRail } from "@/agent-stream/chat-outline/text-rail";
 import { ChatOutlineTextList } from "@/agent-stream/chat-outline/text-rail-list";

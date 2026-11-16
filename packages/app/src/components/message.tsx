@@ -16,7 +16,7 @@ import { MarkdownRenderer } from "@/components/markdown/renderer";
 import { useRetainedPanelActive } from "@/components/retained-panel";
 import { RewindMenu, type RewindMode } from "@/components/rewind/rewind-menu";
 import { useRewindAgentMutation } from "@/components/rewind/use-rewind-agent-mutation";
-import type { RegenerateUserMessageInput } from "@/components/rewind/regenerate-user-message";
+import type { AttachmentMetadata } from "@/attachments/types";
 import { TaskListRow } from "@/components/task-list-row";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useIsCompactFormFactor } from "@/constants/layout";
@@ -96,6 +96,12 @@ import { ToolCallDetailsContent } from "./tool-call-details";
 import { useToolCallSheet } from "./tool-call-sheet";
 export type { InlinePathTarget } from "@/assistant-file-links";
 export type { AssistantForkChoice, AssistantForkTarget };
+
+export interface RegenerateUserMessageInput {
+  text: string;
+  attachments?: AgentAttachment[];
+  images?: AttachmentMetadata[];
+}
 
 interface UserMessageProps {
   sender?: AgentMessage["sender"];
@@ -462,7 +468,14 @@ export const UserMessage = memo(function UserMessage({
     setIsRegenerating(true);
     try {
       // 先回退，只有回退成功才重发：失败时不会出现「消息还在又发一遍」。
-      await rewindMutation.rewindAgent({ mode: "conversation", rewoundText: "" });
+      await rewindMutation.rewindAgent({
+        mode: "conversation",
+        rewoundText: message,
+        images,
+        attachments,
+        // 回退已经落盘；时间线刷新失败不应让自动重发停在半路。
+        ignoreTimelineRefreshFailure: true,
+      });
       await onRegenerate({ text: message, images, attachments });
     } catch {
       // 回退失败由 rewind mutation 提示，重发失败由 agent-panel 提示；这里只负责收尾状态，

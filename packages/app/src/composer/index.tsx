@@ -967,7 +967,12 @@ interface ComposerProps {
    * 把 composer 自己的发送入口交给宿主，用于宿主自己拼好的文本（例如引用评论）。
    * 走正常发送路径，附件、排队与草稿清理都和键盘发送一致。
    */
-  onSubmitNow?: (submitNow: (text: string) => Promise<AgentInputSubmitResult>) => void;
+  onSubmitNow?: (
+    submitNow: (
+      text: string,
+      attachments?: UserComposerAttachment[],
+    ) => Promise<AgentInputSubmitResult>,
+  ) => void;
   /** Draft context for listing commands before an agent exists. Omitted for running agents. */
   commandDraft?: DraftCommandTarget;
   /** Called when a message is about to be sent (any path: keyboard, dictation, queued). */
@@ -1764,7 +1769,11 @@ function ComposerContentImpl({
   );
 
   const submitTextNow = useCallback(
-    (text: string) => handleSubmit({ text, attachments: [], cwd }),
+    (text: string, submitAttachments?: UserComposerAttachment[]) =>
+      handleSubmit(
+        { text, attachments: [], cwd },
+        submitAttachments ? { attachments: submitAttachments } : undefined,
+      ),
     [cwd, handleSubmit],
   );
 

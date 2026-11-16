@@ -25,6 +25,8 @@ interface RewindAgentInput {
   /** 被回退那条消息的附件，回退成功后放回输入框。 */
   images?: AttachmentMetadata[];
   attachments?: AgentAttachment[];
+  /** 重新回答专用：回退已落盘后，时间线刷新失败不再阻断自动重发。 */
+  ignoreTimelineRefreshFailure?: boolean;
 }
 
 export function useRewindAgentMutation(input: UseRewindAgentMutationInput): {
@@ -35,7 +37,7 @@ export function useRewindAgentMutation(input: UseRewindAgentMutationInput): {
   const { t } = useTranslation();
   const composerRestore = useRewindComposerRestore();
   const { isPending, mutateAsync } = useMutation({
-    mutationFn: async ({ mode }: RewindAgentInput) => {
+    mutationFn: async ({ mode, ignoreTimelineRefreshFailure }: RewindAgentInput) => {
       if (!input.client || !input.agentId || !input.messageId) {
         throw new Error(t("common.errors.daemonClientUnavailable"));
       }
@@ -47,10 +49,15 @@ export function useRewindAgentMutation(input: UseRewindAgentMutationInput): {
               .sessions[input.serverId]?.agentTimelineCursor.get(input.agentId)
           : undefined;
         if (!input.serverId) throw new Error(t("common.errors.daemonClientUnavailable"));
-        await getHostRuntimeStore().fetchAgentTimeline(input.serverId, input.agentId, {
-          ...planTimelineTailFetch(),
-          ...(cursor ? { cursor: { epoch: cursor.epoch, seq: cursor.endSeq } } : {}),
-        });
+        try {
+          await getHostRuntimeStore().fetchAgentTimeline(input.serverId, input.agentId, {
+            ...planTimelineTailFetch(),
+            ...(cursor ? { cursor: { epoch: cursor.epoch, seq: cursor.endSeq } } : {}),
+          });
+        } catch (error) {
+          if (!ignoreTimelineRefreshFailure) throw error;
+          console.warn("重新回答：回退后时间线刷新失败", error);
+        }
       }
     },
     onSuccess: (_data, variables) => {
