@@ -3,6 +3,7 @@ import type { AgentTimelineItem } from "./agent-sdk-types.js";
 import type { AgentTimelineRow } from "./agent-timeline-store-types.js";
 
 const PROMPT_PREVIEW_MAX_LENGTH = 120;
+const EXTENSION_MESSAGE_PREFIX = "🚧";
 
 export interface TimelinePromptIndexEntry {
   seq: number;
@@ -41,6 +42,11 @@ function promptText(item: AgentTimelineItem): string | null {
   return item.detail.type === "plain_text" ? (item.detail.text ?? null) : null;
 }
 
+/** 扩展以用户消息形式注入的提醒统一带 🚧 标记，不进用户时间线的提示索引。 */
+function isExtensionPrompt(text: string): boolean {
+  return text.trimStart().startsWith(EXTENSION_MESSAGE_PREFIX);
+}
+
 export function buildTimelinePromptIndex(
   epoch: string,
   rows: readonly AgentTimelineRow[],
@@ -49,7 +55,7 @@ export function buildTimelinePromptIndex(
     epoch,
     prompts: rows.flatMap((row) => {
       const text = promptText(row.item);
-      return text === null
+      return text === null || isExtensionPrompt(text)
         ? []
         : [{ seq: row.seq, timestamp: row.timestamp, preview: promptPreview(text) }];
     }),
