@@ -73,7 +73,6 @@ import {
   isOpenableProjectPath,
   type ProjectPickerOption,
 } from "@/components/project-picker-options";
-import { appLog } from "@/utils/app-log";
 import { Shortcut } from "@/components/ui/shortcut";
 import { useRevealActiveItem } from "@/components/ui/scroll-reveal";
 import { useKeyboardShortcutsAvailable } from "@/keyboard/availability";
@@ -679,7 +678,6 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
             // EditingTextInput 的 initialValue 只在挂载时生效，所以把回填同步进
             // 可见的输入框（查询本身已经通过页面状态更新过了）。
             inputRef.current?.replaceText(option.path);
-            appLog("add-project", "fill", { path: option.path });
           },
         };
       });
@@ -822,7 +820,6 @@ export function AddProjectFlow({ request, onClose }: AddProjectFlowProps) {
     // 返回：Enter 在这一页兼作创建项目，输入过程中随时可能还没成形，逐次报错会把正常
     // 输入变成一串错误提示，所以这里刻意不给提示。去掉这行判断，半截路径会被拿去建项目。
     if (!isOpenableProjectPath(page.query.trim())) return;
-    appLog("add-project", "create", { query: page.query });
     void openAddedProject(page.query, "directory-search");
   }, [openAddedProject, page]);
 
