@@ -323,6 +323,9 @@ export const en = {
   agentStream: {
     empty: "Start chatting with this agent...",
     scrollToBottom: "Scroll to bottom",
+    conversationOnly: {
+      toggle: "Show messages only",
+    },
     chatOutline: {
       open: "Open chat outline",
       title: "Chat outline",

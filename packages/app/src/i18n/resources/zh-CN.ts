@@ -324,6 +324,9 @@ export const zhCN: TranslationResources = {
   agentStream: {
     empty: "开始和这个 Agent 对话...",
     scrollToBottom: "滚动到底部",
+    conversationOnly: {
+      toggle: "只看对话",
+    },
     chatOutline: {
       open: "打开聊天大纲",
       title: "聊天大纲",

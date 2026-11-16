@@ -71,6 +71,7 @@ import {
 import { ToolCallSheetProvider } from "@/components/tool-call-sheet";
 import { useResetWhenPanelInactive } from "@/components/retained-panel";
 import { createStreamPresentation } from "./presentation";
+import { selectVisibleStream } from "./conversation-only";
 import { OverviewToolCallGroupView } from "@/tool-calls/detail-level/overview/view";
 import { IndentRail } from "@/components/indent-rail";
 import { TurnSummaryLine } from "./turn-collapse/summary-line";
@@ -301,6 +302,8 @@ export interface AgentStreamViewProps {
   rightGutter?: ReactNode;
   onChatOutlineAvailabilityChange?: (available: boolean) => void;
   readOnly?: boolean;
+  /** 只看对话：隐藏非消息项，仅保留最后一条仍在进行中的活动项。 */
+  conversationOnly?: boolean;
   /** 回退删掉某条用户消息后，原样重发它。 */
   onRegenerateUserMessage?: (input: RegenerateUserMessageInput) => Promise<void>;
   historyPagination?: {
@@ -322,8 +325,6 @@ const AGENT_CAPABILITY_FLAG_KEYS: (keyof AgentCapabilityFlags)[] = [
   "supportsRewindFiles",
   "supportsRewindBoth",
 ];
-
-const EMPTY_STREAM_HEAD: StreamItem[] = [];
 
 function useRetainedValue<T>(value: T, active: boolean): T {
   const retainedRef = useRef(value);
@@ -456,6 +457,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
       rightGutter,
       onChatOutlineAvailabilityChange,
       readOnly = false,
+      conversationOnly,
       onRegenerateUserMessage,
       historyPagination,
     },
@@ -648,13 +650,28 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
     const effectiveStreamItems = useRetainedValue(streamItems, isActive);
     const effectiveStreamHead = useRetainedValue(streamHead, isActive);
     const effectiveTurnPresentation = useRetainedValue(turnPresentation, isActive);
+    const visibleStream = useMemo(
+      () =>
+        selectVisibleStream({
+          tail: effectiveStreamItems,
+          head: effectiveStreamHead,
+          conversationOnly,
+          isTurnActive: effectiveTurnPresentation.isActive,
+        }),
+      [
+        conversationOnly,
+        effectiveStreamItems,
+        effectiveStreamHead,
+        effectiveTurnPresentation.isActive,
+      ],
+    );
     const isTurnActive = effectiveTurnPresentation.isActive;
     const presentStream = useMemo(() => createStreamPresentation(), []);
     const presentation = useMemo(
       () =>
         presentStream({
-          tail: effectiveStreamItems,
-          head: effectiveStreamHead ?? EMPTY_STREAM_HEAD,
+          tail: visibleStream.tail,
+          head: visibleStream.head,
           transform: transformTimelineItem,
           display: chatDisplay,
           autoExpandReasoning,
@@ -664,8 +681,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
         }),
       [
         presentStream,
-        effectiveStreamItems,
-        effectiveStreamHead,
+        visibleStream,
         transformTimelineItem,
         chatDisplay,
         autoExpandReasoning,

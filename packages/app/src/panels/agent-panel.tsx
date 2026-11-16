@@ -10,7 +10,7 @@ import { useAgentMemoPanel } from "@/agent-memos/use-agent-memo-panel";
 import { useHostFeature } from "@/runtime/host-features";
 import type { AgentMemo, QuickReply } from "@getpaseo/protocol/messages";
 import type { TFunction } from "i18next";
-import { List, MessageSquareText, SquarePen } from "lucide-react-native";
+import { List, MessageSquare, MessageSquareText, SquarePen } from "lucide-react-native";
 import React, {
   memo,
   type ReactNode,
@@ -91,8 +91,9 @@ import {
   deriveRouteBottomAnchorRequest,
 } from "@/screens/agent/agent-ready-screen-bottom-anchor";
 import { WorkspaceDraftAgentTab } from "@/composer/draft/workspace-tab";
-import { AgentTracks, hasAgentTracks } from "@/panels/agent-tracks";
+import { AgentTracks } from "@/panels/agent-tracks";
 import { SideRailSheetButton, SideRailSheetTrigger } from "@/components/side-rail-sheet";
+import { ToolbarButton } from "@/components/ui/pane-content-toolbar";
 import { ComposerTrackBar } from "@/composer/tracks";
 import { QuickRepliesEditor } from "@/quick-replies/quick-replies-editor";
 import { useIsQuickRepliesSupported, useQuickReplies } from "@/quick-replies/use-quick-replies";
@@ -114,7 +115,7 @@ import { useWorkspaceLayoutStore } from "@/stores/workspace-layout-store";
 import { buildWorkspaceTabPersistenceKey } from "@/workspace-tabs/model";
 import { openWorkspaceChanges } from "@/workspace-tabs/open-supporting-view";
 import { useSettings } from "@/hooks/use-settings";
-import type { Theme } from "@/styles/theme";
+import { ICON_SIZE, type Theme } from "@/styles/theme";
 import type { PendingPermission } from "@/types/shared";
 import type { StreamItem, TodoEntry } from "@/types/stream";
 import type { ViewedTimelineStatus, ViewedTimelineUiBridge } from "@/timeline/viewed-timeline-sync";
@@ -1214,6 +1215,13 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   });
   const showsQuickRepliesRail = quickRepliesSupported && showsComposer && showsSideRails;
   const [hasTextOutline, setHasTextOutline] = useState(false);
+  // 开关属于单个会话：状态跟着 agentId 存，切回会话直接按新会话取，不靠 effect 事后清。
+  const [conversationOnlyState, setConversationOnlyState] = useState({
+    agentId,
+    enabled: false,
+  });
+  const isConversationOnly =
+    conversationOnlyState.agentId === agentId && conversationOnlyState.enabled;
   const hasOutlineEntry = resolveOutlineEntryVisibility({
     hasTextOutline,
     paneWidth,
@@ -1241,17 +1249,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   // 紧凑布局没有右侧留缝：备忘退到轨道入口 + 弹层。
   const hasMemosEntry = useHostFeature(serverId, "agentMemos") && isCompactFormFactor;
   const hasQuickRepliesEntry = quickRepliesSupported && showsComposer && !showsQuickRepliesRail;
-  const hasVisibleAgentTracks =
-    hasOutlineEntry ||
-    hasQuickRepliesEntry ||
-    hasAgentTracks({
-      parentAgentId: parentPillAgentId,
-      subagentRows,
-      tasks,
-      archiveFinishedStatus: archiveFinishedSubagents.status,
-      hasPluginComposerPills,
-      hasMemosEntry,
-    });
+  const hasVisibleAgentTracks = true;
   const rawAgentInputDraft = useAgentInputDraft({
     draftKey: buildDraftStoreKey({
       serverId,
@@ -1477,6 +1475,33 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
       ) : null,
     [hasOutlineEntry, openChatOutline, t],
   );
+  const toggleConversationOnly = useCallback(
+    () =>
+      setConversationOnlyState((current) => ({
+        agentId,
+        enabled: current.agentId === agentId ? !current.enabled : true,
+      })),
+    [agentId],
+  );
+  const conversationOnlyEntry = useMemo(
+    () => (
+      <ToolbarButton
+        label={t("agentStream.conversationOnly.toggle")}
+        selected={isConversationOnly}
+        onPress={toggleConversationOnly}
+        testID="conversation-only-toggle"
+      >
+        <ThemedMessageSquare size={ICON_SIZE.md} uniProps={foregroundMutedColorMapping} />
+      </ToolbarButton>
+    ),
+    [isConversationOnly, t, toggleConversationOnly],
+  );
+  const sessionControls = (
+    <>
+      {outlineEntry}
+      {conversationOnlyEntry}
+    </>
+  );
 
   const streamContent = (
     <View style={animatedStaticStyles.content}>
@@ -1497,6 +1522,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
           hasActiveComposer={hasActiveComposer}
           hasVisibleAgentTracks={hasVisibleAgentTracks}
           hasOutlineEntry={hasOutlineEntry}
+          conversationOnly={isConversationOnly}
           rightGutter={rightGutter ?? undefined}
           onChatOutlineAvailabilityChange={setHasTextOutline}
           toast={toastApi}
@@ -1518,11 +1544,11 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
           hasPluginComposerPills={hasPluginComposerPills}
           hasMemosEntry={hasMemosEntry}
           onOpenAgentMemos={openMemosSheet}
-          leading={outlineEntry}
+          leading={sessionControls}
           trailing={quickRepliesEntry}
         />
       ) : null}
-      <OutlineEntryFallback hasActiveComposer={hasActiveComposer} entry={outlineEntry} />
+      <OutlineEntryFallback hasActiveComposer={hasActiveComposer} entry={sessionControls} />
     </View>
   );
 
@@ -1662,6 +1688,7 @@ const AgentStreamSection = memo(function AgentStreamSection({
   hasActiveComposer,
   hasVisibleAgentTracks,
   hasOutlineEntry,
+  conversationOnly,
   rightGutter,
   onChatOutlineAvailabilityChange,
   toast,
@@ -1678,6 +1705,7 @@ const AgentStreamSection = memo(function AgentStreamSection({
   hasActiveComposer: boolean;
   hasVisibleAgentTracks: boolean;
   hasOutlineEntry: boolean;
+  conversationOnly?: boolean;
   rightGutter?: ReactNode;
   onChatOutlineAvailabilityChange: (available: boolean) => void;
   toast: ReturnType<typeof useToastHost>["api"];
@@ -1686,8 +1714,9 @@ const AgentStreamSection = memo(function AgentStreamSection({
 }) {
   const isCompactFormFactor = useIsCompactFormFactor();
   const hasWorkspaceDiffStat = useWorkspaceHasDiffStat(serverId, workspaceId);
+  // 只看对话按钮常驻会话控件轨道，没有输入框时也要为兜底轨道留出底部空间。
   const hasVisibleComposerTracks =
-    hasOutlineEntry || (hasActiveComposer && (hasVisibleAgentTracks || hasWorkspaceDiffStat));
+    hasVisibleAgentTracks || hasOutlineEntry || (hasActiveComposer && hasWorkspaceDiffStat);
   const bottomOverlayTailClearance = hasVisibleComposerTracks
     ? resolveComposerTrackTailClearance(isCompactFormFactor)
     : 0;
@@ -1753,6 +1782,7 @@ const AgentStreamSection = memo(function AgentStreamSection({
       pendingMessageSubmissions={pendingMessageSubmissions}
       turnPresentation={turnPresentation}
       onOpenWorkspaceFile={onOpenWorkspaceFile}
+      conversationOnly={conversationOnly}
       rightGutter={rightGutter}
       onChatOutlineAvailabilityChange={onChatOutlineAvailabilityChange}
       onRegenerateUserMessage={onRegenerateUserMessage}
@@ -2048,6 +2078,7 @@ const ThemedLoadingSpinner = withUnistyles(LoadingSpinner);
 const foregroundMutedColorMapping = (theme: Theme) => ({
   color: theme.colors.foregroundMuted,
 });
+const ThemedMessageSquare = withUnistyles(MessageSquare, foregroundMutedColorMapping);
 const foregroundColorMapping = (theme: Theme) => ({
   color: theme.colors.foreground,
 });
