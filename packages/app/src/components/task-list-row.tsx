@@ -39,6 +39,7 @@ export const TaskListRow = memo(function TaskListRow({ task }: { task: TodoEntry
   const row = (
     <View style={styles.row} accessibilityLabel={text}>
       <TaskStatusIcon isCompleted={isCompleted} isRunning={isRunning} />
+      {task.id ? <Text style={styles.id}>{task.id}</Text> : null}
       <Text
         numberOfLines={1}
         style={[styles.text, isRunning && styles.runningText, isCompleted && styles.completedText]}
@@ -63,6 +64,10 @@ const styles = StyleSheet.create((theme) => ({
     flexDirection: "row",
     alignItems: "center",
     gap: theme.spacing[2],
+  },
+  id: {
+    color: theme.colors.foreground,
+    fontSize: theme.fontSize.base,
   },
   // Grows and shrinks, but keeps an `auto` basis: a zero-basis label reports no intrinsic width,
   // and a container that sizes itself to its content — the composer track panel — measures the
