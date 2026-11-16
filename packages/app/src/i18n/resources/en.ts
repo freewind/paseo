@@ -192,6 +192,7 @@ export const en = {
       add: "Add reply",
       delete: "Delete reply",
       placeholder: "Reply text",
+      loadFailed: "Could not load quick replies",
       sent: "Quick reply sent",
       queued: "Agent is running. Your reply was queued.",
       failed: "Failed to send quick reply",

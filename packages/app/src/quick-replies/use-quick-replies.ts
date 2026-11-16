@@ -17,10 +17,14 @@ export function useQuickReplies(serverId: string | null): {
   replies: QuickReply[];
   /** 老 daemon 还没有这个能力，或连接断开时，为 false。 */
   isSupported: boolean;
+  /** 主机配置是否正在加载。 */
+  isLoading: boolean;
+  /** 配置已拿到，编辑器才能用真实数据初始化本地列表。 */
+  isReady: boolean;
   /** 整份写回：daemon 配置才是跨端的唯一来源。 */
   saveReplies: (next: QuickReply[]) => Promise<void>;
 } {
-  const { config, patchConfig } = useDaemonConfig(serverId);
+  const { config, isLoading, patchConfig } = useDaemonConfig(serverId);
   const isSupported = useIsQuickRepliesSupported(serverId);
 
   const saveReplies = useCallback(
@@ -33,6 +37,8 @@ export function useQuickReplies(serverId: string | null): {
   return {
     replies: config?.quickReplies ?? [],
     isSupported,
+    isLoading,
+    isReady: config !== null,
     saveReplies,
   };
 }

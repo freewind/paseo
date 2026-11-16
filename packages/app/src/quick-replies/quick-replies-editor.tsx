@@ -1,11 +1,12 @@
-import { useCallback, useMemo, useState, type Ref } from "react";
-import { View } from "react-native";
+import { useCallback, useMemo, useState, type ReactNode, type Ref } from "react";
+import { Text, View } from "react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { GripVertical, Plus, Trash2 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import type { QuickReply } from "@getpaseo/protocol/messages";
 import { useToast } from "@/contexts/toast-context";
-import { AdaptiveModalSheet } from "@/components/adaptive-modal-sheet";
+import { AdaptiveModalSheet, type SheetHeader } from "@/components/adaptive-modal-sheet";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { DraggableList, type DraggableRenderItemInfo } from "@/components/draggable-list";
 import type { DraggableListDragHandleProps } from "@/components/draggable-list.types";
@@ -15,6 +16,7 @@ import { ICON_SIZE, type Theme } from "@/styles/theme";
 
 const mutedIconMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
 const ThemedGripVertical = withUnistyles(GripVertical, mutedIconMapping);
+const ThemedLoadingSpinner = withUnistyles(LoadingSpinner, mutedIconMapping);
 
 /** 本地生成即可：id 只用来给拖拽排序和行内编辑做身份，不需要跨端协商。 */
 function createReplyId(): string {
@@ -27,16 +29,104 @@ function replyKeyExtractor(item: QuickReply): string {
 
 interface QuickRepliesEditorProps {
   visible: boolean;
+  isLoading: boolean;
+  isReady: boolean;
   replies: QuickReply[];
   onSave: (next: QuickReply[]) => Promise<void>;
   onClose: () => void;
+}
+
+interface QuickRepliesEditorSheetProps {
+  visible: boolean;
+  header: SheetHeader;
+  footer: ReactNode;
+  onClose: () => void;
+  children: ReactNode;
+}
+
+function QuickRepliesEditorSheet({
+  visible,
+  header,
+  footer,
+  onClose,
+  children,
+}: QuickRepliesEditorSheetProps) {
+  return (
+    <AdaptiveModalSheet
+      visible={visible}
+      onClose={onClose}
+      header={header}
+      footer={footer}
+      desktopHeight="85%"
+      scrollable={false}
+      testID="quick-replies-editor"
+    >
+      {children}
+    </AdaptiveModalSheet>
+  );
+}
+
+function QuickRepliesEditorLoading({
+  visible,
+  isLoading,
+  onClose,
+}: Pick<QuickRepliesEditorProps, "visible" | "isLoading" | "onClose">) {
+  const { t } = useTranslation();
+  const header = useMemo(() => ({ title: t("composer.quickReplies.editTitle") }), [t]);
+  const footer = useMemo(
+    () => (
+      <View style={styles.footer}>
+        <Button variant="ghost" size="sm" onPress={onClose}>
+          {t("common.actions.cancel")}
+        </Button>
+      </View>
+    ),
+    [onClose, t],
+  );
+  return (
+    <QuickRepliesEditorSheet visible={visible} header={header} footer={footer} onClose={onClose}>
+      <View style={styles.stateContainer}>
+        {isLoading ? (
+          <ThemedLoadingSpinner size="small" />
+        ) : (
+          <Text style={styles.stateText}>{t("composer.quickReplies.loadFailed")}</Text>
+        )}
+      </View>
+    </QuickRepliesEditorSheet>
+  );
 }
 
 /**
  * 编辑当前主机 daemon 配置里的常用回复。列表顺序就是拖出来的顺序，保存时整份写回；
  * 新增行只在新加时挂载，避免一堆空行占着弹层。
  */
-export function QuickRepliesEditor({ visible, replies, onSave, onClose }: QuickRepliesEditorProps) {
+export function QuickRepliesEditor({
+  visible,
+  isLoading,
+  isReady,
+  replies,
+  onSave,
+  onClose,
+}: QuickRepliesEditorProps) {
+  if (!isReady) {
+    return <QuickRepliesEditorLoading visible={visible} isLoading={isLoading} onClose={onClose} />;
+  }
+  return (
+    <QuickRepliesEditorReady
+      visible={visible}
+      replies={replies}
+      onSave={onSave}
+      onClose={onClose}
+    />
+  );
+}
+
+function QuickRepliesEditorReady({
+  visible,
+  replies,
+  onSave,
+  onClose,
+}: Omit<QuickRepliesEditorProps, "isLoading" | "isReady">) {
   const { t } = useTranslation();
   const toast = useToast();
   const [items, setItems] = useState<QuickReply[]>(replies);
@@ -115,15 +205,7 @@ export function QuickRepliesEditor({ visible, replies, onSave, onClose }: QuickR
   );
 
   return (
-    <AdaptiveModalSheet
-      visible={visible}
-      onClose={onClose}
-      header={header}
-      footer={footer}
-      desktopHeight="85%"
-      scrollable={false}
-      testID="quick-replies-editor"
-    >
+    <QuickRepliesEditorSheet visible={visible} header={header} footer={footer} onClose={onClose}>
       <View style={styles.card}>
         <DraggableList
           testID="quick-replies-editor-list"
@@ -150,7 +232,7 @@ export function QuickRepliesEditor({ visible, replies, onSave, onClose }: QuickR
           </Button>
         )}
       </View>
-    </AdaptiveModalSheet>
+    </QuickRepliesEditorSheet>
   );
 }
 
@@ -279,6 +361,16 @@ const styles = StyleSheet.create((theme: Theme) => ({
     justifyContent: "flex-end",
     gap: theme.spacing[2],
     flex: 1,
+  },
+  stateContainer: {
+    flex: 1,
+    minHeight: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stateText: {
+    color: theme.colors.foregroundMuted,
+    textAlign: "center",
   },
   list: {
     flex: 1,

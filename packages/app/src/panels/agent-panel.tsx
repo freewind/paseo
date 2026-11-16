@@ -1585,6 +1585,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
         <QuickRepliesEditor
           key={isQuickRepliesEditorOpen ? "open" : "closed"}
           visible={isQuickRepliesEditorOpen}
+          isLoading={quickReplies.isLoading}
+          isReady={quickReplies.isReady}
           replies={quickReplies.replies}
           onSave={saveQuickReplies}
           onClose={closeQuickRepliesEditor}
