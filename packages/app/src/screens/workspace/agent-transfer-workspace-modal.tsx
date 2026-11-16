@@ -1,6 +1,6 @@
 import { memo, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { AdaptiveModalSheet, type SheetHeader } from "@/components/adaptive-modal-sheet";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,8 @@ interface ProjectOptionValue {
 export const AgentTransferWorkspaceModal = memo(function AgentTransferWorkspaceModal({
   visible,
   agentTitle,
+  currentWorkspaceId,
+  currentCwd,
   projects,
   onClose,
   onSelect,
@@ -33,6 +35,8 @@ export const AgentTransferWorkspaceModal = memo(function AgentTransferWorkspaceM
 }: {
   visible: boolean;
   agentTitle: string;
+  currentWorkspaceId: string | null;
+  currentCwd: string;
   projects: readonly TransferWorkspaceProject[];
   onClose: () => void;
   onSelect: (selection: TransferWorkspaceSelection) => void;
@@ -66,11 +70,15 @@ export const AgentTransferWorkspaceModal = memo(function AgentTransferWorkspaceM
     () => projects.find((project) => project.viewKey === selectedProjectViewKey) ?? null,
     [projects, selectedProjectViewKey],
   );
-  const currentWorkspaceId = useMemo(
-    () => activeProject?.workspaces.find((workspace) => workspace.isCurrent)?.workspaceId ?? null,
-    [activeProject],
-  );
   const currentWorkspaceSuffix = t("workspace.tabs.transfer.currentWorkspace");
+  const targetCwd = useMemo(() => {
+    if (!selectedWorkspace || !activeProject) return null;
+    if (selectedWorkspace.kind === "create") return activeProject.rootPath;
+    return (
+      activeProject.workspaces.find((entry) => entry.workspaceId === selectedWorkspace.workspaceId)
+        ?.cwd ?? null
+    );
+  }, [activeProject, selectedWorkspace]);
 
   const workspaceOptions = useMemo(() => {
     if (!activeProject) return [];
@@ -143,10 +151,23 @@ export const AgentTransferWorkspaceModal = memo(function AgentTransferWorkspaceM
   );
 
   const handleConfirm = useCallback(() => {
-    if (!selectedWorkspace) return;
+    if (!selectedWorkspace || !targetCwd) return;
+    if (
+      selectedWorkspace.kind === "workspace" &&
+      (selectedWorkspace.workspaceId === currentWorkspaceId ||
+        !activeProject?.workspaces.some(
+          (entry) =>
+            entry.workspaceId === selectedWorkspace.workspaceId &&
+            entry.cwd === targetCwd &&
+            !entry.isCurrent,
+        ))
+    ) {
+      return;
+    }
+    if (selectedWorkspace.kind === "create" && !activeProject?.rootPath) return;
     onClose();
     onSelect(selectedWorkspace);
-  }, [onClose, onSelect, selectedWorkspace]);
+  }, [activeProject, currentWorkspaceId, onClose, onSelect, selectedWorkspace, targetCwd]);
 
   const selectedProjectValue = useMemo<ProjectOptionValue | null>(
     () => (activeProject ? { viewKey: activeProject.viewKey } : null),
@@ -198,9 +219,20 @@ export const AgentTransferWorkspaceModal = memo(function AgentTransferWorkspaceM
           renderOption={renderWorkspaceOption}
           testID={testID ? `${testID}-workspace` : "agent-transfer-workspace-workspace"}
         />
+        {targetCwd ? (
+          <View style={styles.cwdContainer}>
+            <Text style={styles.cwdLabel}>{t("workspace.tabs.transfer.cwdLabel")}</Text>
+            <Text style={styles.cwdPath} selectable>
+              {t("workspace.tabs.transfer.cwdFrom", { cwd: currentCwd || "-" })}
+            </Text>
+            <Text style={styles.cwdPath} selectable>
+              {t("workspace.tabs.transfer.cwdTo", { cwd: targetCwd })}
+            </Text>
+          </View>
+        ) : null}
         <Button
           variant="default"
-          disabled={selectedWorkspace === null}
+          disabled={selectedWorkspace === null || targetCwd === null}
           onPress={handleConfirm}
           testID={testID ? `${testID}-confirm` : "agent-transfer-workspace-confirm"}
         >
@@ -215,5 +247,16 @@ const styles = StyleSheet.create((theme) => ({
   body: {
     padding: theme.spacing[4],
     gap: theme.spacing[3],
+  },
+  cwdContainer: {
+    gap: theme.spacing[1],
+  },
+  cwdLabel: {
+    color: theme.colors.foregroundMuted,
+    fontSize: theme.fontSize.sm,
+  },
+  cwdPath: {
+    color: theme.colors.foreground,
+    fontSize: theme.fontSize.sm,
   },
 }));

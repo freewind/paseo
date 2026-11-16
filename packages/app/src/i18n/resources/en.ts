@@ -787,6 +787,9 @@ export const en = {
         moving: "Moving conversation...",
         moved: "Conversation moved",
         failed: "Failed to move the conversation",
+        cwdLabel: "Execution directory",
+        cwdFrom: "Current: {{cwd}}",
+        cwdTo: "After move: {{cwd}}",
       },
       actions: {
         newTab: "New tab",

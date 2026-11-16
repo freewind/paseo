@@ -785,6 +785,9 @@ export const zhCN: TranslationResources = {
         moving: "正在移动会话...",
         moved: "会话已移动",
         failed: "移动会话失败",
+        cwdLabel: "执行目录",
+        cwdFrom: "当前：{{cwd}}",
+        cwdTo: "移动后：{{cwd}}",
       },
       actions: {
         newTab: "新建标签页",

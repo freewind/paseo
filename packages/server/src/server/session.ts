@@ -8708,6 +8708,7 @@ export class Session {
         source,
       );
     };
+    let createdWorkspaceId: string | null = null;
     try {
       await ensureAgentLoaded(msg.agentId, {
         agentManager: this.agentManager,
@@ -8726,6 +8727,7 @@ export class Session {
             target.title,
             target.projectId,
           );
+          createdWorkspaceId = created.workspaceId;
           await this.registerWorkspaceForImportedAgent(created);
           return created;
         },
@@ -8733,6 +8735,7 @@ export class Session {
 
       await this.agentManager.moveAgentToWorkspace(msg.agentId, {
         workspaceId: targetWorkspace.workspaceId,
+        cwd: targetWorkspace.cwd,
       });
       respond({
         agentId: msg.agentId,
@@ -8740,6 +8743,16 @@ export class Session {
         error: null,
       });
     } catch (error) {
+      if (createdWorkspaceId) {
+        try {
+          await this.workspaceRegistry.remove(createdWorkspaceId);
+        } catch (cleanupError) {
+          this.sessionLogger.warn(
+            { err: cleanupError, workspaceId: createdWorkspaceId },
+            "Failed to roll back workspace created for failed transfer",
+          );
+        }
+      }
       this.sessionLogger.error(
         { err: error, agentId: msg.agentId },
         "Failed to handle agent.transfer_workspace.request",

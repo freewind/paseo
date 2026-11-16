@@ -6,6 +6,8 @@ import { resolveWorkspaceMapKeyByIdentity } from "@/utils/workspace-identity";
 interface TransferWorkspaceEntry {
   workspaceId: string;
   label: string;
+  /** 目标工作区的执行目录，确认前展示给用户。 */
+  cwd: string;
   /** agent 已经在这里，选择器把它列出来但置灰，而不是藏起来。 */
   isCurrent: boolean;
 }
@@ -15,6 +17,8 @@ export interface TransferWorkspaceProject {
   projectName: string;
   /** 当前 host 上的项目 id；新建工作区分支用它，不是跨 host 合并后的 viewKey。 */
   projectId: string;
+  /** 项目根目录，也是「新建工作区」分支的执行目录。 */
+  rootPath: string;
   workspaces: readonly TransferWorkspaceEntry[];
 }
 
@@ -53,6 +57,7 @@ export function buildTransferWorkspaceProjects(input: {
       workspaces.push({
         workspaceId: workspace.id,
         label: workspace.title ?? workspace.name,
+        cwd: workspace.workspaceDirectory,
         isCurrent: workspace.id === input.currentWorkspaceId,
       });
     }
@@ -60,6 +65,7 @@ export function buildTransferWorkspaceProjects(input: {
       viewKey: project.viewKey,
       projectName: project.projectName,
       projectId: placement.projectId,
+      rootPath: placement.iconWorkingDir,
       workspaces,
     });
   }

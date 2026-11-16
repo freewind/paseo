@@ -21,12 +21,13 @@ interface UseAgentTransferWorkspaceInput {
 interface UseAgentTransferWorkspaceResult {
   /** 当前 host 上可见的每个项目及其候选工作区。 */
   transferProjects: readonly TransferWorkspaceProject[];
-  onMoveAgentToWorkspace: (agentId: string) => void;
+  /** 不提供动作时，所有菜单入口都隐藏。 */
+  onMoveAgentToWorkspace?: (agentId: string) => void;
   transferWorkspaceModal: ReactElement | null;
 }
 
 /**
- * 把 agent 挪到同一 daemon 上的另一个工作区：同一个会话、同一段历史，只是换归属。
+ * 把 agent 挪到同一 daemon 上的另一个工作区：同一个会话、同一段历史，归属和执行目录一起换。
  *
  * 目标列表来自客户端已有的 workspace structure。移动是单 daemon 操作，所以只保留在当前
  * host 上有 placement 的项目；结构 key 必须解码后再查 session 的 workspaces Map。
@@ -44,7 +45,9 @@ export function useAgentTransferWorkspace(
     agentId: string;
     agentTitle: string;
     currentWorkspaceId: string | null;
+    currentCwd: string;
   } | null>(null);
+  const [modalSession, setModalSession] = useState(0);
 
   const transferProjects = useMemo<readonly TransferWorkspaceProject[]>(() => {
     if (!enabled) return [];
@@ -65,7 +68,9 @@ export function useAgentTransferWorkspace(
         agentId,
         agentTitle: agent?.title ?? agentId,
         currentWorkspaceId: agent?.workspaceId ?? null,
+        currentCwd: agent?.cwd ?? "",
       });
+      setModalSession((session) => session + 1);
     },
     [enabled, serverId],
   );
@@ -73,20 +78,33 @@ export function useAgentTransferWorkspace(
   const handleSelect = useCallback(
     async (selection: TransferWorkspaceSelection) => {
       if (!pending) return;
-      const client = getHostRuntimeStore().getClient(serverId);
-      if (!client) {
-        toast.error(t("workspace.terminal.hostDisconnected"));
-        return;
-      }
-      const target =
-        selection.kind === "workspace"
-          ? ({ kind: "workspace", workspaceId: selection.workspaceId } as const)
-          : ({
-              kind: "project",
-              projectId: selection.projectId,
-              title: pending.agentTitle,
-            } as const);
       try {
+        const currentWorkspaceId =
+          useSessionStore.getState().sessions[serverId]?.agents.get(pending.agentId)?.workspaceId ??
+          null;
+        const targetStillValid =
+          selection.kind === "workspace"
+            ? selection.workspaceId !== currentWorkspaceId &&
+              transferProjects.some((project) =>
+                project.workspaces.some((entry) => entry.workspaceId === selection.workspaceId),
+              )
+            : transferProjects.some((project) => project.projectId === selection.projectId);
+        if (!targetStillValid) {
+          throw new Error(t("workspace.tabs.transfer.failed"));
+        }
+        const client = getHostRuntimeStore().getClient(serverId);
+        if (!client) {
+          toast.error(t("workspace.terminal.hostDisconnected"));
+          return;
+        }
+        const target =
+          selection.kind === "workspace"
+            ? ({ kind: "workspace", workspaceId: selection.workspaceId } as const)
+            : ({
+                kind: "project",
+                projectId: selection.projectId,
+                title: pending.agentTitle,
+              } as const);
         toast.show(t("workspace.tabs.transfer.moving"), { durationMs: null });
         const result = await client.transferAgentWorkspace(pending.agentId, target);
         const workspaceId = result.workspaceId;
@@ -105,10 +123,11 @@ export function useAgentTransferWorkspace(
         setPending(null);
       }
     },
-    [pending, serverId, t, toast],
+    [pending, serverId, t, toast, transferProjects],
   );
 
   const handleClose = useCallback(() => setPending(null), []);
+  const moveAction = enabled ? onMoveAgentToWorkspace : undefined;
   const handleSelectTransfer = useCallback(
     (selection: TransferWorkspaceSelection) => void handleSelect(selection),
     [handleSelect],
@@ -118,16 +137,19 @@ export function useAgentTransferWorkspace(
     () =>
       enabled ? (
         <AgentTransferWorkspaceModal
+          key={modalSession}
           visible={pending !== null}
           agentTitle={pending?.agentTitle ?? ""}
+          currentWorkspaceId={pending?.currentWorkspaceId ?? null}
+          currentCwd={pending?.currentCwd ?? ""}
           projects={transferProjects}
           onClose={handleClose}
           onSelect={handleSelectTransfer}
           testID="agent-transfer-workspace"
         />
       ) : null,
-    [enabled, handleClose, handleSelectTransfer, pending, transferProjects],
+    [enabled, handleClose, handleSelectTransfer, modalSession, pending, transferProjects],
   );
 
-  return { transferProjects, onMoveAgentToWorkspace, transferWorkspaceModal };
+  return { transferProjects, onMoveAgentToWorkspace: moveAction, transferWorkspaceModal };
 }

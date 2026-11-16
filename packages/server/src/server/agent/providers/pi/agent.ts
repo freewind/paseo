@@ -75,7 +75,11 @@ import {
 import { revertPiConversation } from "./rewind.js";
 import { forkPiSessionFile } from "./fork.js";
 import { readPiSessionHistoryStats } from "./session-file.js";
-import { listPiImportableSessions, readPiImportSessionConfig } from "./session-descriptor.js";
+import {
+  listPiImportableSessions,
+  readPiImportSessionConfig,
+  readPiSessionHeaderCwd,
+} from "./session-descriptor.js";
 import type { PiRuntime, PiRuntimeSession, PiStartSessionInput } from "./runtime.js";
 import type {
   PiAgentSessionEvent,
@@ -100,6 +104,7 @@ const PI_PROVIDER = "pi";
 const DEFAULT_PI_THINKING_LEVEL: PiThinkingLevel = "medium";
 const PI_BINARY_COMMAND = process.env.PI_COMMAND ?? process.env.PI_ACP_PI_COMMAND ?? "pi";
 const PASEO_PI_TREE_EXTENSION_COMMAND = "paseo_tree";
+const PASEO_PI_SWITCH_CWD_EXTENSION_COMMAND = "paseo_switch_cwd";
 const PASEO_PI_CAPTURE_EXTENSION_COMMAND = "paseo_capture_entries";
 const PASEO_PI_REWIND_ENTRY_TYPE = "paseo_rewind";
 const PASEO_PI_ENTRY_CAPTURE_MARKER = "PASEO_ENTRY_CAPTURE";
@@ -770,6 +775,30 @@ function createPiPaseoExtensionFile({
 	  pi.on("turn_end", async (_event, ctx) => {
 	    emitSubmittedUserEntries(ctx);
 	    emitEntryCapture(ctx, "turn_end");
+	  });
+
+	  pi.registerCommand("${PASEO_PI_SWITCH_CWD_EXTENSION_COMMAND}", {
+	    description: "Internal Paseo cwd switch bridge",
+	    handler: async (args, ctx) => {
+	      const payload = decodePayload(args.trim());
+	      try {
+	        let emitted = false;
+	        const result = await ctx.switchSession(ctx.sessionManager.getSessionFile(), {
+	          cwdOverride: payload.cwd,
+	          withSession: async (newCtx) => {
+	            emitted = true;
+	            emitCommandResult(newCtx, payload.requestId, { ok: true });
+	          },
+	        });
+	        // 取消切换时旧上下文仍然可用；成功切换的结果必须由 withSession 的新上下文发出。
+	        if (!emitted) {
+	          emitCommandResult(ctx, payload.requestId, { ok: false, error: "cwd switch cancelled" });
+	        }
+	      } catch (error) {
+	        const message = error instanceof Error ? error.message : String(error);
+	        emitCommandResult(ctx, payload.requestId, { ok: false, error: message });
+	      }
+	    },
 	  });
 
 	  pi.registerCommand("${PASEO_PI_CAPTURE_EXTENSION_COMMAND}", {
@@ -1683,6 +1712,20 @@ export class PiRpcAgentSession implements AgentSession {
     const payload = Buffer.from(JSON.stringify({ targetId, requestId })).toString("base64url");
     await this.runtimeSession.prompt(`/${PASEO_PI_TREE_EXTENSION_COMMAND} ${payload}`);
     return await resultPromise;
+  }
+
+  applyResumedState(state: PiSessionState, requestedModel: string | undefined): void {
+    this.state = state;
+    this.config.model = modelToId(state.model) ?? requestedModel ?? this.config.model;
+    this.config.thinkingOptionId = state.thinkingLevel;
+  }
+
+  async runPiSwitchCwdExtensionCommand(cwd: string): Promise<void> {
+    const requestId = randomUUID();
+    const resultPromise = this.waitForExtensionResult(requestId);
+    const payload = Buffer.from(JSON.stringify({ cwd, requestId })).toString("base64url");
+    await this.runtimeSession.prompt(`/${PASEO_PI_SWITCH_CWD_EXTENSION_COMMAND} ${payload}`);
+    await resultPromise;
   }
 
   async canStopRuntime(): Promise<boolean> {
@@ -2767,9 +2810,10 @@ export class PiRpcAgentClient implements AgentClient {
       paseoExtension?.cleanup();
       throw error;
     }
+    let session: PiRpcAgentSession | undefined;
     try {
       const initialState = await this.applyResumeModel(runtimeSession, resumeConfig.model);
-      return new PiRpcAgentSession({
+      session = new PiRpcAgentSession({
         runtimeSession,
         config: {
           ...resumeConfig.config,
@@ -2782,12 +2826,38 @@ export class PiRpcAgentClient implements AgentClient {
         logger: this.logger,
         usagePollScheduler: this.usagePollScheduler,
       });
+      await this.applyResumeCwdSwitch(
+        session,
+        runtimeSession,
+        sessionFile,
+        overrides?.cwd,
+        resumeConfig.model,
+      );
+      return session;
     } catch (error) {
-      await runtimeSession.close().catch(() => undefined);
+      await (session ? session.close() : runtimeSession.close()).catch(() => undefined);
       mcpConfigFile?.cleanup();
       paseoExtension?.cleanup();
       throw error;
     }
+  }
+
+  private async applyResumeCwdSwitch(
+    session: PiRpcAgentSession,
+    runtimeSession: PiRuntimeSession,
+    sessionFile: string,
+    nextCwd: string | undefined,
+    model: string | undefined,
+  ): Promise<void> {
+    if (!nextCwd) return;
+    const headerCwd = await readPiSessionHeaderCwd(sessionFile);
+    if (headerCwd && resolvePath(headerCwd) === resolvePath(nextCwd)) return;
+    // Paseo 用目标目录启动进程，但会话头仍写着旧目录。让 Pi 自己切换，
+    // 提示词和 bash 工作目录才会一起跟着变；会话文件本身保持原样。
+    await session.runPiSwitchCwdExtensionCommand(nextCwd);
+    // switchSession 会重建会话状态；重新应用恢复时的模型选择，并记录最终状态。
+    const switchedState = await this.applyResumeModel(runtimeSession, model);
+    session.applyResumedState(switchedState, model);
   }
 
   // Pi resumes a session on the model it recorded, or on its default when that model

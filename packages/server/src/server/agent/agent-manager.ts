@@ -1672,10 +1672,13 @@ export class AgentManager {
   }
 
   /**
-   * 把 agent 挪到另一个工作区：只改归属 workspaceId，cwd、provider 会话与时间戳一律不动。
-   * 所以不重建会话、不需要回滚，有回合在跑时也能直接改；代价是这个 agent 仍按原目录执行命令。
+   * 把 agent 挪到另一个工作区，并把执行目录切到目标工作区。
+   * 目录变化需要重建会话，所以会取消正在跑的回合；重建失败不会留下新归属。
    */
-  moveAgentToWorkspace(agentId: string, target: { workspaceId: string }): Promise<ManagedAgent> {
+  moveAgentToWorkspace(
+    agentId: string,
+    target: { workspaceId: string; cwd: string },
+  ): Promise<ManagedAgent> {
     return this.trackAgentRegistrationOperation(
       this.runLifecycleMutation(agentId, () => this.moveAgentToWorkspaceInternal(agentId, target)),
     );
@@ -1683,24 +1686,23 @@ export class AgentManager {
 
   private async moveAgentToWorkspaceInternal(
     agentId: string,
-    target: { workspaceId: string },
+    target: { workspaceId: string; cwd: string },
   ): Promise<ManagedAgent> {
     this.assertAcceptingAgentRegistrations();
     const existing = this.requireSessionAgent(agentId);
-    if (existing.workspaceId === target.workspaceId) {
+    const cwd = resolve(target.cwd);
+    if (existing.workspaceId === target.workspaceId && resolve(existing.config.cwd) === cwd) {
       return existing;
     }
-
-    const registry = this.requireRegistry();
-    const record = await registry.get(agentId);
-    if (!record) {
-      throw new Error(`Agent not found: ${agentId}`);
+    const targetStat = await stat(cwd);
+    if (!targetStat.isDirectory()) {
+      throw new Error(`Working directory is not a directory: ${cwd}`);
     }
-    // 只写归属，连 updatedAt 都不动：移动不是会话里的活动。
-    await registry.upsert({ ...record, workspaceId: target.workspaceId });
-    existing.workspaceId = target.workspaceId;
-    this.notifyAgentState(agentId);
-    return existing;
+    return await this.reloadAgentSessionInternal(
+      agentId,
+      { cwd },
+      { workspaceId: target.workspaceId },
+    );
   }
 
   private async reloadAgentSessionInternal(

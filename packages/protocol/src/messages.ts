@@ -2164,8 +2164,7 @@ export const AgentCloneResponseMessageSchema = z.object({
 
 /**
  * 把已有 agent 挪到另一个工作区：同一个 agent id、同一个 provider 会话、同一段历史，
- * 只改 workspaceId 归属与执行 cwd。正在跑的回合会被拒绝。
- *
+ * 改 workspaceId 归属，并把执行 cwd 切到目标工作区。重建会话会取消正在跑的回合。
  * 目标二选一：`targetWorkspaceId` 指向已存在的工作区；`newWorkspace` 让 daemon 在项目根目录
  * 新建一个目录型工作区再移动（不建 worktree）。两者都必须且只能给一个。
  */

@@ -106,6 +106,14 @@ export async function readPiImportSessionConfig(filePath: string): Promise<PiImp
   return toPiImportSessionConfig(descriptor);
 }
 
+/** 读取 Pi 会话头记录的 cwd；运行时传入的 cwdOverride 不会改写它。 */
+export async function readPiSessionHeaderCwd(filePath: string): Promise<string | null> {
+  const headChunk = await readHeadChunk(filePath);
+  const firstLine = headChunk?.split(/\r?\n/u, 1)[0]?.trim() ?? "";
+  const header = parseSessionHeader(firstLine);
+  return header?.cwd ?? null;
+}
+
 async function resolvePiSessionsDir(options: PiSessionDescriptorOptions): Promise<string> {
   const env = options.env ?? process.env;
   const homeDir = options.homeDir ?? homedir();

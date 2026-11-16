@@ -1022,7 +1022,7 @@ function buildHeaderMenuEntries(input: {
   onCopyConversationMarkdown: (agentId: string) => Promise<void> | void;
   onCopyAgentAsNew: (agentId: string) => Promise<void> | void;
   canCloneAgent: boolean;
-  onMoveAgentToWorkspace: (agentId: string) => void;
+  onMoveAgentToWorkspace?: (agentId: string) => void;
   onCopyTerminalId: (terminalId: string) => Promise<void> | void;
   onCopyFilePath: (path: string) => Promise<void> | void;
   onReloadAgent: (agentId: string) => Promise<void> | void;
