@@ -3,7 +3,16 @@ import { Image, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import * as Clipboard from "expo-clipboard";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
-import { CheckCheck, CheckCircle2, Circle, ClipboardList, ListPlus, Plus, Trash2 } from "lucide-react-native";
+import {
+  CheckCheck,
+  CheckCircle2,
+  Circle,
+  ClipboardList,
+  Import,
+  ListPlus,
+  Plus,
+  Trash2,
+} from "lucide-react-native";
 import type { AgentMemo, ImageAttachment } from "@getpaseo/protocol/messages";
 import { AttachmentLightbox, type ImageLightboxSource } from "@/components/attachment-lightbox";
 import {
@@ -30,6 +39,7 @@ import { useToast } from "@/contexts/toast-context";
 const mutedIconMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
 const completedIconMapping = (theme: Theme) => ({ color: theme.colors.accent });
 const ThemedClipboardList = withUnistyles(ClipboardList, mutedIconMapping);
+const ThemedImport = withUnistyles(Import, mutedIconMapping);
 const ThemedAddPlus = withUnistyles(Plus, mutedIconMapping);
 const ThemedListPlus = withUnistyles(ListPlus, mutedIconMapping);
 /** 批量输入多行；placeholder 颜色是 prop，同样走主题。 */
@@ -73,6 +83,8 @@ export const AgentMemosRail = memo(function AgentMemosRail({
   compact = false,
   showTitle = true,
   onAppendToComposer,
+  onCreateFromComposer,
+  canCreateFromComposer = false,
 }: {
   serverId: string;
   agentId: string;
@@ -82,6 +94,9 @@ export const AgentMemosRail = memo(function AgentMemosRail({
   showTitle?: boolean;
   /** 把备忘（文字与图片）追加到输入框，不发送。 */
   onAppendToComposer: (memo: AgentMemo) => void;
+  /** 从当前 composer 的文本和图片创建备忘；不传就不显示入口。 */
+  onCreateFromComposer?: () => void;
+  canCreateFromComposer?: boolean;
 }) {
   const { t } = useTranslation();
   const supported = useHostFeature(serverId, "agentMemos");
@@ -116,7 +131,7 @@ export const AgentMemosRail = memo(function AgentMemosRail({
 
   const orderedMemos = useMemo(() => orderMemos(memos), [memos]);
   const hasCompletedMemos = useMemo(
-    () => orderedMemos.some((memo) => memo.completed === true),
+    () => orderedMemos.some((entry) => entry.completed === true),
     [orderedMemos],
   );
 
@@ -237,6 +252,16 @@ export const AgentMemosRail = memo(function AgentMemosRail({
           </View>
         ) : null}
         <View style={styles.headerActions}>
+          {onCreateFromComposer ? (
+            <ToolbarButton
+              label={t("agentMemos.addFromComposer")}
+              onPress={onCreateFromComposer}
+              disabled={!canCreateFromComposer}
+              testID="agent-memo-from-composer"
+            >
+              <ThemedImport size={ICON_SIZE.md} uniProps={mutedIconMapping} />
+            </ToolbarButton>
+          ) : null}
           <ToolbarButton label={bulk.open} onPress={handleOpenBulk} testID="agent-memo-bulk-add">
             <ThemedListPlus size={ICON_SIZE.md} uniProps={mutedIconMapping} />
           </ToolbarButton>

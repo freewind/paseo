@@ -182,6 +182,8 @@ export const en = {
     failedToAdd: "Failed to add to memos",
     failedToLoad: "Failed to load memos",
     failedToRestoreImages: "Failed to restore memo images",
+    failedToEncodeImages: "Failed to encode composer images",
+    addFromComposer: "Add from composer",
     attachImage: "Attach image",
     sheetTitle: "Add to memos",
     sheetPlaceholder: "Memo",

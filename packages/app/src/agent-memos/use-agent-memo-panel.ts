@@ -1,8 +1,9 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 import type { TFunction } from "i18next";
 import type { AgentMemo } from "@getpaseo/protocol/messages";
 import type { ToastApi } from "@/components/toast-host";
 import type { AgentInputDraft } from "@/composer/draft/input-draft";
+import { encodeAttachmentsForSend } from "@/attachments/service";
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
 import { useHostFeature } from "@/runtime/host-features";
 import { useSessionStore } from "@/stores/session-store";
@@ -20,8 +21,9 @@ interface UseAgentMemoPanelInput {
 }
 
 /**
- * 备忘面板在宿主侧的接线：是否支持、紧凑入口、弹层开关，以及「追加到输入框」和
- * 「把选中文字存成备忘」两个动作。抽成 hook 是为了让面板组件本身不背这些分支。
+ * 备忘面板在宿主侧的接线：是否支持、紧凑入口、弹层开关，以及「追加到输入框」、
+ * 「把选中文字存成备忘」和「从输入框创建备忘」三个动作。抽成 hook 是为了让面板
+ * 组件本身不背这些分支。
  */
 export function useAgentMemoPanel({
   serverId,
@@ -37,11 +39,57 @@ export function useAgentMemoPanel({
   const openMemosSheet = useCallback(() => setIsMemosSheetOpen(true), []);
   const closeMemosSheet = useCallback(() => setIsMemosSheetOpen(false), []);
 
-  const { setMemoCompleted } = useAgentMemos({ serverId, agentId });
+  const { addMemo, setMemoCompleted } = useAgentMemos({ serverId, agentId });
   const markMemoCompleted = useCallback(
     (memoId: string) => setMemoCompleted(memoId, true),
     [setMemoCompleted],
   );
+
+  const readComposerContent = useCallback(
+    () => ({
+      text: agentInputDraft.textSource.getSnapshot(),
+      images: agentInputDraft.attachments.flatMap((attachment) =>
+        attachment.kind === "image" ? [attachment.metadata] : [],
+      ),
+    }),
+    [agentInputDraft],
+  );
+  const hasComposerContent = useCallback(() => {
+    const { text, images } = readComposerContent();
+    return text.trim().length > 0 || images.length > 0;
+  }, [readComposerContent]);
+  const canCreateFromComposer = useSyncExternalStore(
+    agentInputDraft.textSource.subscribe,
+    hasComposerContent,
+    hasComposerContent,
+  );
+
+  const createMemoFromComposer = useCallback(async () => {
+    const { text, images: imageMetadata } = readComposerContent();
+    if (text.trim().length === 0 && imageMetadata.length === 0) return;
+
+    let encodedImages: Array<{ data: string; mimeType: string }> | undefined;
+    try {
+      encodedImages = await encodeAttachmentsForSend(imageMetadata);
+    } catch {
+      toastApi.error(t("agentMemos.failedToEncodeImages"));
+      return;
+    }
+    // 上游编码函数会静默丢掉编码失败的附件，张数对不上就不能生成缺图备忘。
+    if ((encodedImages?.length ?? 0) !== imageMetadata.length) {
+      toastApi.error(t("agentMemos.failedToEncodeImages"));
+      return;
+    }
+
+    try {
+      await addMemo(text, encodedImages);
+    } catch {
+      toastApi.error(t("agentMemos.failedToAdd"));
+      return;
+    }
+    agentInputDraft.clear("sent");
+    toastApi.show(t("agentMemos.addedToMemo"), { variant: "success" });
+  }, [addMemo, agentInputDraft, readComposerContent, t, toastApi]);
 
   const appendMemoToComposer = useCallback(
     async (entry: AgentMemo) => {
@@ -96,5 +144,7 @@ export function useAgentMemoPanel({
     closeMemosSheet,
     appendMemoToComposer,
     addSelectionToMemo,
+    createMemoFromComposer,
+    canCreateFromComposer,
   };
 }

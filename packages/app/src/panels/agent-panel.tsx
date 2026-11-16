@@ -1078,6 +1078,8 @@ const PaneRightGutter = memo(function PaneRightGutter({
   serverId,
   agentId,
   onMemoAppend,
+  onCreateFromComposer,
+  canCreateFromComposer,
   replies,
   onQuickReply,
   onEditReplies,
@@ -1087,6 +1089,8 @@ const PaneRightGutter = memo(function PaneRightGutter({
   serverId: string;
   agentId: string;
   onMemoAppend: (memo: AgentMemo) => void;
+  onCreateFromComposer?: () => void;
+  canCreateFromComposer?: boolean;
   replies: QuickReply[];
   onQuickReply: (text: string) => void;
   onEditReplies: () => void;
@@ -1098,7 +1102,13 @@ const PaneRightGutter = memo(function PaneRightGutter({
     <View style={styles.quickRepliesRail}>
       {memosSupported ? (
         <View style={styles.quickRepliesRailSection}>
-          <AgentMemosRail serverId={serverId} agentId={agentId} onAppendToComposer={onMemoAppend} />
+          <AgentMemosRail
+            serverId={serverId}
+            agentId={agentId}
+            onAppendToComposer={onMemoAppend}
+            onCreateFromComposer={onCreateFromComposer}
+            canCreateFromComposer={canCreateFromComposer}
+          />
         </View>
       ) : null}
       {showsQuickReplies ? (
@@ -1327,14 +1337,9 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     closeMemosSheet,
     appendMemoToComposer,
     addSelectionToMemo,
-  } = useAgentMemoPanel({
-    serverId,
-    agentId,
-    isCompactFormFactor,
-    agentInputDraft,
-    toastApi,
-    t,
-  });
+    createMemoFromComposer,
+    canCreateFromComposer,
+  } = useAgentMemoPanel({ serverId, agentId, isCompactFormFactor, agentInputDraft, toastApi, t });
   // 右缝里两件事：备忘在上（可滚动），常用回复贴底。
   const rightGutter = useMemo(
     () => (
@@ -1344,6 +1349,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
         serverId={serverId}
         agentId={agentId}
         onMemoAppend={appendMemoToComposer}
+        onCreateFromComposer={createMemoFromComposer}
+        canCreateFromComposer={canCreateFromComposer}
         replies={quickReplies.replies}
         onQuickReply={sendQuickReply}
         onEditReplies={openQuickRepliesEditor}
@@ -1352,6 +1359,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     [
       agentId,
       appendMemoToComposer,
+      canCreateFromComposer,
+      createMemoFromComposer,
       memosSupported,
       openQuickRepliesEditor,
       quickReplies.replies,
@@ -1606,6 +1615,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
           serverId={serverId}
           agentId={agentId}
           onAppendToComposer={appendMemoToComposer}
+          onCreateFromComposer={createMemoFromComposer}
+          canCreateFromComposer={canCreateFromComposer}
           onClose={closeMemosSheet}
         />
         <QuickRepliesEditor

@@ -186,6 +186,8 @@ export const zhCN: TranslationResources = {
     failedToAdd: "加入备忘失败",
     failedToLoad: "加载备忘失败",
     failedToRestoreImages: "恢复备忘图片失败",
+    failedToEncodeImages: "编码输入框图片失败",
+    addFromComposer: "从输入框添加",
     attachImage: "附加图片",
     sheetTitle: "添加到备忘",
     sheetPlaceholder: "备忘内容",

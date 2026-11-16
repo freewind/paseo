@@ -9,6 +9,8 @@ interface AgentMemosSheetProps {
   serverId: string;
   agentId: string;
   onAppendToComposer: (memo: AgentMemo) => void;
+  onCreateFromComposer?: () => void;
+  canCreateFromComposer?: boolean;
   onClose: () => void;
 }
 
@@ -22,6 +24,8 @@ export function AgentMemosSheet({
   serverId,
   agentId,
   onAppendToComposer,
+  onCreateFromComposer,
+  canCreateFromComposer,
   onClose,
 }: AgentMemosSheetProps) {
   const { t } = useTranslation();
@@ -47,6 +51,8 @@ export function AgentMemosSheet({
         compact
         showTitle={false}
         onAppendToComposer={handleAppendToComposer}
+        onCreateFromComposer={onCreateFromComposer}
+        canCreateFromComposer={canCreateFromComposer}
       />
     </AdaptiveModalSheet>
   );
