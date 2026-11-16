@@ -214,6 +214,29 @@ export function buildLineDiff(originalText: string, updatedText: string): DiffLi
   return diff;
 }
 
+function fileNameFromDiffGit(line: string): string | undefined {
+  const match = /^diff --git a\/(.+) b\/(.+)$/.exec(line);
+  return match?.[2];
+}
+
+function fileNameFromPlusHeader(line: string): string | undefined {
+  if (!line.startsWith("+++ b/") || line === "+++ /dev/null") {
+    return undefined;
+  }
+  return line.slice("+++ b/".length);
+}
+
+function isDiffMetadata(line: string): boolean {
+  return (
+    line.startsWith("diff --git") ||
+    line.startsWith("index ") ||
+    line.startsWith("new file mode") ||
+    line.startsWith("deleted file mode") ||
+    line.startsWith("similarity index") ||
+    line.startsWith("rename ")
+  );
+}
+
 export function parseUnifiedDiff(diffText?: string): DiffLine[] {
   if (!diffText) {
     return [];
@@ -221,47 +244,53 @@ export function parseUnifiedDiff(diffText?: string): DiffLine[] {
 
   const lines = splitIntoLines(diffText);
   const diff: DiffLine[] = [];
+  let beforeFirstHunk = true;
+  let fileNameEmitted = false;
+
+  const emitFileName = (fileName: string | undefined): void => {
+    if (!fileName || fileNameEmitted) return;
+    diff.push({ type: "header", content: fileName });
+    fileNameEmitted = true;
+  };
 
   for (const line of lines) {
+    if (line.startsWith("diff --git")) {
+      beforeFirstHunk = true;
+      fileNameEmitted = false;
+      emitFileName(fileNameFromDiffGit(line));
+      continue;
+    }
+
+    if (line.startsWith("@@")) {
+      beforeFirstHunk = false;
+      continue;
+    }
+
+    if (isDiffMetadata(line) || line.startsWith("\\ No newline")) {
+      continue;
+    }
+
+    if (beforeFirstHunk && line.startsWith("+++")) {
+      emitFileName(fileNameFromPlusHeader(line));
+      continue;
+    }
+
+    if (beforeFirstHunk && line.startsWith("---")) {
+      continue;
+    }
+
     if (!line.length) {
       diff.push({ type: "context", content: line });
       continue;
     }
 
-    if (line.startsWith("@@")) {
-      diff.push({ type: "header", content: line });
-      continue;
-    }
-
     if (line.startsWith("+")) {
-      if (!line.startsWith("+++")) {
-        diff.push({ type: "add", content: line });
-      }
+      diff.push({ type: "add", content: line });
       continue;
     }
 
     if (line.startsWith("-")) {
-      if (!line.startsWith("---")) {
-        diff.push({ type: "remove", content: line });
-      }
-      continue;
-    }
-
-    if (
-      line.startsWith("diff --git") ||
-      line.startsWith("index ") ||
-      line.startsWith("---") ||
-      line.startsWith("+++") ||
-      line.startsWith("new file mode") ||
-      line.startsWith("deleted file mode") ||
-      line.startsWith("similarity index") ||
-      line.startsWith("rename ")
-    ) {
-      continue;
-    }
-
-    if (line.startsWith("\\ No newline")) {
-      diff.push({ type: "header", content: line });
+      diff.push({ type: "remove", content: line });
       continue;
     }
 

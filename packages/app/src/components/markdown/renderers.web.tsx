@@ -31,7 +31,13 @@ const CHAT_DIFF_MAX_HEIGHT = 480;
 function WebCodeBlock({ code, language }: CodeBlockRendererProps) {
   if (language?.toLowerCase() === "mermaid") return <MermaidFence code={code} />;
   if (language && DIFF_FENCE_LANGUAGES.has(language.toLowerCase())) {
-    return <DiffViewer diffLines={parseUnifiedDiff(code)} maxHeight={CHAT_DIFF_MAX_HEIGHT} />;
+    return (
+      <DiffViewer
+        diffLines={parseUnifiedDiff(code)}
+        maxHeight={CHAT_DIFF_MAX_HEIGHT}
+        rawText={code}
+      />
+    );
   }
   return <ThemedCodeBlock code={code} language={language} uniProps={codeStyle} />;
 }

@@ -7,6 +7,7 @@ import type { DiffLine } from "@/utils/tool-call-parsers";
 import { diffLinePrefix } from "@/utils/diff-highlight";
 import { syntaxTokenStyleFor } from "@/styles/syntax-token-styles";
 import { inlineUnistylesStyle } from "@/styles/unistyles-inline-style";
+import { CopyTextButton } from "./copy-text-button";
 import { getCodeInsets } from "./code-insets";
 import { CODE_SURFACE_DATASET } from "@/styles/code-surface";
 import { isWeb } from "@/constants/platform";
@@ -18,6 +19,8 @@ interface DiffViewerProps {
   maxHeight?: number;
   emptyLabel?: string;
   fillAvailableHeight?: boolean;
+  /** 原始 patch；传入后显示复制按钮，复制内容与聊天里的源码一致。 */
+  rawText?: string;
 }
 
 function DiffLineRow({ line }: { line: DiffLine }) {
@@ -142,6 +145,7 @@ export function DiffViewer({
   maxHeight,
   emptyLabel,
   fillAvailableHeight = false,
+  rawText,
 }: DiffViewerProps) {
   const { t } = useTranslation();
   const [scrollViewWidth, setScrollViewWidth] = React.useState(0);
@@ -175,6 +179,7 @@ export function DiffViewer({
     () => [styles.verticalContent, fillAvailableHeight && styles.fillHeight],
     [fillAvailableHeight],
   );
+  const getRawText = React.useCallback(() => rawText ?? "", [rawText]);
 
   if (!diffLines.length) {
     return (
@@ -215,13 +220,30 @@ export function DiffViewer({
     </ScrollView>
   );
 
-  return content;
+  if (!rawText) return content;
+
+  return (
+    <View style={styles.copyContainer}>
+      {content}
+      <View style={styles.copyButton}>
+        <CopyTextButton getText={getRawText} size={16} testID="diff-viewer-copy-button" />
+      </View>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create((theme) => {
   const insets = getCodeInsets(theme);
 
   return {
+    copyContainer: {
+      position: "relative" as const,
+    },
+    copyButton: {
+      position: "absolute" as const,
+      top: theme.spacing[1],
+      right: theme.spacing[1],
+    },
     verticalScroll: {},
     fillHeight: {
       flex: 1,
