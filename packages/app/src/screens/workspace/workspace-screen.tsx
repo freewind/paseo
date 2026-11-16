@@ -1001,6 +1001,63 @@ function shouldShowWorkspaceScreenHeader(input: {
   return !input.isFocusModeEnabled || input.isMobile;
 }
 
+function shouldShowWorkspaceRenameModal(showScreenHeader: boolean, isRenameOpen: boolean): boolean {
+  return showScreenHeader && isRenameOpen;
+}
+
+function shouldSyncFocusedPaneOnly(input: {
+  isMobile: boolean;
+  isFocusModeEnabled: boolean;
+  canRenderDesktopPaneSplits: boolean;
+}): boolean {
+  return input.isMobile || input.isFocusModeEnabled || !input.canRenderDesktopPaneSplits;
+}
+
+function buildHeaderMenuEntries(input: {
+  activeTab: WorkspaceTabDescriptor | null;
+  tabs: WorkspaceTabDescriptor[];
+  isMobile: boolean;
+  onCopyResumeCommand: (agentId: string) => Promise<void> | void;
+  onCopyAgentId: (agentId: string) => Promise<void> | void;
+  onCopyConversationMarkdown: (agentId: string) => Promise<void> | void;
+  onCopyAgentAsNew: (agentId: string) => Promise<void> | void;
+  canCloneAgent: boolean;
+  onMoveAgentToWorkspace: (agentId: string) => void;
+  onCopyTerminalId: (terminalId: string) => Promise<void> | void;
+  onCopyFilePath: (path: string) => Promise<void> | void;
+  onReloadAgent: (agentId: string) => Promise<void> | void;
+  onRenameTab: (tab: WorkspaceTabDescriptor) => void;
+  onCloseTab: (tabId: string) => Promise<void> | void;
+  onCloseTabsBefore: (tabId: string) => Promise<void> | void;
+  onCloseTabsAfter: (tabId: string) => Promise<void> | void;
+  onCloseOtherTabs: (tabId: string) => Promise<void> | void;
+  onDeleteAgent: (agentId: string) => Promise<void> | void;
+}): WorkspaceTabMenuEntry[] {
+  if (!input.activeTab) return [];
+  return buildWorkspaceTabMenuEntries({
+    surface: input.isMobile ? "mobile" : "desktop",
+    tab: input.activeTab,
+    index: input.tabs.findIndex((tab) => tab.tabId === input.activeTab?.tabId),
+    tabCount: input.tabs.length,
+    menuTestIDBase: "workspace-header-title-menu",
+    onCopyResumeCommand: input.onCopyResumeCommand,
+    onCopyAgentId: input.onCopyAgentId,
+    onCopyConversationMarkdown: input.onCopyConversationMarkdown,
+    onCopyAgentAsNew: input.onCopyAgentAsNew,
+    canCloneAgent: input.canCloneAgent,
+    onMoveAgentToWorkspace: input.onMoveAgentToWorkspace,
+    onCopyTerminalId: input.onCopyTerminalId,
+    onCopyFilePath: input.onCopyFilePath,
+    onReloadAgent: input.onReloadAgent,
+    onRenameTab: input.onRenameTab,
+    onCloseTab: input.onCloseTab,
+    onCloseTabsBefore: input.onCloseTabsBefore,
+    onCloseTabsAfter: input.onCloseTabsAfter,
+    onCloseOtherTabs: input.onCloseOtherTabs,
+    onDeleteAgent: input.onDeleteAgent,
+  });
+}
+
 function buildWorkspaceTerminalScopeKey(serverId: string, workspaceId: string): string | null {
   if (!serverId || !workspaceId) {
     return null;
@@ -1647,8 +1704,13 @@ function WorkspaceScreenContent({
     (state) => state.sessions[normalizedServerId]?.viewedTimelineSync ?? null,
   );
   const syncFocusedPaneOnly = useMemo(
-    () => isMobile || isFocusModeEnabled || !supportsDesktopPaneSplits(),
-    [isFocusModeEnabled, isMobile],
+    () =>
+      shouldSyncFocusedPaneOnly({
+        isMobile,
+        isFocusModeEnabled,
+        canRenderDesktopPaneSplits,
+      }),
+    [isMobile, isFocusModeEnabled, canRenderDesktopPaneSplits],
   );
   const visibleAgentIds = useVisibleAgentIds({
     layout: workspaceLayout,
@@ -3466,13 +3528,12 @@ function WorkspaceScreenContent({
       `${WORKSPACE_FLOATING_PANEL_PORTAL_HOST_PREFIX}:${normalizedServerId}:${normalizedWorkspaceId}`,
     [normalizedServerId, normalizedWorkspaceId],
   );
-  const headerMenuEntries = activeTabDescriptor
-    ? buildWorkspaceTabMenuEntries({
-        surface: isMobile ? "mobile" : "desktop",
-        tab: activeTabDescriptor,
-        index: tabs.findIndex((tab) => tab.tabId === activeTabDescriptor?.tabId),
-        tabCount: tabs.length,
-        menuTestIDBase: "workspace-header-title-menu",
+  const headerMenuEntries = useMemo(
+    () =>
+      buildHeaderMenuEntries({
+        activeTab: activeTabDescriptor,
+        tabs,
+        isMobile,
         onCopyResumeCommand: handleCopyResumeCommand,
         onCopyAgentId: handleCopyAgentId,
         onCopyConversationMarkdown: handleCopyConversationMarkdown,
@@ -3488,8 +3549,28 @@ function WorkspaceScreenContent({
         onCloseTabsAfter: handleCloseTabsToRight,
         onCloseOtherTabs: handleCloseOtherTabs,
         onDeleteAgent: handleDeleteAgent,
-      })
-    : [];
+      }),
+    [
+      activeTabDescriptor,
+      tabs,
+      isMobile,
+      handleCopyResumeCommand,
+      handleCopyAgentId,
+      handleCopyConversationMarkdown,
+      handleCopyAgentAsNew,
+      supportsCloneAgent,
+      onMoveAgentToWorkspace,
+      handleCopyTerminalId,
+      handleCopyFilePath,
+      handleReloadAgent,
+      handleRenameTab,
+      handleCloseTabById,
+      handleCloseTabsToLeft,
+      handleCloseTabsToRight,
+      handleCloseOtherTabs,
+      handleDeleteAgent,
+    ],
+  );
   const showHeaderMenu = shouldShowHeaderMenu({
     isLoading: isWorkspaceHeaderLoading,
     activeTabTargetKind: resolveActiveTabTargetKind(activeTabDescriptor),
@@ -3499,63 +3580,54 @@ function WorkspaceScreenContent({
   const renderWorkspaceScreenHeader = useCallback(
     () =>
       showScreenHeader ? (
-        <>
-          <ScreenHeader
-            left={
-              <>
-                <SidebarMenuToggle />
-                <WorkspaceHeaderTitleBar
-                  isLoading={isWorkspaceHeaderLoading}
-                  title={workspaceHeaderTitle}
-                  subtitle={workspaceHeaderSubtitle}
-                  isSubtitleDistinct={isWorkspaceHeaderSubtitleDistinct}
-                  currentBranchName={currentBranchName}
-                  normalizedServerId={normalizedServerId}
-                  workspaceKey={`${normalizedServerId}:${normalizedWorkspaceId}`}
-                  workspaceTarget={workspaceTarget}
-                  workspaceDirectory={workspaceDirectory}
-                  onCreateDraftTab={handleCreateDraftTab}
-                  onMarkAsRead={
-                    workspaceReadState.hasClearableAttention ? handleMarkWorkspaceAsRead : undefined
-                  }
-                  onMarkAsUnread={
-                    workspaceReadState.canMarkUnread ? handleMarkWorkspaceAsUnread : undefined
-                  }
-                  showWorkspaceSetup={showWorkspaceSetup}
-                  importAgentDisabled={!canOpenImportSheet}
-                  copyPathDisabled={!workspaceDirectory}
-                  onOpenImportSheet={openImportSheet}
-                  onCopyWorkspacePath={handleCopyWorkspacePath}
-                  onCopyBranchName={handleCopyBranchName}
-                  onOpenSetupTab={handleOpenSetupTab}
-                  onRename={workspaceDescriptor ? handleOpenRename : undefined}
-                  onTogglePin={handleTogglePin}
-                  isPinned={isWorkspacePinned}
-                  onArchive={workspaceDescriptor ? handleArchive : undefined}
-                  isArchiving={isArchiving}
-                  headerMenuEntries={headerMenuEntries}
-                  headerMenuTestID="workspace-header-title-menu"
-                  showHeaderMenu={showHeaderMenu}
-                  archiveLabel={archiveLabel}
-                />
-              </>
-            }
-            right={headerRight}
-          />
-          <WorkspaceRenameModal
-            visible={isRenameOpen}
-            workspace={renameWorkspace}
-            onClose={handleCloseRename}
-            testID="workspace-rename-modal-header"
-          />
-        </>
+        <ScreenHeader
+          left={
+            <>
+              <SidebarMenuToggle />
+              <WorkspaceHeaderTitleBar
+                isLoading={isWorkspaceHeaderLoading}
+                title={workspaceHeaderTitle}
+                subtitle={workspaceHeaderSubtitle}
+                isSubtitleDistinct={isWorkspaceHeaderSubtitleDistinct}
+                currentBranchName={currentBranchName}
+                normalizedServerId={normalizedServerId}
+                workspaceKey={`${normalizedServerId}:${normalizedWorkspaceId}`}
+                workspaceTarget={workspaceTarget}
+                workspaceDirectory={workspaceDirectory}
+                onCreateDraftTab={handleCreateDraftTab}
+                onMarkAsRead={
+                  workspaceReadState.hasClearableAttention ? handleMarkWorkspaceAsRead : undefined
+                }
+                onMarkAsUnread={
+                  workspaceReadState.canMarkUnread ? handleMarkWorkspaceAsUnread : undefined
+                }
+                showWorkspaceSetup={showWorkspaceSetup}
+                importAgentDisabled={!canOpenImportSheet}
+                copyPathDisabled={!workspaceDirectory}
+                onOpenImportSheet={openImportSheet}
+                onCopyWorkspacePath={handleCopyWorkspacePath}
+                onCopyBranchName={handleCopyBranchName}
+                onOpenSetupTab={handleOpenSetupTab}
+                onRename={workspaceDescriptor ? handleOpenRename : undefined}
+                onTogglePin={handleTogglePin}
+                isPinned={isWorkspacePinned}
+                onArchive={workspaceDescriptor ? handleArchive : undefined}
+                isArchiving={isArchiving}
+                headerMenuEntries={headerMenuEntries}
+                headerMenuTestID="workspace-header-title-menu"
+                showHeaderMenu={showHeaderMenu}
+                archiveLabel={archiveLabel}
+              />
+            </>
+          }
+          right={headerRight}
+        />
       ) : null,
     [
       archiveLabel,
       canOpenImportSheet,
       currentBranchName,
       handleArchive,
-      handleCloseRename,
       handleCopyBranchName,
       handleCopyWorkspacePath,
       handleCreateDraftTab,
@@ -3566,13 +3638,11 @@ function WorkspaceScreenContent({
       handleTogglePin,
       headerRight,
       isArchiving,
-      isRenameOpen,
       isWorkspaceHeaderLoading,
       isWorkspacePinned,
       normalizedServerId,
       normalizedWorkspaceId,
       openImportSheet,
-      renameWorkspace,
       showScreenHeader,
       showWorkspaceSetup,
       workspaceDescriptor,
@@ -4080,6 +4150,12 @@ function WorkspaceScreenContent({
           renamingTab={isRouteFocused ? renamingTab : null}
           onSubmit={handleRenameModalSubmit}
           onClose={handleRenameModalClose}
+        />
+        <WorkspaceRenameModal
+          visible={shouldShowWorkspaceRenameModal(showScreenHeader, isRenameOpen)}
+          workspace={renameWorkspace}
+          onClose={handleCloseRename}
+          testID="workspace-rename-modal-header"
         />
         {transferWorkspaceModal}
       </View>
