@@ -75,14 +75,11 @@ export function AssistantCommentProvider({
 
   const submitMemo = useCallback(
     (comment: string) => {
-      setMemoRequest((current) => {
-        if (current) {
-          onAddToMemo?.(buildMemoText({ blockText: current.blockText, comment }));
-        }
-        return null;
-      });
+      if (!memoRequest) return;
+      onAddToMemo?.(buildMemoText({ blockText: memoRequest.blockText, comment }));
+      setMemoRequest(null);
     },
-    [onAddToMemo],
+    [memoRequest, onAddToMemo],
   );
 
   const cancelComment = useCallback(() => {
@@ -91,14 +88,11 @@ export function AssistantCommentProvider({
 
   const attachComment = useCallback(
     (comment: string, sendNow: boolean) => {
-      setRequest((current) => {
-        if (current) {
-          onCommit({ blockText: current.blockText, comment, sendNow });
-        }
-        return null;
-      });
+      if (!request) return;
+      onCommit({ blockText: request.blockText, comment, sendNow });
+      setRequest(null);
     },
-    [onCommit],
+    [onCommit, request],
   );
   const handleAttach = useCallback(
     (comment: string) => attachComment(comment, false),
