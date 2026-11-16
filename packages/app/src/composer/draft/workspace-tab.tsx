@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Keyboard, ScrollView, StyleSheet as RNStyleSheet, Text, View } from "react-native";
+import { useToast } from "@/contexts/toast-context";
 import { useTranslation } from "react-i18next";
 import { MessageSquareText } from "lucide-react-native";
 import { StyleSheet } from "react-native-unistyles";
@@ -16,11 +17,14 @@ import { QuickRepliesRightRail } from "@/quick-replies/right-rail";
 import { shouldShowQuickRepliesRail } from "@/quick-replies/layout";
 import { QuickRepliesEditor } from "@/quick-replies/quick-replies-editor";
 import { useIsQuickRepliesSupported, useQuickReplies } from "@/quick-replies/use-quick-replies";
+import { submitQuickReply } from "@/quick-replies/submit";
 import type { QuickReply } from "@getpaseo/protocol/messages";
 import { COMPOSER_PILL_CLEARANCE } from "@/composer/pill-styles";
 import { AgentStreamView } from "@/agent-stream/view";
 import { composerWorkspaceAttachment } from "@/composer/attachments/workspace";
 import { useAgentInputDraft } from "@/composer/draft/input-draft";
+import type { UserComposerAttachment } from "@/attachments/types";
+import type { AgentInputSubmitResult } from "@/composer/submit";
 import type { CreateAgentInitialValues } from "@/hooks/use-agent-form-state";
 import { useDraftAgentCreateFlow, type DraftCreateAttempt } from "@/composer/draft/create-flow";
 import { resolveTurnPresentation, TURN_LIVENESS_IDLE } from "@/timeline/turn-liveness";
@@ -314,15 +318,16 @@ export function WorkspaceDraftAgentTab({
   onOpenImportSheet,
 }: WorkspaceDraftAgentTabProps) {
   const { t } = useTranslation();
+  const toast = useToast();
   const quickReplies = useQuickReplies(serverId);
   const quickRepliesSupported = useIsQuickRepliesSupported(serverId);
   const [isQuickRepliesEditorOpen, setIsQuickRepliesEditorOpen] = useState(false);
   const openQuickRepliesEditor = useCallback(() => setIsQuickRepliesEditorOpen(true), []);
   const closeQuickRepliesEditor = useCallback(() => setIsQuickRepliesEditorOpen(false), []);
   const saveQuickReplies = useCallback(
-    (next: QuickReply[]) => {
+    async (next: QuickReply[]) => {
+      await quickReplies.saveReplies(next);
       setIsQuickRepliesEditorOpen(false);
-      void quickReplies.saveReplies(next);
     },
     [quickReplies],
   );
@@ -523,14 +528,40 @@ export function WorkspaceDraftAgentTab({
       onCreated(result);
     },
   });
-  // 草稿里点常用回复与正式会话同义：这条文本就是首条消息，直接建 agent 并发送。
+  const composerSubmitNowRef = useRef<
+    | ((text: string, attachments?: UserComposerAttachment[]) => Promise<AgentInputSubmitResult>)
+    | null
+  >(null);
+  const handleComposerSubmitNow = useCallback(
+    (
+      submitNow: (
+        text: string,
+        attachments?: UserComposerAttachment[],
+      ) => Promise<AgentInputSubmitResult>,
+    ) => {
+      composerSubmitNowRef.current = submitNow;
+    },
+    [],
+  );
+
+  // 草稿里点常用回复与正式会话同义：接到当前文本后走同一发送入口。
   const sendQuickReply = useCallback(
     (text: string) => {
-      void handleCreateFromInput({ text, attachments: [], cwd: composerState.workingDir }).catch(
-        () => undefined,
-      );
+      const submitNow = composerSubmitNowRef.current;
+      if (!submitNow) return;
+      submitQuickReply({
+        currentText: draftInput.textSource.getSnapshot(),
+        replyText: text,
+        submitNow,
+        toast,
+        labels: {
+          sent: t("composer.quickReplies.sent"),
+          queued: t("composer.quickReplies.queued"),
+          failed: t("composer.quickReplies.failed"),
+        },
+      });
     },
-    [composerState.workingDir, handleCreateFromInput],
+    [draftInput.textSource, t, toast],
   );
   const turnPresentation = useMemo(
     () => resolveTurnPresentation(TURN_LIVENESS_IDLE, pendingMessageSubmissions.length > 0),
@@ -719,6 +750,7 @@ export function WorkspaceDraftAgentTab({
             <Composer
               agentId={tabId}
               serverId={serverId}
+              onSubmitNow={handleComposerSubmitNow}
               workspaceId={workspaceId}
               isPaneFocused={isPaneFocused}
               onSubmitMessage={handleCreateFromInput}
@@ -753,8 +785,8 @@ export function WorkspaceDraftAgentTab({
           ) : null}
         </RightGutter>
         <QuickRepliesEditor
+          key={isQuickRepliesEditorOpen ? "open" : "closed"}
           visible={isQuickRepliesEditorOpen}
-          mountKey={isQuickRepliesEditorOpen ? "open" : "closed"}
           replies={quickReplies.replies}
           onSave={saveQuickReplies}
           onClose={closeQuickRepliesEditor}

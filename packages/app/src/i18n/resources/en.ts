@@ -194,6 +194,7 @@ export const en = {
       placeholder: "Reply text",
       sent: "Quick reply sent",
       queued: "Agent is running. Your reply was queued.",
+      failed: "Failed to send quick reply",
     },
     readAloud: {
       start: "Start reading this conversation aloud",

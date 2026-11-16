@@ -96,7 +96,7 @@ import { SideRailSheetButton, SideRailSheetTrigger } from "@/components/side-rai
 import { ComposerTrackBar } from "@/composer/tracks";
 import { QuickRepliesEditor } from "@/quick-replies/quick-replies-editor";
 import { useIsQuickRepliesSupported, useQuickReplies } from "@/quick-replies/use-quick-replies";
-import { composerSubmitKey, submitComposerText } from "@/composer/composer-submit";
+import { submitQuickReply } from "@/quick-replies/submit";
 import { shouldShowQuickRepliesRail } from "@/quick-replies/layout";
 import { QuickRepliesRightRail } from "@/quick-replies/right-rail";
 import { resolveContentMaxWidth } from "@/hooks/use-settings";
@@ -1228,9 +1228,9 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
   const openQuickRepliesEditor = useCallback(() => setIsQuickRepliesEditorOpen(true), []);
   const closeQuickRepliesEditor = useCallback(() => setIsQuickRepliesEditorOpen(false), []);
   const saveQuickReplies = useCallback(
-    (next: QuickReply[]) => {
+    async (next: QuickReply[]) => {
+      await quickReplies.saveReplies(next);
       setIsQuickRepliesEditorOpen(false);
-      void quickReplies.saveReplies(next);
     },
     [quickReplies],
   );
@@ -1298,17 +1298,29 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
       composerState,
     ],
   );
-  // 点一条就立即发出：走 composer 登记的同一发送入口，只读、提交中与运行中排队都由它把关。
+  const composerSubmitNowRef = useRef<ComposerSubmitNow | null>(null);
+  const handleComposerSubmitNow = useCallback((submitNow: ComposerSubmitNow) => {
+    composerSubmitNowRef.current = submitNow;
+  }, []);
+
+  // 点一条就立即发出：把它接到当前文本后走 composer 的发送入口，附件与草稿清理都照正常发送。
   const sendQuickReply = useCallback(
     (text: string) => {
-      const outcome = submitComposerText(composerSubmitKey(serverId, agentId), text);
-      if (outcome === "sent") {
-        toastApi.show(t("composer.quickReplies.sent"), { variant: "success" });
-      } else if (outcome === "queued") {
-        toastApi.show(t("composer.quickReplies.queued"));
-      }
+      const submitNow = composerSubmitNowRef.current;
+      if (!submitNow) return;
+      submitQuickReply({
+        currentText: textSource.getSnapshot(),
+        replyText: text,
+        submitNow,
+        toast: toastApi,
+        labels: {
+          sent: t("composer.quickReplies.sent"),
+          queued: t("composer.quickReplies.queued"),
+          failed: t("composer.quickReplies.failed"),
+        },
+      });
     },
-    [agentId, serverId, t, toastApi],
+    [t, textSource, toastApi],
   );
   const {
     memosSupported,
@@ -1350,11 +1362,6 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
       showsQuickRepliesRail,
     ],
   );
-
-  const composerSubmitNowRef = useRef<ComposerSubmitNow | null>(null);
-  const handleComposerSubmitNow = useCallback((submitNow: ComposerSubmitNow) => {
-    composerSubmitNowRef.current = submitNow;
-  }, []);
 
   const handleRegenerateUserMessage = useCallback(
     async (input: RegenerateUserMessageInput) => {
@@ -1576,8 +1583,8 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
           onClose={closeMemosSheet}
         />
         <QuickRepliesEditor
+          key={isQuickRepliesEditorOpen ? "open" : "closed"}
           visible={isQuickRepliesEditorOpen}
-          mountKey={isQuickRepliesEditorOpen ? "open" : "closed"}
           replies={quickReplies.replies}
           onSave={saveQuickReplies}
           onClose={closeQuickRepliesEditor}

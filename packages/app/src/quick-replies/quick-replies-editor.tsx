@@ -4,6 +4,7 @@ import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { GripVertical, Plus, Trash2 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import type { QuickReply } from "@getpaseo/protocol/messages";
+import { useToast } from "@/contexts/toast-context";
 import { AdaptiveModalSheet } from "@/components/adaptive-modal-sheet";
 import { Button } from "@/components/ui/button";
 import { DraggableList, type DraggableRenderItemInfo } from "@/components/draggable-list";
@@ -26,10 +27,8 @@ function replyKeyExtractor(item: QuickReply): string {
 
 interface QuickRepliesEditorProps {
   visible: boolean;
-  /** 每次打开换一个 key，让本地列表重新从已保存的那份初始化。 */
-  mountKey: string;
   replies: QuickReply[];
-  onSave: (next: QuickReply[]) => void;
+  onSave: (next: QuickReply[]) => Promise<void>;
   onClose: () => void;
 }
 
@@ -37,16 +36,12 @@ interface QuickRepliesEditorProps {
  * 编辑当前主机 daemon 配置里的常用回复。列表顺序就是拖出来的顺序，保存时整份写回；
  * 新增行只在新加时挂载，避免一堆空行占着弹层。
  */
-export function QuickRepliesEditor({
-  visible,
-  mountKey,
-  replies,
-  onSave,
-  onClose,
-}: QuickRepliesEditorProps) {
+export function QuickRepliesEditor({ visible, replies, onSave, onClose }: QuickRepliesEditorProps) {
   const { t } = useTranslation();
+  const toast = useToast();
   const [items, setItems] = useState<QuickReply[]>(replies);
   const [isAdding, setIsAdding] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const startAdding = useCallback(() => setIsAdding(true), []);
   const cancelAdding = useCallback(() => setIsAdding(false), []);
@@ -84,26 +79,39 @@ export function QuickRepliesEditor({
     [updateReply, removeReply],
   );
 
-  const save = useCallback(() => {
+  const save = useCallback(async () => {
     const cleaned = items
       .map((item) => ({ ...item, text: item.text.trim() }))
       .filter((item) => item.text.length > 0);
-    onSave(cleaned);
-  }, [items, onSave]);
+    setIsSaving(true);
+    try {
+      await onSave(cleaned);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("common.errors.error"));
+    } finally {
+      setIsSaving(false);
+    }
+  }, [items, onSave, t, toast]);
 
   const header = useMemo(() => ({ title: t("composer.quickReplies.editTitle") }), [t]);
+  const handleSavePress = useCallback(() => void save(), [save]);
   const footer = useMemo(
     () => (
       <View style={styles.footer}>
         <Button variant="ghost" size="sm" onPress={onClose}>
           {t("common.actions.cancel")}
         </Button>
-        <Button size="sm" onPress={save} disabled={isAdding} testID="quick-replies-editor-save">
+        <Button
+          size="sm"
+          onPress={handleSavePress}
+          disabled={isAdding || isSaving}
+          testID="quick-replies-editor-save"
+        >
           {t("common.actions.save")}
         </Button>
       </View>
     ),
-    [isAdding, onClose, save, t],
+    [handleSavePress, isAdding, isSaving, onClose, t],
   );
 
   return (
@@ -116,7 +124,7 @@ export function QuickRepliesEditor({
       scrollable={false}
       testID="quick-replies-editor"
     >
-      <View style={styles.card} key={mountKey}>
+      <View style={styles.card}>
         <DraggableList
           testID="quick-replies-editor-list"
           data={items}

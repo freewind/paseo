@@ -198,6 +198,7 @@ export const zhCN: TranslationResources = {
       placeholder: "回复内容",
       sent: "常用回复已发送",
       queued: "Agent 正在运行，回复已加入队列。",
+      failed: "常用回复发送失败",
     },
     readAloud: { start: "开启此对话朗读", stop: "关闭此对话朗读" },
     placeholders: {
