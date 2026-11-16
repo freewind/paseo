@@ -88,6 +88,8 @@ export function useAgentMemoPanel({
       return;
     }
     agentInputDraft.clear("sent");
+    // clear 只清草稿 store；原生输入框靠 textReplacement 同步，必须再发布一次空文本。
+    agentInputDraft.replaceText("");
     toastApi.show(t("agentMemos.addedToMemo"), { variant: "success" });
   }, [addMemo, agentInputDraft, readComposerContent, t, toastApi]);
 
