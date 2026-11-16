@@ -17,7 +17,8 @@ export async function forkPiSessionFile(input: {
 }): Promise<{ sessionId: string; sessionFile: string }> {
   const { header, entries, leafId } = await readPiSessionFile(input.sessionFile);
 
-  const target = input.upToEntryId ? resolveForkTarget(entries, input.upToEntryId) : leafId;
+  const activeChain = leafId ? piSessionEntryChainTo(entries, leafId) : [];
+  const target = input.upToEntryId ? resolveForkTarget(activeChain, input.upToEntryId) : leafId;
   const chain = target ? piSessionEntryChainTo(entries, target) : [];
   if (chain.length === 0) {
     throw new Error(
@@ -49,11 +50,11 @@ export async function forkPiSessionFile(input: {
  * 把分叉边界解析成条目 id。应用层的回合边界挂在 assistant 消息 id 上，Pi 里那是模型响应的
  * responseId（不是条目 id）；历史回放早于 responseId 记录的条目带的是生成 id。
  */
-function resolveForkTarget(entries: readonly PiSessionEntry[], upToMessageId: string): string {
-  if (entries.some((entry) => entry.id === upToMessageId)) {
+function resolveForkTarget(activeChain: readonly PiSessionEntry[], upToMessageId: string): string {
+  if (activeChain.some((entry) => entry.id === upToMessageId)) {
     return upToMessageId;
   }
-  const byResponseId = entries.find(
+  const byResponseId = activeChain.find(
     (entry) =>
       entry.message?.role === "assistant" &&
       typeof entry.message.responseId === "string" &&
@@ -62,11 +63,12 @@ function resolveForkTarget(entries: readonly PiSessionEntry[], upToMessageId: st
   if (byResponseId?.id) {
     return byResponseId.id;
   }
+  // 老历史没有 responseId：生成编号时只数当前分支，解析也必须用同一条链。
   const generatedIndex = /^.*-history-assistant-(\d+)$/.exec(upToMessageId)?.[1];
   if (generatedIndex) {
     const nth = Number(generatedIndex);
     let assistantIndex = 0;
-    for (const entry of entries) {
+    for (const entry of activeChain) {
       if (entry.message?.role !== "assistant") continue;
       assistantIndex += 1;
       if (assistantIndex === nth && entry.id) {

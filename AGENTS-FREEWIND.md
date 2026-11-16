@@ -50,7 +50,7 @@ pullRequest?: { instructions?: string }
 启动一个全新的 agent 会话，内容取自另一个会话里更早的某个位置，源会话照常运行。两种模式，一个菜单。
 
 - **复制历史**（`agent.fork_context`，看 `agentForkContext`）：把筛选过的聊天历史作为 `chat_history` 附件放进一个草稿，不碰 provider 自己的会话。
-- **会话分叉**（`agent.fork.request` → `AgentManager.forkAgent`，看 `agentForkSession`）：让 provider 在边界处切一份自己的会话，用新的 agent id 继续，工具调用与结果都还在，prompt 缓存也不冷。只有实现 `forkSession` 的 provider 能做；其它 provider 上这一组菜单整个不显示。
+- **会话分叉**（`agent.fork.request` → `AgentManager.forkAgent`，看 `agentForkSession`）：让 provider 在边界处切一份自己的会话，用新的 agent id 继续，工具调用与结果都还在，prompt 缓存也不冷。菜单按宿主能力显示，前端不绑定 provider；具体会话不支持时后端返回错误，前端弹出提示。
 
 两种模式都给两个目的地：当前工作区的新标签，或新工作区。会话分叉在新工作区里指向源 agent 的目录。
 
