@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { createAudioPlayer, setAudioModeAsync } from "expo-audio";
+import { isRecording } from "@getpaseo/expo-two-way-audio";
 import { TURN_COMPLETE_SOUND_SOURCES } from "@/audio/turn-complete-sound-assets";
 import { resolveTurnCompleteSoundId } from "@/audio/turn-complete-sounds";
 import { playFile } from "@/audio/file-playback";
@@ -29,6 +30,7 @@ export function useTurnCompleteSound({ stopPrevious = false }: { stopPrevious?: 
 }
 
 async function playTurnCompleteSound(soundId?: string, signal?: AbortSignal): Promise<void> {
+  if (isRecording()) return;
   const id = resolveTurnCompleteSoundId(soundId);
   // `duckOthers` 让正在播放的声音继续可听：提示音只把它压低
   // 自己那点时间，而不是抢占音频焦点把它停掉。默认的 `AUDIOFOCUS_GAIN` 会
