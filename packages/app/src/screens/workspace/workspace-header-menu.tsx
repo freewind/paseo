@@ -55,7 +55,11 @@ import {
 } from "@/screens/workspace/scripts";
 import { usePluginWorkspaceMenu } from "@/plugins";
 import { OpenInFileManagerMenuItem } from "@/workspace/open-in-file-manager/menu-item";
-import { WORKSPACE_LABEL_PAGE_ID, type WorkspaceLabelTarget } from "@/workspace-labels/picker";
+import {
+  useWorkspaceLabelMenuPages,
+  WORKSPACE_LABEL_PAGE_ID,
+  type WorkspaceLabelTarget,
+} from "@/workspace-labels/picker";
 
 const ThemedEllipsis = withUnistyles(Ellipsis);
 const ThemedCopy = withUnistyles(Copy);
@@ -337,6 +341,7 @@ function workspaceHeaderMenuButtonStyle({
  */
 export function WorkspaceHeaderMenuDesktop(props: WorkspaceHeaderWorkspaceActions) {
   const { t } = useTranslation();
+  const labelPages = useWorkspaceLabelMenuPages(props.workspaceTarget);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -347,7 +352,12 @@ export function WorkspaceHeaderMenuDesktop(props: WorkspaceHeaderWorkspaceAction
       >
         <WorkspaceHeaderMenuTriggerIcon />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" width={220} testID="workspace-header-menu">
+      <DropdownMenuContent
+        align="start"
+        width={220}
+        testID="workspace-header-menu"
+        pages={labelPages}
+      >
         <WorkspaceHeaderWorkspaceActionItems {...props} />
       </DropdownMenuContent>
     </DropdownMenu>
@@ -411,6 +421,7 @@ export function WorkspaceHeaderMenuMobile({
   createTerminalDisabled,
   onCreateTerminalWithProfile,
   onCreateBrowser,
+  workspaceTarget,
   ...workspaceActions
 }: WorkspaceHeaderMenuMobileProps) {
   const { t } = useTranslation();
@@ -427,9 +438,10 @@ export function WorkspaceHeaderMenuMobile({
   }, [normalizedServerId, router]);
   const scriptsMenu = useWorkspaceScriptsMenuPages(scripts);
   const pluginMenu = usePluginWorkspaceMenu(normalizedServerId, normalizedWorkspaceId);
+  const labelPages = useWorkspaceLabelMenuPages(workspaceTarget);
   const pages = useMemo(
-    () => [...scriptsMenu.pages, ...pluginMenu.pages],
-    [scriptsMenu.pages, pluginMenu.pages],
+    () => [...scriptsMenu.pages, ...pluginMenu.pages, ...labelPages],
+    [scriptsMenu.pages, pluginMenu.pages, labelPages],
   );
 
   return (
@@ -470,7 +482,10 @@ export function WorkspaceHeaderMenuMobile({
             {t("workspace.header.actions.newBrowser")}
           </DropdownMenuItem>
         ) : null}
-        <WorkspaceHeaderWorkspaceActionItems {...workspaceActions} />
+        <WorkspaceHeaderWorkspaceActionItems
+          {...workspaceActions}
+          workspaceTarget={workspaceTarget}
+        />
         <DropdownMenuSeparator />
         <DropdownMenuLabel>{t("workspace.tabs.actions.terminalProfilesMenu")}</DropdownMenuLabel>
         {profiles.map((profile) => (
