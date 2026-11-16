@@ -15,16 +15,17 @@ export interface SubmitQuickReplyInput {
 }
 
 /** 把快捷回复接到当前文本后发送一次，提示只在拿到真实结果后出现。 */
-export function submitQuickReply({
+export async function submitQuickReply({
   currentText,
   replyText,
   submitNow,
   toast,
   labels,
-}: SubmitQuickReplyInput): void {
+}: SubmitQuickReplyInput): Promise<void> {
   const trimmed = currentText.trim();
   const combinedText = trimmed ? `${currentText.trimEnd()}\n${replyText}` : replyText;
-  void submitNow(combinedText).then((result) => {
+  try {
+    const result = await submitNow(combinedText);
     if (result === "submitted") {
       toast.show(labels.sent, { variant: "success" });
     } else if (result === "queued") {
@@ -32,6 +33,7 @@ export function submitQuickReply({
     } else if (result === "failed") {
       toast.error(labels.failed);
     }
-    return undefined;
-  });
+  } catch {
+    toast.error(labels.failed);
+  }
 }

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { useTranslation } from "react-i18next";
 import type { AgentMemo, ImageAttachment } from "@getpaseo/protocol/messages";
+import { useToast } from "@/contexts/toast-context";
 import { useSessionStore } from "@/stores/session-store";
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
 
@@ -27,6 +29,8 @@ export function useAgentMemos(input: {
   clearMemos: () => Promise<void>;
   clearCompletedMemos: () => Promise<void>;
 } {
+  const { t } = useTranslation();
+  const toast = useToast();
   const serverId = input.serverId ?? "";
   const agentId = input.agentId ?? "";
   const subscribe = useCallback(
@@ -64,20 +68,20 @@ export function useAgentMemos(input: {
       return;
     }
     memoFetchKeys.add(key);
-    void client
-      .fetchAgent({ agentId })
-      .then((result) => {
+    void (async () => {
+      try {
+        const result = await client.fetchAgent({ agentId });
         const fetched = result?.memos;
         if (fetched) {
           useSessionStore.getState().setAgentMemos(serverId, agentId, fetched);
         }
         // 回复里没有这个字段，说明宿主从不发列表，不用再问。
-        return undefined;
-      })
-      .catch(() => {
+      } catch {
         memoFetchKeys.delete(key);
-      });
-  }, [agentId, serverId]);
+        toast.error(t("agentMemos.failedToLoad"));
+      }
+    })();
+  }, [agentId, serverId, t, toast]);
 
   const addMemo = useCallback(
     async (text: string, images?: readonly ImageAttachment[]) => {

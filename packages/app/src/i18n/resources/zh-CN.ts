@@ -184,6 +184,7 @@ export const zhCN: TranslationResources = {
     clearCompleted: "清空完成",
     addedToMemo: "已加入备忘",
     failedToAdd: "加入备忘失败",
+    failedToLoad: "加载备忘失败",
     attachImage: "附加图片",
     sheetTitle: "添加到备忘",
     sheetPlaceholder: "备忘内容",

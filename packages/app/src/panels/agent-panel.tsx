@@ -1308,7 +1308,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
     (text: string) => {
       const submitNow = composerSubmitNowRef.current;
       if (!submitNow) return;
-      submitQuickReply({
+      void submitQuickReply({
         currentText: textSource.getSnapshot(),
         replyText: text,
         submitNow,

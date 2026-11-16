@@ -549,7 +549,7 @@ export function WorkspaceDraftAgentTab({
     (text: string) => {
       const submitNow = composerSubmitNowRef.current;
       if (!submitNow) return;
-      submitQuickReply({
+      void submitQuickReply({
         currentText: draftInput.textSource.getSnapshot(),
         replyText: text,
         submitNow,
