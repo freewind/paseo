@@ -22,19 +22,15 @@ export async function memoImagesToAttachments(
   if (!images || images.length === 0) {
     return [];
   }
-  const persisted = await Promise.all(
-    images.map(async (image) => {
-      try {
-        return await persistAttachmentFromBytes({
-          bytes: base64ToUint8Array(image.data),
-          mimeType: image.mimeType,
-        });
-      } catch {
-        return null;
-      }
-    }),
+  // 任何一张恢复失败都让调用方知道，不能悄悄少带图片还把备忘标成完成。
+  return Promise.all(
+    images.map((image) =>
+      persistAttachmentFromBytes({
+        bytes: base64ToUint8Array(image.data),
+        mimeType: image.mimeType,
+      }),
+    ),
   );
-  return persisted.filter((metadata): metadata is AttachmentMetadata => metadata !== null);
 }
 
 /** 把备忘文字追加到草稿，不改写已有内容：不 trim、保留换行。 */

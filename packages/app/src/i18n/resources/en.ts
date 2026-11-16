@@ -181,6 +181,7 @@ export const en = {
     addedToMemo: "Added to memos",
     failedToAdd: "Failed to add to memos",
     failedToLoad: "Failed to load memos",
+    failedToRestoreImages: "Failed to restore memo images",
     attachImage: "Attach image",
     sheetTitle: "Add to memos",
     sheetPlaceholder: "Memo",

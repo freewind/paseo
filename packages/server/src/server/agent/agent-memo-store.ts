@@ -123,9 +123,10 @@ export class AgentMemoStore {
 
   /** 会话被彻底删除时连文件一起删，免得留下没人认领的备忘。 */
   async remove(agentId: string): Promise<void> {
-    this.cache.delete(agentId);
     await this.enqueue(agentId, async () => {
       await fs.rm(this.filePath(agentId), { force: true });
+      // 排队中的写入完成后才能清缓存，否则它会把旧列表重新放回来。
+      this.cache.delete(agentId);
     });
   }
 
@@ -133,7 +134,10 @@ export class AgentMemoStore {
   private enqueue<T>(agentId: string, operation: () => Promise<T>): Promise<T> {
     const previous = this.queues.get(agentId) ?? Promise.resolve();
     const run = previous.then(operation, operation);
-    this.queues.set(agentId, run.catch(() => undefined));
+    this.queues.set(
+      agentId,
+      run.catch(() => undefined),
+    );
     return run;
   }
 
@@ -147,16 +151,19 @@ export class AgentMemoStore {
     let raw: string;
     try {
       raw = await fs.readFile(this.filePath(agentId), "utf8");
-    } catch {
-      this.cache.set(agentId, EMPTY_FILE);
-      return EMPTY_FILE;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        this.cache.set(agentId, EMPTY_FILE);
+        return EMPTY_FILE;
+      }
+      throw error;
     }
     let parsed: StoredAgentMemos;
     try {
       parsed = AGENT_MEMOS_SCHEMA.parse(JSON.parse(raw));
     } catch (error) {
       this.logger.error({ err: error, agentId }, "Failed to parse agent memos file");
-      parsed = EMPTY_FILE;
+      throw error;
     }
     this.cache.set(agentId, parsed);
     return parsed;

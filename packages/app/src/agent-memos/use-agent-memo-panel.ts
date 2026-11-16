@@ -7,6 +7,7 @@ import { getHostRuntimeStore } from "@/runtime/host-runtime";
 import { useHostFeature } from "@/runtime/host-features";
 import { useSessionStore } from "@/stores/session-store";
 import { appendMemoText, memoImagesToAttachments } from "./memo-append";
+import type { AttachmentMetadata } from "@/attachments/types";
 import { useAgentMemos } from "./use-agent-memos";
 
 interface UseAgentMemoPanelInput {
@@ -46,7 +47,13 @@ export function useAgentMemoPanel({
     async (entry: AgentMemo) => {
       const draftText = agentInputDraft.textSource.getSnapshot();
       agentInputDraft.replaceText(appendMemoText(draftText, entry.text));
-      const metadata = await memoImagesToAttachments(entry.images).catch(() => []);
+      let metadata: AttachmentMetadata[];
+      try {
+        metadata = await memoImagesToAttachments(entry.images);
+      } catch {
+        toastApi.error(t("agentMemos.failedToRestoreImages"));
+        return;
+      }
       if (metadata.length > 0) {
         const imageAttachments = metadata.map((item) => ({
           kind: "image" as const,
@@ -58,7 +65,7 @@ export function useAgentMemoPanel({
         void markMemoCompleted(entry.id).catch(() => undefined);
       }
     },
-    [agentInputDraft, markMemoCompleted],
+    [agentInputDraft, markMemoCompleted, t, toastApi],
   );
 
   const addSelectionToMemo = useCallback(

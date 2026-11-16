@@ -9,6 +9,7 @@ import { searchTimeline } from "./agent/chat-search/index.js";
 import type { BrowserToolsBroker } from "./browser-tools/broker.js";
 import { BrowserAutomationHostCapabilitySchema } from "@getpaseo/protocol/browser-automation/capabilities";
 import type {
+  AgentMemo,
   SessionEventSubscription,
   UsageReportEntry,
   ProviderUsage,
@@ -7979,14 +7980,21 @@ export class Session {
     const project = agent.workspaceId
       ? await this.buildProjectPlacementForWorkspaceId(agent.workspaceId)
       : null;
+    let memos: AgentMemo[] | undefined;
+    let memoError: string | null = null;
+    try {
+      memos = await this.agentMemoStore.list(resolved.agentId);
+    } catch (error) {
+      memoError = getErrorMessage(error);
+    }
     this.emit({
       type: "fetch_agent_response",
       payload: {
         requestId,
         agent,
         project,
-        memos: await this.agentMemoStore.list(resolved.agentId),
-        error: null,
+        ...(memos ? { memos } : {}),
+        error: memoError,
       },
     });
   }
@@ -8145,8 +8153,8 @@ export class Session {
           requestId: msg.requestId,
           agentId: msg.agentId,
           memo: null,
-          memos: await this.agentMemoStore.list(msg.agentId),
-          error: error instanceof Error ? error.message : String(error),
+          memos: [],
+          error: getErrorMessage(error),
         },
       });
     }
@@ -8176,8 +8184,8 @@ export class Session {
           agentId: msg.agentId,
           memoId: msg.memoId,
           memo: null,
-          memos: await this.agentMemoStore.list(msg.agentId),
-          error: error instanceof Error ? error.message : String(error),
+          memos: [],
+          error: getErrorMessage(error),
         },
       });
     }
@@ -8207,8 +8215,8 @@ export class Session {
           agentId: msg.agentId,
           memoId: msg.memoId,
           memo: null,
-          memos: await this.agentMemoStore.list(msg.agentId),
-          error: error instanceof Error ? error.message : String(error),
+          memos: [],
+          error: getErrorMessage(error),
         },
       });
     }
@@ -8236,8 +8244,8 @@ export class Session {
           requestId: msg.requestId,
           agentId: msg.agentId,
           memoId: msg.memoId,
-          memos: await this.agentMemoStore.list(msg.agentId),
-          error: error instanceof Error ? error.message : String(error),
+          memos: [],
+          error: getErrorMessage(error),
         },
       });
     }
