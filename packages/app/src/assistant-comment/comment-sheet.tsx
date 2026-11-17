@@ -7,6 +7,7 @@ import {
 } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { useTranslation } from "react-i18next";
+import { CopyTextButton } from "@/components/copy-text-button";
 import { Button } from "@/components/ui/button";
 import { AdaptiveModalSheet, type SheetHeader } from "@/components/adaptive-modal-sheet";
 import { SheetAwareTextInput } from "@/components/ui/text-input/sheet-aware";
@@ -89,6 +90,9 @@ export function CommentSheet({
   }, [onCancel]);
 
   const trimmed = text.trim();
+  const quoteText = retained?.blockText ?? "";
+  const getQuoteText = useCallback(() => quoteText, [quoteText]);
+
   // 备忘可以只保存引文；评论没有正文就没有可附加的内容。
   const canSubmit = isMemo || trimmed.length > 0;
 
@@ -155,9 +159,16 @@ export function CommentSheet({
       {retained ? (
         <View style={styles.container}>
           <View style={styles.quote}>
-            <Text style={styles.quoteLabel} numberOfLines={1}>
-              {t("comment.sheet.quote")}
-            </Text>
+            <View style={styles.quoteHeader}>
+              <Text style={styles.quoteLabel} numberOfLines={1}>
+                {t("comment.sheet.quote")}
+              </Text>
+              <CopyTextButton
+                getText={getQuoteText}
+                size={14}
+                testID="assistant-comment-quote-copy"
+              />
+            </View>
             <Text style={styles.quoteText} numberOfLines={4}>
               {retained.blockText}
             </Text>
@@ -190,9 +201,15 @@ const styles = StyleSheet.create((theme) => ({
     borderLeftColor: theme.colors.border,
     paddingLeft: theme.spacing[3],
   },
+  quoteHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   quoteLabel: {
     color: theme.colors.foregroundMuted,
     fontSize: theme.fontSize.sm,
+    flexShrink: 1,
   },
   quoteText: {
     color: theme.colors.foregroundMuted,
