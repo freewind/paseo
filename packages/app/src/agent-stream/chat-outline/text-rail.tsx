@@ -1,16 +1,16 @@
 import { memo, useCallback, useMemo, useState, useSyncExternalStore } from "react";
-import { Pressable, View, useWindowDimensions } from "react-native";
+import { View } from "react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { useTranslation } from "react-i18next";
-import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { List } from "lucide-react-native";
 import { SheetHeaderView } from "@/components/adaptive-modal-sheet";
+import { PressHighlight } from "@/components/ui/press-highlight";
 import {
   IsolatedBottomSheetModal,
   useIsolatedBottomSheetVisibility,
 } from "@/components/ui/isolated-bottom-sheet-modal";
 import type { ActivePromptSource, ChatOutlinePrompt } from "./model";
-import { ChatOutlineTextList } from "./text-rail-list";
+import { ChatOutlineTextTimeline } from "./text-timeline";
 
 export interface ChatOutlineTextRailProps {
   prompts: readonly ChatOutlinePrompt[];
@@ -45,9 +45,9 @@ export const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
   agentId,
 }: ChatOutlineTextRailProps) {
   const { t } = useTranslation();
-  const { width, height } = useWindowDimensions();
   const activeSeq = useSyncExternalStore(activePrompt.subscribe, activePrompt.getActiveSeq);
   const [open, setOpen] = useState(false);
+  const handleOpen = useCallback(() => setOpen(true), []);
   const handleClose = useCallback(() => setOpen(false), []);
   const { sheetRef, handleSheetChange, handleSheetDismiss } = useIsolatedBottomSheetVisibility({
     visible: open,
@@ -66,44 +66,45 @@ export const ChatOutlineTextRail = memo(function ChatOutlineTextRail({
 
   return (
     <>
-      <Pressable
+      <PressHighlight
         style={styles.trigger}
-        onPress={() => setOpen(true)}
+        onPress={handleOpen}
         accessibilityRole="button"
         accessibilityLabel={t("agentStream.chatOutline.open")}
         testID="chat-outline-open"
       >
         <ThemedListIcon size={18} />
-      </Pressable>
+      </PressHighlight>
       <ThemedBottomSheetModal
         ref={sheetRef}
         contextBridge={null}
-        enableDynamicSizing
-        maxDynamicContentSize={height * 0.6}
+        enableDynamicSizing={false}
+        snapPoints={["60%"]}
         onChange={handleSheetChange}
         onDismiss={handleSheetDismiss}
         backdropOpacity={0.45}
         enablePanDownToClose
       >
-        <BottomSheetScrollView showsVerticalScrollIndicator={false}>
-          <View role="dialog" aria-label={header.title}>
-            <SheetHeaderView header={header} onClose={handleClose} />
-            <ChatOutlineTextList
-              prompts={prompts}
-              activeSeq={activeSeq}
-              width={width - SHEET_PADDING * 2}
-              agentId={agentId}
-              onJumpToPrompt={handleJump}
-              embedded
-            />
-          </View>
-        </BottomSheetScrollView>
+        <View style={styles.sheetBody} role="dialog" aria-label={header.title}>
+          <SheetHeaderView header={header} onClose={handleClose} />
+          <ChatOutlineTextTimeline
+            key={agentId}
+            prompts={prompts}
+            activeSeq={activeSeq}
+            onSelectPrompt={handleJump}
+          />
+        </View>
       </ThemedBottomSheetModal>
     </>
   );
 });
 
 const styles = StyleSheet.create((theme) => ({
+  sheetBody: {
+    flex: 1,
+    minHeight: 0,
+    paddingHorizontal: SHEET_PADDING,
+  },
   // 贴在输入区上方右侧，避开面板底部的其它按钮。
   trigger: {
     position: "absolute",

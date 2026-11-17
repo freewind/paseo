@@ -79,7 +79,7 @@ import { type AgentStreamRenderModel, buildAgentStreamRenderModel } from "./mode
 import { resolveStreamRenderStrategy } from "./strategy-resolver";
 import { type StreamSegmentRenderers, type StreamViewportHandle } from "./strategy";
 import { ChatOutlineTextRail } from "@/agent-stream/chat-outline/text-rail";
-import { ChatOutlineTextList } from "@/agent-stream/chat-outline/text-rail-list";
+import { ChatOutlineTextTimeline } from "@/agent-stream/chat-outline/text-timeline";
 import { SideRailSheet } from "@/components/side-rail-sheet";
 import { ChatOutlineRail } from "@/agent-stream/chat-outline/rail";
 import { RightGutter } from "@/components/right-gutter";
@@ -378,7 +378,6 @@ const ChatOutlineSheet = memo(function ChatOutlineSheet({
       accessibilityLabel={t("agentStream.chatOutline.title")}
       visible={visible}
       onClose={onClose}
-      scrollable
     >
       {visible ? (
         <ChatOutlineSheetList
@@ -407,15 +406,11 @@ function ChatOutlineSheetList({
     activePrompt.getActiveSeq,
   );
   return (
-    <ChatOutlineTextList
+    <ChatOutlineTextTimeline
       key={agentId}
       prompts={prompts}
       activeSeq={activeSeq}
-      width="100%"
-      agentId={agentId}
-      onJumpToPrompt={onJumpToPrompt}
-      embedded
-      collapsible={false}
+      onSelectPrompt={onJumpToPrompt}
     />
   );
 }

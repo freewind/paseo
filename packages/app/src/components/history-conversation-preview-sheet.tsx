@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useRef, type ReactNode } from "react";
+import { useCallback, useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Text, View } from "react-native";
 import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { AdaptiveModalSheet, type SheetHeader } from "@/components/adaptive-modal-sheet";
-import { MarkdownRenderer } from "@/components/markdown/renderer";
+import { ChatOutlineTextTimeline } from "@/agent-stream/chat-outline/text-timeline";
+import type { ChatOutlinePrompt } from "@/agent-stream/chat-outline/model";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -11,7 +12,6 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { useFetchQuery } from "@/data/query";
 import { useSessionStore } from "@/stores/session-store";
 import type { Theme } from "@/styles/theme";
-import { buildConversationMarkdown } from "@/timeline/conversation-markdown";
 
 const HISTORY_PREVIEW_QUERY_ROOT = ["history-conversation-preview"] as const;
 const ThemedLoadingSpinner = withUnistyles(LoadingSpinner);
@@ -29,7 +29,7 @@ export interface HistoryConversationPreviewSheetProps {
 }
 
 interface HistoryConversationPreview {
-  markdown: string;
+  prompts: ChatOutlinePrompt[];
   /** 会话里用户消息的条数；标题用它提示这条会话的体量。 */
   userMessageCount: number;
 }
@@ -49,26 +49,22 @@ export function HistoryConversationPreviewSheet({
 }: HistoryConversationPreviewSheetProps) {
   const { t } = useTranslation();
   const client = useSessionStore((state) => state.sessions[serverId]?.client ?? null);
-  // The query key carries the agent, not the title, so read the title at call time instead of
-  // re-fetching when the row's title changes underneath an open sheet.
-  const agentTitleRef = useRef(agentTitle);
-  agentTitleRef.current = agentTitle;
-
   const previewQuery = useFetchQuery({
     queryKey: [...HISTORY_PREVIEW_QUERY_ROOT, serverId, agentId],
     queryFn: async (): Promise<HistoryConversationPreview> => {
-      if (!agentId) return { markdown: "", userMessageCount: 0 };
+      if (!agentId) return { prompts: [], userMessageCount: 0 };
       if (!client) throw new Error(t("common.errors.daemonClientUnavailable"));
       const payload = await client.exportAgentConversation(agentId);
-      return {
-        markdown: buildConversationMarkdown(
-          payload.entries.map((entry) => entry.item),
-          payload.tasks,
-          { agentTitle: agentTitleRef.current },
-        ),
-        userMessageCount: payload.entries.filter((entry) => entry.item.type === "user_message")
-          .length,
-      };
+      const prompts: ChatOutlinePrompt[] = [];
+      for (const entry of payload.entries) {
+        if (entry.item.type !== "user_message") continue;
+        prompts.push({
+          seq: prompts.length + 1,
+          timestamp: entry.timestamp,
+          preview: entry.item.text,
+        });
+      }
+      return { prompts, userMessageCount: prompts.length };
     },
     enabled: visible && agentId !== null && client !== null,
     dataShape: "value",
@@ -135,10 +131,14 @@ export function HistoryConversationPreviewSheet({
         </Alert>
       </View>
     );
-  } else if (previewQuery.data?.markdown) {
+  } else if (previewQuery.data && previewQuery.data.prompts.length > 0) {
     content = (
       <View style={styles.body}>
-        <MarkdownRenderer text={previewQuery.data.markdown} />
+        <ChatOutlineTextTimeline
+          key={agentId ?? ""}
+          prompts={previewQuery.data.prompts}
+          initialScroll="bottom"
+        />
       </View>
     );
   } else {
@@ -154,8 +154,9 @@ export function HistoryConversationPreviewSheet({
       header={header}
       visible={visible}
       onClose={onClose}
-      // 正文是整段会话的 Markdown，520 宽一行只放得下十来个字；放宽到 860 才像在读文档。
-      desktopMaxWidth={860}
+      scrollable={false}
+      desktopHeight="80%"
+      desktopMaxWidth={640}
       testID="history-conversation-preview"
     >
       {content}
@@ -165,6 +166,8 @@ export function HistoryConversationPreviewSheet({
 
 const styles = StyleSheet.create((theme) => ({
   body: {
+    flex: 1,
+    minHeight: 0,
     paddingHorizontal: theme.spacing[4],
     paddingVertical: theme.spacing[4],
   },
