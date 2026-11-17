@@ -67,6 +67,7 @@ import {
   asSessionLogger,
   asAgentManager,
   asAgentStorage,
+  asAgentMemoStore,
   asDownloadTokenStore,
   asPushNotifications,
   asScheduleService,
@@ -660,6 +661,7 @@ function createSessionForWorkspaceTests(
     new Session({
       workspaceRuntimeStore: options.workspaceRuntimeStore ?? createWorkspaceRuntimeStore(),
       messageReceipts: createMessageReceiptsStub(),
+      agentMemoStore: asAgentMemoStore(),
       agentMessages: createAgentMessageDeliveryStub(),
       creationService: createTestCreationService(),
       clientId: "test-client",
@@ -1024,6 +1026,7 @@ test("create_agent_request keeps requested child cwd when grouped under an exist
       new Session({
         workspaceRuntimeStore: createWorkspaceRuntimeStore(),
         messageReceipts: createMessageReceiptsStub(),
+        agentMemoStore: asAgentMemoStore(),
         agentMessages: createAgentMessageDeliveryStub(),
         creationService: createTestCreationService(),
         clientId: "test-client",
@@ -1181,6 +1184,7 @@ test("create_agent_request launches from an exact subdirectory in a created work
     const session = new Session({
       workspaceRuntimeStore: createWorkspaceRuntimeStore(),
       messageReceipts: createMessageReceiptsStub(),
+      agentMemoStore: asAgentMemoStore(),
       agentMessages: createAgentMessageDeliveryStub(),
       creationService: createTestCreationService(),
       clientId: "test-client",
@@ -1322,6 +1326,7 @@ test("create_agent_request does not title an existing workspace from the agent p
       new Session({
         workspaceRuntimeStore: createWorkspaceRuntimeStore(),
         messageReceipts: createMessageReceiptsStub(),
+        agentMemoStore: asAgentMemoStore(),
         agentMessages: createAgentMessageDeliveryStub(),
         creationService: createTestCreationService(),
         clientId: "test-client",
@@ -1593,6 +1598,7 @@ test("archive emits an authoritative agent_update upsert for subscribed clients"
     new Session({
       workspaceRuntimeStore: createWorkspaceRuntimeStore(),
       messageReceipts: createMessageReceiptsStub(),
+      agentMemoStore: asAgentMemoStore(),
       agentMessages: createAgentMessageDeliveryStub(),
       creationService: createTestCreationService(),
       clientId: "test-client",
@@ -2079,6 +2085,7 @@ test("close_items_request archives agents and kills terminals in one batch", asy
     new Session({
       workspaceRuntimeStore: createWorkspaceRuntimeStore(),
       messageReceipts: createMessageReceiptsStub(),
+      agentMemoStore: asAgentMemoStore(),
       agentMessages: createAgentMessageDeliveryStub(),
       creationService: createTestCreationService(),
       clientId: "test-client",
@@ -2251,6 +2258,7 @@ test("close_items_request archives stored agents that are not currently loaded",
     new Session({
       workspaceRuntimeStore: createWorkspaceRuntimeStore(),
       messageReceipts: createMessageReceiptsStub(),
+      agentMemoStore: asAgentMemoStore(),
       agentMessages: createAgentMessageDeliveryStub(),
       creationService: createTestCreationService(),
       clientId: "test-client",
@@ -2414,6 +2422,7 @@ test("close_items_request continues after an archive failure", async () => {
     new Session({
       workspaceRuntimeStore: createWorkspaceRuntimeStore(),
       messageReceipts: createMessageReceiptsStub(),
+      agentMemoStore: asAgentMemoStore(),
       agentMessages: createAgentMessageDeliveryStub(),
       creationService: createTestCreationService(),
       clientId: "test-client",
@@ -3599,6 +3608,7 @@ test("fetch_agent_request still resolves archived historical agents", async () =
           projectKey: "proj-history-detail",
         }),
         error: null,
+        memos: [],
       },
     },
   ]);
@@ -3747,6 +3757,7 @@ test("workspace update stream keeps persisted workspace visible after agents sto
     new Session({
       workspaceRuntimeStore: createWorkspaceRuntimeStore(),
       messageReceipts: createMessageReceiptsStub(),
+      agentMemoStore: asAgentMemoStore(),
       agentMessages: createAgentMessageDeliveryStub(),
       creationService: createTestCreationService(),
       clientId: "test-client",

@@ -51,6 +51,13 @@ export function asAgentStorage(stub: {
   });
 }
 
+export function asAgentMemoStore(): SessionOptions["agentMemoStore"] {
+  return createStub<SessionOptions["agentMemoStore"]>({
+    initialize: async () => {},
+    list: async () => [],
+  });
+}
+
 export function asDownloadTokenStore(): SessionOptions["downloadTokenStore"] {
   return createStub<SessionOptions["downloadTokenStore"]>({});
 }
