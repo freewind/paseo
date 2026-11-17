@@ -23,6 +23,7 @@ export function useAggregatedAgents(options?: {
   includeArchived?: boolean;
   demand?: boolean;
 }): AggregatedAgentsResult {
+  "use no memo";
   const daemons = useHosts();
   const runtime = getHostRuntimeStore();
   const includeArchived = options?.includeArchived ?? false;

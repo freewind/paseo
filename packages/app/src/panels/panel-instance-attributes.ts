@@ -65,6 +65,7 @@ export function useModifiedPanelTabIds(input: {
   workspaceId: string;
   tabIds: string[];
 }): Set<string> {
+  "use no memo";
   const revision = useSyncExternalStore(
     useCallback((listener: () => void) => {
       allListeners.add(listener);

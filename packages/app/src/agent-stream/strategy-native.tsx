@@ -72,6 +72,7 @@ function keyExtractor(item: { id: string }): string {
 }
 
 function NativeStreamViewport(props: StreamRenderInput & { strategy: StreamStrategy }) {
+  "use no memo";
   const {
     agentId,
     segments,

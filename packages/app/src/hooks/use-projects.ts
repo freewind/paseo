@@ -134,6 +134,7 @@ function useProjectHostRuntimeStates(
   serverIds: readonly string[],
   enabled: boolean,
 ): ProjectHostRuntimeState[] {
+  "use no memo";
   const runtime = getHostRuntimeStore();
   const previousStatesRef = useRef<ProjectHostRuntimeState[]>([]);
   const subscribe = useCallback(

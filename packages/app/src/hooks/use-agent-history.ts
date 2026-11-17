@@ -260,6 +260,7 @@ export function useAgentHistory(options: {
   projectKeys?: readonly string[];
   includeStats?: boolean;
 }): AgentHistoryResult {
+  "use no memo";
   const { t } = useTranslation();
   const daemons = useHosts();
   const runtime = getHostRuntimeStore();

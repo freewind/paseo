@@ -49,6 +49,7 @@ function deriveMountedTabLru(input: DeriveMountedTabLruInput): string[] {
 }
 
 export function useMountedTabSet(input: UseMountedTabSetInput): UseMountedTabSetResult {
+  "use no memo";
   const { activeTabId, allTabIds, cap } = input;
   const allTabIdsKey = allTabIds.join("\u0000");
   const availableTabIds = useMemo(() => {
