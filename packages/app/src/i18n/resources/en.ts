@@ -386,6 +386,13 @@ export const en = {
     noMatches: "No sessions match",
     tooManyMatches: "Too many matches — narrow your search",
     hostLoadFailed: "{{host}}: Could not load history",
+    noHosts: "No hosts connected yet",
+    hostStatus: {
+      item: "{{host}} ({{status}})",
+      connecting: "connecting",
+      offline: "offline",
+      error: "connection failed",
+    },
     searchPlaceholder: "Search history",
     actions: {
       loadMore: "Load more",
@@ -412,7 +419,7 @@ export const en = {
     badges: {
       archived: "Archived",
       subagent: "Subagent",
-      userMessages: "User messages: {{count}}",
+      userMessages: "{{count}} msg",
       pending: "{{count}} pending",
       attention: "Attention",
     },

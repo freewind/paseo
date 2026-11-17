@@ -3055,7 +3055,7 @@ test("fetch_agent_history_request attaches stats only when the request asks", as
   const withStats = filterByType(emitted, "fetch_agent_history_response")[0];
   expect(withStats.payload.entries[0]?.stats).toEqual({
     userMessageCount: 2,
-    lastUserMessage: "second",
+    recentUserMessages: ["first", "second"],
   });
 
   emitted.length = 0;

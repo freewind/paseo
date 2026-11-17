@@ -79,7 +79,9 @@ const STORED_AGENT_SCHEMA = z.object({
   historyStats: z
     .object({
       userMessageCount: z.number().int().nonnegative(),
-      lastUserMessage: z.string().nullable(),
+      // 归档定格的那几句原话跟着协议走。改名之前的记录里没有这个字段，读出来就是
+      // 空数组：条数还在，但拿不到可显示的句子。
+      recentUserMessages: z.array(z.string()).default([]),
     })
     .optional(),
   owner: AgentOwnerSchema.optional(),

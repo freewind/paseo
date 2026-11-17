@@ -7,7 +7,12 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import type { AggregatedAgent } from "@/hooks/use-aggregated-agents";
-import { getHostRuntimeStore, isHostRuntimeConnected, useHosts } from "@/runtime/host-runtime";
+import {
+  getHostRuntimeStore,
+  isHostRuntimeConnected,
+  type HostRuntimeConnectionStatus,
+  useHosts,
+} from "@/runtime/host-runtime";
 import { useSessionStore } from "@/stores/session-store";
 import { buildAgentDirectoryState } from "@/utils/agent-directory-sync";
 import { agentHistoryQueryKey, allAgentHistoryQueryKey } from "./agent-history-query-key";
@@ -34,6 +39,10 @@ export interface AgentHistoryResult {
   isSearchTruncated: boolean;
   /** Hosts that failed while others succeeded. The list still renders. */
   hostErrors: AgentHistoryHostError[];
+  /** 每台已登记主机的连接状态，含已连上的；界面只展示未连上的那几台。 */
+  hostStatuses: AgentHistoryHostStatus[];
+  /** 至少一台主机能问；没它就不能断定“没有会话”。 */
+  hasReachableHost: boolean;
   refreshAll: () => Promise<void>;
   loadMore: () => void;
 }
@@ -61,6 +70,13 @@ export interface AgentHistoryHost {
   serverId: string;
   serverLabel: string;
   client: AgentHistoryClient;
+}
+
+/** 一台已登记主机的连接状态，界面靠它把「还在连」和「连不上」分开写。 */
+export interface AgentHistoryHostStatus {
+  serverId: string;
+  serverName: string;
+  status: HostRuntimeConnectionStatus;
 }
 
 interface AgentHistoryBatchPage {
@@ -261,25 +277,31 @@ export function useAgentHistory(options: {
   // one whose sessions will be missing from the answer. Both come out of here,
   // because dropping the unreachable ones silently is what lets the list — and
   // worse, "No sessions match" — overstate what was actually searched.
-  const { targetHosts, unreachableHosts } = useMemo(() => {
+  const { targetHosts, unreachableHosts, hostStatuses } = useMemo(() => {
     void runtimeVersion;
     const serverLabelById = new Map(daemons.map((daemon) => [daemon.serverId, daemon.label]));
     const serverIds = serverId ? [serverId] : daemons.map((daemon) => daemon.serverId);
     const hosts: AgentHistoryHost[] = [];
     const unreachable: AgentHistoryHostError[] = [];
+    const statuses: AgentHistoryHostStatus[] = [];
 
     for (const targetServerId of serverIds) {
       const snapshot = runtime.getSnapshot(targetServerId);
       const client = runtime.getClient(targetServerId);
       const serverName = serverLabelById.get(targetServerId) ?? targetServerId;
+      const status = snapshot?.connectionStatus ?? "connecting";
+      statuses.push({ serverId: targetServerId, serverName, status });
       if (!client || !isHostRuntimeConnected(snapshot)) {
-        unreachable.push({ serverId: targetServerId, serverName });
+        // 「连接中」还没结论，不是一台失败的主机；它只属于“正在连”那一行。
+        if (status !== "connecting") {
+          unreachable.push({ serverId: targetServerId, serverName });
+        }
         continue;
       }
       hosts.push({ serverId: targetServerId, serverLabel: serverName, client });
     }
 
-    return { targetHosts: hosts, unreachableHosts: unreachable };
+    return { targetHosts: hosts, unreachableHosts: unreachable, hostStatuses: statuses };
   }, [daemons, runtime, runtimeVersion, serverId]);
   const targetServerIds = useMemo(() => targetHosts.map((host) => host.serverId), [targetHosts]);
   // One gate, checked before the field is offered: a fleet where any host
@@ -402,7 +424,12 @@ export function useAgentHistory(options: {
   const isRevalidating = isFetching && !isFetchingNextPage && agents.length > 0;
   const isSearchTruncated = Boolean(search && data?.pages.some((page) => page.isSearchTruncated));
   const hostErrors = useMemo(
-    () => collectAgentHistoryHostErrors({ pages: data?.pages ?? [], unreachableHosts }),
+    // 连不上的主机已经由顶部状态行点名（带具体状态），这里只留「连上了但取数失败」的主机，
+    // 免得同一台主机在两处各说一遍。
+    () =>
+      collectAgentHistoryHostErrors({ pages: data?.pages ?? [], unreachableHosts }).filter(
+        (error) => !unreachableHosts.some((host) => host.serverId === error.serverId),
+      ),
     [data?.pages, unreachableHosts],
   );
 
@@ -417,6 +444,8 @@ export function useAgentHistory(options: {
     isSearchSupported,
     isSearchTruncated,
     hostErrors,
+    hostStatuses,
+    hasReachableHost: targetHosts.length > 0,
     refreshAll,
     loadMore,
   };

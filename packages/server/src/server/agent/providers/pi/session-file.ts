@@ -2,6 +2,7 @@ import { createReadStream } from "node:fs";
 import { createInterface } from "node:readline";
 
 import { projectAgentMessages } from "../../agent-messages/envelope.js";
+import { pushRecentUserMessage } from "../../history-stats.js";
 import { getUserMessageText } from "./history-mapper.js";
 
 export interface PiSessionEntry {
@@ -73,12 +74,12 @@ export async function readPiSessionFile(
 
 export async function readPiSessionHistoryStats(sessionFile: string): Promise<{
   userMessageCount: number;
-  lastUserMessage: string | null;
+  recentUserMessages: string[];
 }> {
   const { entries, leafId } = await readPiSessionFile(sessionFile, { failOnInvalidEntry: true });
   const branch = piSessionEntryBranch(entries, leafId);
   let userMessageCount = 0;
-  let lastUserMessage: string | null = null;
+  const recentUserMessages: string[] = [];
 
   for (const entry of branch) {
     if (entry.type !== "message" || entry.message?.role !== "user") continue;
@@ -88,11 +89,11 @@ export async function readPiSessionHistoryStats(sessionFile: string): Promise<{
     for (const item of items) {
       if (item.type !== "user_message") continue;
       userMessageCount += 1;
-      lastUserMessage = item.text;
+      pushRecentUserMessage(recentUserMessages, item.text);
     }
   }
 
-  return { userMessageCount, lastUserMessage };
+  return { userMessageCount, recentUserMessages };
 }
 
 export function piSessionEntryChainTo(

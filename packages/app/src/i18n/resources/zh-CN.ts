@@ -386,6 +386,13 @@ export const zhCN: TranslationResources = {
     noMatches: "没有匹配的会话",
     tooManyMatches: "匹配过多 — 请缩小搜索范围",
     hostLoadFailed: "{{host}}：无法加载历史",
+    noHosts: "还没有连接主机",
+    hostStatus: {
+      item: "{{host}}（{{status}}）",
+      connecting: "连接中",
+      offline: "离线",
+      error: "连接失败",
+    },
     searchPlaceholder: "搜索历史",
     actions: {
       loadMore: "加载更多",

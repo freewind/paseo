@@ -86,7 +86,7 @@ function historyEntry(input: {
   title?: string | null;
   archivedAt?: string | null;
   searchScore?: number;
-  stats?: { userMessageCount: number; lastUserMessage: string | null };
+  stats?: { userMessageCount: number; recentUserMessages: string[] };
 }): FetchAgentHistoryEntry {
   return {
     agent: {
@@ -189,7 +189,7 @@ describe("fetchAgentHistoryPage", () => {
             cwd: "/repo",
             updatedAt: "2026-04-02T10:00:00.000Z",
             title: "With stats",
-            stats: { userMessageCount: 7, lastUserMessage: "let us ship it" },
+            stats: { userMessageCount: 7, recentUserMessages: ["let us ship it"] },
           }),
         ],
       }),
@@ -210,7 +210,7 @@ describe("fetchAgentHistoryPage", () => {
     } satisfies FetchAgentHistoryOptions);
     expect(page.agents[0]?.stats).toEqual({
       userMessageCount: 7,
-      lastUserMessage: "let us ship it",
+      recentUserMessages: ["let us ship it"],
     });
   });
 

@@ -3,7 +3,7 @@ import { View, Text } from "react-native";
 import { useIsFocused } from "expo-router/react-navigation";
 import { router } from "expo-router";
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
-import { ChevronLeft, Import } from "lucide-react-native";
+import { ChevronLeft, Import, TriangleAlert, WifiOff } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { MenuHeader } from "@/components/headers/menu-header";
@@ -26,7 +26,7 @@ import { ALL_HOSTS_OPTION_ID } from "@/components/hosts/host-picker";
 import { type AgentHistoryHostError, useAgentHistory } from "@/hooks/use-agent-history";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useImportSession } from "@/hooks/use-import-session";
-import { useHosts } from "@/runtime/host-runtime";
+import { type HostRuntimeConnectionStatus, useHosts } from "@/runtime/host-runtime";
 import { buildOpenProjectRoute } from "@/utils/host-routes";
 import { useWorkspaceStructure } from "@/stores/session-store-hooks";
 
@@ -58,6 +58,19 @@ function SessionHostErrorsBanner({
       </View>
     </View>
   );
+}
+
+/** 连接中只给转圈，不写字；其余状态图标负责扫一眼，文字负责不出歧义。 */
+function HostStatusMark({
+  status,
+  color,
+}: {
+  status: HostRuntimeConnectionStatus;
+  color: string;
+}): ReactElement {
+  if (status === "connecting") return <LoadingSpinner size="small" color={color} />;
+  if (status === "offline") return <WifiOff size={12} color={color} />;
+  return <TriangleAlert size={12} color={color} />;
 }
 
 /** An empty list means something different once a query is narrowing it. */
@@ -133,6 +146,8 @@ function SessionsScreenContent() {
     isSearchSupported,
     isSearchTruncated,
     hostErrors,
+    hostStatuses,
+    hasReachableHost,
     loadMore,
     refreshAll,
   } = useAgentHistory({
@@ -220,6 +235,17 @@ function SessionsScreenContent() {
   const showModelFilter = modelOptions.length > 2;
   const showFilterRow = showHostFilter || showProjectFilter || showModelFilter || isSearchSupported;
   const showLoadError = isError && agents.length === 0;
+  // 状态行只讲连接：“连接中”还没结论，不叫失败。
+  const nonOnlineHosts = hostStatuses.filter((host) => host.status !== "online");
+  const connectingHosts = nonOnlineHosts.filter((host) => host.status === "connecting");
+  const isEmptyList = visibleAgents.length === 0;
+  // 有人在连（或者首次取数还没回来）就先转圈，不下结论。
+  const showSpinner =
+    !showLoadError && isEmptyList && (isInitialLoad || connectingHosts.length > 0);
+  // 只有“至少一台主机能问、问完了、也没任何主机取数失败”才敢说没有会话。
+  const showEmptyState =
+    !showSpinner && !showLoadError && isEmptyList && hasReachableHost && hostErrors.length === 0;
+  const showNoHosts = !showSpinner && !showLoadError && isEmptyList && hostStatuses.length === 0;
 
   const handleSelectProject = useCallback(
     (projectKey: string) => setSelectedProject(projectKey),
@@ -309,13 +335,30 @@ function SessionsScreenContent() {
     <View style={styles.container}>
       <MenuHeader title={t("sessions.title")} />
       {filterRow}
+      {nonOnlineHosts.length > 0 ? (
+        <View style={styles.hostStatusRow} testID="sessions-host-status">
+          {nonOnlineHosts.map((host) => (
+            <View key={host.serverId} style={styles.hostStatusItem}>
+              <HostStatusMark status={host.status} color={theme.colors.foregroundMuted} />
+              <Text style={styles.hostStatusText}>
+                {host.status === "connecting"
+                  ? host.serverName
+                  : t("sessions.hostStatus.item", {
+                      host: host.serverName,
+                      status: t(`sessions.hostStatus.${host.status}`),
+                    })}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
       {hostErrors.length > 0 ? <SessionHostErrorsBanner errors={hostErrors} t={t} /> : null}
-      {isInitialLoad ? (
+      {showSpinner ? (
         <View style={styles.loadingContainer}>
           <LoadingSpinner size="large" color={theme.colors.foregroundMuted} />
         </View>
       ) : null}
-      {!isInitialLoad && showLoadError ? (
+      {!showSpinner && showLoadError ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>Unable to load sessions</Text>
           <Button variant="ghost" onPress={handleRefresh}>
@@ -323,7 +366,12 @@ function SessionsScreenContent() {
           </Button>
         </View>
       ) : null}
-      {!isInitialLoad && !showLoadError && visibleAgents.length === 0 ? (
+      {showNoHosts ? (
+        <View style={styles.emptyContainer} testID="sessions-no-hosts">
+          <Text style={styles.emptyText}>{t("sessions.noHosts")}</Text>
+        </View>
+      ) : null}
+      {showEmptyState ? (
         <View style={styles.emptyContainer} testID="sessions-empty">
           <Text style={styles.emptyText}>{emptyText}</Text>
           {isSearching || isModelFiltered ? (
@@ -340,7 +388,7 @@ function SessionsScreenContent() {
           </Button>
         </View>
       ) : null}
-      {!isInitialLoad && !showLoadError && visibleAgents.length > 0 ? (
+      {!showSpinner && !showLoadError && visibleAgents.length > 0 ? (
         <AgentList
           agents={visibleAgents}
           showCheckoutInfo={false}
@@ -412,6 +460,27 @@ const styles = StyleSheet.create((theme) => ({
   },
   errorsBannerText: {
     color: theme.colors.palette.red[300],
+    fontSize: theme.fontSize.sm,
+  },
+  hostStatusRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    columnGap: theme.spacing[3],
+    rowGap: theme.spacing[1],
+    paddingHorizontal: {
+      xs: theme.spacing[3],
+      md: theme.spacing[6],
+    },
+    paddingTop: theme.spacing[3],
+  },
+  hostStatusItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing[1],
+  },
+  hostStatusText: {
+    color: theme.colors.foregroundMuted,
     fontSize: theme.fontSize.sm,
   },
 }));

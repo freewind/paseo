@@ -4510,9 +4510,10 @@ export type AgentSearchMatch = z.infer<typeof AgentSearchMatchSchema>;
  */
 export const AgentHistoryStatsSchema = z.object({
   userMessageCount: z.number().int().nonnegative(),
-  // The daemon never truncates: the list decides how much of it to show. The
-  // timestamp is not repeated here, `agent.lastUserMessageAt` already carries it.
-  lastUserMessage: z.string().nullable(),
+  // Oldest first, at most five entries. The daemon neither filters nor truncates: which
+  // of them is worth showing is the list's call. The timestamp is not repeated here,
+  // `agent.lastUserMessageAt` already carries it.
+  recentUserMessages: z.array(z.string()),
 });
 
 export type AgentHistoryStats = z.infer<typeof AgentHistoryStatsSchema>;

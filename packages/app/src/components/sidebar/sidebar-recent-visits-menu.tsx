@@ -7,7 +7,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuHint,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { MenuTriggerState } from "@/components/ui/menu";
@@ -23,6 +22,8 @@ import { useCompactTimeAgo } from "@/hooks/use-time-ago";
 import { navigationHistoryStore, type RecentAgentVisit } from "@/stores/navigation-history-store";
 import { navigateToAgent } from "@/utils/navigate-to-agent";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { SidebarRecentVisitRow } from "@/components/sidebar/sidebar-recent-visit-row";
+import { selectLastValidUserMessage } from "@/utils/last-valid-user-message";
 import { useWorkspaceLayoutStore } from "@/stores/workspace-layout-store";
 import { density } from "@/styles/density";
 import { ICON_SIZE, type Theme } from "@/styles/theme";
@@ -125,7 +126,7 @@ export function SidebarRecentVisitsMenu({ onBeforeNavigate }: SidebarRecentVisit
         side="bottom"
         align="start"
         offset={8}
-        width={360}
+        width={640}
         maxHeight={360}
         scrollable
         sheetTitle={t("sidebar.recentVisits.trigger")}
@@ -209,48 +210,47 @@ function RecentVisitMenuItem({
     const session = state.sessions[visit.serverId];
     return session?.agents.get(visit.agentId) ?? session?.agentDetails.get(visit.agentId) ?? null;
   });
-  const projectName = agent?.projectPlacement?.projectName;
-  // 项目名与最后一句先定位；条数已作为徽章展示在标题行尾部。
-  const description = [projectName, stats?.lastUserMessage ?? null]
-    .filter((part): part is string => typeof part === "string" && part.length > 0)
-    .join(" · ");
+  const projectName = agent?.projectPlacement?.projectName ?? null;
+  const title = agent?.title?.trim() || visit.agentId;
+  // 第三行只放用户自己说的话：扩展提问与太短的句子按三档规则退让，规则见
+  // `utils/last-valid-user-message`。
+  const lastUserMessage = selectLastValidUserMessage(stats?.recentUserMessages ?? []);
   // 归档的会话也允许进入：点击时用 pin 保住标签页，面板呈现归档态与恢复入口。
   // 元数据缺失不等于已归档：主机离线时仍按未归档给出可用的行。
   const isArchived = agent?.archivedAt != null;
   // 只有 Paseo 管理的子 agent 带 parent。provider 内部的子 agent 进不了这张表
   // （它们的目标不是 agent chat），所以没有 parent 的行就是顶层 agent。
   const isSubagent = agent?.parentAgentId != null;
-  const statusBadges = useMemo(
-    () => (
-      <View style={styles.badges}>
-        {stats ? (
-          <StatusBadge
-            label={t("agentList.badges.userMessages", { count: stats.userMessageCount })}
-          />
-        ) : null}
-        {isArchived ? (
-          <StatusBadge
-            label={t("agentList.badges.archived")}
-            variant="muted"
-            leading={archivedBadgeIcon}
-          />
-        ) : null}
-        {isSubagent ? (
-          <Text
-            style={styles.subagentBadge}
-            testID={`sidebar-recent-visit-subagent-${visit.agentId}`}
-          >
-            {t("sidebar.recentVisits.subagent")}
-          </Text>
-        ) : null}
-        {isCurrent ? <Text style={styles.current}>{t("sidebar.recentVisits.current")}</Text> : null}
-        <RecentVisitUpdatedAt
-          date={agent?.updatedAt ?? null}
-          testID={`sidebar-recent-visit-updated-${visit.agentId}`}
+  // 第一行右侧只放标记：条数、已归档、子 agent、当前、更新于。它们都是状态，
+  // 压缩或换行就不再一眼可读；左侧的项目名才是这一行里可以让位的一段。
+  const badges = (
+    <>
+      {stats ? (
+        <StatusBadge
+          label={t("agentList.badges.userMessages", { count: stats.userMessageCount })}
         />
-      </View>
-    ),
-    [agent?.updatedAt, isArchived, isCurrent, isSubagent, stats, t, visit.agentId],
+      ) : null}
+      {isArchived ? (
+        <StatusBadge
+          label={t("agentList.badges.archived")}
+          variant="muted"
+          leading={archivedBadgeIcon}
+        />
+      ) : null}
+      {isSubagent ? (
+        <Text
+          style={styles.subagentBadge}
+          testID={`sidebar-recent-visit-subagent-${visit.agentId}`}
+        >
+          {t("sidebar.recentVisits.subagent")}
+        </Text>
+      ) : null}
+      {isCurrent ? <Text style={styles.current}>{t("sidebar.recentVisits.current")}</Text> : null}
+      <RecentVisitUpdatedAt
+        date={agent?.updatedAt ?? null}
+        testID={`sidebar-recent-visit-updated-${visit.agentId}`}
+      />
+    </>
   );
 
   const handleSelect = useCallback(() => {
@@ -273,15 +273,15 @@ function RecentVisitMenuItem({
   }, [isArchived, onBeforeNavigate, visit.agentId, visit.serverId, visit.workspaceId]);
 
   return (
-    <DropdownMenuItem
+    <SidebarRecentVisitRow
       testID={`sidebar-recent-visit-${visit.agentId}`}
-      description={description}
-      trailing={statusBadges}
-      wrapLabel
+      accessibilityLabel={title}
+      projectName={projectName}
+      badges={badges}
+      title={title}
+      lastUserMessage={lastUserMessage}
       onSelect={handleSelect}
-    >
-      {agent?.title?.trim() || visit.agentId}
-    </DropdownMenuItem>
+    />
   );
 }
 
@@ -337,17 +337,12 @@ const styles = StyleSheet.create((theme) => ({
     fontSize: theme.fontSize.sm,
     color: theme.colors.foregroundExtraMuted,
   },
-  badges: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.spacing[2],
+  updatedAt: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.foregroundExtraMuted,
   },
   subagentBadge: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.foregroundMuted,
-  },
-  updatedAt: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.foregroundExtraMuted,
   },
 }));
