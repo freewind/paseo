@@ -236,8 +236,9 @@ interface SidebarWorkspaceListProps {
   onAddProject?: () => void;
   onImportSession?: () => void;
   listFooterComponent?: ReactElement | null;
-  // Rendered inside the scroll area, above the Pinned section, so the search box that replaces
-  // the "Workspaces" section title sits at the top of the sidebar.
+  // The "Workspaces" section title, replaced by the name search and the display menu. Rendered
+  // above the scroll area rather than inside it: a search box you have to scroll back up to reach
+  // costs more than the row it hides, and the display menu is the only route back out of a filter.
   listHeaderComponent?: ReactElement | null;
   /** Gesture ref for coordinating with parent gestures (e.g., sidebar close) */
   parentGestureRef?: MutableRefObject<GestureType | undefined>;
@@ -2028,6 +2029,19 @@ export function SidebarWorkspaceList({
   // whenever a local filter empties an otherwise populated directory, so users can
   // reach the display menu to reveal their work again.
   const sidebarFilterEmpty = hasProjectsBeforeFilter && projects.length === 0;
+  const hasActiveHostFilter = useSidebarViewStore((state) => state.hostFilters.length > 0);
+
+  // Each mode keeps the condition it had while the header lived inside the scroll area; only the
+  // position changed. Project mode drops it for a genuinely empty sidebar, where a section heading
+  // would sit over nothing, and keeps it for every filter that can empty the list — the header is
+  // where the way back out of that filter lives. Grouped modes always keep it.
+  const showSectionHeader =
+    Boolean(listHeaderComponent) &&
+    (groupMode !== "project" ||
+      pinnedGroups.unpinnedProjects.length > 0 ||
+      hasActiveHostFilter ||
+      hasActiveProjectFilter ||
+      sidebarFilterEmpty);
 
   // Project mode is the one that keeps its project headers; every other grouping mode is a flat
   // list of grouped rows, so a new mode lands in the grouped branch rather than silently in this
@@ -2045,7 +2059,6 @@ export function SidebarWorkspaceList({
         supportsPinningByServerId={supportsPinningByServerId}
         onToggleWorkspacePin={onToggleWorkspacePin}
         onPinnedWorkspaceReorder={handlePinnedWorkspaceReorder}
-        listHeaderComponent={listHeaderComponent}
         sidebarFilterEmpty={sidebarFilterEmpty}
         parentGestureRef={parentGestureRef}
         dragGestureHostActive={dragGestureHostActive}
@@ -2063,9 +2076,7 @@ export function SidebarWorkspaceList({
         onAddProject={onAddProject}
         onImportSession={onImportSession}
         listFooterComponent={listFooterComponent}
-        listHeaderComponent={listHeaderComponent}
         sidebarFilterEmpty={sidebarFilterEmpty}
-        hasActiveProjectFilter={hasActiveProjectFilter}
         parentGestureRef={parentGestureRef}
         dragGestureHostActive={dragGestureHostActive}
         pathname={pathname}
@@ -2077,7 +2088,12 @@ export function SidebarWorkspaceList({
       />
     );
 
-  return content;
+  return (
+    <View style={styles.container}>
+      {showSectionHeader ? <View style={styles.sectionHeader}>{listHeaderComponent}</View> : null}
+      {content}
+    </View>
+  );
 }
 
 /**
@@ -2097,7 +2113,6 @@ function SidebarGroupedModeList({
   supportsPinningByServerId,
   onToggleWorkspacePin,
   onPinnedWorkspaceReorder,
-  listHeaderComponent,
   sidebarFilterEmpty,
   parentGestureRef,
   dragGestureHostActive,
@@ -2112,7 +2127,6 @@ function SidebarGroupedModeList({
   supportsPinningByServerId: ReadonlyMap<string, boolean>;
   onToggleWorkspacePin: ToggleSidebarWorkspacePin;
   onPinnedWorkspaceReorder: (workspaces: SidebarWorkspacePlacement[]) => void;
-  listHeaderComponent?: ReactElement | null;
   sidebarFilterEmpty: boolean;
   parentGestureRef?: MutableRefObject<GestureType | undefined>;
   dragGestureHostActive?: boolean;
@@ -2139,7 +2153,6 @@ function SidebarGroupedModeList({
       supportsPinningByServerId={supportsPinningByServerId}
       onToggleWorkspacePin={onToggleWorkspacePin}
       onPinnedWorkspaceReorder={onPinnedWorkspaceReorder}
-      listHeaderComponent={listHeaderComponent}
       sidebarFilterEmpty={sidebarFilterEmpty}
       parentGestureRef={parentGestureRef}
       dragGestureHostActive={dragGestureHostActive}
@@ -2159,9 +2172,7 @@ function ProjectModeList({
   onAddProject,
   onImportSession,
   listFooterComponent,
-  listHeaderComponent,
   sidebarFilterEmpty,
-  hasActiveProjectFilter,
   parentGestureRef,
   dragGestureHostActive,
   pathname,
@@ -2176,6 +2187,8 @@ function ProjectModeList({
   | "projectIconTargets"
   | "groupMode"
   | "hasProjectsBeforeFilter"
+  | "hasActiveProjectFilter"
+  | "listHeaderComponent"
   | "isRefreshing"
   | "onRefresh"
 > & {
@@ -2209,7 +2222,6 @@ function ProjectModeList({
     },
     [setProjectScrollOffset],
   );
-  const hasActiveHostFilter = useSidebarViewStore((state) => state.hostFilters.length > 0);
   const [creatingWorkspaceIds, setCreatingWorkspaceIds] = useState<Set<string>>(() => new Set());
   const creatingWorkspaceTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map(),
@@ -2509,18 +2521,6 @@ function ProjectModeList({
 
   const content = (
     <>
-      {/* The header carries the display menu, which is the only way back out of a filter, so it
-        stays for as long as a filter is what emptied the list. It is absent only when the
-        sidebar is genuinely empty, where a section heading would sit over nothing.
-        Every filter that can empty this branch needs a term here: a project filter pinned to a
-        project whose chats are all pinned leaves `unpinnedProjects` empty, and without its term
-        the header would go with it, taking the only route back to the filter page. */}
-      {unpinnedProjects.length > 0 ||
-      hasActiveHostFilter ||
-      hasActiveProjectFilter ||
-      sidebarFilterEmpty
-        ? listHeaderComponent
-        : null}
       {pinnedChats.length > 0 ? (
         <View style={styles.pinnedSection} testID="sidebar-pinned-section">
           <SidebarSectionHeader
@@ -2599,13 +2599,18 @@ const styles = StyleSheet.create((theme) => ({
   container: {
     flex: 1,
   },
+  // Matches `listContent`'s horizontal inset so the search field keeps its rail, and carries the
+  // top inset that used to sit above the rows.
+  sectionHeader: {
+    paddingHorizontal: theme.spacing[2],
+    paddingTop: 2,
+  },
   list: {
     flex: 1,
   },
   listContent: {
     paddingHorizontal: theme.spacing[2],
-    // Optical inset: aligns the visible Pinned/Workspaces glyph edge with the
-    // Schedules icon across the divider; their layout boxes have different insets.
+    // Breathing room under the fixed section header, and the whole top inset when it is absent.
     paddingTop: 2,
     paddingBottom: theme.spacing[4],
   },

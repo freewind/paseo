@@ -6,7 +6,6 @@ import {
   useRef,
   type ComponentRef,
   type MutableRefObject,
-  type ReactNode,
   type Ref,
 } from "react";
 import { SidebarWorkspaceAgentList } from "@/components/sidebar/sidebar-workspace-agent-list";
@@ -129,8 +128,7 @@ interface StatusWorkspaceListProps {
   supportsPinningByServerId: ReadonlyMap<string, boolean>;
   onToggleWorkspacePin: ToggleSidebarWorkspacePin;
   onPinnedWorkspaceReorder: (workspaces: SidebarWorkspaceEntry[]) => void;
-  listHeaderComponent?: ReactNode;
-  /** Swaps the group list for the label filter's empty state. Never the header above it. */
+  /** Swaps the group list for the label filter's empty state. */
   sidebarFilterEmpty?: boolean;
   parentGestureRef?: MutableRefObject<GestureType | undefined>;
   dragGestureHostActive?: boolean;
@@ -147,7 +145,6 @@ export function SidebarStatusWorkspaceList({
   supportsPinningByServerId,
   onToggleWorkspacePin,
   onPinnedWorkspaceReorder,
-  listHeaderComponent,
   sidebarFilterEmpty = false,
   parentGestureRef,
   dragGestureHostActive,
@@ -235,7 +232,6 @@ export function SidebarStatusWorkspaceList({
   );
   const content = (
     <>
-      {listHeaderComponent}
       {pinnedWorkspaces.length > 0 ? (
         <View style={styles.pinnedSection} testID="sidebar-pinned-section">
           <SidebarSectionHeader
