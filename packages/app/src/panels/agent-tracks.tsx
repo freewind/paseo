@@ -1,10 +1,11 @@
 import type { AgentAddress } from "@getpaseo/protocol/addresses";
 import { memo, useCallback, useMemo, type ReactElement, type ReactNode } from "react";
 import { View } from "react-native";
-import { StyleSheet } from "react-native-unistyles";
+import { StyleSheet, withUnistyles } from "react-native-unistyles";
 import { ClipboardList } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
+import { mutedIconColorMapping } from "@/components/ui/icon-color";
+import { ToolbarButton } from "@/components/ui/pane-content-toolbar";
 import { WorkspaceDiffStatPill } from "@/composer/diff-stat-pill";
 import { useWorkspaceHasDiffStat } from "@/composer/workspace-diff-stat";
 import { AgentTaskList } from "@/composer/task-list";
@@ -14,6 +15,7 @@ import { usePaneContext } from "@/panels/pane-context";
 import { useSettings } from "@/hooks/use-settings";
 import { PluginComposerPills } from "@/plugins";
 import { useSessionStore } from "@/stores/session-store";
+import { ICON_SIZE } from "@/styles/theme";
 import {
   type ArchiveFinishedStatus,
   useArchiveSubagent,
@@ -202,14 +204,14 @@ export const AgentTracks = memo(function AgentTracks({
         onPress={handleOpenChanges}
       />
       {hasMemosEntry ? (
-        <Button
-          variant="ghost"
-          size="xs"
-          leftIcon={ClipboardList}
-          accessibilityLabel={t("agentMemos.toggle")}
+        <ToolbarButton
+          label={t("agentMemos.toggle")}
           onPress={onOpenAgentMemos}
+          framed
           testID="composer-agent-memos-button"
-        />
+        >
+          <ThemedClipboardList size={ICON_SIZE.md} />
+        </ToolbarButton>
       ) : null}
       {trailing ? <View style={styles.trailing}>{trailing}</View> : null}
     </ComposerTrackBar>
@@ -219,6 +221,8 @@ export const AgentTracks = memo(function AgentTracks({
 const styles = StyleSheet.create({
   trailing: { marginLeft: "auto" },
 });
+
+const ThemedClipboardList = withUnistyles(ClipboardList, mutedIconColorMapping);
 
 export function hasAgentTracks({
   parentAgentId,

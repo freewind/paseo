@@ -10,10 +10,13 @@ const mutedIconMapping = (theme: Theme) => ({ color: theme.colors.foregroundMute
 export function SideRailSheetButton({
   icon: Icon,
   accessibilityLabel,
+  framed,
   children,
 }: {
   icon: LucideIcon;
   accessibilityLabel: string;
+  /** Pill chrome, for a trigger that stands beside the composer track's pills. */
+  framed?: boolean;
   children: (actions: { close: () => void }) => ReactNode;
 }) {
   const [visible, setVisible] = useState(false);
@@ -22,7 +25,12 @@ export function SideRailSheetButton({
 
   return (
     <>
-      <SideRailSheetTrigger icon={Icon} accessibilityLabel={accessibilityLabel} onPress={open} />
+      <SideRailSheetTrigger
+        icon={Icon}
+        accessibilityLabel={accessibilityLabel}
+        onPress={open}
+        framed={framed}
+      />
       <SideRailSheet accessibilityLabel={accessibilityLabel} visible={visible} onClose={close}>
         {children({ close })}
       </SideRailSheet>
@@ -34,16 +42,18 @@ export function SideRailSheetTrigger({
   icon: Icon,
   accessibilityLabel,
   onPress,
+  framed,
   testID,
 }: {
   icon: LucideIcon;
   accessibilityLabel: string;
   onPress: () => void;
+  framed?: boolean;
   testID?: string;
 }) {
   const ThemedIcon = useMemo(() => withUnistyles(Icon, mutedIconMapping), [Icon]);
   return (
-    <ToolbarButton label={accessibilityLabel} onPress={onPress} testID={testID}>
+    <ToolbarButton label={accessibilityLabel} onPress={onPress} framed={framed} testID={testID}>
       <ThemedIcon size={ICON_SIZE.md} uniProps={mutedIconMapping} />
     </ToolbarButton>
   );

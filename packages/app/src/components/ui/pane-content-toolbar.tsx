@@ -63,6 +63,11 @@ interface ToolbarButtonCommonProps extends Omit<
   compact?: boolean;
   /** A circular highlight, for buttons inside a pill-shaped container. */
   round?: boolean;
+  /**
+   * Pill chrome — border, surface, and the composer track's control height. For an icon action
+   * that stands beside the track's pills as a peer control rather than sitting inside one of them.
+   */
+  framed?: boolean;
   shortcut?: ShortcutKey[][] | null;
   tooltipSide?: "left" | "right" | "top" | "bottom";
   style?: StyleProp<ViewStyle>;
@@ -85,6 +90,7 @@ export function ToolbarButton({
   selected = false,
   compact = false,
   round = false,
+  framed = false,
   shortcut,
   tooltipSide = "bottom",
   style,
@@ -100,6 +106,7 @@ export function ToolbarButton({
     active: selected,
     disabled: Boolean(disabled),
     round,
+    framed,
     style,
   });
   const accessibilityState = useMemo(

@@ -1446,6 +1446,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
         <SideRailSheetButton
           icon={MessageSquareText}
           accessibilityLabel={t("composer.quickReplies.title")}
+          framed
         >
           {({ close }) => {
             // 关闭动作来自当前弹层，回调必须在这里绑定。
@@ -1479,6 +1480,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
           icon={List}
           accessibilityLabel={t("agentStream.chatOutline.open")}
           onPress={openChatOutline}
+          framed
           testID="chat-outline-open"
         />
       ) : null,
@@ -1503,6 +1505,7 @@ const ChatAgentReadyContent = memo(function ChatAgentReadyContent({
         )}
         selected={isConversationOnly}
         onPress={toggleConversationOnly}
+        framed
         testID="conversation-only-toggle"
       >
         <ActiveIcon size={ICON_SIZE.md} uniProps={foregroundMutedColorMapping} />

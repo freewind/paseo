@@ -1,11 +1,13 @@
 import { StyleSheet } from "react-native-unistyles";
+import { CONTROL_HEIGHTS } from "@/components/ui/control-geometry";
 import { SPACING } from "@/styles/theme";
 
 export const COMPOSER_PILL_CLEARANCE = {
   compact: SPACING[2],
   wide: 10,
 } as const;
-export const COMPOSER_PILL_MIN_HEIGHT = 32;
+/** The row's one control height — the pills and the framed icon actions between them share it. */
+export const COMPOSER_PILL_MIN_HEIGHT = CONTROL_HEIGHTS.compact;
 
 export function resolveComposerPillClearance(isCompact: boolean): number {
   return isCompact ? COMPOSER_PILL_CLEARANCE.compact : COMPOSER_PILL_CLEARANCE.wide;
