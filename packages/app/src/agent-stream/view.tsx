@@ -81,7 +81,6 @@ import { type StreamSegmentRenderers, type StreamViewportHandle } from "./strate
 import { ChatOutlineTextRail } from "@/agent-stream/chat-outline/text-rail";
 import { ChatOutlineTextTimeline } from "@/agent-stream/chat-outline/text-timeline";
 import { SideRailSheet } from "@/components/side-rail-sheet";
-import { ChatOutlineRail } from "@/agent-stream/chat-outline/rail";
 import { RightGutter } from "@/components/right-gutter";
 import { useChatOutline } from "@/agent-stream/chat-outline/use-chat-outline";
 import { getHostRuntimeStore } from "@/runtime/host-runtime";
@@ -340,12 +339,9 @@ function resolveBottomOverlayControlOffset(clearance: number | undefined): numbe
   return Math.max(16, clearance ?? 0);
 }
 
-/** 关掉不常用功能就把转录交回上游的圆点；两套吃同一份提示索引。 */
-function useOutlineMode(supportsChatOutline: boolean): { enabled: boolean; worded: boolean } {
+function useChatOutlineEnabled(supportsChatOutline: boolean): boolean {
   const chatOutlineEnabled = useSettings((settings) => settings.chatOutlineEnabled);
-  const disableUncommonFeatures = useSettings((settings) => settings.disableUncommonFeatures);
-  const enabled = supportsChatOutline && chatOutlineEnabled;
-  return { enabled, worded: enabled && disableUncommonFeatures };
+  return supportsChatOutline && chatOutlineEnabled;
 }
 
 const ChatOutlineSheet = memo(function ChatOutlineSheet({
@@ -372,7 +368,7 @@ const ChatOutlineSheet = memo(function ChatOutlineSheet({
     },
     [onJumpToPrompt, onClose],
   );
-  if (!isWeb || !enabled) return null;
+  if (!enabled) return null;
   return (
     <SideRailSheet
       accessibilityLabel={t("agentStream.chatOutline.title")}
@@ -417,12 +413,11 @@ function ChatOutlineSheetList({
 
 function useChatOutlineAvailability(
   agentId: string,
-  worded: boolean,
   promptCount: number,
   onAvailabilityChange: AgentStreamViewProps["onChatOutlineAvailabilityChange"],
   close: () => void,
 ) {
-  const hasTextOutline = isWeb && worded && promptCount > 0;
+  const hasTextOutline = promptCount > 0;
   useEffect(() => {
     onAvailabilityChange?.(hasTextOutline);
   }, [agentId, hasTextOutline, onAvailabilityChange]);
@@ -753,14 +748,14 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
           mountedHistoryMessageIds.has(messageId) || liveHeadMessageIds.has(messageId),
       };
     }, [baseRenderModel.segments.liveHead, mountedHistoryMessageIds]);
-    const outline = useOutlineMode(supportsChatOutline);
+    const outlineEnabled = useChatOutlineEnabled(supportsChatOutline);
     const chatOutline = useChatOutline({
       agentId,
       serverId: resolvedServerId,
       timelineEpoch,
       tail: effectiveStreamItems,
       head: effectiveStreamHead,
-      enabled: outline.enabled,
+      enabled: outlineEnabled,
       viewportRef,
       onJumpError: handleTimelineHistoryLoadError,
       mountedHistoryMessageIds,
@@ -768,7 +763,6 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
     });
     useChatOutlineAvailability(
       agentId,
-      outline.worded,
       chatOutline.prompts.length,
       onChatOutlineAvailabilityChange,
       closeChatOutline,
@@ -1394,21 +1388,13 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
                 })}
               </ToolCallExpansionContext.Provider>
             </MessageOuterSpacingProvider>
-            {outline.worded ? (
-              <ChatOutlineTextRail
-                prompts={chatOutline.prompts}
-                activePrompt={chatOutline.activePrompt}
-                onJumpToPrompt={chatOutline.jumpToPrompt}
-                contentMaxWidth={contentMaxWidth}
-                agentId={agentId}
-              />
-            ) : (
-              <ChatOutlineRail
-                prompts={chatOutline.prompts}
-                activePrompt={chatOutline.activePrompt}
-                onJumpToPrompt={chatOutline.jumpToPrompt}
-              />
-            )}
+            <ChatOutlineTextRail
+              prompts={chatOutline.prompts}
+              activePrompt={chatOutline.activePrompt}
+              onJumpToPrompt={chatOutline.jumpToPrompt}
+              contentMaxWidth={contentMaxWidth}
+              agentId={agentId}
+            />
             <ChatOutlineSheet
               agentId={agentId}
               prompts={chatOutline.prompts}
@@ -1416,7 +1402,7 @@ const AgentStreamViewComponent = forwardRef<AgentStreamViewHandle, AgentStreamVi
               onJumpToPrompt={chatOutline.jumpToPrompt}
               visible={isChatOutlineOpen}
               onClose={closeChatOutline}
-              enabled={outline.worded}
+              enabled={outlineEnabled}
             />
             <RightGutter contentMaxWidth={contentMaxWidth}>{rightGutter}</RightGutter>
             {(!isNearBottom || isTimelineDetached) && (
