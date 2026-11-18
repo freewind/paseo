@@ -16,7 +16,7 @@ import { deriveAgentStreamTurnLiveness } from "@/timeline/session-stream-reducer
 import { useTurnCompleteSound } from "@/hooks/use-turn-complete-sound";
 import { useTts } from "@/hooks/use-tts";
 import { useActiveTtsAgentId } from "@/tts/active-tts-agent";
-import { createAssistantSpeechSender } from "@/tts/assistant-message-completion";
+import { createAssistantSpeechStream } from "@/tts/assistant-speech-stream";
 import { isConversationSpeechEnabled } from "@/tts/conversation-speech";
 import { observeSpeechInterruptions } from "@/tts/speech-interruption";
 import { useAppSettings } from "@/hooks/use-settings";
@@ -400,31 +400,37 @@ function SessionProviderInternal({ children, serverId, client }: SessionProvider
 
   useEffect(() => {
     const setAgentInitializing = createSetAgentInitializing(serverId, setInitializingAgents);
-    const speechSender = createAssistantSpeechSender();
+    const speechStream = createAssistantSpeechStream();
     const stopObservingSpeechInterruptions = observeSpeechInterruptions(serverId, (agentId) => {
-      speechSender.interrupt(agentId);
+      speechStream.interrupt(agentId);
       if (agentId === activeTtsAgentIdRef.current) stopTts();
     });
-    /** 朗读跟随数据流：用户发消息或回合被取消就停，回合结束就开始。 */
-    const handleSpeechStreamEvent = (agentId: string, event: AgentStreamEventPayload) => {
-      speechSender.consume(agentId, event);
-      const isActiveAgent = agentId === activeTtsAgentIdRef.current;
-      const interruptsReading =
-        (event.type === "timeline" && event.item.type === "user_message" && isActiveAgent) ||
-        (event.type === "turn_canceled" && isActiveAgent);
-      if (interruptsReading) {
-        stopTts();
-      }
-      if (event.type !== "turn_completed" || !isActiveAgent) return;
+    /** 朗读跟随数据流：新的回复文本一到就打断旧内容直接读，用户发消息或回合被取消就停。 */
+    const speakIfActive = (agentId: string, text: string | null) => {
+      if (!text || agentId !== activeTtsAgentIdRef.current) return;
       const current = speechSettingsRef.current;
       if (!isConversationSpeechEnabled(current.appSettings, serverId, agentId)) return;
-      const text = speechSender.take(agentId, event.turnId);
-      if (!text) return;
       speakReply({
         text,
         voiceId: current.appSettings.ttsEngine,
         rate: current.appSettings.ttsRate,
       });
+    };
+    const handleSpeechStreamEvent = (agentId: string, event: AgentStreamEventPayload) => {
+      const isActiveAgent = agentId === activeTtsAgentIdRef.current;
+      const interruptsReading =
+        (event.type === "timeline" && event.item.type === "user_message" && isActiveAgent) ||
+        (event.type === "turn_canceled" && isActiveAgent);
+      if (interruptsReading) {
+        speechStream.interrupt(agentId);
+        stopTts();
+        return;
+      }
+      if (event.type === "turn_completed") {
+        speakIfActive(agentId, speechStream.finish(agentId));
+        return;
+      }
+      speakIfActive(agentId, speechStream.consume(agentId, event));
     };
     const onStream = (message: SessionOutboundMessage) => {
       if (message.type !== "agent_stream") return;
